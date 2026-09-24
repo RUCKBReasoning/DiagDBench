@@ -1,4 +1,6 @@
-# DiagDBench: Evaluating Large Language Models on Database Diagnosis: [Experiments & Analysis]
+# DiagDBench
+
+Repository for the paper: DiagDBench: Evaluating Large Language Models on Database Diagnosis: [Experiments & Analysis]
 
 We propose DiagDBench, a public benchmark that assesses root-cause identification and remediation effectiveness across diverse, realistic, user-triggered scenarios.
 
