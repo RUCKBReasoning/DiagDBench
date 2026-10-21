@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Buffer Cache and Latch Contention Anomaly + Replication Synchronization Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer repeatedly chooses sub-optimal execution plans even though statistics are sound, leading to excessive I/O, CPU, or parallel-execution misuse.\nBuffer Cache and Latch Contention Anomaly: Hot buffer pages and their protecting latches become points of serialization, stalling sessions that compete for page access or page-state changes.\nReplication Synchronization Anomaly: Standbys cannot receive, write, or apply primary log records fast enough, producing widening replication lag and preventing log recycling.\n\nWhen these three root causes manifest together, the database shows an explosive mix of symptoms: single statements oscillate between fast and extremely slow runtimes, while system-wide wait profiles are dominated by buffer-busy and page-latch waits. Concurrently, replication dashboards report growing receive/write/replay lag, swollen relay or retained log segments, and stale read-only replicas. Primary nodes exhibit CPU spin and erratic throughput as queries hammer hot pages; replicas inherit both the sub-optimal plans (through statement shipping or view routing) and the same latch hotspots during redo-apply or read traffic, amplifying their own delay. Checkpoints lengthen, dirty-page queues build up, and storage I/O saturates, further inflating query latency and replica catch-up times.\n\nCausally, a bad plan that favors full scans or high-fan-out nested loops generates a flood of logical reads, concentrating activity on a narrow set of root or data pages. This magnifies latch contention in the buffer manager, slowing every session—including the background processes that flush dirty buffers and ship or apply WAL/redo. The prolonged execution times inflate transaction size and log volume, causing the primary to outpace replica apply rates. The ensuing replication lag prevents log-segment recycling, keeping more pages dirty for longer and extending checkpoint cycles, which in turn deepens buffer churn and latch pressure. The feedback loop between poor plan choice, buffer-cache contention, and replication backlog progressively degrades both primary and replica performance until all tiers are simultaneously bottlenecked.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.7455256064690027,
+            "bm25_score": 27.14296882339184,
+            "lexical_score": 0.1517520215633423,
+            "matched_terms": [
+                "an",
+                "and",
+                "cannot",
+                "database",
+                "delay",
+                "for",
+                "longer",
+                "of",
+                "or",
+                "session",
+                "sessions",
+                "statement",
+                "that",
+                "the",
+                "this",
+                "to",
+                "transaction",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 291,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

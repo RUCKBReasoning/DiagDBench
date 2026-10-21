@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Transaction Lock Contention Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Composite definition: The database is simultaneously affected by (1) stale or incomplete optimizer statistics that drive systematic cardinality misestimation, (2) heavy lock-manager blocking/deadlock situations among concurrent transactions, and (3) exhaustion or slowdown of network/connection-handling resources between clients and the server.\nOptimizer Statistics Anomaly: Inaccurate or missing statistics misguide the cost-based optimizer, producing sub-optimal access paths and join orders.\nTransaction Lock Contention Anomaly: Incompatible lock requests from concurrent transactions create long blocking chains or deadlocks, throttling throughput.\nNetwork and Connectivity Resource Anomaly: Limited or unstable network, listener, socket, or authentication capacity delays session establishment and enlarges result-set transfer times.\n\nCombined phenomena: Affected systems exhibit erratic query plans with unexpectedly large scans that lock many rows or pages, quickly generating extensive blocker–waiter trees. As blocked sessions pile up, client threads remain connected but idle, inflating session counts until the listener or socket backlog is saturated. Users observe a mixture of symptoms—slow or timed-out connections, sudden surges in lock wait time, deadlock error bursts, intermittent plan regressions after data loads, and highly variable response times—making root-cause isolation difficult.\n\nCausal interaction: Misestimated cardinalities can cause the optimizer to choose plans that touch far more data than necessary (e.g., full table scans instead of index seeks), increasing the number, scope, and lifetime of locks held by each statement. The enlarged lock footprint heightens the probability and duration of lock contention and deadlocks. Prolonged blocking slows statement completion, so application sessions stay active longer, which in turn drives up the number of concurrent connections competing for limited listener threads, socket buffers, and network bandwidth. Conversely, network or authentication slowdowns extend transaction round-trip times, delaying commit/rollback and keeping locks in place even longer, thereby intensifying contention. The feedback loop between poor plans, prolonged locks, and network saturation can quickly degrade overall OLTP throughput and stability.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.4032669319900846,
+            "bm25_score": 21.558386533906592,
+            "lexical_score": 0.17074303405572755,
+            "matched_terms": [
+                "after",
+                "and",
+                "authentication",
+                "between",
+                "can",
+                "client",
+                "connected",
+                "connection",
+                "establishment",
+                "handling",
+                "idle",
+                "is",
+                "long",
+                "or",
+                "query",
+                "session",
+                "sessions",
+                "socket",
+                "stale",
+                "that",
+                "the",
+                "time"
+            ],
+            "match_count": 253,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

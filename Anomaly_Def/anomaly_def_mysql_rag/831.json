@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Database Configuration Parameter Anomaly + Storage Space Capacity Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Obsolete row versions, rollback records, and dead index entries accumulate faster than background cleanup can reclaim them, inflating the version store and increasing visibility-check work.\nDatabase Configuration Parameter Anomaly : Critical engine settings for memory, background workers, checkpointing, and parallelism are mis-tuned for the hardware and workload, so internal subsystems operate with inappropriate resource budgets or cadences.\nStorage Space Capacity Anomaly : Data files, log areas, or temporary/backup destinations run out of free space, producing allocation failures, stalled writes, and growth-limit errors.\n\nWhen all three root causes strike at once, the database exhibits a compounding failure pattern: dead tuples and rollback segments bloat tables and indexes, while mis-configured memory and worker limits prevent vacuum/garbage-collection processes from keeping up, causing version stores and relation files to balloon until the underlying tablespace, log, or temp volumes exhaust their physical capacity. Operators see a convergence of symptoms: rapidly escalating disk-usage alarms, sudden log-archive or data-file growth spikes, longer and less predictable query latencies due to enlarged heap scans and bloated indexes, frequent autovacuum or cleanup workers stuck or thrashing, checkpoints triggering under duress yet unable to flush because target filesystems are full, sessions receiving \"no space left on device\" or \"cannot extend\" errors, and wait events oscillating between space-allocation stalls and version-visibility scans.\n\nCausally, excessive MVCC churn is the initial generator of extra pages and undo records. Mis-tuned configuration parameters (e.g., undersized cleanup worker budgets, conservative vacuum cost limits, small log segments, overly aggressive checkpoint intervals, or insufficient temp/maintenance memory) throttle the very mechanisms that should reclaim that space, so the bloat progresses unchecked. The swollen relation and log files rapidly consume the finite storage allotment, pushing the system into a capacity crisis. Once space becomes scarce, checkpoint and vacuum operations slow further because they cannot allocate new segments, which in turn leaves even more dead versions on disk, forming a positive feedback loop that magnifies latency spikes and increases the probability of outright service outage. Together, the three anomalies reinforce one another, turning what would be benign bloat, mild mis-tuning, or manageable space usage in isolation into a self-amplifying OLTP outage scenario.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.7465813674530187,
+            "bm25_score": 33.66670054626182,
+            "lexical_score": 0.15527122484339595,
+            "matched_terms": [
+                "and",
+                "be",
+                "because",
+                "configured",
+                "engine",
+                "for",
+                "is",
+                "limit",
+                "operations",
+                "or",
+                "pattern",
+                "query",
+                "resource",
+                "should",
+                "the",
+                "together",
+                "when",
+                "with",
+                "work",
+                "workload"
+            ],
+            "match_count": 40,
+            "entry": {
+                "timeout_id": "mysql84_regular_expression_time_limit",
+                "parameter_name": "regexp_time_limit",
+                "timeout_category": "expression_evaluation_time_limit",
+                "scope": "global/session",
+                "official_definition": "The time limit for regular expression matching operations performed by the regular expression engine.",
+                "trigger_condition": "A regular expression match operation exceeds regexp_time_limit.",
+                "workload_impact": "The regular expression operation is constrained by the configured time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Data Block and Index Integrity Anomaly + Storage I/O Throughput Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Composite definition: The database is simultaneously impacted by on-disk data/index corruption, sustained saturation of the underlying storage throughput budget, and exhaustion of operating-system-level resource limits. Together these three root causes create a complex failure domain in which physical structures are unreliable, I/O paths are throttled, and the kernel refuses to grant additional critical resources to the database engine.\n\nCombined anomalous phenomena: In addition to checksum failures, index–heap mismatches, and corruption errors, administrators observe erratic yet persistently high read/write latency with queue depths stuck near maximum while overall CPU remains modest. Integrity-verification utilities report escalating page or key-order errors, yet corrective operations such as CHECKDB, index rebuilds, or page re-writes stall or fail due to storage stalls and kernel denials to open new files, map buffers, or spawn worker threads. Session spikes or maintenance jobs may intermittently hang on I/O or emit “too many open files,” “cannot allocate shared memory,” or “AIO context limit reached” messages. Performance baselines collapse: queries unpredictably fall back to full table scans because damaged indexes are marked unusable, but the scans themselves are slowed by storage saturation; meanwhile background recovery or redo replays lag because log-write bandwidth is throttled and additional recovery workers cannot be forked.\n\nCausal chain and interaction: Latent or newly introduced physical corruption forces the engine to reread pages, trigger verification logic, or rebuild indexes, multiplying I/O demand exactly when the storage subsystem is already bandwidth-constrained, worsening queue buildup and latency. The prolonged I/O wait extends the lifetime of sessions and background tasks, increasing consumption of file descriptors, AIO contexts, shared-memory segments, and worker threads until the operating system’s hard limits are reached. Once those limits are hit, the engine can no longer allocate the resources required for corruption-repair tasks or for normal workload processing, leading to cascading errors, partial outages, and an escalating backlog of dirty pages whose delayed flushing perpetuates both corruption exposure and storage congestion. The mutually reinforcing cycle of corrupted structures (requiring more I/O), saturated storage (slowing every operation), and kernel resource exhaustion (blocking new work and recovery actions) drives the system into severe instability that is difficult to diagnose if each symptom is viewed in isolation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.4064089450859496,
+            "bm25_score": 17.001987698413036,
+            "lexical_score": 0.13766968325791856,
+            "matched_terms": [
+                "and",
+                "are",
+                "be",
+                "budget",
+                "can",
+                "failure",
+                "is",
+                "latency",
+                "messages",
+                "of",
+                "on",
+                "or",
+                "session",
+                "sessions",
+                "system",
+                "that",
+                "the",
+                "to",
+                "when"
+            ],
+            "match_count": 207,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_count",
+                "parameter_name": "tcp_keepalives_count",
+                "timeout_category": "network_keepalive_failure_threshold",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the number of TCP keepalive messages that can be lost before the server connection to the client is considered dead.",
+                "trigger_condition": "The number of lost TCP keepalive probes reaches tcp_keepalives_count on systems supporting TCP_KEEPCNT.",
+                "workload_impact": "The server can consider the client connection dead after the configured keepalive failure threshold.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Database Memory Allocation Anomaly + Replication Synchronization Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Optimizer-input metadata (row counts, histograms, correlations) is stale or incomplete, causing systematic cardinality misestimation and sub-optimal plan choices.\nDatabase Memory Allocation Anomaly : Engine memory regions (buffer pool, work areas, plan cache, background heaps) expand beyond the safe envelope of the host, provoking OS pressure, paging, or OOM events.\nReplication Synchronization Anomaly : Standbys or downstream consumers cannot receive or apply log records at the rate produced by the primary, creating widening log-position gaps and retention of unrecycled log segments.\n\nWhen these three root causes manifest together, the system exhibits a compound failure pattern: the optimizer repeatedly selects memory-hungry or parallel plans due to inaccurate statistics, inflating per-query work buffers and hash tables; this enlarges overall memory consumption, drives the database process into paging and stalls, and further slows local log generation and background I/O. The impaired primary now produces transaction logs in bursts with uneven latency, while replicas—already lagging—fall further behind because their replay threads contend for scarce memory and suffer the same mis-estimated plans. Observable symptoms therefore include: 1) dramatic divergence between estimated and actual rows in both primary and replica plans, 2) resident-set size and swap usage climbing in lock-step with plan cache and work-area footprints, 3) steep replication delay and unrecycled WAL/redo segments exhausting primary storage, 4) intermittent query timeouts, replica read staleness, and destabilising failover readiness.\n\nCausally, stale statistics can trigger memory pressure by choosing plans that favor large in-memory sorts, hashes, or excessive parallelism. The resulting memory allocation anomaly not only degrades local execution but also starves the replication sender and receiver processes, slowing log shipping and apply throughput. Growing replication lag, in turn, prevents log file recycling, expanding the I/O footprint and exacerbating memory pressure through larger buffer-pool churn. Meanwhile, delayed replicas keep their own statistics ever more outdated, reinforcing the optimizer statistics anomaly on the replay side. Thus the three root causes reinforce each other in a feedback loop that degrades query performance, memory stability, and replication health simultaneously.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.7401964912280701,
+            "bm25_score": 30.44273377720328,
+            "lexical_score": 0.13398830409356724,
+            "matched_terms": [
+                "and",
+                "apply",
+                "causing",
+                "downstream",
+                "health",
+                "is",
+                "lag",
+                "or",
+                "receiver",
+                "replica",
+                "replication",
+                "sender",
+                "the",
+                "this",
+                "to",
+                "when"
+            ],
+            "match_count": 75,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Database Memory Allocation Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer chooses a markedly sub-optimal execution plan even though statistics are adequate.\nDatabase Memory Allocation Anomaly: Overall engine memory consumption grows beyond the safe capacity of the host, triggering OS or engine-level memory pressure.\nBuffer Cache and Latch Contention Anomaly: Sessions serialize on hot buffer pages and their associated latches, stalling on low-level synchronization primitives.\n\nWhen all three anomalies surface together, operators observe a volatile mix of plan instability, memory stress, and internal buffer contention. A single statement may oscillate between index probes and full scans; after each plan flip, rows flood the buffer cache, inflating working-set size, evicting other pages, and expanding per-query work areas. Resident-set bloat pushes the host into paging or swap storms, while the shrinking effective cache intensifies latch waits on the remaining hot pages. Execution latency becomes highly jittery: some executions terminate quickly, others stall on page-latch or memory-pressure waits, and overall throughput collapses with CPUs either spin-locking or blocked by the OS memory manager.\n\nCausal chain: poor plan selection can inflate I/O and memory demand (e.g., hash joins that spill or table scans that load large objects), accelerating buffer-pool turnover and forcing the engine to allocate additional work memory. The enlarged footprint worsens host memory pressure, provoking aggressive page evictions and dirty-page flush cycles. These churns create a handful of survivor pages that every session must repeatedly acquire, amplifying latch competition. Conversely, severe latch contention extends query runtimes, keeping sub-optimal plans resident longer and holding work areas open, which further inflates memory usage. The feedback loop between plan mis-choice, memory exhaustion, and hot-page serialization drives the database into a degraded state that is deeper than any of the single anomalies would have caused on their own.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.3386619500109472,
+            "bm25_score": 14.482150716469427,
+            "lexical_score": 0.13507832373811757,
+            "matched_terms": [
+                "after",
+                "and",
+                "are",
+                "by",
+                "holding",
+                "is",
+                "latency",
+                "of",
+                "on",
+                "or",
+                "probes",
+                "session",
+                "sessions",
+                "that",
+                "the",
+                "to",
+                "when",
+                "which"
+            ],
+            "match_count": 204,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_interval",
+                "parameter_name": "tcp_keepalives_interval",
+                "timeout_category": "network_keepalive_retry_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time after which a TCP keepalive message that has not been acknowledged by the client should be retransmitted.",
+                "trigger_condition": "A TCP keepalive probe is not acknowledged for tcp_keepalives_interval on systems supporting TCP_KEEPINTVL or an equivalent socket option.",
+                "workload_impact": "Controls retry timing for keepalive probes used to detect unresponsive client connections.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

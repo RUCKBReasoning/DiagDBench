@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Database Memory Allocation Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Row-count and data-distribution statistics are stale, missing, or insufficient, causing systematic cardinality misestimates that mis-guide the optimizer’s cost calculations and plan selection.\nDatabase Memory Allocation Anomaly : The database engine allocates or leaks memory beyond the safe capacity of the host, producing sustained OS memory pressure, paging, or OOM events that disrupt normal processing.\n\nWhen both root causes are present, the workload can exhibit a cascade of symptoms: queries choose overly memory-hungry plans (e.g., large hash joins, multi-GB sorts) because of bad cardinality estimates, while the engine is already under memory stress. This leads to rapid inflation of work areas, frequent hash/sort spills, thrashing between buffer cache eviction and OS swapping, frequent plan recompilations with wildly fluctuating shapes, prolonged execution times, degraded cache hit ratios, and intermittent session or instance terminations. Monitoring tools may show both extreme estimate-vs-actual row count gaps and concurrently escalating resident-set sizes, swap activity, and memory-pressure wait events, making isolation of the primary trigger difficult.\n\nCausally, stale or poor statistics steer the optimizer toward plans that demand excessive memory. Those allocations accelerate exhaustion of available memory, intensifying the Memory Allocation Anomaly. In turn, heavy memory pressure can throttle or abort automatic statistics collection and cause background processes to skip or down-sample statistics updates, perpetuating or worsening the statistics inaccuracy. The feedback loop between misestimation-driven memory-greedy plans and memory scarcity amplifies both issues, resulting in systemic performance collapse and heightened risk of crashes or cluster failovers.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.47810902046093184,
+            "bm25_score": 9.303116519865128,
+            "lexical_score": 0.12071990320629158,
+            "matched_terms": [
+                "activity",
+                "and",
+                "are",
+                "in",
+                "is",
+                "of",
+                "or",
+                "session",
+                "stale",
+                "the",
+                "this",
+                "wait",
+                "when"
+            ],
+            "match_count": 120,
+            "entry": {
+                "timeout_id": "pg16_libpq_connection_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "client_connection_establishment_timeout",
+                "scope": "libpq/client connection parameter",
+                "official_definition": "Maximum wait for connection, in seconds; zero or not specified means wait indefinitely.",
+                "trigger_condition": "A libpq client connection attempt exceeds connect_timeout seconds.",
+                "workload_impact": "The client connection attempt fails instead of waiting indefinitely.",
+                "default_behavior": "Zero or absent value means wait indefinitely.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

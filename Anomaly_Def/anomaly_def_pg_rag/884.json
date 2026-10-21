@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + MVCC Version Maintenance Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "SQL Workload Logic Anomaly: Application-layer statement or transaction design that forces the engine to process more data, rows, or time than business logic truly requires.\nMVCC Version Maintenance Anomaly: Accumulation of obsolete row versions and rollback records faster than background cleanup can reclaim them, leading to bloat and visibility-check overhead.\nOperating System Resource Limit Anomaly: Exhaustion of kernel-enforced resources such as file handles, shared-memory segments, or thread quotas that are outside the database engine’s direct control.\n\nWhen all three anomalies occur together, the system exhibits an amplified symptom set: statement latency and slow-query log entries multiply, while table and index bloat lengthen sequential scans and skew planner estimates. Background autovacuum or purge workers run continuously yet fall further behind, and at the same time they intermittently fail to spawn or allocate I/O contexts because per-process file-handle or thread limits have been hit. Users see long-tail response times, timeouts, and sudden \"cannot allocate shared memory / cannot create worker\" errors. Disk footprint grows rapidly, checkpoint and backup times lengthen, and idle sessions that remain open across think-time exacerbate both version buildup and handle consumption, blurring the boundary between SQL inefficiency, storage bloat, and OS-level shortages.\n\nCausally, chatty or scan-heavy SQL patterns generate excessive updates, deletes, and wide scans, inflating the version store. The bloated heap forces larger buffer and I/O footprints, pushing the engine to open more file descriptors and spawn more maintenance workers. As OS limits are reached, those workers throttle or fail, so version reclamation slows even further, letting bloat accelerate. The growing data size in turn lengthens already sub-optimal SQL operations, prolonging transactions and keeping snapshots open, which preserves even more dead rows. Thus, poor workload logic fuels version accumulation; version accumulation drives higher resource consumption; and OS resource ceilings choke the very background tasks needed to recover, locking the system into a downward performance spiral.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 225,
+            "score": 0.23810123285195584,
+            "bm25_score": 12.680045807256226,
+            "lexical_score": 0.12383720930232558,
+            "matched_terms": [
+                "and",
+                "data",
+                "engine",
+                "handle",
+                "in",
+                "level",
+                "logic",
+                "or",
+                "resource",
+                "sql",
+                "statement",
+                "the",
+                "to",
+                "together",
+                "workload"
+            ],
+            "match_count": 10,
+            "entry": {
+                "error_code": "HV00B",
+                "error_name": "fdw_invalid_handle",
+                "official_description": "fdw invalid handle",
+                "error_class": "Class HV - Foreign Data Wrapper Error (SQL/MED)",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + CPU Resource Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer repeatedly chooses a substantially sub-optimal execution plan even though statistics are adequate.\nCPU Resource Anomaly : Database processes consume nearly all available CPU cycles, creating system-wide compute saturation.\n\nComposite definition: The database simultaneously suffers from poor plan selection that drives excessive instruction work and a host-level CPU bottleneck that throttles every session. \n\nCombined phenomena: 1) Identical statements oscillate between index and full-scan plans, or lock into an inefficient nested-loop plan, while overall CPU usage stays pegged near 100 %. 2) Top SQL lists are dominated by the mis-planned statements, but even unrelated workloads show rising latency because runnable queues grow and OS context switches spike. 3) Wait-event views display a mixture of CPU-scheduler waits and execution-engine waits (e.g., latch or buffer-access) caused by the bad plan, making diagnosis ambiguous. 4) Any plan cache invalidation, statistics refresh, or parameter change can trigger another flip to a different—but still CPU-hungry—plan, producing saw-tooth performance patterns during peak load.\n\nCausal chain: A sub-optimal plan (e.g., non-selective full table scan or parallel-degree overuse) multiplies the required CPU instructions per request. The extra CPU demand quickly exhausts core capacity, pushing the system into saturation. Once CPU queues lengthen, task scheduling delays inflate query runtimes further, feeding back into the optimizer’s adaptive thresholds; this may cause additional plan re-compiles or parallel downgrade/upgrade decisions, perpetuating unstable plan choices. Conversely, chronic CPU pressure can keep apparently cheap but actually expensive plans in cache because re-optimization is deferred, thereby locking the workload into a high-CPU state. The intertwined effects of bad plans producing CPU spikes and CPU starvation masking or reinforcing those plan flaws amplify overall performance degradation and hinder straightforward root-cause isolation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.22660619496471607,
+            "bm25_score": 10.332503590242778,
+            "lexical_score": 0.10957651931728915,
+            "matched_terms": [
+                "an",
+                "and",
+                "any",
+                "are",
+                "but",
+                "context",
+                "is",
+                "latency",
+                "of",
+                "or",
+                "session",
+                "that",
+                "the",
+                "this"
+            ],
+            "match_count": 177,
+            "entry": {
+                "timeout_id": "pg16_idle_session_timeout",
+                "parameter_name": "idle_session_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle, but not within an open transaction, for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle and not inside an open transaction longer than the configured threshold.",
+                "workload_impact": "The session is terminated; the documentation warns about using this with connection pools or middleware.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

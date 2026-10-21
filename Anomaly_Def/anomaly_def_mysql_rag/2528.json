@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Buffer Cache and Latch Contention Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Transaction Lock Contention Anomaly: Concurrent transactions request incompatible locks on the same rows, pages, or metadata, producing long blocking chains or deadlocks that the lock manager must resolve by suspending or aborting sessions.\nBuffer Cache and Latch Contention Anomaly: Sessions compete for hot buffer-cache pages and their protecting latches, stalling while acquiring or spinning on low-level synchronization primitives and inflight-I/O slots.\nStorage Space Capacity Anomaly: Data files, logs, or temporary areas run out of free space, causing allocation failures, stalled checkpoints, and blocked writes.\n\nWhen all three conditions materialise together, the database exhibits a compound failure pattern: blocked and aborted transactions pile up while foreground sessions and background writers simultaneously sit in buffer-latch waits; checkpoints and log flushes slow or stop because data files or archive destinations are full, extending the lifespan of lock-holding transactions and inflating dirty-page queues. Observable symptoms include runaway lock-wait timers, escalating deadlock reports, surges in page-latch and buffer-busy waits, sharp drops in TPS, rapidly growing session and connection queues, error messages about space exhaustion, stalled DML, and erratic CPU spikes caused by latch spin as blocked sessions repeatedly retry.\n\nCausally, space exhaustion throttles or halts background flush and log-write activity, preventing dirty pages and committed transaction logs from being persisted and released. This prolongs pin and latch ownership on hot pages and keeps exclusive locks and transaction slots open longer, intensifying both buffer-latch and lock contention. In turn, the increased contention lengthens transaction execution and commit times, accelerating space consumption in undo, redo, and temp areas, thereby worsening the capacity shortfall. The reinforcing loop between stalled I/O due to full storage, elevated latch contention on crowded buffers, and prolonged lock retention can bring an OLTP system to near stand-still if not detected and relieved promptly.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5186,
+            "score": 0.3300254205113168,
+            "bm25_score": 43.826725668766606,
+            "lexical_score": 0.1641025641025641,
+            "matched_terms": [
+                "all",
+                "and",
+                "being",
+                "by",
+                "error",
+                "execution",
+                "failure",
+                "for",
+                "from",
+                "in",
+                "level",
+                "must",
+                "on",
+                "or",
+                "session",
+                "the",
+                "to",
+                "together",
+                "transaction",
+                "while"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013307",
+                "error_name": "ER_GRP_RPL_TRX_WAIT_FOR_GROUP_PREPARE_FAILED",
+                "official_description": "Error on transaction '%s:%lld' from session '%u' while waiting for being prepared on all group members.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

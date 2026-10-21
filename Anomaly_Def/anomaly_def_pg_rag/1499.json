@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Replication Synchronization Anomaly + CPU Resource Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly : The log-writing, flushing, switching, or archiving path on the primary instance becomes the bottleneck, throttling commit progress and preventing timely log recycling.\nReplication Synchronization Anomaly : Downstream replicas or subscribers cannot receive, persist, or apply the primary’s log stream fast enough, causing widening apply and retention lags.\nCPU Resource Anomaly : Database-related processes collectively oversubscribe host CPU cycles, driving sustained saturation and scheduler contention.\n\nWhen all three root causes strike together the system exhibits compound symptoms: commit latency and log-flush wait times rise sharply; log file switches and checkpoints pile up but archive and replication queues keep growing because replicas fall further behind; monitoring shows ballooning retained WAL/redo segments on the primary, swollen relay logs on replicas, and replication apply delay measured in minutes or hours. Meanwhile, hosts on both primary and replicas run at or near 100 % CPU, with long run queues and frequent context switches. Application threads stall behind log-sync and scheduler wait events, while read-only replicas deliver increasingly stale data and may become unavailable for failover due to excessive replay lag.\n\nCausally, a saturated CPU starves critical background threads—log flusher, archiver, and replication sender/receiver—reducing their throughput and amplifying the inherent bottleneck in the transaction-log subsystem. Slower log writes lengthen commit paths and defer log file recycling, which in turn forces the primary to retain more segments for lagging replicas. The replication backlog grows because replicas, themselves CPU-constrained, cannot parse and apply incoming redo quickly enough, further delaying acknowledgment to the primary. This feedback loop increases disk pressure in the log area, heightens checkpoint frequency, and propagates latency spikes across all transactional workloads, ultimately risking forced shutdowns or failovers when log space is exhausted.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.7394651493598862,
+            "bm25_score": 24.66817708302098,
+            "lexical_score": 0.13155049786628734,
+            "matched_terms": [
+                "and",
+                "because",
+                "behind",
+                "contention",
+                "context",
+                "is",
+                "long",
+                "measured",
+                "more",
+                "or",
+                "path",
+                "resource",
+                "the",
+                "this",
+                "together",
+                "when",
+                "with"
+            ],
+            "match_count": 236,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

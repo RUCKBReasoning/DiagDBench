@@ -1,0 +1,59 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Transaction Lock Contention Anomaly",
+            "Description": "Schema and Index Design Anomaly : Physical data-model elements (table structure, indexes, partitioning, data types) are not aligned with workload access patterns, forcing otherwise correct SQL to scan or probe data inefficiently.\nTransaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same resources, leading to long blocking chains or deadlocks that throttle throughput.\n\nWhen both root causes coexist, the database experiences a mix of I/O-heavy access paths and intense lock manager pressure. Full-table or broad range scans caused by missing or non-covering indexes hold larger lock footprints and keep locks for longer durations, inflating wait queues. Escalated page- or table-level locks acquired during the scans block OLTP writers and downstream readers, while repeated deadlocks trigger rollbacks and application retries. Observed symptoms therefore include: 1) soaring lock-wait and deadlock counts, 2) sudden spikes in buffer pool churn and disk I/O, 3) execution plans dominated by full scans despite selective predicates, 4) erratic transaction latencies in connection pools, and 5) throughput collapse that recovers only after both indexing fixes and blocking relief.\n\nCausal chain: poor schema/index design forces wide scans that touch many rows or partitions, expanding the set of locked resources. The longer scan duration and larger lock scope magnify the probability of collisions with update or delete statements common in OLTP workloads. In turn, the resulting blocking delays prolong transaction lifetimes, increasing the window during which additional queries rely on suboptimal plans and further compound contention. Automatic lock escalation from row to page or table can be triggered by the excessive scan footprint, reinforcing the blockage cycle. Thus, each anomaly amplifies the other—structural inefficiency spawns lock contention, while prolonged contention hides the root schema weakness and encourages more concurrent retries—driving the database into a self-reinforcing performance spiral.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.7519780219780219,
+            "bm25_score": 39.39324069328759,
+            "lexical_score": 0.17326007326007326,
+            "matched_terms": [
+                "and",
+                "blocking",
+                "database",
+                "for",
+                "incompatible",
+                "index",
+                "lock",
+                "longer",
+                "of",
+                "or",
+                "other",
+                "row",
+                "schema",
+                "table",
+                "that",
+                "the",
+                "to",
+                "transaction",
+                "triggered",
+                "when",
+                "while",
+                "window"
+            ],
+            "match_count": 247,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

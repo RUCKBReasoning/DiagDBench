@@ -1,0 +1,59 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Storage Space Capacity Anomaly + CPU Resource Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Storage Space Capacity Anomaly : Physical or logical free space for data files, logs, or temp areas is exhausted, blocking further allocations and persistence operations.\nCPU Resource Anomaly : Database and host processes saturate available CPU cores, driving run-queue growth and broadly inflating statement latency.\nNetwork and Connectivity Resource Anomaly : Network bandwidth, latency, packet loss, or server-side connection slots become limiting, producing connection failures, socket backlogs, and slow client I/O.\n\nWhen all three conditions arise concurrently, the database exhibits a compound failure pattern: connection attempts time out or are refused; active sessions that do connect experience erratic response times as both CPU run-queues and network socket queues lengthen; DML statements and bulk loads stall on \"out of space\" or \"cannot extend\" errors; commits hang waiting for log flushes that themselves are delayed by full archive destinations; background processes repeatedly retry space-management and network send operations, further consuming CPU; monitoring agents may also fail to report due to network saturation, obscuring real-time visibility.\n\nCausally, each root cause amplifies the others. Space exhaustion triggers aggressive checkpointing, log switching, and catalog cleanup cycles that spike CPU consumption; the resulting CPU saturation slows those very housekeeping tasks, prolonging space shortages. Full data or archive destinations force the database to wait on external copy or purge jobs, which, if they traverse congested networks, are delayed, extending log file occupancy and stalling write activity. Simultaneously, network congestion and connection storms increase process counts and context switches, intensifying CPU pressure. As CPU becomes scarce, connection authentication and I/O threads are starved, inflating socket queues and client wait times, which encourages application-level retries that inflate connection counts and generate additional logs, hastening space depletion. The intertwined feedback loops can rapidly cascade into widespread service unavailability unless all three resource domains are relieved together.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.7496681034482758,
+            "bm25_score": 23.630417345149294,
+            "lexical_score": 0.1655603448275862,
+            "matched_terms": [
+                "activity",
+                "and",
+                "are",
+                "authentication",
+                "can",
+                "client",
+                "connection",
+                "for",
+                "is",
+                "latency",
+                "network",
+                "of",
+                "on",
+                "or",
+                "send",
+                "sessions",
+                "socket",
+                "the",
+                "time",
+                "to",
+                "together",
+                "when",
+                "which"
+            ],
+            "match_count": 195,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_idle",
+                "parameter_name": "tcp_keepalives_idle",
+                "timeout_category": "network_idle_keepalive_probe_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time with no network activity after which the operating system should send a TCP keepalive message to the client.",
+                "trigger_condition": "A TCP client connection has no network activity longer than tcp_keepalives_idle on systems supporting TCP_KEEPIDLE or an equivalent socket option.",
+                "workload_impact": "Starts TCP keepalive probing for an otherwise idle client connection; together with interval and count settings this can lead to dead connection detection.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

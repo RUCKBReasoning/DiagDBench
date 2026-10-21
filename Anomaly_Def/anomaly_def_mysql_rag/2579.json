@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + CPU Resource Anomaly",
+            "Description": "Schema and Index Design Anomaly : Table structures, indexes, partitions, or data types do not match workload access patterns, forcing queries into non-selective or non-covering scans that inflate work per statement.\nCPU Resource Anomaly : Database processes collectively drive the host’s CPU cores into sustained saturation, so scheduling delays, run-queue waits, and system load grow independent of any single query plan choice.\n\nWhen both root causes are present, the workload experiences a cascade of symptoms: execution plans show full-table or wide index scans that iterate over large row sets, while the CPU remains pegged near 100 %. The mismatch in physical design multiplies the number of rows each statement must touch; the resulting surge of predicate evaluations, hash computations, and buffer-management operations overwhelms the processor cache and elevates context-switch and run-queue waits. End-user latency rises sharply and unpredictably, auto-throttling or queuing appears in the application layer, and maintenance tasks such as index rebuilds or statistics jobs fall behind, further masking or amplifying the issue.\n\nCausally, poor schema and index design inflates logical I/O and amplifies CPU demand per query. The aggregate of these inefficient plans pushes total CPU consumption to the saturation point, triggering a CPU Resource Anomaly. In turn, CPU bottlenecks slow optimizer feedback loops, prolong lock holding, and extend transaction lifetimes, which increases contention and intensifies the cost of every additional row fetch imposed by the design flaw. The two factors therefore reinforce each other: deficient physical design generates excessive CPU load, while CPU saturation magnifies the latency penalty of the design flaw and complicates diagnosis by making all queries appear slow, masking the original indexing deficiency.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.47639950963961364,
+            "bm25_score": 22.197294150029887,
+            "lexical_score": 0.12568238213399502,
+            "matched_terms": [
+                "and",
+                "holding",
+                "in",
+                "lock",
+                "not",
+                "or",
+                "scheduling",
+                "schema",
+                "statement",
+                "the",
+                "to",
+                "transaction",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 122,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

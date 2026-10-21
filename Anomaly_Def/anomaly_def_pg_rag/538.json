@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + MVCC Version Maintenance Anomaly + Replication Synchronization Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently chooses or reuses an execution plan that is substantially sub-optimal even though statistics are reasonably accurate.\nMVCC Version Maintenance Anomaly : Obsolete row versions and logically deleted index entries accumulate faster than background cleanup can reclaim them, inflating table size and visibility-check cost.\nReplication Synchronization Anomaly : Downstream replicas cannot receive, persist, or apply transaction-log records as fast as the primary generates them, causing replay lag and log-retention growth.\n\nWhen these three root causes strike together, the system shows a blend of symptoms: 1) query plans alternate between index probes and full scans or stick to a poor plan, yet execution times lengthen regardless because heaps and indexes are bloated with dead rows; 2) long-running or repeatedly re-planned queries emit far more I/O and WAL, which rapidly widens replica write/flush/replay lag; 3) replication lag, in turn, keeps old snapshots open on standbys, preventing garbage collection on the primary, so the version store and table bloat swell further; 4) statistics collected on the enlarged tables exaggerate row counts, confusing the optimizer and prompting additional mis-plans; 5) the primary’s pg_wal / redo or archive area grows because segments cannot be recycled until replicas catch up, exacerbating storage pressure already heightened by MVCC bloat.\n\nCausal chain: heavy OLTP churn creates many dead versions; delayed vacuum leads to bloated relations and skewed cost estimates, encouraging the optimizer to switch to full table scans or poorly chosen join orders, which inflate execution time and emit more WAL. The surge in WAL overwhelms replicas whose apply threads are already slowed by replaying large, poorly batched updates, so replication lag increases. That lag holds replication snapshots open, preventing further vacuum progress on the primary and locking in the version bloat that triggered the plan regression. This feedback loop steadily degrades query performance, bloats storage, and erodes recovery point objectives, making the composite anomaly significantly more damaging than any individual root cause alone.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.7484468976018271,
+            "bm25_score": 28.2665003660896,
+            "lexical_score": 0.16148965867275727,
+            "matched_terms": [
+                "and",
+                "any",
+                "be",
+                "because",
+                "execution",
+                "is",
+                "long",
+                "more",
+                "of",
+                "or",
+                "query",
+                "running",
+                "than",
+                "that",
+                "the",
+                "this",
+                "time",
+                "together",
+                "triggered",
+                "until",
+                "when",
+                "with"
+            ],
+            "match_count": 189,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

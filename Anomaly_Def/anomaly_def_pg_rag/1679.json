@@ -1,0 +1,60 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Database Configuration Parameter Anomaly + Replication Synchronization Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level queries or transaction boundaries are written so inefficiently that they fetch or modify far more data than the business logic requires, elongating execution times and resource occupation.\nDatabase Configuration Parameter Anomaly : Engine runtime settings for memory, logging, checkpointing, parallelism, or worker limits are mis-tuned relative to hardware capacity and workload characteristics, throttling internal components or provoking stalls.\nReplication Synchronization Anomaly : Standby or downstream replicas cannot receive or apply primary-generated log records quickly enough, causing widening replay lag and retention of unsent or unapplied log segments.\n\nWhen all three conditions coexist, the database exhibits extreme and erratic slowdowns: long-running statements pile up on the primary, holding locks and generating excessive undo/redo; mis-sized buffer pools, work-mem, or log files amplify I/O bursts and checkpoint storms; simultaneously, replicas fall progressively behind, with apply workers saturated, relay logs ballooning, and primary-side WAL/redo files retained far beyond normal horizons. Application sessions observe time-outs, duplicate retries, and stale read replicas. Monitoring shows a paradoxical mix of idle CPU cores alongside severe wait events for log space, replication send/receive queues, and buffer flushes. Root-cause attribution becomes harder because each layer (application SQL, engine tuning, distributed replication) surfaces symptoms that mask or intensify the others.\n\nCausally, chatty or scan-heavy SQL inflates transaction logs and keeps transactions open longer. Because configuration parameters (e.g., undersized log buffers, aggressive checkpoints, low parallel-apply threads) are misaligned, the engine cannot efficiently write, flush, or recycle this surge of redo, creating back-pressure on commit paths. The swollen and long-lived logs must then be streamed to replicas, but their limited apply throughput or network constraints (Replication Synchronization Anomaly) prevent timely catch-up. The primary, unable to recycle logs due to replica lag, accumulates even more disk pressure, which further lengthens checkpoints and transaction commits. This feedback loop intensifies lock hold times and replica staleness, propagating latency and availability risks throughout the cluster.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.5320064229997041,
+            "bm25_score": 23.524297622603516,
+            "lexical_score": 0.16272727272727272,
+            "matched_terms": [
+                "and",
+                "are",
+                "for",
+                "holding",
+                "idle",
+                "latency",
+                "longer",
+                "network",
+                "of",
+                "on",
+                "or",
+                "pools",
+                "send",
+                "sessions",
+                "settings",
+                "stale",
+                "than",
+                "the",
+                "this",
+                "time",
+                "to",
+                "when",
+                "which",
+                "with"
+            ],
+            "match_count": 244,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_idle",
+                "parameter_name": "tcp_keepalives_idle",
+                "timeout_category": "network_idle_keepalive_probe_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time with no network activity after which the operating system should send a TCP keepalive message to the client.",
+                "trigger_condition": "A TCP client connection has no network activity longer than tcp_keepalives_idle on systems supporting TCP_KEEPIDLE or an equivalent socket option.",
+                "workload_impact": "Starts TCP keepalive probing for an otherwise idle client connection; together with interval and count settings this can lead to dead connection detection.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

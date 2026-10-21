@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Replication Synchronization Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Multiple sessions serialize on hot buffer-cache pages or latches, stalling while trying to pin or modify pages held by others.\nReplication Synchronization Anomaly : Standby or subscriber nodes cannot receive, persist, or apply WAL/redo fast enough, producing widening log-position gaps and retained primary logs.\nStorage I/O Throughput Anomaly : The underlying volumes hit their physical IOPS/throughput ceiling, driving up read/write latency and I/O wait time.\n\nWhen all three root causes are active, the database exhibits a compounded failure pattern: 1) CPU spin and prolonged page-latch waits on the primary, 2) storage queues and device latency spiking on both primary and replicas, 3) rapidly expanding write-ahead logs, relay logs, or retained segments, 4) replication lag that grows despite normal network health, 5) checkpoint and background-writer activity that cannot drain dirty pages, and 6) cascading response-time and throughput degradation that is hard to attribute to a single tier because buffer, storage, and replication metrics all show distress.\n\nCausal chain: Hot pages and latch contention generate bursts of physical I/O (dirty-page flushes and replacement reads); this extra traffic pushes the storage subsystem past its throughput limit, further lengthening flush times and keeping pages pinned longer, which in turn intensifies latch contention. The same saturated storage slows WAL writes and replay on replicas, so replay lags behind, preventing log recycling on the primary. The growing retained log set increases storage usage and write volume, feeding back into the storage bottleneck and extending latch hold times. Thus each anomaly reinforces the others, producing a feedback loop that degrades buffer concurrency, disk service levels, and replication freshness simultaneously.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3033,
+            "score": 0.4023627991945846,
+            "bm25_score": 37.40020600578335,
+            "lexical_score": 0.13738376476501635,
+            "matched_terms": [
+                "ahead",
+                "and",
+                "apply",
+                "failure",
+                "health",
+                "is",
+                "lag",
+                "log",
+                "network",
+                "or",
+                "replication",
+                "the",
+                "to"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-011149",
+                "error_name": "ER_SEMISYNC_BINLOG_REPLY_IS_AHEAD",
+                "official_description": "%s: Binlog reply is ahead (%s, %lu).",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + MVCC Version Maintenance Anomaly + Replication Synchronization Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Cardinality and cost inputs are stale or inaccurate, causing the optimizer to pick sub-optimal execution plans.\nMVCC Version Maintenance Anomaly : Obsolete row versions and index entries accumulate faster than background cleanup can reclaim them, inflating table size and visibility-check cost.\nReplication Synchronization Anomaly : Downstream replicas cannot receive or apply WAL/redo records at the pace the primary produces them, leading to growing replay lag and retained logs.\n\nWhen all three root causes coexist, the database shows a blend of misestimation-driven plan instability, ever-expanding on-disk and in-memory version stores, and widening replica lag. Symptoms reinforce each other: bloated heaps and indexes from MVCC churn distort statistics even further, making row-count estimates diverge wildly from reality; poor estimates generate plans (e.g., sequential scans on bloated tables or inappropriate join orders) that magnify I/O pressure, lengthen transaction commit times, and increase the volume of generated WAL. The surge in redo volume and longer statement runtimes push replicas farther behind, keeping log segments on the primary for longer periods and preventing vacuum/cleanup from advancing transaction-age horizons. Replica lag, in turn, delays feedback mechanisms that could otherwise enable HOT pruning or logical-replication-based statistics refresh, allowing version bloat and stale statistics to persist.\n\nCausally, high update/delete workloads create both MVCC bloat and a flood of WAL records. The bloat skews sampling, causing the optimizer to misestimate and select plans that scan many more pages than necessary, which prolongs transactions and further enlarges the version store. Extended transaction durations and the heavier WAL stream overwhelm replica apply workers, increasing log retention on the primary; the retained logs keep old transaction snapshots alive, blocking cleanup processes from removing dead tuples. As cleanup stalls, tables swell, statistics grow ever more outdated, and each component amplifies the others, driving a feedback loop that degrades throughput on the primary and erodes read freshness and failover readiness on replicas.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.2656891412076603,
+            "bm25_score": 11.04212987120433,
+            "lexical_score": 0.11597222222222221,
+            "matched_terms": [
+                "and",
+                "are",
+                "check",
+                "longer",
+                "of",
+                "or",
+                "replication",
+                "stale",
+                "than",
+                "that",
+                "the",
+                "wal",
+                "when"
+            ],
+            "match_count": 18,
+            "entry": {
+                "timeout_id": "pg16_wal_sender_timeout",
+                "parameter_name": "wal_sender_timeout",
+                "timeout_category": "replication_sender_timeout",
+                "scope": "server/replication",
+                "official_definition": "Terminates replication connections that are inactive longer than the specified amount of time.",
+                "trigger_condition": "A WAL sender replication connection is inactive longer than wal_sender_timeout.",
+                "workload_impact": "The replication connection is terminated.",
+                "default_behavior": "PostgreSQL documentation defines the parameter under replication sending server settings.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

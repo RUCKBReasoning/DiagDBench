@@ -1,0 +1,59 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions request mutually incompatible locks on the same resource and therefore wait, block, or deadlock.\nStorage Space Capacity Anomaly : The database exhausts free space in data, log, temp, or archive areas so that further page, extent, or segment allocations fail.\n\nWhen both root causes strike at once, sessions already queued on locks find their waits prolonged by space-allocation stalls, while space-related errors trigger rollbacks that propagate new lock requests and deadlocks. Observable effects include rapidly rising lock-wait time, deadlock and victim reports interleaved with \"no space left\" or \"cannot allocate extent\" errors, frozen or hung DML/DDL statements, exploding connection-pool wait lists, log file growth that plateaus at the capacity ceiling, checkpoint or log-switch delays, and application retries that add more concurrent lock contenders.\n\nCausally, long-running or blocked transactions hold locks and referenced undo/redolog segments open, preventing log recycling and freeing of extents; this accelerates space exhaustion in log and data areas. Conversely, once the storage boundary is hit, INSERT/UPDATE/DELETE operations pause on space-allocation paths, lengthening their lock tenure and enlarging blocking chains. Rollback operations triggered by allocation failures can further inflate undo and redo volumes, immediately reclaiming no space and deepening the capacity crisis. The mutual reinforcement between lock persistence and space starvation can drive the system into a feedback loop of mounting contention, cascading rollbacks, and service-level degradation unless both dimensions are relieved simultaneously.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.7532159406858202,
+            "bm25_score": 28.380691447964203,
+            "lexical_score": 0.17738646895273402,
+            "matched_terms": [
+                "and",
+                "blocking",
+                "cannot",
+                "incompatible",
+                "is",
+                "lock",
+                "locks",
+                "long",
+                "of",
+                "open",
+                "or",
+                "preventing",
+                "sessions",
+                "that",
+                "the",
+                "this",
+                "time",
+                "transaction",
+                "transactions",
+                "triggered",
+                "when",
+                "while"
+            ],
+            "match_count": 293,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

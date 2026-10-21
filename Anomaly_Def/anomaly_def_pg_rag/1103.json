@@ -1,0 +1,61 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Transaction Lock Contention Anomaly",
+            "Description": "Optimizer Statistics Anomaly : The optimizer bases its cost estimates on stale, incomplete, or missing statistics, systematically misestimating cardinalities and choosing inefficient execution plans.\nTransaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same data items, creating long blocking chains or deadlocks that throttle throughput and trigger roll-backs.\n\nWhen both root causes strike at once, the database experiences a compound failure mode in which poor plan choices amplify locking pressure and the resulting blocks further hinder statistics maintenance. Observable symptoms include: 1) huge gaps between estimated and actual row counts, 2) plans that scan or sort far more rows than expected, 3) sudden lock-wait time spikes, deadlock reports, and lock-escalation events, 4) throughput collapse accompanied by CPU and I/O under-utilization while sessions wait on locks, 5) repeated plan recompiles that fail to stabilize, and 6) deferred or aborted automatic statistics updates because the objects they target are locked for long periods.\n\nCausal chain: stale or missing statistics mislead the optimizer into selecting plans that touch many unnecessary rows or use sub-optimal join orders, expanding lock footprints from key to page or table scope and lengthening transaction duration. The enlarged concurrency window increases the likelihood of lock collisions, intensifying blocking chains and deadlocks. In turn, the prolonged locks prevent the statistics engine from acquiring the short-term metadata locks it needs to refresh statistics, allowing statistics staleness to persist or worsen. This feedback loop progressively degrades plan quality and concurrency, leading to severe and self-reinforcing performance deterioration.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.7594935064935064,
+            "bm25_score": 37.63296622048437,
+            "lexical_score": 0.1983116883116883,
+            "matched_terms": [
+                "aborted",
+                "and",
+                "because",
+                "blocking",
+                "database",
+                "for",
+                "incompatible",
+                "lock",
+                "metadata",
+                "of",
+                "or",
+                "row",
+                "sessions",
+                "table",
+                "than",
+                "that",
+                "the",
+                "this",
+                "time",
+                "to",
+                "transaction",
+                "when",
+                "while",
+                "window"
+            ],
+            "match_count": 216,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

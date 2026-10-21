@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Buffer Cache and Latch Contention Anomaly + Storage Space Capacity Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level statements or transaction patterns force the engine to scan, join, or retain far more data and hold locks longer than business logic actually requires.\nBuffer Cache and Latch Contention Anomaly : Hot pages or an undersized/over-tuned buffer manager cause sessions to block or spin on page pins, latches, or dirty-page flush slots rather than progressing.\nStorage Space Capacity Anomaly : Data, log, or temp files exhaust their allocated space, triggering allocation failures, stalled writes, or checkpoint/archiver back-pressure.\n\nWhen all three root causes manifest together, the workload generates excessive and poorly targeted I/O, overloading a limited buffer pool whose hot pages are already points of intense latch contention. The same bloated or long-running SQL repeatedly touches a small set of index root pages and high-churn data blocks, producing long buffer-busy waits, CPU spin cycles, and growing dirty-page queues. Meanwhile, relentless data growth and prolonged transaction lifetimes consume table, index, temp, and log space faster than it can be recycled, leading to near-synchronous space exhaustion. Symptoms surface as \"slow query\" spikes that coincide with buffer-latch wait surges, checkpoint slowdowns, auto-extend failures, and finally \"no space left\" errors or frozen commits. Monitoring tools may struggle to isolate a single layer because latency, buffer contention, and space alerts rise in lock-step.\n\nCausal chain: sub-optimal SQL drives higher row and page touch rates, inflating both logical and physical I/O. This churn heats a few critical pages, intensifying latch competition inside a buffer cache that is already pressured by frequent evictions. The elevated dirty-page volume delays checkpoints and extends the residency of full pages in memory and on disk. Because transactions stay open longer and redo/undo growth accelerates, log segments cannot be recycled, and data files grow rapidly toward configured limits. As free space dwindles, background writers and checkpointers are forced into aggressive flush patterns, further increasing latch holds and I/O latency. Ultimately, the vicious cycle of chatty SQL, buffer contention, and shrinking disk space converges, degrading throughput and threatening abrupt service outages.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.43674137115769585,
+            "bm25_score": 18.2930844690281,
+            "lexical_score": 0.14315322948575895,
+            "matched_terms": [
+                "an",
+                "and",
+                "are",
+                "configured",
+                "inside",
+                "is",
+                "latency",
+                "longer",
+                "of",
+                "open",
+                "or",
+                "sessions",
+                "than",
+                "that",
+                "the",
+                "this",
+                "transaction",
+                "when",
+                "with"
+            ],
+            "match_count": 273,
+            "entry": {
+                "timeout_id": "pg16_idle_session_timeout",
+                "parameter_name": "idle_session_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle, but not within an open transaction, for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle and not inside an open transaction longer than the configured threshold.",
+                "workload_impact": "The session is terminated; the documentation warns about using this with connection pools or middleware.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

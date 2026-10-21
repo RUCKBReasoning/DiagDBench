@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly : The write-ahead logging path becomes the primary bottleneck, throttling commit throughput due to slow log generation, flushing, switching, or archiving.\nOperating System Resource Limit Anomaly : The database engine or its background workers hit kernel-enforced ceilings for handles, shared-memory, threads, AIO contexts, or cgroup quotas, blocking further allocation of critical OS objects.\n\nComposite definition: The database simultaneously suffers from log-path saturation and exhaustion of kernel-level resources, so every commit must fight both slow I/O on the log device and the kernel’s refusal to grant the file handles, shared memory, or threads required to advance the log pipeline.\n\nCombined anomalous phenomena: 1) Commit latency, log-write waits, and log-sync waits rise sharply and unpredictably. 2) Log switches or archive operations intermittently fail with OS-level \"too many open files\", \"cannot create thread\", or shared-memory errors, causing long stretches where no new log segment can be created. 3) Background writers, checkpoint workers, or replication archivers disappear or refuse to start, leaving redo files to accumulate and filling the log mount. 4) The engine may enter a partial outage: existing sessions hang in commit, new sessions are rejected due to lack of processes or memory, and alert logs alternate between log-related stalls and OS resource-limit errors, making the root cause appear fragmented.\n\nCausal chain: Heavy transactional throughput drives intense redo generation, which increases the frequency of log buffer flushes, segment switches, and archiver invocations—all of which open files, allocate AIO contexts, and spawn or awaken threads. This burst of kernel requests pushes the host toward its per-process or cgroup limits. Once those limits are hit, the engine cannot create the next log file or start the archiver that would free space, so the log device remains busy and fills up, deepening the original log bottleneck. Conversely, the stalled log subsystem lengthens commit paths and multiplies waiting sessions, inflating the number of active processes and open descriptors, thereby accelerating OS resource depletion. The two root causes thus form a feedback loop that amplifies stalls, propagates errors across components, and can culminate in a full transactional freeze.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1850,
+            "score": 0.5892780864626288,
+            "bm25_score": 60.29911034886247,
+            "lexical_score": 0.1367776959882223,
+            "matched_terms": [
+                "allocation",
+                "and",
+                "buffer",
+                "can",
+                "engine",
+                "from",
+                "latency",
+                "memory",
+                "no",
+                "open",
+                "or",
+                "per",
+                "shared",
+                "the",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "2039",
+                "error_name": "CR_SHARED_MEMORY_CONNECT_ANSWER_ERROR",
+                "official_description": "Can't open shared memory; no answer event received from server (%lu)",
+                "error_class": null,
+                "severity_type": null,
+                "category": "client_library_error",
+                "system_domain": "memory_and_buffer",
+                "cause_analysis": "The failure is typically associated with insufficient memory headroom, buffer pressure, oversized intermediate state, or memory-allocation constraints inside the engine or client library.",
+                "solution_guidance": "Check memory availability, per-session memory settings, large sorts or hashes, and whether workload concurrency is amplifying memory consumption.",
+                "observable_symptoms": [
+                    "memory pressure",
+                    "allocation failure",
+                    "spill",
+                    "unstable latency"
+                ]
+            }
+        }
+    }
+]

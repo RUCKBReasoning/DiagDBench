@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Database Memory Allocation Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Mis-tuned runtime settings (memory pool sizes, checkpoint cadence, log sizing, parallelism limits, etc.) that are out of line with hardware capacity or workload requirements.\nDatabase Memory Allocation Anomaly : Total memory consumption by caches, work areas, sessions, and background heaps exceeds the safe physical envelope, provoking OS pressure, paging, or OOM events.\nStorage I/O Throughput Anomaly : Physical storage devices reach or exceed their sustained IOPS / throughput / latency budget, creating long I/O queues and elevated read-write latency.\n\nWhen these three root causes strike together, the instance shows a multifaceted degradation: 1) memory pressure and paging explode while the buffer pool and work areas are simultaneously under- or over-provisioned by faulty parameters; 2) log-write and data-file waits rise sharply because storage is saturated, yet wait profiles are further distorted by aggressive checkpoint cadence or oversized parallelism invoking extra I/O; 3) CPU utilization alternates between idle (while sessions stall on I/O) and spin-heavy (while threads contend for starved memory), making capacity metrics contradictory; 4) emergency evictions, failovers, or restarts occur as OOM killers or I/O timeouts are triggered, and recovery is prolonged because both memory availability and disk bandwidth are compromised.\n\nCausally, bad configuration settings can provoke runaway memory allocation—for example, per-session work memory or parallel worker counts that multiply hash/sort buffers—pushing the system into swap and magnifying the Memory Allocation Anomaly. Paging caused by memory exhaustion, in turn, injects extra read/write traffic onto disks that are already near their throughput ceiling, aggravating the Storage I/O Throughput Anomaly. Conversely, saturated storage slows checkpoint and buffer-flush cycles; with mis-set checkpoint intervals or log sizes, dirty pages accumulate, forcing the engine to hold even more memory and to launch emergency checkpoints, which consumes additional RAM and I/O simultaneously. The feedback loop between mis-tuned parameters, escalating memory use, and device-level I/O saturation therefore amplifies each individual problem, rapidly degrading both transactional and analytical workloads until the database becomes unstable or unavailable.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.7443243243243243,
+            "bm25_score": 26.53912934066688,
+            "lexical_score": 0.14774774774774774,
+            "matched_terms": [
+                "and",
+                "because",
+                "budget",
+                "exceeds",
+                "is",
+                "long",
+                "more",
+                "of",
+                "or",
+                "out",
+                "session",
+                "that",
+                "the",
+                "together",
+                "triggered",
+                "until",
+                "when",
+                "with",
+                "work",
+                "workload"
+            ],
+            "match_count": 200,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Database Configuration Parameter Anomaly + CPU Resource Anomaly",
+            "Description": "Optimizer Statistics Anomaly: Costing metadata (row counts, histograms, correlation stats) is stale, missing, or inaccurate, causing systematic cardinality misestimation and sub-optimal plan choices.\nDatabase Configuration Parameter Anomaly: Critical engine parameters for memory, parallelism, checkpoints, and background workers are mis-tuned relative to hardware, workload, or version defaults, leading to resource imbalance and atypical wait profiles.\nCPU Resource Anomaly: Host CPUs become saturated by database processes, driving high run-queue pressure, context switching, and widespread latency inflation.\n\nWhen all three root causes coexist, workloads exhibit extreme and volatile performance degradation: queries abruptly switch to grossly inefficient plans that explode CPU seconds consumed per execution; parallel workers proliferate or starve depending on mis-set parallel-degree limits; system-wide CPU utilisation hovers near or at 100 %, yet individual statements still show large estimated-vs-actual row disparities. Checkpoint or log-flush storms may intermittently pre-empt CPU, amplifying latency spikes. Wait-event views report a confusing mix of CPU-related waits (RUNNABLE, SOS_SCHEDULER_YIELD, CPU_QC) alongside configuration-induced stalls (CHECKPOINT_QUEUE, LOG_BUFFER) and frequent plan recompilations triggered by statistics updates. Performance may nosedive immediately after bulk loads, parameter changes, or version upgrades, and recovers only briefly after manual intervention before regressing again under load.\n\nCausal chain: stale or absent statistics push the optimizer toward plans with underestimated costs that choose small hash tables, serial scans, or overly aggressive parallelism; mis-configured memory/parallelism parameters then fail to supply sufficient work memory or spawn excessive worker threads, inflating CPU demand through spills, rescans, and context switches. The resultant CPU saturation feeds back negatively: throttled background workers delay automatic statistics refresh and checkpoint processing, further aging statistics and triggering emergency checkpoints that hold critical latches on hot CPUs. Together, these feedback loops entrench poor plan quality, resource thrashing, and sustained compute exhaustion, creating a self-reinforcing composite anomaly that is far more severe than each issue in isolation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.7262466563099726,
+            "bm25_score": 26.91526122547852,
+            "lexical_score": 0.14926470588235297,
+            "matched_terms": [
+                "and",
+                "back",
+                "before",
+                "by",
+                "configured",
+                "delay",
+                "for",
+                "in",
+                "is",
+                "metadata",
+                "of",
+                "only",
+                "or",
+                "row",
+                "seconds",
+                "than",
+                "the",
+                "triggered",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 102,
+            "entry": {
+                "timeout_id": "mysql84_innodb_row_lock_wait_timeout",
+                "parameter_name": "innodb_lock_wait_timeout",
+                "timeout_category": "innodb_row_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "The length of time in seconds an InnoDB transaction waits for a row lock before giving up.",
+                "trigger_condition": "An InnoDB transaction waits longer than innodb_lock_wait_timeout for a row lock.",
+                "workload_impact": "The lock wait gives up; by default only the current statement is rolled back unless innodb_rollback_on_timeout is enabled.",
+                "default_behavior": "Defined as an InnoDB system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Operating System Resource Limit Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Composite definition: This anomaly occurs when the transaction-log subsystem is saturated at the same time that the database is hitting operating-system resource ceilings and running out of network or listener capacity, so that commit processing, kernel object allocation, and client connectivity are all simultaneously constrained.\n\nCombined anomalous phenomena: Users observe sharp increases in commit and connection-establishment latency, frequent time-outs, and sporadic \"cannot allocate file descriptor / shared memory / thread\" errors in both database and system logs. Log-flush and log-sync waits surge while archiver or replication processes stall because they cannot open new log files or spawn workers. The number of half-open or TIME_WAIT sockets and refused connections rises, yet existing sessions linger in client-read or client-write waits because log flushes are delayed. Checkpoints and log-file switches bunch together, archive directories balloon, and retry storms from application tiers further inflate listener backlogs. Overall, the instance drifts into a state where it serves some in-flight work slowly, rejects new sessions, and risks an abrupt halt if undo or log space is fully exhausted.\n\nCausal chain and interaction: A bursty OLTP workload generates redo faster than the storage or archiver can absorb, elongating commit paths and increasing the residence time of every session. The longer sessions stay connected, the more cumulative file handles, threads, async-I/O contexts, and sockets the engine must keep open, accelerating depletion of kernel-enforced limits. Once those limits are crossed, attempts to create new log segments, start archiver jobs, or accept incoming connections fail, which further blocks log switches and propagates commit stalls. Meanwhile, clients experiencing time-outs aggressively retry, inflating connection rates and network traffic, which magnifies socket-queue pressure and compounds handle exhaustion. Each root cause therefore feeds the others in a positive feedback loop, rapidly degrading both write throughput and service availability.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.43202505653489476,
+            "bm25_score": 15.65782486587492,
+            "lexical_score": 0.16542056074766354,
+            "matched_terms": [
+                "and",
+                "are",
+                "client",
+                "clients",
+                "connection",
+                "establishment",
+                "from",
+                "if",
+                "in",
+                "is",
+                "latency",
+                "of",
+                "or",
+                "session",
+                "sessions",
+                "the",
+                "this",
+                "time",
+                "to",
+                "when"
+            ],
+            "match_count": 119,
+            "entry": {
+                "timeout_id": "pg16_authentication_timeout",
+                "parameter_name": "authentication_timeout",
+                "timeout_category": "connection_authentication_timeout",
+                "scope": "server",
+                "official_definition": "Maximum amount of time allowed to complete client authentication; if not completed in time, the server closes the connection.",
+                "trigger_condition": "A would-be client does not complete the authentication protocol within authentication_timeout.",
+                "workload_impact": "The server closes the connection attempt, preventing hung clients from occupying a connection indefinitely.",
+                "default_behavior": "Default value is one minute.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

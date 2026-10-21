@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Replication Synchronization Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Obsolete row versions, rollback records, and dead index entries accumulate faster than background cleanup can reclaim them, inflating the heap and version store.\nReplication Synchronization Anomaly : Standbys or downstream consumers cannot receive, persist, or apply transaction-log records at the rate the primary generates them, leading to widening replication lag and retention of extra log segments.\n\nWhen both root causes are active, the system shows a compound pattern: dead‐row ratios, table and index sizes, and version-store length rise sharply while, at the same time, replica-side receive/flush/replay positions drift further behind the primary. Autovacuum or equivalent cleaners remain busy yet ineffective because replication-held snapshots prevent pruning; primary log-segment archives grow because neither cleanup nor replica acknowledgment frees them. Application sessions may see slower reads due to bloated pages, delayed failover readiness, and inconsistent read staleness on replicas. Monitoring views report simultaneously high \"dead tuples\" and escalating \"replication lag\", with disk pressure mounting on both primary (unrecycled WAL) and replicas (backlog of unapplied redo).\n\nCausally, replication lag lengthens the global xmin or equivalent transaction-age horizon, freezing the visibility of old row versions and blocking their removal. The stalled cleanup enlarges the heap and forces the primary to emit more full-page images and update records, which in turn amplifies WAL volume and further overloads the already lagging replicas. The positive feedback loop—replica lag preventing cleanup, and unchecked version churn inflating WAL traffic—creates a self-reinforcing degradation that can exhaust storage, throttle throughput, and endanger recovery objectives.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 744,
+            "score": 0.4225729338889834,
+            "bm25_score": 45.15374664796608,
+            "lexical_score": 0.14755732801595214,
+            "matched_terms": [
+                "and",
+                "apply",
+                "because",
+                "cannot",
+                "downstream",
+                "global",
+                "lag",
+                "log",
+                "or",
+                "replica",
+                "replication",
+                "retention",
+                "the",
+                "to",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "1770",
+                "error_name": "ER_AUTO_POSITION_REQUIRES_GTID_MODE_NOT_OFF",
+                "official_description": "CHANGE REPLICATION SOURCE TO SOURCE_AUTO_POSITION = 1 cannot be executed because @@GLOBAL.GTID_MODE = OFF.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

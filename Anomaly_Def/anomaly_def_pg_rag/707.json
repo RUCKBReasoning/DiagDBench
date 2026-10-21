@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Query Plan Selection Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Inaccurate, stale, or missing optimizer statistics lead to systematic cardinality misestimates.\nQuery Plan Selection Anomaly : The optimizer’s choice-of-plan logic produces a sub-optimal execution plan even when statistics are otherwise acceptable.\nStorage I/O Throughput Anomaly : The physical storage layer cannot supply reads or absorb writes at the rate demanded, saturating I/O bandwidth, IOPS, or latency budgets.\n\nComposite definition: The database simultaneously suffers from (1) misleading optimizer statistics, (2) poor plan-selection logic or plan reuse, and (3) a saturated storage subsystem. The combination yields execution plans that are both logically inappropriate and physically starved for I/O capacity, driving severe and unpredictable performance degradation.\n\nCombined phenomena: • Estimates versus actual row counts diverge wildly while the plan cache shows frequent plan flips, hinting at both statistics and decision-logic instability. • Queries oscillate between parallel-scan, serial full-scan, and poorly-parameterized index paths, each generating excessive physical I/O that collides with already maxed-out storage queues. • Wait profiles show a mix of optimizer-related recompiles, \"bad plan\" symptoms (nested-loop blow-outs, hash spill to temp), and chronic FILEIO/IO_COMPLETION waits; CPU stays moderate but response times spike. • Bulk-load or ETL windows trigger immediate plan regression followed by device-level read/write latency explosions, elongating both OLTP and analytics workloads. • DBA attempts to force plans or update statistics give only transient relief because the underlying storage saturation keeps inflating actual costs and invalidating cost assumptions.\n\nCausal chain: Stale or incomplete statistics mislead the cost model, while independent plan-selection weaknesses (e.g., bind-sensitive caching, version change) choose plans that under-estimate data volume or ignore selective access paths. These sub-optimal plans issue far more I/O than anticipated, quickly pushing the storage layer past its throughput ceiling. The resulting latency amplifies the original costing errors—longer I/O times further distort feedback loops, provoke additional re-compilations, and delay automatic statistics refreshes, which in turn perpetuate inaccurate estimates. Meanwhile, plan instability increases the diversity of I/O patterns (random versus sequential, temp spills), preventing the storage subsystem from stabilizing or caching effectively. The feedback loop between bad estimates, poor plans, and I/O saturation thus reinforces itself, worsening overall performance across both transactional and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.7409845880260817,
+            "bm25_score": 31.289559858731998,
+            "lexical_score": 0.13661529342027265,
+            "matched_terms": [
+                "and",
+                "because",
+                "cannot",
+                "change",
+                "database",
+                "delay",
+                "for",
+                "index",
+                "longer",
+                "of",
+                "or",
+                "row",
+                "than",
+                "that",
+                "the",
+                "to",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 198,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

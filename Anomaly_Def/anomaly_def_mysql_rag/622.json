@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Data Block and Index Integrity Anomaly + CPU Resource Anomaly",
+            "Description": "Database Memory Allocation Anomaly: Excessive and uncontrolled growth of database memory structures (buffer/plan caches, work areas, parallel buffers, leaks) that pushes the host into sustained memory pressure, paging, or OOM events.\nData Block and Index Integrity Anomaly: Physical or logical corruption inside data pages or index structures that invalidates checksums, key ordering, or page links and causes unreliable query results and recovery errors.\nCPU Resource Anomaly: Persistent oversubscription of host CPU where database processes monopolize cores, producing high run-queue depth, context-switch thrashing, and system-wide latency.\n\nWhen these three anomalies occur together, the system is hit by a triple-failure mode in which (1) aggressive memory consumption drives the OS into swap storms and stalls, (2) corrupted pages or indexes provoke repeated retries, verification scans, or full-table fallbacks, and (3) the resulting surge of re-execution, error handling, and background recovery floods the CPUs. Observable symptoms include: oscillating resident-set size with simultaneous paging and CPU saturation, erratic query latencies with some returning wrong or duplicate rows, frequent checksum or logical-consistency errors in engine logs followed by crash-recovery cycles, escalated I/O from forced page flushes and integrity-check utilities, and a noisy mixture of memory pressure waits, corruption-related errors, and CPU run-queue waits in performance views. Administrators may find it difficult to attribute slowdowns to any single layer because each anomaly masks and inflates the others.\n\nCausally, runaway memory allocation can starve buffer pools, forcing the engine to evict and reread pages, increasing the chance of encountering latent corrupt blocks; memory pressure may also interfere with checkpoint or background scrubber threads, leaving pages only partially written and thus propagating corruption. Once corruption is detected, the engine often initiates page rereads, integrity checks, or index rebuilds—operations that are CPU‐intensive and allocate additional memory, further amplifying the initial memory shortfall. Concurrently, elevated CPU usage delays critical recovery and checkpoint tasks, extending the window during which pages remain dirty and vulnerable to incomplete writes, while CPU starvation impedes timely detection and repair of corruption. The feedback loop among memory exhaustion, integrity faults, and compute saturation can cascade into repeated crash-recovery cycles, degraded throughput, and potential data loss unless all three root causes are addressed in concert.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.45527172055164417,
+            "bm25_score": 17.890848511958364,
+            "lexical_score": 0.1253551912568306,
+            "matched_terms": [
+                "and",
+                "are",
+                "check",
+                "during",
+                "handling",
+                "initial",
+                "is",
+                "latency",
+                "of",
+                "or",
+                "pools",
+                "that",
+                "the",
+                "waits",
+                "when",
+                "with"
+            ],
+            "match_count": 27,
+            "entry": {
+                "timeout_id": "mysql84_connection_handshake_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "connection_handshake_timeout",
+                "scope": "global",
+                "official_definition": "The number of seconds that the mysqld server waits for a connect packet before responding with Bad handshake.",
+                "trigger_condition": "A client does not complete the initial connection packet exchange within connect_timeout.",
+                "workload_impact": "The connection attempt fails during handshake.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

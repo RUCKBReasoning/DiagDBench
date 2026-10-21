@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Buffer Cache and Latch Contention Anomaly + Replication Synchronization Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same rows, pages, or tables, producing blocking chains or deadlocks managed by the lock-manager subsystem.\nBuffer Cache and Latch Contention Anomaly : Sessions stall while contending for buffer-cache pages, latches, or I/O slots inside the buffer manager, leading to long page-latch waits and CPU spin.\nReplication Synchronization Anomaly : Downstream replicas cannot receive, write, or replay primary log records fast enough, causing growing log-position lag and retention of un-recycled WAL segments.\n\nWhen these three root causes strike together, the database exhibits a blended symptom set: soaring lock-wait and deadlock counts, surges in buffer-busy and page-latch events, elevated CPU usage with little useful work, rising transaction latencies, and sharp drops in throughput. Simultaneously, replication monitoring shows widening replay delay, swelling retained log files, and replicas that serve increasingly stale reads or fall out of sync, jeopardizing recovery point objectives. From the application side, users encounter time-outs, slowed commit acknowledgments, and unpredictable replica freshness, making troubleshooting difficult because waits oscillate between lock, latch, I/O, and replication states.\n\nCausally, hot rows or pages first induce lock contention; transactions blocked on locks keep buffer pages pinned and their latches held longer, amplifying latch contention for other sessions that need the same pages. Prolonged latch waits lengthen transaction execution times, extending lock hold durations and enlarging commit batches, which in turn inflate the volume and burstiness of generated log records. The heavier and more uneven log stream overwhelms replication apply threads already slowed by their own lock and latch conflicts while replaying changes, deepening replication lag. As replicas fall behind, the primary is forced to retain additional log segments, limiting checkpoint progress; this inflates dirty-page residency, increases buffer-flush pressure, and extends latch hold times during I/O. The positive feedback loop between lock waits, latch contention, and replication backlog drives the system into a compounded degradation state where each anomaly reinforces the others and accelerates overall performance collapse.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3503,
+            "score": 0.41947286161466013,
+            "bm25_score": 53.42190268383519,
+            "lexical_score": 0.17832382623957876,
+            "matched_terms": [
+                "and",
+                "apply",
+                "between",
+                "downstream",
+                "during",
+                "is",
+                "keep",
+                "lag",
+                "log",
+                "of",
+                "or",
+                "recovery",
+                "replica",
+                "replication",
+                "retention",
+                "stale",
+                "state",
+                "the",
+                "to",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-011619",
+                "error_name": "ER_GRP_RPL_FATAL_REC_PROCESS",
+                "official_description": "Fatal error during the incremental recovery process of Group Replication. The server will leave the group.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

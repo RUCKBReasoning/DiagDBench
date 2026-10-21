@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Query Plan Selection Anomaly + Database Configuration Parameter Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Statistics on tables or partitions are stale, missing, or insufficiently granular, causing systematic cardinality misestimates.\nQuery Plan Selection Anomaly : The optimizer’s decision logic or plan‐reuse strategy chooses a sub-optimal execution plan even when statistical inputs could be acceptable.\nDatabase Configuration Parameter Anomaly : Engine-level runtime parameters (memory, parallelism, checkpoint cadence, etc.) are mis-tuned for the hardware and workload, distorting resource availability and costing assumptions.\n\nComposite anomaly definition: The database concurrently suffers from inaccurate or out-of-date statistics, flawed plan selection logic, and mis-configured engine parameters, meaning the optimizer is making cost decisions on bad input data, with a cost model that is already choosing poorly, while running on a platform whose runtime knobs further mislead cost estimates and distort actual execution behavior.\n\nCombined anomalous phenomena: 1) Aggressive plan flip-flopping—each new execution may alternate between index seeks, full scans, and poorly parallelized plans as both statistical errors and parameter changes invalidate previous cost assumptions. 2) Massive gaps between estimated and actual rows accompanied by execution memory spills or early aborts because work-memory and parallelism settings are wrong for the chosen plan. 3) Wait-event profiles that oscillate between CPU spin, log-write stalls, and page I/O even though system-level metrics show spare capacity, making bottlenecks hard to diagnose. 4) After bulk loads or partition swaps, performance can degrade catastrophically and persist until statistics are refreshed, plan cache is cleared, and parameters are re-tuned—yet no single remedy fully restores performance.\n\nCausal chain interaction: Stale or missing statistics skew cardinality estimates, which the optimizer combines with misaligned cost-model parameters (e.g., incorrect CPU vs. I/O weightings or parallelism caps) to choose an already fragile plan. Misconfigured memory and parallelism settings then amplify any estimation error: underestimated row counts cause hash tables to spill, while overestimates trigger unnecessary parallel workers that contend for an undersized buffer pool. The resulting resource pressure delays automatic statistics updates and forces more frequent plan invalidations, perpetuating the cycle. Thus, each root cause reinforces the others, producing a multi-layered performance regression that is far worse than the sum of its parts.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 16,
+            "score": 0.3195220936226355,
+            "bm25_score": 13.324576461576811,
+            "lexical_score": 0.11013322884012539,
+            "matched_terms": [
+                "and",
+                "are",
+                "behavior",
+                "configured",
+                "data",
+                "for",
+                "is",
+                "level",
+                "or",
+                "out",
+                "the",
+                "when",
+                "write"
+            ],
+            "match_count": 37,
+            "entry": {
+                "timeout_id": "mysql84_xplugin_write_timeout",
+                "parameter_name": "mysqlx_write_timeout",
+                "timeout_category": "x_protocol_network_write_timeout",
+                "scope": "global/session/X Plugin",
+                "official_definition": "Write timeout for X Plugin network communication.",
+                "trigger_condition": "A MySQL X Protocol write operation exceeds mysqlx_write_timeout.",
+                "workload_impact": "The X Protocol network write operation times out.",
+                "default_behavior": "Defined as a MySQL X Plugin system variable.",
+                "system_domain": "network_transport",
+                "cause_analysis": "This timeout is usually triggered when network data is not acknowledged, received, or written within the configured transport-level waiting window.",
+                "solution_guidance": "Inspect packet loss, transport latency, client responsiveness, proxy behavior, and whether slow consumers or unstable links are delaying network progress.",
+                "observable_symptoms": [
+                    "network timeout",
+                    "disconnect",
+                    "read/write interruption"
+                ]
+            }
+        }
+    }
+]

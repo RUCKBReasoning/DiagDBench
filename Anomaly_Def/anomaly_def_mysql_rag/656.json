@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Transaction Log Subsystem Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Database Memory Allocation Anomaly: Excessive or poorly controlled growth of buffer caches, plan caches, work areas, and other engine heaps pushes total resident and swap usage beyond the safe limits of the host. \nTransaction Log Subsystem Anomaly: The generation, flushing, or archival of write-ahead log (WAL) records becomes the principal bottleneck on the write path, inflating commit latency and stalling writers. \nOperating System Resource Limit Anomaly: Kernel-enforced ceilings on file descriptors, shared-memory segments, semaphores, threads, or cgroup quotas are reached before database-level limits, preventing the engine from allocating additional OS objects that it needs to progress. \n\nWhen these three root causes co-exist, the database exhibits compound symptoms: rapidly growing process RSS, paging spikes, and NUMA or cgroup memory throttling coincide with surging log-flush waits and commit stalls. Archiver or replication lag amplifies, while the engine emits errors for exhausted file handles, shared-memory, or thread creation failures. Checkpoint storms and forced log switches appear alongside sudden process terminations or node reboots triggered by out-of-memory killers. Administrators may observe that despite sufficient raw I/O bandwidth, write performance collapses unpredictably, and new sessions, background workers, or parallel executions intermittently fail to start even though workload pressure persists. \n\nCausally, aggressive memory allocation fills buffer and work caches until the OS starts paging and tightening kernel limits; this heightens CPU queuing and elongates the path to persist log buffers, directly aggravating the Transaction Log Subsystem Anomaly. In turn, elevated commit latency encourages session buildup and longer retention of in-memory state, forcing the engine to request more memory, file descriptors, log segments, and IPC objects, which pushes it harder against OS limits. Once kernel caps are hit, log writers and archivers cannot open new files or allocate additional shared memory, freezing log progression and blocking all transactional work. The feedback loop between memory pressure, stalled log flushing, and OS resource exhaustion accelerates degradation, driving the database into cascading stalls, partial outages, or full instance failure.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2445,
+            "score": 0.5497219855949114,
+            "bm25_score": 59.72973233457378,
+            "lexical_score": 0.1649203633013031,
+            "matched_terms": [
+                "and",
+                "are",
+                "between",
+                "by",
+                "failure",
+                "for",
+                "from",
+                "lag",
+                "log",
+                "node",
+                "on",
+                "or",
+                "replication",
+                "request",
+                "retention",
+                "state",
+                "the",
+                "thread",
+                "threads",
+                "to",
+                "when",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010558",
+                "error_name": "ER_RPL_REPLICA_DUMP_THREAD_KILLED_BY_SOURCE",
+                "official_description": "Replica%s: received end packet from server due to dump thread being killed on source. Dump threads are killed for example during source shutdown, explicitly by a user, or when the source receives a binlog send request from a duplicate server UUID <%s> : Error %s",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

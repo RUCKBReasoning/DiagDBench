@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Transaction Log Subsystem Anomaly + CPU Resource Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Sessions serialize on hot buffer-cache pages, page pins, and latches, stalling logical I/O even when physical memory is available.\nTransaction Log Subsystem Anomaly : Commit processing is throttled by log buffer flush, log file write, or archiver activity, making the log path the critical choke point.\nCPU Resource Anomaly : Database processes drive host CPU to sustained saturation, starving all threads—including internal background workers—of scheduler time.\n\nWhen all three root causes strike together, the system exhibits an intertwined symptom set:  • End-to-end transaction latency and commit latency rise sharply, with wait-event views showing a mix of LOG-WRITE, LOG-FLUSH, BUFFER-BUSY, and PAGE-LATCH waits.  • CPU usage stays at or near 100 %, yet throughput plateaus or declines; spin loops on buffer latches crowd the run queue while log writer and archiver threads contend for CPU slices to perform synchronous writes.  • Checkpoint storms and rapid log-file switches amplify dirty-buffer pressure, so foreground sessions alternately wait for latch access to hot pages and for log space to be freed.  • Monitoring tools may mis-attribute the slowdown because the dominant symptom—CPU saturation—masks the underlying dual I/O bottlenecks on buffers and the redo log.\n\nCausal interaction: Hot pages and frequent page churn inflate latch acquisition attempts; many of those attempts spin rather than sleep, inflating CPU consumption. The elevated CPU load delays log writer, archiver, and buffer-flush threads, stretching commit latency and prolonging the time dirty pages remain pinned. Those pinned or dirty buffers, in turn, intensify latch contention because they cannot be evicted or reused until the log is persisted, further increasing spin and CPU pressure. Meanwhile, slow log advancement forces aggressive checkpoints, which flush more dirty pages and request additional latches, closing a feedback loop that binds buffer contention, log backlog, and CPU starvation into a self-reinforcing performance collapse.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.7270050893670539,
+            "bm25_score": 23.195221404983812,
+            "lexical_score": 0.15217325227963524,
+            "matched_terms": [
+                "an",
+                "and",
+                "because",
+                "cannot",
+                "database",
+                "for",
+                "is",
+                "of",
+                "or",
+                "sessions",
+                "than",
+                "that",
+                "the",
+                "time",
+                "to",
+                "transaction",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 223,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

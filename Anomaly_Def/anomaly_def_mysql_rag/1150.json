@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Replication Synchronization Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently picks a sub-optimal execution plan—even with reasonable statistics—due to cost-model, plan-cache, or version/parameter issues.\nReplication Synchronization Anomaly : Replication receivers or appliers cannot ingest or replay WAL/redo at the rate produced by the primary, producing widening log-position gaps and lag.\nData Block and Index Integrity Anomaly : Physical data or index pages are corrupted or internally inconsistent, so access methods and integrity checks no longer trust the on-disk structures.\n\nWhen all three root causes manifest together, the system exhibits a tangled failure signature: 1) erratic query latencies and plan flips on the primary and replicas, 2) explosive growth in I/O and CPU as bad plans trigger large scans or nested-loop explosions that read corrupted pages, 3) replication lag that oscillates or stalls because corrupted blocks or redo records cannot be applied, leading to repeated retries or worker crashes, 4) divergence between primary and replicas—some replicas may silently miss or duplicate rows due to underlying index inconsistencies while also being hours behind, and 5) administrative alerts about checksum errors, plan cache thrashing, and disk-space exhaustion from retained WAL segments.\n\nCausally, corrupted data or index structures can distort optimizer statistics or cause runtime page-level errors that prompt the optimizer to abandon efficient access paths, increasing the likelihood of sub-optimal plan selection. These heavier plans generate larger volumes of undo/redo and prolonged locks, inflating the replication stream. Simultaneously, when corrupted pages propagate through WAL, replicas may repeatedly fail to apply them, stalling replay and amplifying synchronization lag; this backlog prevents log recycling on the primary, further stressing storage and exacerbating I/O contention that feeds back into poor plan choices. Thus, each anomaly reinforces the others: corruption undermines plan quality; bad plans inflate replication load; replication stalls surface more corruption and resource pressure, collectively degrading both primary and replica stability.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.6500283769668079,
+            "bm25_score": 25.6848972941722,
+            "lexical_score": 0.12293044168209467,
+            "matched_terms": [
+                "administrative",
+                "and",
+                "apply",
+                "be",
+                "data",
+                "lag",
+                "longer",
+                "or",
+                "replica",
+                "replication",
+                "the",
+                "this",
+                "to",
+                "when"
+            ],
+            "match_count": 54,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

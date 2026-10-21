@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Query Plan Selection Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "SQL Workload Logic Anomaly: Application-level statement or transaction design that forces the engine to read, change, or hold on to more data and for longer than business logic requires.\nQuery Plan Selection Anomaly: The optimizer chooses or reuses a markedly sub-optimal execution plan even though statistics are adequate, leading to excessive resource use.\nTransaction Log Subsystem Anomaly: The write-ahead log generation, flushing, or archival path cannot keep pace with the redo volume, making commit processing a throughput limiter.\n\nComposite definition – This composite anomaly represents an OLTP workload in which (1) the application issues over-broad or poorly structured SQL and long-running transactions, (2) the optimizer compounds the problem by selecting inefficient execution plans for those very statements, and (3) the resulting surge in redo activity saturates the transaction-log subsystem, so both execution time and commit latency deteriorate simultaneously.\n\nCombined anomalous phenomena – Operators observe erratic but generally rising statement and transaction latency, with some executions stalling specifically at COMMIT or during log-flush waits. Slow-query logs show the same SQL alternating between different, sometimes dramatically slower plans. Monitoring dashboards report spikes in logical I/O, buffer gets, and row versions together with sustained log write/sync wait events, frequent log-file switches, and backlog in archiving or replication shipping. Application tiers show a mix of CPU saturation (from bad plans), lock contention (from long transactions), and timeout-driven retries that further inflate redo generation and heap usage.\n\nCausal chain – Verbose or chatty workload logic first inflates data touched per transaction; when the optimizer then mis-estimates costs or reuses a non-optimal cached plan, scans and join explosions amplify the physical and logical I/O as well as the amount of undo/redo produced. The multiplied redo volume quickly pushes the log buffer to its limits, triggering more frequent flushes and log-file switches. As the log device or archiver falls behind, commits stall, prolonging transaction lifetimes and keeping locks and latches held longer. These delays increase concurrency pressure, raising the likelihood of further plan invalidations and causing the application to retry, feeding back into even higher write and redo rates. The intertwined effects of bloated workload semantics, poor plan choices, and a saturated log path create a reinforcing loop that degrades overall OLTP performance and stability far more severely than any of the individual anomalies would in isolation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 99,
+            "score": 0.6754664718332823,
+            "bm25_score": 39.134709268133314,
+            "lexical_score": 0.19672131147540983,
+            "matched_terms": [
+                "and",
+                "but",
+                "by",
+                "engine",
+                "execution",
+                "held",
+                "in",
+                "isolation",
+                "its",
+                "level",
+                "logic",
+                "or",
+                "pressure",
+                "problem",
+                "requires",
+                "resource",
+                "same",
+                "sql",
+                "statement",
+                "the",
+                "to",
+                "together",
+                "transaction",
+                "with",
+                "workload"
+            ],
+            "match_count": 12,
+            "entry": {
+                "error_code": "25008",
+                "error_name": "held_cursor_requires_same_isolation_level",
+                "official_description": "held cursor requires same isolation level",
+                "error_class": "Class 25 - Invalid Transaction State",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

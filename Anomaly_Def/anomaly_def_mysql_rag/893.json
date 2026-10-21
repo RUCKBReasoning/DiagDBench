@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Buffer Cache and Latch Contention Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Database Configuration Parameter Anomaly: Critical engine parameters (memory, checkpoint cadence, parallelism, durability, etc.) are mis-tuned relative to hardware and workload, so bottlenecks arise from the settings themselves rather than from true resource exhaustion.\nBuffer Cache and Latch Contention Anomaly: Concurrent sessions serialize on buffer-cache pages, latches, or I/O slots, producing elevated buffer-busy and page-latch waits, CPU spinning, and stalled throughput.\nData Block and Index Integrity Anomaly: On-disk data or index structures become physically or logically corrupt, causing checksum failures, mismatched row counts, or engine-reported corruption errors.\n\nWhen all three root causes are present simultaneously, the system exhibits a confusing blend of symptoms: bursts of log-write or checkpoint waits coexist with idle hardware, latch waits skyrocket on a small set of pages, and queries intermittently return wrong or missing rows. Integrity-check utilities report corruption while ordinary workload execution shows latency spikes and throughput collapse. Checkpoint or background-writer storms triggered by mis-tuned parameters keep dirty pages in memory longer, amplifying latch contention, while corruption on hot pages forces repeated latch retries, buffer invalidations, or emergency page reads, further inflating wait events. Operators may observe oscillating CPU usage—periods of spin-loop contention followed by long I/O stalls during corruption-induced page rereads—and error logs filled with both configuration warnings and corruption messages.\n\nCausal chain: Misconfigured parameters (e.g., undersized buffer pool, overly aggressive checkpoint cadence, disabled or weakened page-verification settings) increase page churn and expand the window during which pages remain dirty, raising the probability that any latent storage fault or power loss will leave unfinished writes and introduce data corruption. The resulting corrupt pages tend to be hot root or index pages that are already under heavy access, so each access attempt collides on the same latches, multiplying contention. In turn, the elevated latch waits and stalled I/Os mislead adaptive tuning components, which may further adjust memory or background-worker settings in harmful directions, reinforcing the misconfiguration. The three anomalies therefore feed into one another: bad parameters create stress that promotes corruption, corruption localizes workload on a few damaged pages that intensify latch contention, and the intensified contention drives further reactive parameter changes or workload shifts that deepen the misconfiguration loop.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2706,
+            "score": 0.47672251373289665,
+            "bm25_score": 51.12919280395475,
+            "lexical_score": 0.17958970233306515,
+            "matched_terms": [
+                "access",
+                "and",
+                "are",
+                "check",
+                "data",
+                "disk",
+                "durability",
+                "engine",
+                "error",
+                "events",
+                "failures",
+                "from",
+                "latency",
+                "log",
+                "logs",
+                "or",
+                "storage",
+                "the",
+                "to",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010821",
+                "error_name": "ER_BINLOG_EVENTS_READ_FROM_BINLOG_INFO",
+                "official_description": "Read %lu events from binary log file '%s' to determine the GTIDs purged from binary logs.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

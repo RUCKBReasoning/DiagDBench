@@ -1,0 +1,59 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Database Memory Allocation Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Schema and Index Design Anomaly : Static mismatch between physical data model (tables, partitions, indexes, data types, constraints) and workload access patterns, forcing sub-optimal access paths and excessive I/O. \nDatabase Memory Allocation Anomaly : Overcommitment or fragmentation of engine memory (buffer caches, work areas, plan cache, session heaps) that pushes the host into pressure, paging, or OOM scenarios. \nNetwork and Connectivity Resource Anomaly : Insufficient or saturated network and connection-handling resources that delay or abort session establishment and data transfer between clients and the database. \n\nWhen all three root causes are present, the workload experiences a multi-layered degradation: poorly indexed queries trigger large full-table scans and non-covering index probes that flood buffer caches and inflate per-query sort/hash areas, accelerating memory growth and eviction churn. Memory pressure induces paging and stalls, elongating query response times and holding backend processes in client-read/client-write waits. As these sluggish backends occupy connection slots longer and transmit voluminous result sets slowly, listener queues and TCP socket buffers saturate, amplifying packet retransmissions and connection timeouts. From the application side this manifests as intermittent connection failures, sharp latency spikes, and erratic throughput even under moderate load, while the database side shows concurrent surges in physical reads, memory allocation failures, and network I/O wait events that are hard to attribute to any single layer.\n\nCausally, sub-optimal schema and index design is the first domino: it inflates data touched per query, driving up buffer and work-area demand. The swollen memory footprint competes for limited physical RAM; once the engine begins paging or trimming caches, each repeat execution re-reads data, multiplying I/O and CPU work. Prolonged execution times keep sessions open, increasing the simultaneous connection count and the volume of data that must be shipped over the network. The congested network, in turn, slows result delivery, forcing server backends to linger in send/receive waits and retain their private memory longer, further aggravating memory exhaustion. This feedback loop—inefficient access paths → memory pressure → slower execution → extended connections → network saturation → additional memory retention—creates a self-reinforcing cycle that can culminate in system-wide slowdown, connection storms, or even node eviction.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.7482857142857142,
+            "bm25_score": 28.75526552187646,
+            "lexical_score": 0.16095238095238093,
+            "matched_terms": [
+                "and",
+                "any",
+                "database",
+                "delay",
+                "for",
+                "holding",
+                "index",
+                "is",
+                "longer",
+                "of",
+                "or",
+                "schema",
+                "session",
+                "sessions",
+                "table",
+                "that",
+                "the",
+                "this",
+                "to",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 301,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

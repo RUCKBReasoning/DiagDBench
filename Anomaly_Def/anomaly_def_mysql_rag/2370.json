@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Buffer Cache and Latch Contention Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Composite Definition: The database simultaneously suffers from (1) a static mismatch between the physical schema/index design and the workload’s access patterns, (2) intense contention on buffer-cache pages and their associated latches, and (3) saturation of network or connection-handling resources between clients and the database server. The three conditions coexist and interact, causing cascading slow-downs that span the storage engine, memory subsystem, and client/server communication path.\n\nCombined Observable Phenomena: • Queries that should be selective devolve into full-table or non-covering index scans, inflating logical and physical I/O. • Buffer-busy waits, page-latch or buffer-pin waits, and CPU spin time rise sharply as many sessions fight for a small set of hot pages (e.g., root or leaf blocks of sub-optimal indexes). • Checkpoints and dirty-page flushes lengthen, further holding latches. • End-user response times are erratic; spikes propagate outside the server as clients experience longer socket read/write waits, connection-establishment delays, and intermittent \"too many connections\" or timeout errors. • Network interfaces and listener backlogs show elevated retransmits and queued connections because slow queries keep back-end sessions busy and tied to open sockets, while application pools repeatedly retry.\n\nCausal Chain and Mutual Reinforcement: Inefficient schema and missing/ill-chosen indexes force large scans and concentrate inserts/updates on a few pages, rapidly cycling pages through a limited buffer pool. The resulting churn and hot-page concentration escalate buffer cache and latch contention, stalling worker threads and extending query runtimes. Prolonged execution keeps transactions and result sets open longer, inflating the number and lifetime of network connections. As network buffers fill and authentication slots or socket queues become saturated, new sessions wait or fail, prompting client retries that further increase concurrency inside the engine. The surge of concurrent, long-running scans worsens latch pressure and buffer churn, while stalled network I/O delays page clean-outs and checkpoint completion, creating a feedback loop that amplifies latency and throughput collapse across all three layers.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.4009581935851082,
+            "bm25_score": 17.252847344331922,
+            "lexical_score": 0.18915343915343913,
+            "matched_terms": [
+                "and",
+                "are",
+                "authentication",
+                "client",
+                "connection",
+                "establishment",
+                "for",
+                "handling",
+                "holding",
+                "latency",
+                "longer",
+                "number",
+                "of",
+                "on",
+                "or",
+                "pools",
+                "server",
+                "sessions",
+                "the",
+                "time",
+                "timeout",
+                "waits"
+            ],
+            "match_count": 21,
+            "entry": {
+                "timeout_id": "mysql84_idle_noninteractive_session_timeout",
+                "parameter_name": "wait_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds the server waits for activity on a noninteractive connection before closing it.",
+                "trigger_condition": "A noninteractive session remains idle longer than wait_timeout.",
+                "workload_impact": "The server closes the idle connection.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

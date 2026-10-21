@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Query Plan Selection Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Schema and Index Design Anomaly: Static mismatch between physical data model (tables, indexes, partitions, data types, constraints) and actual workload access patterns forces intrinsically inefficient access paths independent of statistics or optimizer choices.\nQuery Plan Selection Anomaly: Optimizer chooses or reuses a markedly sub-optimal execution plan even though statistics are adequate, due to cost-model or plan-cache issues, leading to unexpected full scans, bad join orders, or loss of parallelism.\nOperating System Resource Limit Anomaly: Database processes hit kernel-enforced ceilings for file descriptors, shared memory, threads, or other OS objects, causing failures to allocate required resources despite sufficient logical capacity inside the DB engine.\n\nWhen all three root causes coexist, workloads encounter a multilayered performance and stability collapse: poorly designed or missing indexes inflate the amount of data each statement must touch; simultaneous optimizer mis-decisions steer execution toward full scans, Cartesian joins, or serial plans that intensify I/O, memory, and worker-process demands; and as these bloated executions proliferate, the database tries to open many more files, allocate larger shared buffers, or spawn extra workers, quickly exhausting OS-level limits. Symptoms include extreme and erratic query latency, bursts of plan flips with divergent runtimes, sudden errors such as “too many open files,” inability to create parallel workers, partial outages where new sessions fail while existing ones slow to a crawl, and log files showing both optimizer plan hashes oscillating and kernel resource-exhaustion messages.\n\nCausally, the deficient schema/index design first widens the resource footprint of every logical operation. This magnifies the cost sensitivity of the optimizer, increasing the chance it will pick unstable or poor plans that appear cheapest under its imperfect model. The resulting heavier plans (e.g., table scans, large hash joins) drive up file-handle usage, shared-memory allocation, and thread counts, rapidly approaching or breaching OS quotas. Once kernel limits are hit, the engine cannot create additional I/O contexts, open segment files, or spawn background/parallel workers, which in turn forces further plan re-optimization and emergency fallbacks to even less efficient serial execution paths. The feedback loop between bad design, volatile plan selection, and hard OS ceilings culminates in compounded performance degradation, plan thrashing, and intermittent availability loss that is difficult to attribute to any single layer without holistic diagnosis.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2132,
+            "score": 0.5978933407389848,
+            "bm25_score": 63.94704645183426,
+            "lexical_score": 0.16509282020852759,
+            "matched_terms": [
+                "allocation",
+                "and",
+                "availability",
+                "constraints",
+                "create",
+                "engine",
+                "hashes",
+                "inside",
+                "is",
+                "large",
+                "latency",
+                "memory",
+                "or",
+                "shared",
+                "the",
+                "unstable",
+                "with",
+                "workload"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010245",
+                "error_name": "ER_CONN_SHM_CANT_CREATE_SERVICE",
+                "official_description": "Can't create shared memory service: %s. : %s",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "memory_and_buffer",
+                "cause_analysis": "The failure is typically associated with insufficient memory headroom, buffer pressure, oversized intermediate state, or memory-allocation constraints inside the engine or client library.",
+                "solution_guidance": "Check memory availability, per-session memory settings, large sorts or hashes, and whether workload concurrency is amplifying memory consumption.",
+                "observable_symptoms": [
+                    "memory pressure",
+                    "allocation failure",
+                    "spill",
+                    "unstable latency"
+                ]
+            }
+        }
+    }
+]

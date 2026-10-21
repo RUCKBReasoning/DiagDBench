@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Replication Synchronization Anomaly + Storage Space Capacity Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Replication Synchronization Anomaly: Standbys or downstream consumers cannot ingest, persist, or apply primary-generated log records at the pace they are produced.\nStorage Space Capacity Anomaly: Physical or logical free space for data, logs, archives, temp areas, or backups is exhausted or approaching hard limits.\nNetwork and Connectivity Resource Anomaly: Transport links, listeners, sockets, or connection slots are saturated, unstable, or otherwise unable to carry the required traffic between clients or database nodes.\n\nWhen these three root causes co-exist, symptoms overlap and compound: replication lag grows rapidly while network round-trip times, retransmissions, and connection errors spike. Retained primary WAL/redo segments and expanding replica relay logs accumulate until disk groups, archive destinations, or temp areas hit 100 % usage, triggering space-allocation failures, halted check-pointing, and automatic safety shutdowns. Clients may see a mixture of slow queries, stale read-replicas, authentication timeouts, and \"disk full\" or \"cannot allocate X\" errors. Failover readiness degrades because replicas fall far behind and may themselves run out of space or lose connections, making recovery impossible if the primary crashes.\n\nCausal interaction: (1) Intermittent or congested network paths throttle log shipping and inflate replication lag. (2) The lag forces the primary to retain old log segments and the replicas to buffer large relay logs, driving up disk consumption on both sides. (3) As storage fills, log archiving and auto-extension stall, which in turn blocks new transactions, further backs up replication, and amplifies network retransmissions due to repeated retries and larger bursts when connectivity resumes. The space pressure can also disrupt listener and logging subsystems, exacerbating connection churn. Conversely, once data-file or log volumes reach capacity, replication and client connections may be forcibly closed, triggering additional reconnect storms that worsen network saturation. The feedback loop between slow/unstable networks, replication backlog, and space exhaustion intensifies each anomaly, quickly destabilising the entire database estate.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.4171020453071736,
+            "bm25_score": 15.444913803872238,
+            "lexical_score": 0.1544524819156897,
+            "matched_terms": [
+                "and",
+                "are",
+                "authentication",
+                "cannot",
+                "check",
+                "client",
+                "closed",
+                "connection",
+                "for",
+                "is",
+                "of",
+                "or",
+                "out",
+                "stale",
+                "that",
+                "the",
+                "times",
+                "when"
+            ],
+            "match_count": 12,
+            "entry": {
+                "timeout_id": "mysql84_client_connection_timeout_option",
+                "parameter_name": "--connect-timeout",
+                "timeout_category": "client_connection_establishment_timeout",
+                "scope": "client option",
+                "official_definition": "The number of seconds before connection timeout for MySQL client programs that support this option.",
+                "trigger_condition": "A MySQL client program cannot establish a connection before the configured connect timeout.",
+                "workload_impact": "The client connection attempt times out.",
+                "default_behavior": "Defined as a MySQL client connection option.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

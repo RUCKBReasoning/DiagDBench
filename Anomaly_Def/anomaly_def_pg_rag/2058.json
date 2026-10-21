@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Replication Synchronization Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly: Page-level serialization inside the buffer manager where sessions spin or block on latches, pins, or page-content locks while trying to access a small set of hot buffers.\nReplication Synchronization Anomaly: Downstream replicas cannot receive or apply WAL/redo at the rate the primary generates it, producing widening log-position gaps and retaining log segments on the primary.\nNetwork and Connectivity Resource Anomaly: Transport-layer or listener resources between nodes and clients are saturated, lossy, or starved, leading to slow or failed connection establishment and high socket-level waits.\n\nWhen all three conditions occur together, the system exhibits a blended symptom set: 1) front-end clients see intermittent connection timeouts, elevated latency, and sporadic \"too many connections\" or authentication failures; 2) active back-end sessions show surging buffer-busy and page-latch waits, high CPU spin, and sharp response-time spikes on hot tables or index roots; 3) replication dashboards report rapidly growing send, write, and replay lags, expanding retained-WAL or relay-log storage, and replicas fall out of synchronous commit windows; 4) storage pressure from unrecycled WAL files triggers aggressive checkpoints that evict useful pages, amplifying buffer churn and extending latch hold times; 5) system-level network metrics reveal retransmissions and queue overflows exactly when database wait events and replication gaps worsen, making the root causes hard to distinguish in isolation.\n\nCausal chain: Network congestion or listener overload throttles the primary’s ability to stream WAL, immediately slowing replica catch-up. The primary therefore retains additional log segments, inflating disk usage and forcing more frequent checkpoints or background flushes. These writes compete for buffer-pool space, evicting pages that active OLTP sessions soon re-read, which elevates buffer cache churn and concentrates access on hot root or sequence pages—intensifying latch contention. Heightened latch waits elongate transaction execution times, keeping connections open longer and increasing the number of concurrent sockets the listener must juggle, which in turn aggravates network/connection saturation. The intertwined feedback loop between network backlog, replication stalling, retained-WAL pressure, and hot-page latch contention drives a severe, self-reinforcing degradation that is much harder to remediate than any of the individual anomalies alone.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.49106783285106886,
+            "bm25_score": 17.869204587831103,
+            "lexical_score": 0.15658304223563035,
+            "matched_terms": [
+                "and",
+                "any",
+                "are",
+                "authentication",
+                "connection",
+                "establishment",
+                "for",
+                "inside",
+                "is",
+                "latency",
+                "longer",
+                "of",
+                "open",
+                "or",
+                "sessions",
+                "than",
+                "that",
+                "the",
+                "time",
+                "transaction",
+                "when"
+            ],
+            "match_count": 260,
+            "entry": {
+                "timeout_id": "pg16_idle_session_timeout",
+                "parameter_name": "idle_session_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle, but not within an open transaction, for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle and not inside an open transaction longer than the configured threshold.",
+                "workload_impact": "The session is terminated; the documentation warns about using this with connection pools or middleware.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

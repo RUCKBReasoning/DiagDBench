@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Database Memory Allocation Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Optimizer Statistics Anomaly : The cost model receives stale or incomplete statistics, resulting in systematic cardinality misestimation and sub-optimal plan shapes.\nDatabase Memory Allocation Anomaly : Cumulative memory reserved for caches, work areas, and background structures exceeds the safe limits of the host, provoking paging, cache shrinkage, or OOM termination.\nBuffer Cache and Latch Contention Anomaly : Sessions serialize on hot buffer pages, latches, or I/O slots, producing buffer-busy and latch waits that throttle throughput.\n\nWhen all three root causes surface concurrently, the system exhibits a compound failure pattern: queries choose memory-intensive operators (hash joins, large sorts) based on misestimated cardinalities; these operators overrun available work memory, forcing the engine to evict clean pages, shrink caches, and escalate to temporary spill or OS swap. The resulting buffer churn and reduced cache residency turn frequently accessed index root pages into hotspots, driving latch spin and wait amplification. Observable symptoms include wildly inaccurate plan estimates, sudden plan regressions after data changes, escalating resident-set size, swap-daemon or cgroup throttling, plummeting buffer-cache hit ratios, surges in PAGE_LATCH_* or BUFFER_BUSY waits, CPU spin without progress, and query runtimes that grow super-linearly with concurrency.\n\nCausal interaction: stale statistics mislead the optimizer to request much more (or much less) memory than is actually needed; over-allocated work areas aggregate across many sessions, tipping the instance into global memory pressure. As the engine trims the buffer pool to free memory for work areas, hotter pages cycle in and out more frequently, extending the hold time of latches protecting those pages. Longer latch waits elongate query execution, keeping their memory allocations alive and further intensifying pressure. Conversely, memory shortages can inhibit automatic statistics refresh jobs, perpetuating statistics staleness, while latch contention slows data-modification operations, leaving partitions in states that diverge further from recorded statistics. The three anomalies thus form a feedback loop that magnifies latency, degrades throughput, and risks stability far more severely than any single anomaly would in isolation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.7413833370761284,
+            "bm25_score": 25.607040022870972,
+            "lexical_score": 0.13794445692042817,
+            "matched_terms": [
+                "and",
+                "contention",
+                "engine",
+                "exceeds",
+                "execution",
+                "for",
+                "global",
+                "is",
+                "operations",
+                "or",
+                "pattern",
+                "query",
+                "the",
+                "time",
+                "when",
+                "with",
+                "work"
+            ],
+            "match_count": 85,
+            "entry": {
+                "timeout_id": "mysql84_regular_expression_time_limit",
+                "parameter_name": "regexp_time_limit",
+                "timeout_category": "expression_evaluation_time_limit",
+                "scope": "global/session",
+                "official_definition": "The time limit for regular expression matching operations performed by the regular expression engine.",
+                "trigger_condition": "A regular expression match operation exceeds regexp_time_limit.",
+                "workload_impact": "The regular expression operation is constrained by the configured time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

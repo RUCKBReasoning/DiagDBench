@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Transaction Log Subsystem Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Optimizer Statistics Anomaly: Row-count, histogram, and correlation metadata are stale or incomplete, causing systematic cardinality misestimation and sub-optimal plan selection.\nTransaction Log Subsystem Anomaly: Commit processing is slowed by saturated log buffers, undersized or poorly placed log files, or sluggish archiving/replication, making the log path the dominant bottleneck for writes.\nStorage I/O Throughput Anomaly: Physical devices or storage fabric cannot deliver the required read/write bandwidth or IOPS, so data-file, temp, or log I/O requests queue up and incur excessive latency.\n\nWhen these three root causes strike simultaneously, the database exhibits a mixture of severe plan inefficiencies, persistent log-related stalls, and generalized I/O saturation. Queries may choose nested-loop or hash joins that spill to disk because of cardinality errors, multiplying read and temp I/O. The extra I/O load collides with an already throttled storage layer, inflating data-file and temp-space latency, while every write must still traverse the overloaded transaction-log path, driving up commit times and causing \"log write\", \"log flush\", and device wait events to dominate. Checkpoints and log-archive operations extend their duration, leading to frequent log-full conditions, blocked DML, and application timeouts. Performance counters oscillate between CPU under-utilization (waiting on I/O) and sudden CPU spikes when I/O briefly clears, making diagnosis difficult as symptoms appear to migrate across layers.\n\nCausally, stale or missing statistics can cause the optimizer to choose plans that amplify page reads, temp spills, and row-by-row processing, inflating both data I/O and redo generation. The inflated redo rate accelerates log growth, forcing more frequent log flushes, switches, and archives exactly when the shared storage subsystem is already throughput-bound. In turn, the saturated log device holds commit processing hostage, prolonging transaction duration and keeping locks active, which causes additional contention and may prevent automatic statistics refresh, perpetuating the statistics staleness. The competition for limited I/O bandwidth between data reads/writes and log flushes forms a positive feedback loop, driving systemic slowdown and making each individual anomaly harder to isolate without considering their mutual reinforcement.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2490,
+            "score": 0.4232732314325829,
+            "bm25_score": 38.139951858280384,
+            "lexical_score": 0.14147104851330203,
+            "matched_terms": [
+                "and",
+                "are",
+                "data",
+                "disk",
+                "file",
+                "for",
+                "growth",
+                "is",
+                "latency",
+                "log",
+                "or",
+                "path",
+                "storage",
+                "the",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010603",
+                "error_name": "ER_RPL_RELAY_LOG_INDEX_NEEDS_FILE_NOT_DIRECTORY",
+                "official_description": "Path '%s' is a directory name, please specify a file name for --relay-log-index option.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

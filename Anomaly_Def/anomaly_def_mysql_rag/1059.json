@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Storage I/O Throughput Anomaly + CPU Resource Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently picks a sub-optimal execution plan even though statistics are sound, leading to excessive or misplaced resource demand.\nStorage I/O Throughput Anomaly : The underlying disk subsystem is saturated, introducing high read/write latency and stretched I/O queues regardless of how the engine issues requests.\nCPU Resource Anomaly : Host CPUs run near saturation because database processes consume most cycles, leaving little headroom for additional work.\n\nCombined anomalous phenomena: The workload exhibits erratic performance spikes in which some executions of the same SQL text swing between moderate and extreme latency. Execution plans that should have been light are chosen yet become painfully slow because they issue a flood of physical reads to an already throttled storage layer; other plans that switch to full scans or excessive parallelism try to mask the I/O stall but instead drive CPU utilization to 100 %, filling OS run queues and producing both I/O and CPU wait events in diagnostic views. Batch windows expand unpredictably, log flushes stall, and end-user response times degrade across the board, making it difficult to attribute the slowdown to a single tier.\n\nCausal interaction: A sub-optimal plan may demand far more random I/O than necessary, quickly pushing the storage subsystem past its throughput ceiling and lengthening every subsequent I/O. The rising latency extends statement execution time, so worker threads remain active longer and aggregate CPU consumption climbs. Conversely, once CPUs are saturated—especially by plans that rely on excessive parallelism—the engine issues I/O requests in larger bursts and with deeper queues, further congesting storage paths. The two resource-level bottlenecks therefore reinforce each other: poor plans inflate demand, storage saturation inflates latency, longer execution keeps cores busy, and limited CPU makes the optimizer less able to recompile or adapt, locking the system into a vicious cycle that amplifies both anomalies and degrades overall database stability.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.38356670187508385,
+            "bm25_score": 15.681313360251933,
+            "lexical_score": 0.10799112097669256,
+            "matched_terms": [
+                "an",
+                "and",
+                "because",
+                "for",
+                "is",
+                "longer",
+                "of",
+                "or",
+                "statement",
+                "than",
+                "the",
+                "to",
+                "wait",
+                "write"
+            ],
+            "match_count": 51,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

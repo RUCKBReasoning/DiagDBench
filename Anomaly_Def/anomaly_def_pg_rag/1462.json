@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Database Memory Allocation Anomaly + CPU Resource Anomaly",
+            "Description": "SQL Workload Logic Anomaly: Application-level statements and transaction flows are written so inefficiently that they compel the engine to scan or manipulate far more data than the business case requires.\nDatabase Memory Allocation Anomaly: Database memory regions—buffer cache, work areas, plan cache, and session heaps—expand beyond safe host limits, provoking paging, swap thrashing, or allocator failures.\nCPU Resource Anomaly: Database processes consume a persistently high share of CPU cycles, driving run-queue lengths and pre-emption latency to damaging levels.\n\nWhen all three root causes coexist, the system experiences a compound anomaly in which bloated, poorly filtered SQL drives excessive logical I/O and large in-memory work sets; these work sets fight for limited RAM, triggering allocation churn, paging, and NUMA or swap overhead, while the same wasteful access patterns and memory pressure push CPU utilization to saturation. Observable symptoms include:\n• Extreme and widely varying statement and transaction latencies, with many operations timing out or stalling during memory allocation or CPU scheduling waits.\n• Simultaneous spikes in buffer cache misses, sort/hash spill events, and OS swap-in/out as the engine evicts pages to satisfy new, ever-growing work areas.\n• Run-queue and context-switch explosions that amplify CPU wait events (e.g., \"CPU run queue\", \"OS scheduler delay\"), accompanied by soaring slow-query counts and application-level retries.\n• Intermittent out-of-memory terminations or instance/node evictions that cascade into availability incidents.\n\nCausal chain: Inefficient SQL inflates row scans, intermediate result sizes, and transaction lifetimes, inflating both per-query work memory and shared buffer demand. The memory subsystem attempts to honor these allocations, displacing useful cache pages and initiating paging, which in turn increases CPU overhead for memory management. Elevated CPU consumption slows query execution, keeping transactions open longer and further enlarging their in-flight memory footprint, which feeds back into memory pressure. The vicious cycle of heavy logic-driven resource demand, memory exhaustion, and CPU saturation mutually reinforce each other, rapidly degrading throughput, expanding tail latency, and threatening overall system stability.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.29754495921622487,
+            "bm25_score": 13.831417986548619,
+            "lexical_score": 0.12278334355619164,
+            "matched_terms": [
+                "and",
+                "are",
+                "context",
+                "for",
+                "latency",
+                "longer",
+                "of",
+                "open",
+                "or",
+                "session",
+                "than",
+                "that",
+                "the",
+                "transaction",
+                "when",
+                "with"
+            ],
+            "match_count": 231,
+            "entry": {
+                "timeout_id": "pg16_idle_session_timeout",
+                "parameter_name": "idle_session_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle, but not within an open transaction, for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle and not inside an open transaction longer than the configured threshold.",
+                "workload_impact": "The session is terminated; the documentation warns about using this with connection pools or middleware.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

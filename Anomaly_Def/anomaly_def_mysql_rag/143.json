@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + MVCC Version Maintenance Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently picks or re-uses an execution plan whose estimated cost is far lower than its real runtime cost, even though statistics are adequate.\nMVCC Version Maintenance Anomaly : Obsolete row versions and logically deleted index entries accumulate faster than background cleaners can reclaim them, inflating table and index size and adding visibility-check overhead.\nTransaction Log Subsystem Anomaly : Redo/commit log generation, flushing, or archival becomes the primary bottleneck, driving up commit latency and stalling write activity.\n\nComposite definition: The database simultaneously suffers from sub-optimal plan selection, runaway MVCC version buildup, and saturation of the transaction-log path. All three root causes are active at the same time, creating a compound performance and stability issue that spans the optimizer, storage engine, and durability layer.\n\nCombined phenomena: 1) Queries that once completed quickly now switch between table scans and poorly parameterized index paths, inflating row touch counts. 2) The excess row touches manifest as a surge of UPDATE/DELETE and vacuum traffic, causing the version store and on-disk heap to grow rapidly. 3) Checkpoints, log-flush waits, and archive-lag alerts appear alongside rising commit latency; long-running queries held open by bad plans keep old snapshots alive, preventing cleanup and forcing the log manager to retain older segments. 4) Planner misestimates grow worse because bloat skews statistics, leading to even heavier scans, more undo/redo generation, and longer transaction lifetimes, making it increasingly difficult to isolate any single symptom from the others.\n\nCausal chain: Sub-optimal plans amplify row accesses and modification volume, which explodes MVCC version creation. The inflated version store increases physical I/O and statistics drift, feeding back into even poorer plan choices. The heightened DML throughput and prolonged transactions generate large bursts of redo; simultaneously, the MVCC cleanup lag forces the log subsystem to retain old segments for snapshot visibility, pushing log buffers, disk groups, and archivers past capacity. Log-flush delays lengthen commit times, extending transaction lifespans, which further pins row versions and perpetuates the cycle. The intertwined feedback loops among the optimizer, MVCC cleaner, and log manager thus escalate latency, resource consumption, and risk of outage far beyond what any of the individual anomalies would cause in isolation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.5023979444503552,
+            "bm25_score": 19.1756282060942,
+            "lexical_score": 0.10541292255027812,
+            "matched_terms": [
+                "and",
+                "causing",
+                "is",
+                "lag",
+                "long",
+                "longer",
+                "or",
+                "preventing",
+                "than",
+                "the",
+                "times",
+                "to",
+                "waits"
+            ],
+            "match_count": 7,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

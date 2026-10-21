@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Database Configuration Parameter Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Schema and Index Design Anomaly: The physical data model, indexes, partitions, and data types are mis-aligned with workload access patterns, obliging the optimizer to choose scan-heavy or non-covering access paths that inflate read and write volume.\nDatabase Configuration Parameter Anomaly: Core engine settings for memory pools, checkpoint cadence, parallelism, and background workers are wrongly sized for the hardware and workload, creating artificial pressure on caches, log flushes, and background I/O activity.\nStorage I/O Throughput Anomaly: The underlying disks or storage fabric cannot deliver the throughput or latency demanded, so I/O queues lengthen and device wait times dominate response time.\n\nWhen these three root causes strike together, the database experiences runaway I/O amplification: poorly designed tables and missing or redundant indexes force excessive random and full-table scans; the undersized buffer pool, aggressive checkpoint intervals, or mis-set work-memory parameters keep hot pages from staying in cache and trigger frequent dirty-page flushes; meanwhile the saturated storage layer cannot absorb the elevated read/write traffic, driving up I/O wait events, log write stalls, and checkpoint storms. End-user symptoms include highly variable query latencies, sharp throughput drops at moderate concurrency, CPU cores idling while sessions wait on data-file and log-file I/O, and dramatic slow-downs during data-modification bursts or reporting jobs. Performance tools show a confusing mix of plan inefficiencies, buffer-cache churn, and device-level saturation, making the true scope of the problem hard to pinpoint.\n\nCausally, inefficient schema and index choices raise the baseline I/O demand. Misconfigured memory and background-writer parameters prevent the engine from masking that demand through caching or paced flushing, instead releasing large spikes of I/O during sorts, hash builds, or checkpoints. These bursts hit a storage subsystem that is already at or near its throughput ceiling, causing queue buildup and exponential growth in latency. Rising I/O times feed back into the engine as longer lock holds, stalled worker threads, and further cache eviction, which in turn forces even more physical I/O due to the poor access paths. The three anomalies therefore reinforce one another, producing a severe, self-amplifying degradation that is far worse than any of the individual issues in isolation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.6089184687510926,
+            "bm25_score": 25.683165047964067,
+            "lexical_score": 0.13845813026140896,
+            "matched_terms": [
+                "access",
+                "and",
+                "any",
+                "from",
+                "is",
+                "longer",
+                "more",
+                "of",
+                "or",
+                "query",
+                "than",
+                "that",
+                "the",
+                "time",
+                "together",
+                "user",
+                "when",
+                "with",
+                "work",
+                "workload"
+            ],
+            "match_count": 285,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

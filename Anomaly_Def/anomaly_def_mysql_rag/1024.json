@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Transaction Log Subsystem Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Database Configuration Parameter Anomaly: Engine-level settings (memory, checkpoint cadence, log sizing, parallelism, etc.) are mis-tuned relative to hardware capacity, workload intensity, or version defaults.\nTransaction Log Subsystem Anomaly: The write-ahead logging pipeline—log buffer, files, flush/switch/archive processes—cannot keep pace with redo generation, stalling commits and checkpoints.\nOperating System Resource Limit Anomaly: Kernel-enforced ceilings on file handles, shared memory, threads, or I/O contexts throttle database processes independently of the engine’s internal resource governance.\n\nWhen these three issues strike concurrently, symptoms overlap and amplify: commit latency and log-flush waits spike even though storage and CPU appear under-utilized; checkpoints and log-file switches occur in erratic bursts, sometimes failing with \"unable to open file\" or shared-memory allocation errors; background writers, archivers, and replication senders fall behind, causing bloated log directories and prolonged recovery point objectives; new sessions or parallel workers intermittently fail to start, and the engine may enter a partial hang where active transactions linger in commit wait while resource-starved background tasks cannot progress. Performance counters show low device saturation but high wait times on log and kernel primitives, confusing first-level diagnostics.\n\nCausally, mis-sized configuration parameters (e.g., too small log buffer, aggressive checkpoint_timeout, excessive max_connections) inflate the churn on the transaction log. The surge in file creation, flush, and archive activity collides with operating-system limits on file descriptors, asynchronous I/O contexts, and shared memory, causing kernel denials that further slow or block log operations. Each blocked flush extends transaction hold times, boosting in-memory log pressure and triggering even more checkpoints, which in turn amplifies I/O and resource requests to the OS. This feedback loop escalates until both the logging subsystem and the kernel resource pools are saturated, yielding a compounded performance and availability degradation characteristic of this composite anomaly.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 267,
+            "score": 0.47867392096801104,
+            "bm25_score": 50.44582851516316,
+            "lexical_score": 0.13546047860768673,
+            "matched_terms": [
+                "and",
+                "configuration",
+                "keep",
+                "log",
+                "of",
+                "or",
+                "parameter",
+                "parameters",
+                "replication",
+                "start",
+                "the",
+                "to",
+                "until",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "1276",
+                "error_name": "ER_BAD_REPLICA_UNTIL_COND",
+                "official_description": "Incorrect parameter or combination of parameters for START REPLICA UNTIL",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

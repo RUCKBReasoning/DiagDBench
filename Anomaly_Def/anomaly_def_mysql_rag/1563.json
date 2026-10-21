@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + MVCC Version Maintenance Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Optimizer Statistics Anomaly: Optimizer inputs (row counts, histograms, correlation data) are stale or incomplete, leading the planner to choose systematically mis-costed execution plans.\nMVCC Version Maintenance Anomaly: Obsolete row versions and rollback records accumulate because background cleanup is throttled or blocked, inflating on-disk objects and visibility-check overhead.\nTransaction Log Subsystem Anomaly: The write-ahead log path (generation, flush, switch, archive, retention) becomes a bottleneck, stretching commit latency and stalling writers.\n\nWhen these three root causes coincide, the system exhibits a multi-layer performance collapse:  \n• Queries adopt inefficient plans—e.g., index probes where true cardinalities demand scans, or vice-versa—because statistics reflect the pre-bloat data shape rather than the current, heavily versioned heap.  \n• Table and index bloat from unreclaimed versions drastically lengthens I/O paths; the mischosen plans amplify I/O and CPU consumption, further stressing the buffer pool and cache hierarchy.  \n• Concurrently, surging redo from update/delete churn and from the faulty plans’ extra work overwhelms the log buffer and log device, inflating commit latency, causing frequent log-flush waits, and delaying checkpoints and archival.  \n• Long-running transactions that keep version snapshots open also prevent log segment recycling, so log directories and version stores grow together, consuming space and triggering emergency autovacuum or checkpoint storms.  \n• Background statistics jobs, vacuum/cleanup workers, and log archivers all contend for I/O and CPU, falling further behind and creating a feedback loop where stale statistics, bloat, and log pressure reinforce each other.  \n\nCausally, excessive MVCC bloat inflates table sizes and redo generation, which in turn magnifies transaction-log throughput requirements. Log subsystem saturation slows commits and prolongs active snapshots, blocking vacuum from pruning dead tuples and perpetuating version accumulation. The expanding heap and skewed dead/live row ratios render existing statistics obsolete; suppressed or delayed statistics refreshes (due to long transactions or choking maintenance workers) lock the optimizer into poor plans that intensify CPU and I/O demand, generating even more undo/redo. This vicious cycle can escalate to severe space exhaustion, widespread query slowdowns, and potential outage if log or transaction-ID horizons are reached.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.4055654475734006,
+            "bm25_score": 17.994143549064432,
+            "lexical_score": 0.11569094622191968,
+            "matched_terms": [
+                "and",
+                "because",
+                "blocking",
+                "for",
+                "in",
+                "is",
+                "lock",
+                "or",
+                "than",
+                "the",
+                "this",
+                "to",
+                "transaction",
+                "waits",
+                "when"
+            ],
+            "match_count": 75,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,61 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + CPU Resource Anomaly",
+            "Description": "SQL Workload Logic Anomaly: Application-level SQL or transaction design forces the engine to read, join, or retain far more data and hold locks longer than business logic requires.\nCPU Resource Anomaly: Database processes collectively drive the host’s CPU to sustained saturation, throttling execution and inflating latency across the workload.\n\nWhen both root causes are present, inefficient SQL patterns rapidly consume CPU cycles, and the resulting CPU saturation further slows those same statements, lengthening their execution time and keeping transactions open even longer. Observable symptoms escalate in a feedback loop: 1) run-queue and load-average spikes, 2) widespread statement slowdowns and timeout/retry storms, 3) prolonged lock holding and blocking chains, 4) engine wait profiles dominated by CPU scheduler waits intertwined with full-scan or function-wrapped predicate executions, and 5) an expanding set of queries appearing in slow-query and high-CPU lists that grows as concurrency rises.\n\nCausally, non-selective predicates, Cartesian joins, and oversized result sets inflate per-statement CPU demand; this pushes aggregate CPU utilization to the saturation point. In turn, cores starved for compute stretch each statement’s wall-time, which amplifies active session counts and keeps the problematic SQL in flight longer, further increasing CPU load—a vicious cycle. The overlapping anomalies mask each other: DBAs may blame hardware limits while the root inefficiency in SQL logic persists, and tuning individual execution plans may miss the systemic CPU ceiling already reached. The interaction can cascade into broader instability, making the database appear under-provisioned even if capacity would be sufficient with well-written workload logic.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.7585732165206508,
+            "bm25_score": 31.772448104750126,
+            "lexical_score": 0.19524405506883602,
+            "matched_terms": [
+                "an",
+                "and",
+                "be",
+                "blocking",
+                "for",
+                "holding",
+                "lock",
+                "longer",
+                "of",
+                "or",
+                "retry",
+                "session",
+                "statement",
+                "than",
+                "the",
+                "this",
+                "timeout",
+                "to",
+                "transaction",
+                "wait",
+                "waits",
+                "when",
+                "while",
+                "written"
+            ],
+            "match_count": 88,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

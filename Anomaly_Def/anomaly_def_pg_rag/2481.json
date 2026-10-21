@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Replication Synchronization Anomaly",
+            "Description": "Composite definition: The database is simultaneously burdened by application-side SQL that processes and commits far more data than the business logic truly needs (SQL Workload Logic Anomaly) and by a replication pipeline that cannot receive, flush, or replay the resulting log stream fast enough to stay current with the primary (Replication Synchronization Anomaly).\n\nCombined observable phenomena: 1) End-user statements and transactions show long-tail latency, large row scans, and timeouts on the primary. 2) At the same time, replication-state views report rapidly growing LSN/SCN gaps, high replay lag, expanding relay or retained log segments, and stale data on read replicas. 3) Disk usage on the primary inflates because old log segments cannot be recycled, while replica hosts exhibit elevated CPU/IO saturation as they struggle to apply backlogged redo. 4) Failover readiness drops, and any read-scaling tier begins returning increasingly outdated or inconsistent data, making the slow-query symptoms harder to attribute to either the workload, the replicas, or both.\n\nCausal chain and interaction: Inefficient SQL inflates the volume and size of transactions—scanning more rows, updating more tuples, and holding locks longer—thereby producing a heavier, burstier write-ahead log. This surge stresses the replication channel; network, apply threads, or storage on replicas fall behind, deepening lag. The accumulated lag, in turn, prevents log truncation on the primary, extending the lifetime of large transactions and amplifying contention that already exists due to the sub-optimal workload logic. Long-running or bulk transactions also serialize apply workers on the replica, further slowing catch-up. The two root causes thus reinforce each other: bad SQL logic creates excess redo; replication bottlenecks prevent its timely drainage, which in turn feeds back into longer transaction lifetimes, higher resource pressure, and even slower statement execution on the primary.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 56,
+            "score": 0.3399061520329204,
+            "bm25_score": 15.350403354659484,
+            "lexical_score": 0.17344827586206896,
+            "matched_terms": [
+                "and",
+                "be",
+                "by",
+                "data",
+                "execution",
+                "in",
+                "is",
+                "its",
+                "logic",
+                "or",
+                "pressure",
+                "resource",
+                "sql",
+                "state",
+                "statement",
+                "the",
+                "to",
+                "truncation",
+                "with",
+                "workload"
+            ],
+            "match_count": 14,
+            "entry": {
+                "error_code": "22001",
+                "error_name": "string_data_right_truncation",
+                "official_description": "string data right truncation",
+                "error_class": "Class 22 - Data Exception",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

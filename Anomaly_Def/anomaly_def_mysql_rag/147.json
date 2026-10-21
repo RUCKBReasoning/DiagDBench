@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Database Memory Allocation Anomaly",
+            "Description": "SQL Workload Logic Anomaly: Application-level statements or transaction boundaries are written such that they touch or return far more data than the business case requires.\nDatabase Memory Allocation Anomaly: The database engine allocates or leaks memory past the safe capacity of the host, triggering paging, swapping, or OOM events.\n\nComposite definition: The workload simultaneously contains inefficient SQL that inflates data-processing volume AND the engine is already operating beyond its safe memory envelope, so both logical and physical resource excesses coexist.\n\nCombined phenomena: 1) Statement latency and variance grow dramatically as bulky scans, joins, and wide result sets contend for shrinking buffer cache and work memory. 2) Sudden spikes of per-query hash/sort buffers, parallel workers, or in-memory constructs drive the operating system into swap, causing stalls, plan cache eviction, and background process throttling. 3) Applications report timeouts, retries, or dead-session backlog while the host shows sustained memory pressure, high page-fault rates, and occasional OOM kills or node evictions.\n\nCausal chain: Inefficient SQL multiplies the amount of data each query must read, join, sort, or hold, which inflates per-statement work areas and buffer requirements. The over-allocation of memory, in turn, reduces cache efficiency, forces spills to disk, and may evict useful pages, causing the same bloated queries to reread data and further extend their execution time. Longer-running transactions hold latches, cursors, and session heaps even longer, increasing the resident-set size and magnifying global memory pressure. As the engine starts swapping or terminating workers, queues build up, retries are issued, and concurrency climbs, feeding back into even more memory consumption—creating a vicious circle that degrades both throughput and stability.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.7445909090909091,
+            "bm25_score": 28.607413249616993,
+            "lexical_score": 0.14863636363636362,
+            "matched_terms": [
+                "and",
+                "execution",
+                "for",
+                "global",
+                "in",
+                "is",
+                "or",
+                "query",
+                "resource",
+                "running",
+                "session",
+                "statement",
+                "statements",
+                "the",
+                "time",
+                "work",
+                "workload"
+            ],
+            "match_count": 8,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

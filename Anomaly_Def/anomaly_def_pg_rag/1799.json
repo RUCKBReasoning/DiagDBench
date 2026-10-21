@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + MVCC Version Maintenance Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level statement or transaction design forces the engine to touch far more data, rows, or time than business logic truly requires.\nMVCC Version Maintenance Anomaly : Obsolete row versions and rollback records pile up faster than background cleanup can reclaim them, inflating storage and visibility-check costs.\nData Block and Index Integrity Anomaly : On-disk pages or index structures become physically or logically corrupted, undermining confidence in access paths and data correctness.\n\nWhen all three root causes coexist, the system exhibits a tangled symptom set: long-tail statement latencies and frequent application timeouts intertwine with ever-growing table and index sizes, elevated I/O for version scans, and erratic query plans that suddenly devolve into full-table scans as the optimizer distrusts or disables damaged indexes. Cleanup workers struggle, cycling endlessly over bloated version stores that include corrupted or unreachable pages, while integrity checkers report escalating page-checksum and key-order errors. Lock-free but version-heavy scans inflate undo/redo volume, lengthen checkpoint times, and amplify storage pressure, leading to increased risk of further corruption during crash recovery. From the user’s perspective, intermittent data mismatches, missing rows, and duplicate results accompany severe performance variability, making diagnosis elusive.\n\nCausally, poorly written workload logic initiates excessive updates, deletes, and long-running transactions, accelerating MVCC version accumulation. The swollen version store expands on-disk structures, heightening I/O churn and prolonging maintenance windows. This persistent stress magnifies the chance of write-amplification, torn pages, or half-completed page splits, which in turn precipitate data block and index integrity faults. Once corruption forms, index probes may fail, forcing broader scans that read even more outdated versions, further slowing queries and delaying vacuum/clean-up progress. The corrupted structures also impede effective version pruning, trapping old versions and creating a feedback loop that compounds bloat, corruption exposure, and application-level inefficiencies. The interplay of excessive logical workload, runaway MVCC debris, and physical structure corruption thus degrades both performance and data reliability in transactional workloads.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.3380866248062853,
+            "bm25_score": 14.791943123576386,
+            "lexical_score": 0.10998331479421579,
+            "matched_terms": [
+                "and",
+                "check",
+                "data",
+                "long",
+                "may",
+                "on",
+                "or",
+                "progress",
+                "system",
+                "than",
+                "the",
+                "this",
+                "time",
+                "when"
+            ],
+            "match_count": 250,
+            "entry": {
+                "timeout_id": "pg16_tcp_user_timeout",
+                "parameter_name": "tcp_user_timeout",
+                "timeout_category": "network_unacknowledged_data_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies how long transmitted data may remain unacknowledged before the TCP connection is forcibly closed.",
+                "trigger_condition": "TCP data sent by PostgreSQL remains unacknowledged longer than tcp_user_timeout on systems supporting TCP_USER_TIMEOUT.",
+                "workload_impact": "The TCP connection is forcibly closed.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,46 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Transaction Lock Contention Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer selects or reuses a substantially sub-optimal execution plan even though statistics are accurate, inflating execution cost and runtime footprint.\nTransaction Lock Contention Anomaly : Concurrent transactions contend for incompatible locks, generating long blocking chains or deadlocks that stall throughput.\nOperating System Resource Limit Anomaly : The database process hits kernel-enforced limits on objects such as file handles, processes/threads, or shared-memory segments, preventing further resource allocation.\n\nWhen all three root causes coexist, the workload may exhibit extreme and erratic slowdowns: a sudden plan switch to a full-table scan or wide nested loop holds many row or page locks for far longer than usual, magnifying lock-wait times, deadlock frequency, and application time-outs. Sessions that pile up behind the blockers spawn additional server processes or threads until the operating-system quota for PIDs, file descriptors, or semaphore sets is reached, after which new connections, background workers, or parallel query helpers fail to start. Operators may observe a mixture of symptoms—escalating lock-wait graphs, deadlock-victim errors, optimizer plan regressions in execution-plan caches, and kernel log messages about \"too many open files\" or \"cannot allocate memory\"—making root-cause isolation difficult.\n\nCausal chain: a poor plan (1) dramatically lengthens critical sections, enlarging the time windows in which locks are held; (2) the prolonged locks throttle other transactions, causing them to queue and accumulate; (3) each waiting or retrying session consumes additional database back-end processes, file descriptors, and shared-memory objects; (4) once kernel limits are saturated, even diagnostic queries or deadlock-detector threads may fail to start, further delaying lock resolution and forcing the engine into partial outage. The three anomalies therefore reinforce one another—sub-optimal planning triggers lock storms, which in turn drive the system to exhaust OS resources, amplifying the performance collapse and complicating recovery.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 193,
+            "score": 0.26961990580789885,
+            "bm25_score": 17.010369038544763,
+            "lexical_score": 0.11027645219680762,
+            "matched_terms": [
+                "and",
+                "engine",
+                "execution",
+                "in",
+                "is",
+                "limit",
+                "many",
+                "or",
+                "resource",
+                "the",
+                "to",
+                "too",
+                "workload"
+            ],
+            "match_count": 9,
+            "entry": {
+                "error_code": "54011",
+                "error_name": "too_many_columns",
+                "official_description": "too many columns",
+                "error_class": "Class 54 - Program Limit Exceeded",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

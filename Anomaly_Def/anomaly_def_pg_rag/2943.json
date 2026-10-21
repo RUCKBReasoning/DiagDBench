@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Replication Synchronization Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Hot or churned buffer-cache pages and their associated latches become a serialization point, forcing sessions to spin or wait while trying to pin, read, or modify pages.\nReplication Synchronization Anomaly : Downstream replicas cannot receive, persist, or apply WAL/redo at the rate the primary generates it, leading to growing log gaps and retention of old log segments.\n\nWhen both root causes are active, the primary experiences elevated page-latch waits and CPU spin loops that inflate commit latency and throughput variance, while at the same time replication lag widens because the standby must re-read or re-apply the same hot pages under contention. Observable symptoms include: 1) extreme and uneven latency spikes on the primary for statements that touch hot index root or sequence pages, 2) sustained \"buffer busy\" or \"page latch\" wait events co-occurring with escalating replication receive/replay delay, 3) rapidly growing on-disk log retention because replay cannot advance, and 4) replicas showing intermittent apply stalls coupled with their own buffer-pin or latch waits as large batches of redo hit the same contended pages.\n\nCausal chain: hot-page contention on the primary lengthens transaction commit and increases WAL generation bursts (dirty pages flushed multiple times, frequent full-page images), producing larger or more clustered redo packets that replicas must ship, write, and apply. The replicas in turn encounter the same page-level hot spots during redo, which slows their apply speed, further enlarging the replication gap. The growing gap prevents log recycling on the primary, keeping more dirty and historical pages resident and intensifying buffer churn; meanwhile, backpressure from replication retention can raise checkpoint frequency, putting additional write and latch pressure on the already contended buffer cache. Thus, each anomaly amplifies the other, creating a feedback loop that degrades both local performance and replication health.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.7449925681255161,
+            "bm25_score": 26.329988678417347,
+            "lexical_score": 0.14997522708505368,
+            "matched_terms": [
+                "and",
+                "because",
+                "cannot",
+                "delay",
+                "for",
+                "index",
+                "of",
+                "or",
+                "other",
+                "sessions",
+                "that",
+                "the",
+                "time",
+                "to",
+                "transaction",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 307,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

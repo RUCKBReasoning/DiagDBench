@@ -1,0 +1,47 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Storage Space Capacity Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Accumulation of obsolete row versions and rollback records outpaces background cleanup, causing version-store growth and visibility-check overhead.\nStorage Space Capacity Anomaly : Physical or logical free space for data files, logs, or temp areas is exhausted, producing allocation failures and write stalls.\n\nWhen these two root causes strike simultaneously, the database shows an explosive rise in disk usage, steep declines in live-row density, and a shrinking pool of free blocks. Autovacuum or purge workers run constantly yet make no headway; at the same time their I/O requests contend with data-file auto-extension and log archiving that are repeatedly failing due to lack of space. Transactions may begin to receive no-space-left or cannot-extend errors, large scans slow dramatically because they wade through bloated heaps, and the planner misestimates both row counts and cost. Checkpoint, archive, or temp-space operations start to stall, and engine alerts escalate from version-store wraparound warnings to imminent tablespace exhaustion.\n\nCausal interaction: heavy update/delete churn creates surging MVCC garbage, inflating tables and indexes until they consume the remaining free extents; the resulting space pressure prevents cleanup workers from allocating new pages they need for rewriting pages or writing index-cleanup batches, so version reclamation slows further. Meanwhile out-of-space conditions can pause WAL recycling and force longer retention of old segments, which in turn widens the snapshot horizon and keeps old row versions alive. This feedback loop makes each anomaly reinforce the other, quickly degrading performance and threatening database availability.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 138,
+            "score": 0.3130599544059704,
+            "bm25_score": 25.393819662893304,
+            "lexical_score": 0.11433823529411764,
+            "matched_terms": [
+                "and",
+                "engine",
+                "for",
+                "is",
+                "logical",
+                "or",
+                "rollback",
+                "same",
+                "the",
+                "transactions",
+                "with",
+                "write"
+            ],
+            "match_count": 10,
+            "entry": {
+                "error_code": "40001",
+                "error_name": "serialization_failure",
+                "official_description": "serialization failure",
+                "error_class": "Class 40 - Transaction Rollback",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "concurrency_and_transaction",
+                "cause_analysis": "The failure is typically associated with concurrent transactions contending for the same logical resources, incompatible lock acquisition order, or transaction-state conflicts surfaced by the engine.",
+                "solution_guidance": "Inspect blocking chains, reduce conflicting write overlap, shorten transaction lifetime, review lock acquisition order, and verify whether transaction scheduling or retry logic needs adjustment.",
+                "observable_symptoms": [
+                    "blocking",
+                    "rollback",
+                    "retry",
+                    "stalled transaction"
+                ]
+            }
+        }
+    }
+]

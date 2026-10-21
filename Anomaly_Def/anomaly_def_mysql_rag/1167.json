@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Data Block and Index Integrity Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Obsolete row versions, rollback records, and dead index tuples accumulate faster than background cleanup can reclaim them, inflating the version store and slowing visibility checks.\nData Block and Index Integrity Anomaly : On-disk pages or index structures become physically or logically corrupt, so index/heap mappings and page links no longer match the true data contents.\nNetwork and Connectivity Resource Anomaly : The transport and connection layer cannot supply or sustain enough sockets, bandwidth, or handshake capacity, leading to refused or stalled connections and prolonged client/server waits.\n\nWhen these three root causes strike at once, symptoms mingle and reinforce each other:  • Sequential scans grow dramatically because corruption forces the optimizer to abandon damaged indexes while MVCC bloat expands table size; the vastly larger result sets sit in network send buffers, holding back-end processes in client-write waits.  • Clients observe alternating query-timeout, corruption, and connection-exceeded errors; retries amplify connection churn so listener backlogs and OS socket queues fill, producing cascades of \"too many connections\" or half-open sockets.  • Engine logs show a mixture of vacuum/autovacuum lag warnings, corruption or checksum errors, and spikes in aborted or reset connections; snapshot horizons advance slowly because long-running or stalled sessions (waiting on network I/O) pin old row versions, further hindering cleanup.  • Integrity-check and vacuum operations both demand heavy I/O on already swollen heaps, increasing latency that the constrained network path exposes directly to users.\n\nCausal chain: network slow-downs prolong transaction lifetimes, keeping snapshots open that block version reclamation and accelerate MVCC bloat. The enlarged version store magnifies the I/O footprint of any integrity-verification or recovery pass, making it more likely that those passes hit damaged pages and raise further corruption flags. Corruption in turn forces plan changes to full scans and larger result sets, which must traverse the already congested network and occupy scarce connection slots even longer. Aborted or retried rebuilds caused by network disconnects can leave indexes half-written, worsening structural corruption. Thus each anomaly feeds the next—network stalls preserve snapshots, snapshots prevent cleanup, the bloated and possibly corrupt data set increases network load—forming a reinforcing loop that degrades OLTP performance and stability.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.5253152744862902,
+            "bm25_score": 26.627984088078673,
+            "lexical_score": 0.14094650205761317,
+            "matched_terms": [
+                "aborted",
+                "and",
+                "back",
+                "because",
+                "by",
+                "cannot",
+                "holding",
+                "in",
+                "longer",
+                "of",
+                "or",
+                "row",
+                "sessions",
+                "than",
+                "the",
+                "timeout",
+                "transaction",
+                "waiting",
+                "waits",
+                "when"
+            ],
+            "match_count": 56,
+            "entry": {
+                "timeout_id": "mysql84_innodb_row_lock_wait_timeout",
+                "parameter_name": "innodb_lock_wait_timeout",
+                "timeout_category": "innodb_row_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "The length of time in seconds an InnoDB transaction waits for a row lock before giving up.",
+                "trigger_condition": "An InnoDB transaction waits longer than innodb_lock_wait_timeout for a row lock.",
+                "workload_impact": "The lock wait gives up; by default only the current statement is rolled back unless innodb_rollback_on_timeout is enabled.",
+                "default_behavior": "Defined as an InnoDB system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

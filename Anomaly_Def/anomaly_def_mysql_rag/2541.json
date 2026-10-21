@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Storage I/O Throughput Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly: Obsolete row versions and logically-deleted index entries pile up faster than background cleanup can reclaim them, inflating data structures and lengthening visibility checks.\nStorage I/O Throughput Anomaly: The physical read/write capacity of the underlying storage subsystem is saturated, driving up latency and queue depth for data-, temp-, and log-file operations.\nNetwork and Connectivity Resource Anomaly: Network paths, listener sockets, or connection slots are exhausted, producing connection errors and stalling back-end processes while they await client I/O.\n\nWhen all three root causes strike at once, the database exhibits a multi-layer performance collapse: bloated tables and indexes demand more I/O per statement, yet the storage layer is already throughput-bound, so buffer flushes, checkpoints, and VACUUM/garbage-collection work are throttled by long device waits. Concurrently, back-end sessions become stuck in client-read or client-write waits because network congestion and socket exhaustion delay result transmission and acknowledgement. Application servers observe both longer query runtimes and sporadic connection failures; inside the database, wait-event profiles oscillate between buffer-cache I/O, VACUUM or purge workers, durability flushes, and client I/O waits. Monitoring shows rapidly expanding on-disk size, rising version-store counters, soaring storage latency, growing replication or WAL sender backlogs, and an increasing count of half-open or timed-out connections. These overlapping symptoms can mask each other: for example, slow query completion caused by storage stalls keeps MVCC snapshots open longer, which in turn inflates version buildup metrics, while network retransmissions can make storage waits appear intermittently idle.\n\nCausally, the three anomalies reinforce one another in a feedback loop. High update/delete churn creates version bloat that forces more page reads and dirty-page writes; this extra traffic pushes the storage subsystem further past its throughput ceiling, lengthening every I/O. Prolonged I/O extends transaction lifetimes and keeps old snapshots alive, preventing MVCC cleanup and amplifying version accumulation. Meanwhile, the elongated statement and commit times hold server processes in active or idle-in-transaction states, swelling the concurrent connection count and filling socket queues. Network slowdowns and retries then stretch transaction durations even more, exacerbating both snapshot retention and I/O pressure. The interlocked resource starvation across MVCC bookkeeping, storage bandwidth, and network connectivity drives the database into a degraded steady state that is far worse than any single anomaly alone.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2888,
+            "score": 0.4513526802688365,
+            "bm25_score": 52.0769317824475,
+            "lexical_score": 0.16293706293706295,
+            "matched_terms": [
+                "and",
+                "are",
+                "capacity",
+                "data",
+                "disk",
+                "durability",
+                "failures",
+                "file",
+                "in",
+                "is",
+                "latency",
+                "log",
+                "open",
+                "or",
+                "paths",
+                "pressure",
+                "servers",
+                "storage",
+                "the",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-011004",
+                "error_name": "ER_DD_UPGRADE_INFO_FILE_OPEN_FAILED",
+                "official_description": "Could not open the upgrade info file '%s' in the MySQL servers datadir, errno: %d.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

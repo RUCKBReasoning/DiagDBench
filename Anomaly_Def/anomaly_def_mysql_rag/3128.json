@@ -1,0 +1,47 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Storage I/O Throughput Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Concurrent sessions serialize on hot buffer pages or latches, causing page-level stalls despite adequate overall memory size.\nStorage I/O Throughput Anomaly : Underlying disks or storage fabric reach their throughput/IOPS ceiling, stretching read- and write-service times well beyond the engine’s expectations.\nOperating System Resource Limit Anomaly : Kernel-enforced quotas on file descriptors, shared memory, async-I/O contexts, or threads are exhausted, blocking further resource acquisition by the database process.\n\nWhen all three conditions arise together, the wait profile is dominated by a chaotic mix of buffer-busy/latch waits, abnormally long I/O latencies, and intermittent \"cannot allocate <kernel object>\" errors. Checkpoint, buffer flush, and log-flush events stay in flight far longer than usual, keeping dirty pages pinned and intensifying latch contention. CPU usage oscillates between spin-waiting on latches and idle periods while sessions sleep on I/O or kernel resource waits. Connection spikes, bulk loads, or index maintenance can suddenly tip the system into a state where new back-end or parallel workers fail to start, even as existing sessions hang on buffer pins.\n\nCausal chain: Saturated storage slows every page read and dirty-page write, lengthening the window during which pages remain pinned and latches are held. Extended latch hold times magnify buffer-cache contention, increasing the number of concurrent sessions stalled in spin loops or waiting queues. To compensate, the engine issues more outstanding I/O and spawns additional background workers, pushing file handles, async-I/O rings, and thread counts toward their OS limits. Once those limits are hit, further I/O submission or worker creation is denied by the kernel, creating a feedback loop where buffers cannot be flushed or read, latches remain locked, and the transaction and query workload deteriorates rapidly.\n",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2464,
+            "score": 0.4172028001912949,
+            "bm25_score": 33.1726959371702,
+            "lexical_score": 0.12080627099664051,
+            "matched_terms": [
+                "and",
+                "between",
+                "creation",
+                "during",
+                "is",
+                "log",
+                "or",
+                "state",
+                "the",
+                "thread",
+                "to",
+                "worker"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010577",
+                "error_name": "ER_RPL_REPLICA_WORKER_THREAD_CREATION_FAILED",
+                "official_description": "Failed during replica worker thread creation%s",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

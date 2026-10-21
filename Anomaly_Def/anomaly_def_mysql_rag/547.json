@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Database Configuration Parameter Anomaly + Database Memory Allocation Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Inefficient or over-broad application SQL and transaction design that forces the engine to touch more data, rows, or time than business logic truly requires.\nDatabase Configuration Parameter Anomaly : Mis-tuned engine parameters (memory, parallelism, checkpoint, etc.) that are out of line with hardware capacity, workload mix, or version defaults, independently of actual resource limits.\nDatabase Memory Allocation Anomaly : Aggregate in-engine memory areas grow beyond the safe operating envelope, causing OS pressure, paging, or OOM events.\n\nWhen these three root causes coexist, the workload issues, the engine settings, and the host-level memory footprint all collide. Inefficient statements run in larger, longer transactions, each granted overly generous work or sort buffers by mis-configured parameters; as concurrency rises, aggregate memory skyrockets past physical limits. The system then shows a mixed symptom pattern: explosive resident-set growth, sudden paging or cgroup kills, erratic spikes of CPU spin on memory reconciliation, checkpoint and log-flush storms that do not align with I/O utilization, long-tail query latencies, application timeouts, and a flood of slow-query and out-of-memory entries in logs. Observability is clouded because waits oscillate between memory pressure, log I/O, and lock contention, making any single diagnostic view appear inconsistent or misleading.\n\nCausally, the sub-optimal SQL drives high intermediate result volumes and longer transaction lifetimes. Mis-sized configuration parameters—such as excessive per-query work memory, inflated parallel-worker counts, or an oversized buffer pool—allocate disproportionately large chunks of RAM to each bloated operation. The cumulative effect breaches physical memory, triggering OS paging or OOM killers that evict useful pages and terminate processes. Memory pressure, in turn, forces aggressive background flushing and checkpoint activity, amplifying I/O waits and extending the runtime of the already inefficient statements. The feedback loop between chatty or data-heavy SQL, over-generous configuration settings, and runaway memory allocation magnifies performance instability and obscures the primary culprit, leading to systemic slowdown or even node failure across both transactional and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.4532713975048626,
+            "bm25_score": 19.37373745077222,
+            "lexical_score": 0.13279943800491745,
+            "matched_terms": [
+                "an",
+                "and",
+                "because",
+                "configured",
+                "in",
+                "is",
+                "lock",
+                "longer",
+                "not",
+                "operation",
+                "or",
+                "than",
+                "the",
+                "to",
+                "transaction",
+                "waits",
+                "when"
+            ],
+            "match_count": 27,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

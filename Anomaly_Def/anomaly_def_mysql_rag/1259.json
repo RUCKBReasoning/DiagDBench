@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Transaction Log Subsystem Anomaly + CPU Resource Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Sessions serialize on hot buffer-cache pages, page pins, and latches, stalling logical I/O even when physical memory is available.\nTransaction Log Subsystem Anomaly : Commit processing is throttled by log buffer flush, log file write, or archiver activity, making the log path the critical choke point.\nCPU Resource Anomaly : Database processes drive host CPU to sustained saturation, starving all threads—including internal background workers—of scheduler time.\n\nWhen all three root causes strike together, the system exhibits an intertwined symptom set:  • End-to-end transaction latency and commit latency rise sharply, with wait-event views showing a mix of LOG-WRITE, LOG-FLUSH, BUFFER-BUSY, and PAGE-LATCH waits.  • CPU usage stays at or near 100 %, yet throughput plateaus or declines; spin loops on buffer latches crowd the run queue while log writer and archiver threads contend for CPU slices to perform synchronous writes.  • Checkpoint storms and rapid log-file switches amplify dirty-buffer pressure, so foreground sessions alternately wait for latch access to hot pages and for log space to be freed.  • Monitoring tools may mis-attribute the slowdown because the dominant symptom—CPU saturation—masks the underlying dual I/O bottlenecks on buffers and the redo log.\n\nCausal interaction: Hot pages and frequent page churn inflate latch acquisition attempts; many of those attempts spin rather than sleep, inflating CPU consumption. The elevated CPU load delays log writer, archiver, and buffer-flush threads, stretching commit latency and prolonging the time dirty pages remain pinned. Those pinned or dirty buffers, in turn, intensify latch contention because they cannot be evicted or reused until the log is persisted, further increasing spin and CPU pressure. Meanwhile, slow log advancement forces aggressive checkpoints, which flush more dirty pages and request additional latches, closing a feedback loop that binds buffer contention, log backlog, and CPU starvation into a self-reinforcing performance collapse.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.5114938588516827,
+            "bm25_score": 16.825964101873744,
+            "lexical_score": 0.14829787234042552,
+            "matched_terms": [
+                "activity",
+                "additional",
+                "and",
+                "for",
+                "is",
+                "latency",
+                "more",
+                "of",
+                "or",
+                "sessions",
+                "than",
+                "the",
+                "time",
+                "to",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 60,
+            "entry": {
+                "timeout_id": "mysql84_network_read_timeout",
+                "parameter_name": "net_read_timeout",
+                "timeout_category": "network_read_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for more data from a connection before aborting the read.",
+                "trigger_condition": "The server waits for additional data from a connection longer than net_read_timeout.",
+                "workload_impact": "The network read is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

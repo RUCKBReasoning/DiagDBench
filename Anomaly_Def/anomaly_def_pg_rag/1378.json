@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Database Configuration Parameter Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Schema and Index Design Anomaly : Physical data-model and indexing choices do not match workload access patterns, forcing inefficient access paths regardless of statistics or plan quality.\nDatabase Configuration Parameter Anomaly : Engine-level runtime settings for memory, parallelism, logging, and background workers are mis-tuned for hardware resources and workload characteristics, causing artificial contention or under-utilisation.\nOperating System Resource Limit Anomaly : Kernel-enforced caps on file descriptors, shared memory, semaphores, threads, or cgroup quotas prevent the database from allocating required OS resources, provoking errors and throttling.\n\nWhen these three root causes coincide, the workload experiences a multi-layer performance collapse: badly designed tables and missing or bloated indexes inflate I/O and CPU demand; mis-sized buffer pools, work-memory, and checkpoint / parallelism settings fail to absorb that excess demand, leading to erratic cache hit ratios, aggressive eviction, checkpoint storms, or runaway sort/spill activity; concurrently, low OS limits choke the additional file handles, shared memory, or worker threads that the engine now attempts to obtain, generating kernel allocation failures, session drops, stalled parallel workers, and sudden latency spikes. Symptoms may appear contradictory—high logical I/O but low physical I/O due to throttled handles, CPU threads spinning while actual CPU utilisation stays moderate because OS thread quotas block scheduling, or alternating bursts of full-table scans and idle periods as the engine repeatedly hits OS ceilings and retreats.\n\nCausally, the poor schema/index design raises the baseline resource footprint of each query, inflating memory, I/O, and parallel worker needs. Misconfigured database parameters then misallocate the already strained resources—either overcommitting memory so the engine requests segments larger than kernel limits allow, or under-allocating caches so every inefficient scan amplifies disk traffic. The inflated and misdirected demand accelerates exhaustion of OS-level objects (file descriptors, shared memory, threads), which in turn triggers allocation failures and forces the database to throttle or abort operations. The resulting stop-and-go execution further degrades cache effectiveness and intensifies checkpoint and recovery work, closing the vicious loop and magnifying performance instability, error rates, and risk of partial outages.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.2965092132360628,
+            "bm25_score": 11.274211353886262,
+            "lexical_score": 0.12563647805938555,
+            "matched_terms": [
+                "activity",
+                "and",
+                "are",
+                "for",
+                "idle",
+                "latency",
+                "not",
+                "of",
+                "on",
+                "or",
+                "pools",
+                "session",
+                "system",
+                "that",
+                "the",
+                "to",
+                "when",
+                "which"
+            ],
+            "match_count": 229,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_interval",
+                "parameter_name": "tcp_keepalives_interval",
+                "timeout_category": "network_keepalive_retry_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time after which a TCP keepalive message that has not been acknowledged by the client should be retransmitted.",
+                "trigger_condition": "A TCP keepalive probe is not acknowledged for tcp_keepalives_interval on systems supporting TCP_KEEPINTVL or an equivalent socket option.",
+                "workload_impact": "Controls retry timing for keepalive probes used to detect unresponsive client connections.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Storage I/O Throughput Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Database Memory Allocation Anomaly : The engine’s buffer caches, work areas, plan caches, and auxiliary heaps grow beyond the safe physical- or virtual-memory envelope of the host, provoking paging, OOM kills, and cache-churn side effects.\nStorage I/O Throughput Anomaly : The physical read/write demand of data, log, temp, or backup volumes exceeds the throughput, IOPS, or latency budget of the storage subsystem, driving up wait times and stalling database tasks.\nOperating System Resource Limit Anomaly : Kernel-enforced ceilings on file descriptors, shared memory, semaphores, threads, or other process quotas are reached, preventing the database from acquiring essential OS-managed resources.\n\nWhen these three conditions strike together, the database shows a layered degradation: inflated memory footprints push the host into swap while I/O paths are already saturated, causing each page fault, checkpoint, or temp spill to endure extreme latency. Concurrently, exhausted kernel limits hamper the engine’s ability to open additional files, grow shared memory, dispatch background or parallel workers, and allocate asynchronous I/O contexts. The observable outcome is a system oscillating between CPU stalls, runaway I/O waits, and hard resource denials—sessions hang during buffer reads, checkpoints linger, log flushes miss service-level objectives, new connections or workers fail with OS errors, and cluster nodes risk eviction as watchdog timers expire.\n\nCausally, aggressive memory allocation elevates pressure on swap and amplifies page churn, inflating physical I/O demand exactly when the storage layer is already throughput-bound. The prolonged I/O queues, in turn, delay buffer recycling, encouraging the engine to request even more memory for new work areas and to hold on to dirty pages longer, further swelling resident sets. As the process footprint and I/O concurrency climb, the database consumes additional file handles, AIO contexts, and threads, quickly breaching OS resource ceilings. Once those limits are hit, critical operations such as log file growth, sort spills, or recovery worker spawns fail, cascading into lock contention, hung transactions, and possible crash-recovery cycles. Thus, memory over-commitment, storage saturation, and kernel quota exhaustion form a self-reinforcing loop that severely degrades throughput and availability across both transactional and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 4959,
+            "score": 0.5231589480425578,
+            "bm25_score": 61.711754008031136,
+            "lexical_score": 0.16090418700231185,
+            "matched_terms": [
+                "allocation",
+                "and",
+                "availability",
+                "buffer",
+                "concurrency",
+                "engine",
+                "for",
+                "is",
+                "latency",
+                "memory",
+                "or",
+                "os",
+                "page",
+                "pressure",
+                "spill",
+                "the",
+                "to",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013076",
+                "error_name": "ER_IB_MSG_BUF_PENDING_IO_ON_SHUTDOWN",
+                "official_description": "Shutdown is waiting for %zu buffer page I/Os to complete.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "memory_and_buffer",
+                "cause_analysis": "The failure is typically associated with insufficient memory headroom, buffer pressure, oversized intermediate state, or memory-allocation constraints inside the engine or client library.",
+                "solution_guidance": "Check memory availability, per-session memory settings, large sorts or hashes, and whether workload concurrency is amplifying memory consumption.",
+                "observable_symptoms": [
+                    "memory pressure",
+                    "allocation failure",
+                    "spill",
+                    "unstable latency"
+                ]
+            }
+        }
+    }
+]

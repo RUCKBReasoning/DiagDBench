@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Storage I/O Throughput Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Database Memory Allocation Anomaly: The database engine allocates and retains more memory than the host can safely provide, driving paging, swap activity, and cache thrashing.\nStorage I/O Throughput Anomaly: Physical disks or storage fabric are unable to sustain the read/write throughput or IOPS demanded by data, temp, or log files, forcing long device queues and high latency.\nNetwork and Connectivity Resource Anomaly: Network paths, listeners, or connection slots are saturated or unstable, delaying session establishment and data transfer between clients and the database.\n\nWhen these three root causes strike concurrently, the system exhibits a multi-layer performance collapse: memory pressure forces dirty pages and large work areas to spill to disk exactly when the underlying storage is already throughput-bound, amplifying device queues and read/write latency. Stalled I/O keeps backend processes in active states, each holding scarce memory, sockets, and worker threads, which in turn inflates overall memory footprint and accelerates paging. Prolonged statement execution and commit latency lengthen transaction lifetimes, causing application connection pools to exhaust, inflating the volume of concurrent connection attempts, listener backlogs, and network retransmissions. Clients observe erratic response times, frequent timeouts, and sporadic \"too many connections\" errors, while the server shows simultaneous spikes in page-fault rates, disk wait events, and socket queue depths that are difficult to disentangle.\n\nCausally, excessive in-engine memory allocation pushes the operating system to evict buffer pages, initiating large amounts of swap and checkpoint traffic that overwhelms storage bandwidth. Storage saturation elongates every I/O, trapping sessions in wait states and preventing memory from being released, thus worsening the memory shortfall. The elongated waits propagate up the stack as slow or hanging queries; clients keep connections open longer and retry failed attempts, which saturates network and listener resources. Network congestion and connection storms then feed back into the database by further delaying commit acknowledgements and result-set drains, keeping server processes resident in memory and perpetuating high buffer and work-area allocations. The intertwined feedback loops among memory pressure, I/O bottlenecks, and network contention magnify each anomaly, driving the database into cascading degradation or forced restarts.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.6709049237351628,
+            "bm25_score": 24.640305603405828,
+            "lexical_score": 0.14698544698544697,
+            "matched_terms": [
+                "active",
+                "and",
+                "from",
+                "holding",
+                "is",
+                "long",
+                "longer",
+                "of",
+                "open",
+                "or",
+                "preventing",
+                "retry",
+                "session",
+                "sessions",
+                "statement",
+                "than",
+                "that",
+                "the",
+                "transaction",
+                "when",
+                "while"
+            ],
+            "match_count": 279,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Optimizer Statistics Anomaly + MVCC Version Maintenance Anomaly",
+            "Description": "Schema and Index Design Anomaly : Physical data-model structures and index layout do not match workload access patterns, forcing otherwise well-written SQL to take inherently inefficient access paths.\nOptimizer Statistics Anomaly : Catalog statistics describing row counts, distribution, and correlation are stale or incomplete, causing the optimizer to misestimate cardinalities and choose sub-optimal plans.\nMVCC Version Maintenance Anomaly : Obsolete row versions and rollback records accumulate faster than background cleaners can reclaim them, inflating on-disk structures and adding visibility-check overhead.\n\nWhen all three anomalies appear together, the system exhibits blended and mutually reinforcing symptoms: queries gravitate toward full-table or full-index scans not only because useful indexes are missing but also because bloated heaps and skewed statistics hide the selectivity of remaining indexes; estimated-vs-actual row counts diverge by orders of magnitude, leading to plan oscillation, excessive memory grants, and spill events; table and index sizes grow rapidly, lengthening I/O for any scan and delaying auto-vacuum or purge tasks, while DML latency rises due to both index-maintenance overhead and version-store pressure. Administrators may observe constantly busy cleanup workers, escalating table bloat and checkpoint sizes, rising write-amplification, and query plans that improve only temporarily after manual statistics refreshes or ad-hoc index creation.\n\nCausally, poor schema and index design increases the amount of data each statement must touch; that extra I/O bandwidth is further amplified by MVCC bloat, which multiplies physical page counts. The inflated structures corrupt the accuracy of existing statistics more quickly, while stale or low-quality statistics, in turn, mask the usefulness of any remaining selective indexes and stop the optimizer from preferring them, making the design flaw appear worse. Because inefficient plans prolong statement execution, long-running transactions hold old snapshots open, slowing version reclamation and deepening MVCC bloat. The version bloat then enlarges sample space for statistics collection, making automatic refreshes slower and less frequent, perpetuating the stale-statistics condition. The three root causes therefore reinforce one another in a feedback loop that degrades throughput and predictability on write-intensive workloads.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 215,
+            "score": 0.18528983093104856,
+            "bm25_score": 9.073706939251919,
+            "lexical_score": 0.1339971949509116,
+            "matched_terms": [
+                "and",
+                "but",
+                "by",
+                "data",
+                "execution",
+                "in",
+                "is",
+                "must",
+                "not",
+                "or",
+                "pressure",
+                "sql",
+                "statement",
+                "the",
+                "to",
+                "together",
+                "workload"
+            ],
+            "match_count": 12,
+            "entry": {
+                "error_code": "HV005",
+                "error_name": "fdw_column_name_not_found",
+                "official_description": "fdw column name not found",
+                "error_class": "Class HV - Foreign Data Wrapper Error (SQL/MED)",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

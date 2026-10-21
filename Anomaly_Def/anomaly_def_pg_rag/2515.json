@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Multiple concurrent transactions request incompatible locks on the same objects, creating blocking chains or deadlocks that force sessions to wait or be aborted.\nBuffer Cache and Latch Contention Anomaly : Sessions compete for access to hot buffer-pool pages, latches, or I/O slots, stalling while they spin or sleep for low-level synchronization resources.\n\nComposite anomaly definition: The database concurrently suffers from high-level transaction lock contention and low-level buffer/latch contention, so statements are serialized twice—first at the lock manager and again inside the buffer manager—causing severe throughput collapse and runaway latency.\n\nCombined observable phenomena: In addition to long lock-wait queues, deadlock victim errors, and rising application timeouts, the instance also exhibits surges in buffer-busy/page-latch wait events, elevated CPU spin time, and slow physical I/O completions. Wait graphs may show the same sessions alternating between \"lock\" and \"latch/buffer busy\" wait states; lock-wait durations appear longer because latch stalls delay lock acquisition and release, while latch contention metrics spike because blocked transactions hold buffer pins longer. Connection pools exhaust, checkpoint and autovacuum tasks fall behind, and overall throughput degrades non-linearly.\n\nCausal interaction: Hot rows or index keys draw many concurrent updates, creating lock hot spots. While blocked, holders keep buffer pages pinned, shrinking the effective buffer-pool supply and funnelling more threads toward the same hot pages, which in turn amplifies latch contention. Conversely, heavy latch or buffer-busy waits slow down the execution and commit phases of transactions, prolonging their lock tenure and enlarging blocker chains or deadlock windows. The two feedback loops reinforce each other: prolonged locks worsen buffer pressure; buffer/latch stalls lengthen lock lifetimes, producing a compounding congestion spiral that can culminate in systemic throughput collapse and widespread query timeouts.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.4203929213886929,
+            "bm25_score": 21.23509962604036,
+            "lexical_score": 0.14789002557544756,
+            "matched_terms": [
+                "aborted",
+                "and",
+                "are",
+                "at",
+                "be",
+                "between",
+                "can",
+                "connection",
+                "latency",
+                "long",
+                "or",
+                "pools",
+                "query",
+                "sessions",
+                "that",
+                "the",
+                "time",
+                "while"
+            ],
+            "match_count": 285,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

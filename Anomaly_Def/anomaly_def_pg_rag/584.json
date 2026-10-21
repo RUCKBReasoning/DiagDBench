@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Transaction Lock Contention Anomaly: Concurrent transactions request incompatible locks on the same data objects, forcing wait queues or deadlocks inside the lock manager and stalling execution paths.\nTransaction Log Subsystem Anomaly: The write-ahead logging path—log buffer, flush, file switch, or archiving—becomes a throughput or latency bottleneck, slowing commits and blocking further redo generation.\n\nWhen both root causes surface together, the database exhibits a compound slowdown: lock-wait and deadlock reports appear at the same time that commit and log-flush latencies climb. Transactions remain idle while waiting for locks, yet even after becoming unblocked they may pause again on log-related waits before completing, stretching overall response times. Application threads pile up in connection pools, autovacuum or purge processes fall behind, deadlock frequency rises because long-held locks increase cycle probability, and checkpoint or archive storms coincide with surges of lock timeouts and retry storms. The overlapping symptoms can obscure diagnosis because every blocked session shows both lock and log wait states in alternating patterns.\n\nCausally, a slow log subsystem prolongs the commit phase of each transaction, extending the lifetime of every lock it holds. The longer locks stay active, the higher the chance that other sessions collide on the same resources, amplifying lock contention. In the opposite direction, severe lock queues delay transactions, causing sudden bursts of commits once the queue frees; these commit spikes push more redo to the already saturated log devices, worsening log flush congestion. The two feedback loops reinforce each other, driving a self-sustaining performance collapse unless both the lock hot spots and the log throughput constraint are addressed together.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 213,
+            "score": 0.7317878578903667,
+            "bm25_score": 61.856085813545775,
+            "lexical_score": 0.15947176684881603,
+            "matched_terms": [
+                "and",
+                "blocking",
+                "concurrent",
+                "file",
+                "for",
+                "incompatible",
+                "lifetime",
+                "lock",
+                "or",
+                "resources",
+                "retry",
+                "same",
+                "the",
+                "transaction",
+                "transactions",
+                "with",
+                "write"
+            ],
+            "match_count": 10,
+            "entry": {
+                "error_code": "F0001",
+                "error_name": "lock_file_exists",
+                "official_description": "lock file exists",
+                "error_class": "Class F0 - Configuration File Error",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "concurrency_and_transaction",
+                "cause_analysis": "The failure is typically associated with concurrent transactions contending for the same logical resources, incompatible lock acquisition order, or transaction-state conflicts surfaced by the engine.",
+                "solution_guidance": "Inspect blocking chains, reduce conflicting write overlap, shorten transaction lifetime, review lock acquisition order, and verify whether transaction scheduling or retry logic needs adjustment.",
+                "observable_symptoms": [
+                    "blocking",
+                    "rollback",
+                    "retry",
+                    "stalled transaction"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Replication Synchronization Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly: The local write-ahead logging path on the primary instance is saturated or stalled while generating, flushing, switching, or archiving redo. \nReplication Synchronization Anomaly: Downstream replicas or change-data consumers cannot receive, persist, or apply the primary’s log stream fast enough, causing replication lag and retention of log segments. \nStorage I/O Throughput Anomaly: The underlying storage volumes for data, temp, and log files are bandwidth- or IOPS-constrained, creating elevated read/write latency and long device queues.\n\nWhen all three root causes co-exist, the database experiences a compound slow-commit and replication-backpressure scenario. Commit latency rises sharply as the log buffer waits both for slow physical flushes and for replication–safe acknowledgement. Log-write, log-sync, and durability wait events dominate, while storage wait events for data and log files simultaneously surge. Checkpoints and log-file switches occur more frequently yet clear space slowly, archive and relay log directories grow unchecked, and replica replay lag widens. The primary’s disk usage escalates because retained log segments cannot be recycled, further increasing I/O pressure. Application symptoms include stalled write transactions, timeouts, and degraded read-only replica freshness; maintenance windows and analytic reporting that touch large data ranges also slow because they compete for the already saturated storage bandwidth.\n\nCausally, limited storage throughput lengthens every physical write, throttling the log subsystem first; the bloated log path then compounds storage pressure by generating large sequential writes that the device cannot serve promptly. Because log recycling waits on downstream replay, any delay in replication— itself hampered by the same storage or network bottlenecks—forces the primary to retain additional log segments, inflating I/O volume and metadata churn. In turn, the growing backlog keeps replicas further behind, reinforcing retention pressure on the primary and amplifying the storage bottleneck. This positive feedback loop between slow device I/O, log-flush stalls, and replication lag escalates until the system exhausts commit latency budgets or runs out of disk space, producing a severe OLTP availability and performance crisis.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.3053262838907245,
+            "bm25_score": 11.287200904856281,
+            "lexical_score": 0.1189033189033189,
+            "matched_terms": [
+                "and",
+                "are",
+                "be",
+                "by",
+                "for",
+                "is",
+                "latency",
+                "of",
+                "on",
+                "or",
+                "system",
+                "that",
+                "the",
+                "this",
+                "to",
+                "when"
+            ],
+            "match_count": 249,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_interval",
+                "parameter_name": "tcp_keepalives_interval",
+                "timeout_category": "network_keepalive_retry_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time after which a TCP keepalive message that has not been acknowledged by the client should be retransmitted.",
+                "trigger_condition": "A TCP keepalive probe is not acknowledged for tcp_keepalives_interval on systems supporting TCP_KEEPINTVL or an equivalent socket option.",
+                "workload_impact": "Controls retry timing for keepalive probes used to detect unresponsive client connections.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

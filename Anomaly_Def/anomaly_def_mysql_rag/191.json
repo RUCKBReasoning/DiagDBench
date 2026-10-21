@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Transaction Log Subsystem Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently chooses substantially sub-optimal execution plans even though statistics are reasonably accurate.\nTransaction Log Subsystem Anomaly : Commit processing is throttled because generation, flushing, or archival of write-ahead log records is the primary bottleneck.\nData Block and Index Integrity Anomaly : On-disk data or index pages are physically or logically corrupted, invalidating key order, page links, or checksums.\n\nWhen these three root causes coincide, the system exhibits erratic plan flips, long-running queries that suddenly devolve into full table scans, surging redo generation from excessive row touches or emergency index rebuilds, and sharply rising log-flush and commit latencies. End-user symptoms include intermittent time-outs, dead-session pile-ups, and inconsistent query results (missing or duplicated rows). Engine alerts may simultaneously report page-checksum failures, log-write or log-sync wait events, repeated log-file switches, and frequent plan-cache invalidations. Because corruption forces the optimizer to avoid or mistrust indexes, even read-heavy statements inflate redo traffic through unnecessary row versioning or sort-based spill writes, further stressing the already saturated log subsystem. The overlapping noise of plan churn, integrity errors, and log stalls makes it difficult to attribute slowdowns to any single layer.\n\nCausally, latent page or index corruption degrades the optimizer’s visibility of accurate access paths, leading it to select expansive scans or Cartesian joins (Query Plan Selection Anomaly). These inflated operations dramatically increase row modifications to worktables, temp segments, or repair attempts, thereby driving up redo volume. The heightened write-ahead log rate overruns an undersized or slow log subsystem (Transaction Log Subsystem Anomaly), escalating commit delays and extending lock-hold times. Prolonged transactions hinder timely page clean-up and checkpointing, allowing additional corrupted pages to propagate and causing more plan invalidations, which in turn perpetuate poor plan selection. The feedback loop among misguided plans, log saturation, and structural corruption amplifies performance instability and data-quality risks, pushing the database toward acute availability incidents if not promptly remediated.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.5470857696274299,
+            "bm25_score": 23.06197002682546,
+            "lexical_score": 0.13719298245614034,
+            "matched_terms": [
+                "additional",
+                "and",
+                "are",
+                "data",
+                "from",
+                "is",
+                "more",
+                "not",
+                "of",
+                "or",
+                "read",
+                "session",
+                "the",
+                "time",
+                "to",
+                "wait",
+                "when"
+            ],
+            "match_count": 10,
+            "entry": {
+                "timeout_id": "mysql84_network_read_timeout",
+                "parameter_name": "net_read_timeout",
+                "timeout_category": "network_read_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for more data from a connection before aborting the read.",
+                "trigger_condition": "The server waits for additional data from a connection longer than net_read_timeout.",
+                "workload_impact": "The network read is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

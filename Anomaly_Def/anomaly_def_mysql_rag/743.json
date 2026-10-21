@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Database Memory Allocation Anomaly + Storage Space Capacity Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly: Excess accumulation of obsolete row versions and rollback data outpaces background cleanup, inflating on-disk structures and widening visibility checks.\nDatabase Memory Allocation Anomaly: Total in-process memory (buffers, work areas, caches, worker heaps) grows beyond physical limits, inducing OS pressure, paging, or OOM events.\nStorage Space Capacity Anomaly: Data, log, and temp areas reach or approach full utilisation, leading to allocation failures and stalled database activity.\n\nWhen these three root causes strike concurrently, the system shows a blended pathology: bloated tables and indexes consume ever-increasing disk space while their swollen pages are simultaneously cached, driving buffer-pool expansion and forcing the engine and operating system into memory pressure and swap thrash. Background vacuum/clean-up workers remain active yet ineffective, and their I/O competes with foreground queries already slowed by cache churn and frequent page faults. Free-space alarms, logfile or temp-space exhaustion, and sudden out-of-memory terminations can occur almost in lock-step. Query plans become erratic due to stale statistics and reduced cache hit ratios, and emergency autovacuum or space-reclamation tasks may be throttled or aborted because neither RAM nor disk space is available to complete them. Administrators observe runaway resident-set size, rapidly shrinking free disk, elevated I/O latency, checkpoint stalls, and a growing backlog of un-recycled transaction logs.\n\nCausal interaction: Heavy update/delete activity produces large version stores that enlarge both the heap and associated indexes, rapidly consuming disk space. The inflated objects must also be read and written more frequently, prompting the buffer manager to allocate additional pages and evict working-set data, which amplifies memory consumption and cache churn. As RAM fills, the OS begins paging, slowing cleanup workers so that obsolete versions linger even longer, further inflating storage demand—a positive feedback loop. Simultaneously, swollen tablespaces and unreclaimed WAL or archive logs push the system toward physical space exhaustion; once disks near capacity, background processes throttle or stall, which again delays cleanup and forces even more memory buffering of dirty pages waiting for checkpoint. Thus, memory pressure, version bloat, and dwindling storage reinforce each other, escalating to widespread performance collapse or service outage if not arrested.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.5691848700083088,
+            "bm25_score": 21.065382545266857,
+            "lexical_score": 0.11864615384615385,
+            "matched_terms": [
+                "aborted",
+                "and",
+                "because",
+                "for",
+                "in",
+                "is",
+                "lock",
+                "longer",
+                "not",
+                "or",
+                "the",
+                "to",
+                "transaction",
+                "waiting",
+                "when",
+                "while"
+            ],
+            "match_count": 35,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

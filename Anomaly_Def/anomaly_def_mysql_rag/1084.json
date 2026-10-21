@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Database Memory Allocation Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same objects, forming blocking chains or deadlocks that stall progress until a victim is chosen or the blocking clears.\nDatabase Memory Allocation Anomaly : Database processes collectively consume more RAM than the host can safely supply, provoking paging, OOM terminations, or cache churn that slows every operation.\nStorage Space Capacity Anomaly : Growth of data, log, temp, or backup areas exhausts allotted disk space, leading to allocation failures, halted checkpoints, or inability to persist new data.\n\nWhen all three root causes strike together, the system exhibits a layered failure pattern: long-running lock waits accumulate sessions that continue to hold memory grants; the pinned buffers, work areas, and unreleased cursor state inflate physical memory usage, pushing the host into swap. As memory pressure rises, sort and hash operations spill to TEMP, and frozen transactions prevent log truncation, rapidly consuming remaining disk space. The resulting space exhaustion then blocks further writes and checkpoints, which in turn prolongs lock retention and forces even more sessions into wait queues. Observable symptoms include explosive growth of lock-wait time, escalating resident-set size, heavy paging, TEMP and log files auto-extending until full, aborted transactions due to deadlock, OOM, or \"no space left\" errors, and cluster failover or crash-recovery storms that make diagnosis difficult.\n\nCausally, initial lock contention lengthens transaction lifetimes, keeping their memory allocations and unflushed log segments open. This sustained resource hold amplifies memory pressure and temp-space use. As RAM becomes scarce, the engine spills work to disk, accelerating space consumption; once disk fills, checkpoints and log archiving stall, so lock-holding transactions cannot commit or roll back, deepening the contention. Each anomaly therefore feeds the others in a reinforcing loop that can drive the database into a cascading outage if not interrupted.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 4754,
+            "score": 0.4690858834103871,
+            "bm25_score": 52.16566024273391,
+            "lexical_score": 0.1382041652441106,
+            "matched_terms": [
+                "and",
+                "blocking",
+                "chains",
+                "contention",
+                "crash",
+                "failure",
+                "interrupted",
+                "is",
+                "operation",
+                "or",
+                "queues",
+                "resource",
+                "the",
+                "time",
+                "to",
+                "wait"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-012871",
+                "error_name": "ER_IB_MSG_1047",
+                "official_description": "Semaphore wait has lasted > %llu seconds. We intentionally crash the server because it appears to be hung.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "timeout_and_waiting",
+                "cause_analysis": "The failure is typically associated with extended waiting, resource queues, unresponsive peers, or configured time limits being exceeded before the requested operation completes.",
+                "solution_guidance": "Check wait sources, blocking chains, network responsiveness, timeout settings, and whether resource contention is prolonging operation completion.",
+                "observable_symptoms": [
+                    "timeout",
+                    "prolonged waiting",
+                    "interrupted operation"
+                ]
+            }
+        }
+    }
+]

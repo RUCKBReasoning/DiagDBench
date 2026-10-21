@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Pages in the buffer pool become hot bottlenecks; sessions spend excessive time spinning or waiting on latches, buffer-busy events, or page-pin contention rather than doing useful work.\nData Block and Index Integrity Anomaly : Physical data-file or index structures are corrupted—checksums fail, page links are broken, or key ordering is incorrect—so the storage layer can no longer be trusted.\n\nComposite anomaly definition:\nBoth anomalies are present simultaneously: the system must serialize access to a small set of buffer-cache pages while some of those very pages (or others they reference) are physically or logically corrupted. The engine therefore contends for buffers that may be unreadable, fail verification, or require rebuild/repair logic, coupling heavy latch pressure with integrity faults.\n\nCombined observable phenomena:\n• Extremely high buffer-busy, page-latch, and pin waits mixed with bursts of physical I/O retries, checksum failures, or corruption error messages.\n• Queries alternately hang (due to latch spin or waits) and abort (due to corruption detection), causing erratic latency and throughput collapse.\n• Repeated automatic page rereads, forced checkpoints, or background verification tasks intensify buffer churn, while failing index lookups trigger fall-back full scans that further stress the buffer pool.\n• Recovery or consistency-checker utilities run longer than usual, holding latches while rereading or rebuilding corrupted pages, which starves foreground workloads.\n\nCausal interaction and amplification:\nCorrupted pages often force extra I/O, checksum validation, or reconstruction work, keeping the corresponding buffer frames pinned and latches held far longer than normal; this multiplies latch wait times and propagates hot-page contention across sessions. Conversely, severe latch contention slows dirty-page flushing and recovery operations, increasing the window during which corrupted or partially written pages remain in play, raising the likelihood of additional integrity errors. The intertwined feedback loop of prolonged latch holds and recurring corruption checks can eventually exhaust worker pools, trigger automatic fail-safe shutdowns, or lead to cascading query failures, making rapid identification and coordinated remediation essential.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.7460967564595932,
+            "bm25_score": 25.339095054419744,
+            "lexical_score": 0.1536558548653106,
+            "matched_terms": [
+                "and",
+                "be",
+                "block",
+                "for",
+                "holding",
+                "is",
+                "longer",
+                "of",
+                "or",
+                "sessions",
+                "than",
+                "the",
+                "this",
+                "to",
+                "wait",
+                "waiting",
+                "waits",
+                "while",
+                "window",
+                "written"
+            ],
+            "match_count": 40,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

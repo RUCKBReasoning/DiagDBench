@@ -1,0 +1,60 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Replication Synchronization Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Composite Definition: The database simultaneously suffers (1) an on-host transaction-log write/flush bottleneck, (2) an off-host replication receive/replay backlog, and (3) saturation of the network and connection-handling layer that transports client traffic and ships the log stream. Together these three intertwined faults cripple the end-to-end commit, ship, and replay pipeline that protects transactional durability and availability. \n\nAmplified Observable Phenomena: • Application commits stall with soaring log-flush and log-sync waits, while archive or redo directories grow rapidly because completed segments cannot be recycled. • Replication monitoring shows diverging LSN/SCN gaps, increasing send/receive/replay lag, and bloated relay logs. • Listener queues fill, new sessions experience authentication or TCP timeouts, and established sessions pile up in client-read/client-write waits; network interfaces report retransmits and elevated RTT. • Checkpoint storms, frequent log switches, and \"cannot allocate log\" or \"replication retention\" alerts appear concurrently, and failover readiness drops as replicas fall hours behind. The combination makes it difficult to determine whether the primary, the network, or the replicas are at fault, while all three layers exhibit degraded performance.\n\nCausal Interaction: A slow or full transaction-log device lengthens commit latency and forces aggressive log switching; each switch amplifies the volume of log data that must traverse the network to replicas. Constrained network bandwidth, high packet loss, or listener saturation then throttles log shipping, enlarging replication lag and forcing the primary to retain additional log segments. This retention prevents log recycling, further filling the already stressed log disk and intensifying the log write/flush bottleneck. Meanwhile, frustrated applications open more connections or retry failed attempts, swelling connection pools and exhausting socket and backend slots, which in turn worsens network congestion and listener delays. The reinforcing loop between log I/O saturation, replication backlog, and network/connection exhaustion leads to cascading slowdowns, potential log-device exhaustion, and risk of primary unavailability under OLTP workloads.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.7511148325358851,
+            "bm25_score": 27.568811477313822,
+            "lexical_score": 0.17038277511961722,
+            "matched_terms": [
+                "an",
+                "and",
+                "are",
+                "authentication",
+                "client",
+                "connection",
+                "handling",
+                "latency",
+                "network",
+                "of",
+                "on",
+                "or",
+                "pools",
+                "send",
+                "sessions",
+                "socket",
+                "tcp",
+                "the",
+                "this",
+                "to",
+                "together",
+                "whether",
+                "which",
+                "with"
+            ],
+            "match_count": 253,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_idle",
+                "parameter_name": "tcp_keepalives_idle",
+                "timeout_category": "network_idle_keepalive_probe_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time with no network activity after which the operating system should send a TCP keepalive message to the client.",
+                "trigger_condition": "A TCP client connection has no network activity longer than tcp_keepalives_idle on systems supporting TCP_KEEPIDLE or an equivalent socket option.",
+                "workload_impact": "Starts TCP keepalive probing for an otherwise idle client connection; together with interval and count settings this can lead to dead connection detection.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

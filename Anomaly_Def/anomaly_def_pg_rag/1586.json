@@ -1,0 +1,59 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Transaction Log Subsystem Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent sessions request conflicting locks on the same rows, pages, or metadata, creating blocking chains or deadlocks that stall statement progress until locks are granted or victims are aborted.\nTransaction Log Subsystem Anomaly : Commit processing and write-ahead logging are throttled because log buffer flush, file write, or archive operations cannot keep pace with redo generation, inflating commit latency and stalling writers.\nNetwork and Connectivity Resource Anomaly : Client-server communication or session-establishment resources—sockets, listeners, authentication threads, or physical network bandwidth—are saturated or unstable, delaying or aborting connection and result-set flows.\n\nWhen these three root causes coexist, the database exhibits intertwined symptoms:  • Spikes in transaction response time where BEGIN-COMMIT cycles linger first on lock waits, then on log-flush waits, and finally on client-write or accept waits.  • Surging counts of sessions stuck in lock wait states while already holding other locks, increasing deadlock frequency; aborted victims attempt automatic retries, multiplying connection churn and network handshake traffic.  • Commit acknowledgements arrive slowly at the client, causing application-side timeouts, connection drops, and exponential back-off storms that further inflate listener and socket queues.  • Monitor views show simultaneous growth of lock wait time, log I/O wait events, and network I/O backlog, while overall throughput collapses and CPU usage oscillates between idle (waiting) and spikes from retry storms.\n\nCausally, heavy lock contention slows statement completion, bunching up commits and increasing instantaneous redo bursts that overwhelm the undersized log subsystem; prolonged log flush delays in turn hold locks longer, lengthening blocking chains and widening deadlock windows. The compounded latency propagates outward: transactions stalled in the engine keep server backends occupied, exhausting the connection pool and forcing new client sessions into TCP/listener queues. Conversely, network slowdowns or connection retries extend the lifetime of open transactions, preventing timely lock release and allowing log buffers to fill, which magnifies both lock contention and log flush pressure. The feedback loop among lock waits, log-write stalls, and network congestion drives a self-reinforcing degradation that can bring write-intensive OLTP workloads to a near standstill.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.317357728739154,
+            "bm25_score": 17.019482047336062,
+            "lexical_score": 0.18785067873303168,
+            "matched_terms": [
+                "and",
+                "are",
+                "attempt",
+                "authentication",
+                "client",
+                "connection",
+                "establishment",
+                "from",
+                "holding",
+                "idle",
+                "in",
+                "latency",
+                "of",
+                "or",
+                "preventing",
+                "progress",
+                "server",
+                "session",
+                "sessions",
+                "the",
+                "time",
+                "to",
+                "when"
+            ],
+            "match_count": 102,
+            "entry": {
+                "timeout_id": "pg16_authentication_timeout",
+                "parameter_name": "authentication_timeout",
+                "timeout_category": "connection_authentication_timeout",
+                "scope": "server",
+                "official_definition": "Maximum amount of time allowed to complete client authentication; if not completed in time, the server closes the connection.",
+                "trigger_condition": "A would-be client does not complete the authentication protocol within authentication_timeout.",
+                "workload_impact": "The server closes the connection attempt, preventing hung clients from occupying a connection indefinitely.",
+                "default_behavior": "Default value is one minute.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

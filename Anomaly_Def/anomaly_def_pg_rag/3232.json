@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Database Configuration Parameter Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Schema and Index Design Anomaly: The physical data model and indexing strategy do not match the workload's access patterns, forcing inefficient full-table scans, excessive row lookups, and write hot-spots.\nDatabase Configuration Parameter Anomaly: Engine-level memory, checkpoint, log, parallelism, or background-worker settings are mis-tuned for the hardware and workload, causing avoidable waits and resource churn.\nStorage Space Capacity Anomaly: Data files, logs, or temporary areas reach or approach hard space limits, leading to allocation failures and cascading stalls.\n\nComposite definition: The database is simultaneously hampered by a poor schema/index design, misaligned engine parameters, and shrinking free space. Each of the three root causes is independently sufficient to degrade performance, but their coexistence produces a more severe, multi-layer failure mode that blends logical inefficiency, runtime misallocation, and physical space exhaustion.\n\nCombined anomalous phenomena: • Queries that should be index-seek driven spill to large hash or sort operations because covering indexes are missing, filling up TEMP segments and triggering “no space left” errors. • Full-table scans driven by design flaws flood the buffer cache; at the same time an undersized buffer pool or overly aggressive work-memory setting forces frequent evictions, checkpoint storms, and log switches. • Checkpoints and log flushes stall because the log or archive destination is nearly full, yet CPU and I/O remain under-utilised due to throttling waits (e.g., LOG_FILE_SYNC, CHECKPOINT_QUEUE) caused by conservative parameter limits. • Administrators observe erratic latency spikes, mixed wait events (buffer-busy, temp-space, log-file-sync), and a rapid drop in free space that monitoring alarms cannot attribute to a single layer.\n\nCausal chain: Inefficient access paths from the schema/index design generate excess I/O, temporary spill files, and enlarged redo logs. Misconfigured memory, work-area, and checkpoint parameters amplify this footprint by pushing data to disk more often and limiting in-memory reuse. The inflated I/O and log volume consume storage faster, accelerating the approach to space boundaries. As free space declines, checkpoints slow and temp allocations fail, which in turn make optimizer feedback and maintenance (e.g., index creation to fix the original design issue) harder or impossible. The three anomalies therefore reinforce one another: design inefficiency → higher resource consumption; bad parameters → higher churn and lower tolerance; space exhaustion → new errors and blocked remediation, producing a vicious performance and stability spiral.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 187,
+            "score": 0.7566451990632318,
+            "bm25_score": 74.71899739669783,
+            "lexical_score": 0.18881733021077282,
+            "matched_terms": [
+                "access",
+                "and",
+                "are",
+                "boundaries",
+                "capacity",
+                "creation",
+                "data",
+                "disk",
+                "engine",
+                "failure",
+                "failures",
+                "file",
+                "full",
+                "is",
+                "latency",
+                "log",
+                "or",
+                "paths",
+                "storage",
+                "the",
+                "write"
+            ],
+            "match_count": 16,
+            "entry": {
+                "error_code": "53100",
+                "error_name": "disk_full",
+                "official_description": "disk full",
+                "error_class": "Class 53 - Insufficient Resources",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

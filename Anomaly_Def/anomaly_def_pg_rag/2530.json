@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Buffer Cache and Latch Contention Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Transaction Lock Contention Anomaly: Concurrent transactions request incompatible locks on the same rows, pages, or metadata, producing long blocking chains or deadlocks that the lock manager must resolve by suspending or aborting sessions.\nBuffer Cache and Latch Contention Anomaly: Sessions compete for hot buffer-cache pages and their protecting latches, stalling while acquiring or spinning on low-level synchronization primitives and inflight-I/O slots.\nStorage Space Capacity Anomaly: Data files, logs, or temporary areas run out of free space, causing allocation failures, stalled checkpoints, and blocked writes.\n\nWhen all three conditions materialise together, the database exhibits a compound failure pattern: blocked and aborted transactions pile up while foreground sessions and background writers simultaneously sit in buffer-latch waits; checkpoints and log flushes slow or stop because data files or archive destinations are full, extending the lifespan of lock-holding transactions and inflating dirty-page queues. Observable symptoms include runaway lock-wait timers, escalating deadlock reports, surges in page-latch and buffer-busy waits, sharp drops in TPS, rapidly growing session and connection queues, error messages about space exhaustion, stalled DML, and erratic CPU spikes caused by latch spin as blocked sessions repeatedly retry.\n\nCausally, space exhaustion throttles or halts background flush and log-write activity, preventing dirty pages and committed transaction logs from being persisted and released. This prolongs pin and latch ownership on hot pages and keeps exclusive locks and transaction slots open longer, intensifying both buffer-latch and lock contention. In turn, the increased contention lengthens transaction execution and commit times, accelerating space consumption in undo, redo, and temp areas, thereby worsening the capacity shortfall. The reinforcing loop between stalled I/O due to full storage, elevated latch contention on crowded buffers, and prolonged lock retention can bring an OLTP system to near stand-still if not detected and relieved promptly.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.3325896179300484,
+            "bm25_score": 16.137413605706232,
+            "lexical_score": 0.16134711060084195,
+            "matched_terms": [
+                "about",
+                "activity",
+                "an",
+                "and",
+                "are",
+                "connection",
+                "for",
+                "holding",
+                "longer",
+                "not",
+                "of",
+                "open",
+                "or",
+                "session",
+                "sessions",
+                "that",
+                "the",
+                "this",
+                "transaction",
+                "when"
+            ],
+            "match_count": 284,
+            "entry": {
+                "timeout_id": "pg16_idle_session_timeout",
+                "parameter_name": "idle_session_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle, but not within an open transaction, for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle and not inside an open transaction longer than the configured threshold.",
+                "workload_impact": "The session is terminated; the documentation warns about using this with connection pools or middleware.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

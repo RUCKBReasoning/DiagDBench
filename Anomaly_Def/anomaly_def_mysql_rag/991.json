@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Operating System Resource Limit Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Inaccurate, missing, or stale optimizer statistics cause systematic cardinality misestimation and mis-costing, leading the optimizer to select sub-optimal execution plans. \nOperating System Resource Limit Anomaly : Kernel-enforced caps on file handles, shared memory, threads, or other OS resources are exhausted, preventing the database from allocating processes, memory, or I/O contexts that it logically requires. \nNetwork and Connectivity Resource Anomaly : Listener, socket, or network-path capacity is insufficient or unstable, producing connection refusals, timeouts, and slow or stalled client/server data transfer.\n\nWhen all three root causes manifest concurrently, the database exhibits multilayer symptoms: 1) query plans flip unpredictably or lock into inefficient full scans or serial plans due to wrong row-count estimates; 2) those inefficient plans inflate memory, file-descriptor, worker, and I/O demands, accelerating exhaustion of the already tight OS resource limits and triggering \"cannot fork\", \"too many open files\", or \"cannot allocate shared memory\" errors; 3) as backend and listener resources saturate, new client connections back up, causing rising TCP SYN backlog, authentication stalls, mid-stream socket disconnects, and application-side timeouts. Performance telemetry shows extreme variance—some sessions hang on client read/write waits, others are terminated by internal errors, while surviving sessions run with degraded plans and long runtimes. Diagnosis is complicated because plan misestimates, kernel denials, and network failures surface in overlapping time windows, obscuring singular blame.\n\nCausal chain: Stale or incomplete statistics steer the optimizer toward plan shapes that open many files, allocate large temp segments, or request numerous parallel workers. These bloated resource requests collide with low or already near-exhausted OS limits, causing allocation failures that leave partially initialized backends, leaked file descriptors, and half-open sockets. The accumulation of such orphaned kernel objects further shrinks available OS quotas, amplifying the resource-limit anomaly. Meanwhile, aborted sessions and retrying application pools inflate connection churn, deepening the network and listener overload. Conversely, network-level slowdowns prolong transaction lifetimes, delaying statistic-gathering jobs and prolonging locks on objects, which keeps statistics stale and perpetuates misestimation. The feedback loop among poor statistics, OS-level exhaustion, and network saturation thus cascades, driving widespread performance collapse across both OLTP and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.48690016540802544,
+            "bm25_score": 24.579550409612413,
+            "lexical_score": 0.11993668882557773,
+            "matched_terms": [
+                "aborted",
+                "and",
+                "because",
+                "cannot",
+                "in",
+                "is",
+                "lock",
+                "locks",
+                "or",
+                "sessions",
+                "the",
+                "to",
+                "transaction",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 47,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

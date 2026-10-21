@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Replication Synchronization Anomaly + CPU Resource Anomaly",
+            "Description": "Optimizer Statistics Anomaly: Costing metadata is stale, incomplete, or missing, so the optimizer systematically mis-estimates cardinalities and chooses sub-optimal execution plans.\nReplication Synchronization Anomaly: Standby or subscriber nodes fall behind because they cannot receive or apply primary redo fast enough, causing widening log-position gaps and retention of log segments on the primary.\nCPU Resource Anomaly: Database or replica processes drive host CPU usage to sustained saturation, starving other work and inflating run-queue and scheduler waits.\n\nWhen all three anomalies coexist, the database exhibits a compound failure pattern: poorly estimated queries on the primary choose CPU-intensive plans (e.g., full table scans or over-parallelized joins) that generate excess I/O and larger-than-normal redo streams. The primary’s CPU saturation slows foreground transactions, while the ballooning write-ahead log cannot be recycled because replicas are lagging. On the replicas, limited CPU capacity and inefficient apply paths struggle with the higher-volume, more complex redo, further lengthening replication lag. Monitoring shows simultaneous spikes in CPU wait events, soaring statement latencies, dramatic discrepancies between estimated and actual row counts, and ever-increasing replica delay and retained log volume. Failover readiness degrades, and storage pressure mounts on both primary (due to unrecycled logs) and replicas (due to growing relay logs).\n\nCausally, stale or missing statistics trigger mis-estimated plans that inflate CPU consumption and redo generation. The resulting CPU Resource Anomaly on the primary slows transaction processing and log shipping threads, while the same or separate CPU pressure on replicas limits their apply throughput. Increased redo volume coupled with diminished processing capacity intensifies the Replication Synchronization Anomaly, which in turn prevents log truncation, forcing the primary to handle more log I/O and background cleanup work—further taxing CPU. This feedback loop between poor statistics, CPU saturation, and replication backlog amplifies each symptom, driving the entire database environment into a degraded and self-reinforcing state.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.7481200727713766,
+            "bm25_score": 28.623886509438208,
+            "lexical_score": 0.1604002425712553,
+            "matched_terms": [
+                "and",
+                "be",
+                "because",
+                "cannot",
+                "delay",
+                "is",
+                "metadata",
+                "of",
+                "or",
+                "statement",
+                "than",
+                "the",
+                "this",
+                "to",
+                "transaction",
+                "wait",
+                "waits",
+                "when",
+                "while",
+                "write"
+            ],
+            "match_count": 11,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

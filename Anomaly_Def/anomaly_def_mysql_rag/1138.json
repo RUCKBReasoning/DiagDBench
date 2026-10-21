@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Optimizer Statistics Anomaly + Transaction Lock Contention Anomaly",
+            "Description": "Schema and Index Design Anomaly: The physical data model and indexing strategy are misaligned with workload access patterns, forcing otherwise well-written statements into inherently inefficient access paths.\nOptimizer Statistics Anomaly: Row-count, histogram, and correlation metadata are stale or inaccurate, misleading the optimizer into systematic cardinality misestimation and sub-optimal plan selection.\nTransaction Lock Contention Anomaly: Concurrent transactions request incompatible locks on the same resources, creating long blocking chains or deadlocks that throttle throughput.\n\nCombined anomalous phenomena: When a poor physical design lacks selective or covering indexes and statistics no longer represent actual data, the optimizer may choose wide table or index scans, nested-loop joins on vastly underestimated row sets, or plans that touch far more rows than expected. These long-running, I/O-heavy statements acquire large lock footprints, hold them for extended periods, and may escalate from row to page or table level. As concurrency rises, wait queues, deadlock reports, victim rollbacks, application timeouts, and sudden throughput collapses all appear, often immediately after data-skewing events or bulk loads. Performance tuning signals become noisy: execution plans show both gross misestimates and missing indexes, while lock-monitoring views simultaneously display growing blocker/waitee chains.\n\nCausal chain: Faulty schema design starts the problem by depriving critical queries of efficient access paths, inflating the number of rows and pages they must touch. Stale statistics compound the issue by hiding the true cost of these scans, so the optimizer avoids any remaining selective indexes or chooses join orders that maximize locking scope. The resulting queries run longer and lock more rows, creating hotspots that multiple sessions hit concurrently, triggering blocking and deadlocks. Prolonged blocking, in turn, delays commit points and automatic statistics maintenance, which makes statistics even staler and further obscures the need for new indexes—forming a vicious feedback loop that degrades both read and write performance across the OLTP workload.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.6830541315623295,
+            "bm25_score": 32.180558629139455,
+            "lexical_score": 0.16133864760857614,
+            "matched_terms": [
+                "and",
+                "blocking",
+                "for",
+                "incompatible",
+                "lock",
+                "longer",
+                "metadata",
+                "number",
+                "of",
+                "or",
+                "schema",
+                "sessions",
+                "than",
+                "the",
+                "to",
+                "transaction",
+                "wait",
+                "when",
+                "while",
+                "write",
+                "written"
+            ],
+            "match_count": 55,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

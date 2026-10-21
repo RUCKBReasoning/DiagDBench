@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + CPU Resource Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Database Memory Allocation Anomaly: The engine allocates and holds more memory than the host can safely supply, driving paging, swap use, or OOM terminations.\nCPU Resource Anomaly: Database-related processes saturate CPU cores, creating run-queue backlogs and global latency inflation.\nOperating System Resource Limit Anomaly: Kernel-enforced limits on handles, shared memory, threads, or other objects are exhausted, preventing the engine from creating new workers or allocating critical kernel resources.\n\nWhen all three root causes manifest together, the platform exhibits a multilayer resource meltdown: memory pressure triggers heavy paging that competes for CPU time, while CPU saturation prolongs critical sections that keep kernel objects open longer, causing file-handle, thread, and shared-memory limits to be hit sooner. Symptoms include simultaneous spikes in swap I/O, load average, and kernel allocation failures; sessions hang while trying to attach to shared memory, spawn parallel workers, or allocate work buffers; wait-event views show interleaved memory pressure waits, scheduler waits, and OS-resource acquisition waits; and even lightweight operations stall because the engine cannot obtain either CPU slices or the kernel objects needed to proceed.\n\nCausally, runaway memory allocation enlarges each process’s resident set, provoking the kernel to reclaim pages and schedule I/O, which in turn escalates CPU demand for memory management and I/O handling. The inflated CPU usage lengthens the lifetime of threads in critical sections, delaying their release of file descriptors, semaphores, and other kernel objects, thereby pushing the system faster toward the configured OS limits. Once those limits are reached, new workers or buffers cannot be created; the engine reacts by retrying or spawning additional management threads, amplifying both memory footprint and CPU consumption. This positive feedback loop between memory over-commitment, CPU saturation, and kernel-level resource exhaustion accelerates degradation, leading to cascading failures, partial outages, or full instance termination.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.6673283724697441,
+            "bm25_score": 24.715579246731327,
+            "lexical_score": 0.1747008547008547,
+            "matched_terms": [
+                "acquisition",
+                "and",
+                "because",
+                "cannot",
+                "configured",
+                "for",
+                "global",
+                "in",
+                "lifetime",
+                "longer",
+                "obtain",
+                "or",
+                "proceed",
+                "sessions",
+                "than",
+                "the",
+                "this",
+                "to",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 88,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Database Configuration Parameter Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer persistently chooses a sub-optimal execution plan despite reasonably accurate statistics, often because of flawed cost estimation, unstable plan reuse, or version/option changes.\nDatabase Configuration Parameter Anomaly: Engine-level settings for memory, parallelism, logging, and background tasks are mis-tuned, so runtime behavior no longer matches hardware capacity or workload needs.\nData Block and Index Integrity Anomaly: On-disk pages or index structures are physically or logically corrupted, leading to unreliable access paths and incorrect row visibility.\n\nWhen all three problems coexist, the database exhibits a volatile and hard-to-triage performance and correctness pattern: identical queries oscillate among radically different plans; some executions fall back to full table scans because damaged indexes fail validation, while others keep inefficient index-based nested loops due to sticky bad plans in the cache. Mis-sized memory or parallelism parameters aggravate the situation—small work or buffer pools force excessive I/O for the accidental full scans, whereas over-allocated settings trigger OOM kills or throttling waits without the CPUs or disks actually being saturated. Concurrently, corruption-induced checksum errors, page-verification failures, or silent row omissions surface intermittently, sometimes only after a checkpoint or log flush storm initiated by the same misconfiguration. The mixed symptom set—plan churn, unexplained wait spikes, sporadic error logs, and mismatched result counts—creates a noisy diagnostic picture in which any single anomaly can masquerade as the primary culprit.\n\nCausally, mis-tuned configuration parameters distort both the optimizer’s cost model (e.g., reduced effective cache size, altered parallelism thresholds) and the runtime resource envelopes, increasing the likelihood that it picks or reuses fragile plans. Those fragile plans amplify the impact of latent page or index corruption by exercising edge code paths (e.g., random I/O probes, backward scans) that hit bad pages earlier and more often. In parallel, overly aggressive checkpoint or log settings—another facet of the configuration anomaly—can precipitate or expose corruption by forcing rapid page recycling or recovering from frequent crashes. Once corruption invalidates indexes or forces the engine to disable them, the optimizer’s already misguided plan repertoire grows even worse, and the subsequent performance degradation feeds back into more emergency configuration tweaks, perpetuating the vicious cycle. Together, the three anomalies reinforce one another, leading to compounded performance regression, unpredictable query results, and elevated risk of data-loss events.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.724851150236175,
+            "bm25_score": 30.606903953126157,
+            "lexical_score": 0.13007575757575757,
+            "matched_terms": [
+                "access",
+                "and",
+                "because",
+                "by",
+                "error",
+                "execution",
+                "for",
+                "in",
+                "or",
+                "pattern",
+                "query",
+                "resource",
+                "the",
+                "together",
+                "when",
+                "work",
+                "workload"
+            ],
+            "match_count": 137,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

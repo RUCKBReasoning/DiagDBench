@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Storage Space Capacity Anomaly + CPU Resource Anomaly",
+            "Description": "Database Memory Allocation Anomaly : Unbounded growth of buffer caches, plan caches, work areas, and other heaps drives the database process beyond the host’s safe physical-memory envelope.\nStorage Space Capacity Anomaly : Physical or logical free space in data, log, and temporary areas falls to zero, triggering allocation failures and write stalls.\nCPU Resource Anomaly : Database processes saturate available CPU cycles, creating sustained high run-queue pressure and system-wide latency.\n\nComposite anomaly definition: The database simultaneously overruns memory, storage, and CPU resources, so that each critical resource reaches or exceeds its capacity while the workload is executing.\n\nCombined anomalous phenomena: Administrators observe relentless growth of resident memory alongside escalating swap activity; swap I/O floods the storage layer whose free space is already near exhaustion due to bloated data, logs, and oversized temp segments created by memory spills. At the same time, CPU utilization pins near 100 %, with long OS run queues and frequent context switches. Queries that spill from RAM to temp slow dramatically, increasing statement runtimes, amplifying CPU demand, and generating even more temporary and log files that quickly consume the last gigabytes of disk. As space runs out, data-file extensions, sort operations, and log archiving begin to fail, producing allocation errors, checkpoint stalls, and in clustered systems, node fencing or crash-recovery cycles. Monitoring shows simultaneous alerts for memory pressure, disk-full conditions, and CPU saturation, making single-symptom troubleshooting unreliable.\n\nCausal chain and interaction: Excessive memory allocation pushes the OS into paging; paging traffic inflates I/O, which both consumes CPU (kernel time) and writes swap and temp data to disk, accelerating storage exhaustion. As free space disappears, the database is forced to spill active work sets to ever-shrinking temp areas and to retain unrecycled transaction logs, further intensifying disk usage. The additional I/O wait magnifies CPU demand through context switching and spin-waiting, keeping cores saturated and slowing foreground tasks and maintenance jobs that would normally release memory or reclaim space. The throttled CPU in turn delays memory reclamation threads and background checkpoints, perpetuating high memory residency and swelling on-disk footprints. This feedback loop rapidly degrades throughput and can culminate in out-of-memory kills, disk-full aborts, or complete node failure.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.7428504804974562,
+            "bm25_score": 28.801652989164182,
+            "lexical_score": 0.1428349349915206,
+            "matched_terms": [
+                "and",
+                "by",
+                "exceeds",
+                "for",
+                "is",
+                "long",
+                "operations",
+                "or",
+                "other",
+                "resource",
+                "runs",
+                "statement",
+                "the",
+                "this",
+                "time",
+                "with",
+                "work",
+                "workload"
+            ],
+            "match_count": 137,
+            "entry": {
+                "timeout_id": "mysql84_regular_expression_time_limit",
+                "parameter_name": "regexp_time_limit",
+                "timeout_category": "expression_evaluation_time_limit",
+                "scope": "global/session",
+                "official_definition": "The time limit for regular expression matching operations performed by the regular expression engine.",
+                "trigger_condition": "A regular expression match operation exceeds regexp_time_limit.",
+                "workload_impact": "The regular expression operation is constrained by the configured time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Transaction Log Subsystem Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Runtime settings such as buffer-pool size, log buffer, checkpoint cadence, and parallelism are mis-aligned with hardware capacity or workload characteristics.\nTransaction Log Subsystem Anomaly : The write-ahead logging path—generation, flushing, switching, or archiving of log records—becomes the principal bottleneck for commits and data-change activity.\nStorage Space Capacity Anomaly : Physical or logical free space for data, log, archive, or temporary areas approaches or reaches exhaustion, causing allocation failures and stalls.\n\nWhen all three root causes strike together, the database experiences a feedback loop of space-related and log-related stalls amplified by maladjusted parameters. Observable symptoms include:  \n• Sharp spikes in commit latency with simultaneous \"log flush\", \"log file switch\", and \"space allocation\" wait events.  \n• Repeated checkpoint storms and rapid cycling of small log files that quickly fill the remaining device space.  \n• Engine alerts reporting \"cannot allocate log\", \"no space left on device\", or \"archive destination full\" immediately after configuration changes.  \n• CPU spin or idle gaps while user sessions wait for log space, despite overall I/O devices showing intermittent idleness.  \n• Sudden throughput collapse in write-intensive OLTP workloads, followed by cascading read slowdowns as dirty-page back-pressure rises and background cleanup falls behind.\n\nCausal interaction: mis-tuned configuration parameters (e.g., undersized log buffer, aggressive checkpoint interval, or small max log size) elevate the transaction-log generation and switching frequency. This overstresses an already fragile log subsystem, which must flush and archive segments more often. Because log files and archives share limited storage that is near capacity, every extra switch consumes scarce free blocks, hastening space exhaustion. Once space is full, the log subsystem cannot obtain the next segment; commit paths stall, dirty pages cannot be flushed, and checkpoints pile up—conditions that further magnify wait events and accentuate the performance cliff. In turn, elevated waits mislead auto-tuning heuristics or administrators into further parameter tweaks (e.g., shortening checkpoints), unintentionally reinforcing the vicious cycle and deepening the outage.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.7470518867924528,
+            "bm25_score": 28.568441576198325,
+            "lexical_score": 0.15683962264150944,
+            "matched_terms": [
+                "an",
+                "and",
+                "back",
+                "because",
+                "by",
+                "cannot",
+                "change",
+                "for",
+                "in",
+                "is",
+                "obtain",
+                "of",
+                "or",
+                "sessions",
+                "the",
+                "this",
+                "transaction",
+                "up",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 94,
+            "entry": {
+                "timeout_id": "mysql84_innodb_row_lock_wait_timeout",
+                "parameter_name": "innodb_lock_wait_timeout",
+                "timeout_category": "innodb_row_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "The length of time in seconds an InnoDB transaction waits for a row lock before giving up.",
+                "trigger_condition": "An InnoDB transaction waits longer than innodb_lock_wait_timeout for a row lock.",
+                "workload_impact": "The lock wait gives up; by default only the current statement is rolled back unless innodb_rollback_on_timeout is enabled.",
+                "default_behavior": "Defined as an InnoDB system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

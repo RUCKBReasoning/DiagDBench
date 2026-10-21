@@ -1,0 +1,60 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + CPU Resource Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions continuously request incompatible locks on the same rows, pages, or metadata, forcing sessions to wait in blocking chains or enter deadlock cycles managed by the lock manager.\nCPU Resource Anomaly : Database processes collectively consume almost all available CPU cycles on the host, driving the operating-system run queue high and leaving too few compute resources for timely execution of the workload.\n\nWhen these two root causes strike together, the system exhibits compounded symptoms: 1) elevated lock-wait time, deadlock victim errors, and growing client time-outs; 2) sustained near-100 % CPU utilization with long scheduler run queues; 3) lock-manager and scheduler wait events appearing side-by-side, making it unclear whether waits or CPU starvation is primary; 4) throughput collapse in bursts as transactions alternate between spinning on CPU while attempting to acquire locks and then blocking once pre-empted; and 5) monitoring tools showing both a spike in CPU-bound statements and a backlog of sessions waiting on locks, giving the impression of mutually conflicting bottleneck signals.\n\nThe causal chain can be self-reinforcing: heavy lock contention forces the lock manager and waiting sessions to spin or wake frequently, inflating CPU demand. The resulting CPU saturation slows query execution and lengthens the time each transaction holds its locks, which further extends blocking chains and deadlock windows. As lock waits grow longer, more client retries or timeouts spawn additional sessions, adding background work (logging, deadlock detection, retry logic) that consumes still more CPU. This feedback loop rapidly degrades both concurrency control and compute availability, driving a severe OLTP-focused performance crisis.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2864,
+            "score": 0.5682265654767372,
+            "bm25_score": 78.82475306273773,
+            "lexical_score": 0.22387005649717512,
+            "matched_terms": [
+                "acquire",
+                "and",
+                "be",
+                "blocking",
+                "by",
+                "chains",
+                "concurrent",
+                "conflicting",
+                "for",
+                "incompatible",
+                "is",
+                "lock",
+                "logic",
+                "on",
+                "or",
+                "resource",
+                "resources",
+                "retry",
+                "same",
+                "the",
+                "to",
+                "transaction",
+                "transactions",
+                "whether",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010980",
+                "error_name": "ER_FAILED_TO_ACQUIRE_LOCK_ON_RESOURCE_GROUP",
+                "official_description": "Unable to acquire lock on the resource group %s. Hint to switch resource group shall be ignored.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "concurrency_and_transaction",
+                "cause_analysis": "The failure is typically associated with concurrent transactions contending for the same logical resources, incompatible lock acquisition order, or transaction-state conflicts surfaced by the engine.",
+                "solution_guidance": "Inspect blocking chains, reduce conflicting write overlap, shorten transaction lifetime, review lock acquisition order, and verify whether transaction scheduling or retry logic needs adjustment.",
+                "observable_symptoms": [
+                    "blocking",
+                    "rollback",
+                    "retry",
+                    "stalled transaction"
+                ]
+            }
+        }
+    }
+]

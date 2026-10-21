@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Transaction Log Subsystem Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level SQL or transaction design forces the engine to scan, update, or hold far more data and longer transactions than business logic really requires.\nTransaction Log Subsystem Anomaly : The write-ahead log buffer, files, or archival pipeline cannot keep up with the volume of redo that must be generated, flushed, or retained, making commit latency the critical path.\nStorage I/O Throughput Anomaly : The physical storage layer hits its IOPS, throughput, or latency ceiling for the volumes that host data, temp, and especially log files.\n\nCombined phenomena: When all three root causes strike together, the workload produces unusually high redo volume and large result sets, which in turn drive a spike in both data-file and log-file I/O. Commit calls, bulk DML, and even read-only statements experience long-tail latency as they wait first on log flushes and then on saturated storage queues. Engine wait statistics show an intermixed dominance of SQL execution, log-write, durability-flush, and generic I/O waits, making it difficult to attribute slowness to a single layer. Slow-query logs contain repetitive, heavy statements; meanwhile alert logs record frequent log switches, archive backlogs, and checkpoint storms. Application tiers observe timeouts, congestion, and sporadic deadlocks as transactions overrun their expected duration and hold locks longer than normal.\n\nCausal chain and reinforcement: Inefficient SQL inflates the volume of rows read and modified, multiplying the amount of redo that must be generated. This surge overwhelms the transaction-log subsystem, lengthening commit times and causing more log buffering and file switching. The additional log and data traffic push the underlying storage array past its throughput limits, further slowing both log flushes and data-page reads/writes. The slower storage response feeds back into even longer SQL and commit latencies, which extend transaction lifetimes, hold locks, and create still more redo to be written. The three anomalies therefore reinforce each other in a vicious cycle, degrading overall OLTP performance and stability far more severely than any single anomaly would in isolation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.743,
+            "bm25_score": 30.229102383437368,
+            "lexical_score": 0.1433333333333333,
+            "matched_terms": [
+                "and",
+                "be",
+                "execution",
+                "for",
+                "in",
+                "long",
+                "or",
+                "other",
+                "path",
+                "query",
+                "statements",
+                "the",
+                "this",
+                "together",
+                "when",
+                "with",
+                "workload"
+            ],
+            "match_count": 147,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

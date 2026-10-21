@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Database Memory Allocation Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Transaction Lock Contention Anomaly: Concurrent transactions request incompatible locks on the same resource, creating blocking chains or deadlocks that stall forward progress.\nDatabase Memory Allocation Anomaly: Aggregate memory consumed by caches, work areas, and session heaps surpasses the safe capacity of the host, provoking paging or out-of-memory pressure.\nTransaction Log Subsystem Anomaly: Commit processing is throttled because log buffers, log files, or archiving pipelines cannot absorb the volume of redo being generated.\n\nWhen these three root causes strike together, the database exhibits an intertwined symptom set: lock-wait time and deadlock frequency rise while commit latency simultaneously elongates; worker threads pile up in both lock-manager wait queues and OS run queues starved for memory; RSS and swap usage climb until the operating system steals cache pages, further degrading buffer-cache hit ratios; log-flush and log-write waits spike, exaggerating the apparent duration of locks held during COMMIT; connection pools saturate, application timeouts increase, and recovery/instance restarts may occur when memory exhaustion or stalled log archival triggers fault-management logic.\n\nCausally, each anomaly amplifies the others. Memory pressure slows SQL execution (extra paging, reduced cache efficiency), lengthening transaction lifetimes and thereby prolonging lock holds that intensify contention. The enlarged lock backlog inflates per-session memory footprints (lock structures, row versions, private work areas), deepening the memory shortfall. Prolonged transactions also generate more redo per unit of business work and keep old log segments active, causing log files to fill faster; in turn, delayed log flushes extend commit duration so locks remain held even longer, feeding the contention loop. Finally, frequent flushes and checkpoint storms consume additional CPU and memory buffer space, tightening the memory bottleneck and creating a self-reinforcing triad that can bring an OLTP system to a near standstill if not addressed holistically.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.295872623970872,
+            "bm25_score": 12.783406519138437,
+            "lexical_score": 0.1452297702297702,
+            "matched_terms": [
+                "an",
+                "and",
+                "by",
+                "connection",
+                "for",
+                "is",
+                "latency",
+                "not",
+                "of",
+                "on",
+                "or",
+                "pools",
+                "progress",
+                "session",
+                "system",
+                "that",
+                "the",
+                "time",
+                "to",
+                "when"
+            ],
+            "match_count": 224,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_interval",
+                "parameter_name": "tcp_keepalives_interval",
+                "timeout_category": "network_keepalive_retry_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time after which a TCP keepalive message that has not been acknowledged by the client should be retransmitted.",
+                "trigger_condition": "A TCP keepalive probe is not acknowledged for tcp_keepalives_interval on systems supporting TCP_KEEPINTVL or an equivalent socket option.",
+                "workload_impact": "Controls retry timing for keepalive probes used to detect unresponsive client connections.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

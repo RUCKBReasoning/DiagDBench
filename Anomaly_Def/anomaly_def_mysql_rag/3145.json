@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Replication Synchronization Anomaly + Operating System Resource Limit Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Replication Synchronization Anomaly : Standbys or downstream consumers cannot receive, store, or apply WAL/redo data as fast as the primary generates it, causing widening replication lag and retained logs.\nOperating System Resource Limit Anomaly : Database processes hit kernel-enforced ceilings on file descriptors, shared memory, threads, sockets, or other OS-level objects, blocking new work or I/O even though engine-level quotas appear sufficient.\nNetwork and Connectivity Resource Anomaly : Transport, listener, or socket resources between clients/peers and the server become saturated or unreliable, yielding connection errors, retransmissions, and stalled I/O.\n\nWhen all three root causes manifest together, the system exhibits compounding symptoms: replicas fall ever further behind while the primary’s WAL directory and replica relay logs mushroom, yet attempts to diagnose or remediate are hampered by flurries of “too many open files,” “cannot allocate shared memory,” or “could not create socket” errors. Clients and replication processes both suffer connection timeouts, half-open TCP states accumulate, authentication stalls increase, and parallel-apply or WAL-sender workers fail to spawn. Failover readiness erodes as replicas report severe replay lag, and primary storage may fill because old log segments cannot be recycled. Monitoring shows spiking network RTT and retransmissions, OS kernel logs of resource denials, and replication views with ballooning write/flush/replay delay—all intertwined and temporally correlated, making single-cause isolation difficult.\n\nCausally, network congestion or unstable links slow the flow of WAL to replicas, inflating in-flight buffers and socket counts; this accelerates consumption of file descriptors, shared memory message queues, and async-I/O contexts until OS limits are breached. Once limits bite, new sockets, threads, or shared-memory allocations for WAL sender/receiver or client sessions fail, which further throttles or stalls replication, deepening lag and forcing the primary to retain even more log files—amplifying handle usage and storage pressure. Simultaneously, replication workers that crash or hang leave orphaned semaphores and sockets, further exhausting OS quotas and exacerbating connection-layer backlog. The mutual reinforcement between network-level bottlenecks, OS resource starvation, and replication slowdown can drive the cluster into a cascading degradation or complete service outage unless both infrastructure capacity and kernel limits are addressed together.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3446,
+            "score": 0.48932622110824275,
+            "bm25_score": 54.201614029728674,
+            "lexical_score": 0.15660919540229884,
+            "matched_terms": [
+                "and",
+                "apply",
+                "between",
+                "downstream",
+                "infrastructure",
+                "lag",
+                "log",
+                "network",
+                "not",
+                "on",
+                "or",
+                "receiver",
+                "replica",
+                "replication",
+                "sender",
+                "server",
+                "the",
+                "to",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-011562",
+                "error_name": "ER_GRP_RPL_START_GRP_RPL_FAILED",
+                "official_description": "Unable to start Group Replication. Replication applier infrastructure is not initialized since the server was started with --initialize, --initialize-insecure or --upgrade=MINIMAL on a server upgrade.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

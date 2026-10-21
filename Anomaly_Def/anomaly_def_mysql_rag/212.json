@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Database Memory Allocation Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Schema and Index Design Anomaly : Physical data-model, indexing, or partitioning choices do not align with workload access patterns, forcing inefficient scans, lookups, or data rewrites.\nDatabase Memory Allocation Anomaly : Aggregate buffer caches, work areas, plan caches, and background heaps outgrow available physical memory, provoking paging, allocation churn, and OOM events.\nStorage I/O Throughput Anomaly : Underlying disks or storage fabric are unable to sustain the read/write volume demanded, driving up queue depths and latency.\n\nWhen all three root causes coexist, the workload experiences a cascade of symptoms: poorly indexed queries generate excessive logical reads that overflow the buffer cache, evicting hot pages and inflating physical I/O. The inflated I/O stream collides with already saturated storage, so read and write latencies spike, amplifying wait events such as buffer busy, read-IO, log flush, and temp I/O stalls. Concurrently, memory pressure causes frequent buffer recycling, hash/sort spills to disk, plan-cache flushing, and even OS-level swapping, further multiplying physical I/O and prolonging CPU stalls. End users observe erratic but persistently high response times, batch jobs overrun maintenance windows, and nodes may terminate due to out-of-memory or I/O timeout conditions, making it difficult to attribute slowness to any single layer.\n\nCausally, a deficient schema/index design is the first trigger: full scans, non-covering probes, and unpruned partitions enlarge the working-set size and inflate per-query work memory. This heightened demand pushes the engine to allocate more buffers and work areas, breaching memory limits and inducing cache churn or swapping—hallmarks of the Database Memory Allocation Anomaly. As hot buffers are prematurely evicted and large hash/sort regions spill to disk, the volume of physical reads and temp writes surges, directly pressuring the storage subsystem. Because the Storage I/O Throughput Anomaly is already present, the storage layer cannot absorb the compounded load, so latency balloons, which in turn prolongs query lifetimes. Longer-running sessions hold onto memory and latches even longer, feeding back into memory exhaustion and perpetuating the vicious cycle of cache misses and I/O saturation. The intertwined anomalies therefore reinforce each other, leading to severe and escalating deterioration of overall database performance and stability.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2925,
+            "score": 0.6037658702123109,
+            "bm25_score": 72.3478878062422,
+            "lexical_score": 0.18506688963210702,
+            "matched_terms": [
+                "allocate",
+                "allocation",
+                "amplifying",
+                "and",
+                "buffer",
+                "due",
+                "engine",
+                "is",
+                "large",
+                "latency",
+                "memory",
+                "of",
+                "or",
+                "out",
+                "per",
+                "pressure",
+                "spill",
+                "the",
+                "to",
+                "with",
+                "workload"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-011041",
+                "error_name": "ER_PFS_MALLOC_ARRAY_OOM",
+                "official_description": "Failed to allocate %zu bytes for buffer '%s' due to out-of-memory.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "memory_and_buffer",
+                "cause_analysis": "The failure is typically associated with insufficient memory headroom, buffer pressure, oversized intermediate state, or memory-allocation constraints inside the engine or client library.",
+                "solution_guidance": "Check memory availability, per-session memory settings, large sorts or hashes, and whether workload concurrency is amplifying memory consumption.",
+                "observable_symptoms": [
+                    "memory pressure",
+                    "allocation failure",
+                    "spill",
+                    "unstable latency"
+                ]
+            }
+        }
+    }
+]

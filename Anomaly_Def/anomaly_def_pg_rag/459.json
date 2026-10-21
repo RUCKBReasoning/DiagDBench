@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Transaction Lock Contention Anomaly + MVCC Version Maintenance Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer chooses a substantially sub-optimal execution plan despite reasonably accurate statistics, causing excessive I/O, CPU, or memory consumption per statement.\nTransaction Lock Contention Anomaly: Concurrent transactions request incompatible locks on the same resources, leading to long wait chains or deadlocks that throttle throughput.\nMVCC Version Maintenance Anomaly: Obsolete row versions accumulate faster than background cleanup can purge them, inflating table and index size and adding visibility-check overhead.\n\nWhen all three root causes strike at once, the database exhibits a compound failure pattern: expensive plans run far longer than expected, keeping row, page, or metadata locks open; these prolonged locks block other transactions, generating extensive wait chains and frequent deadlock rollbacks; while the blocking persists, update and delete activity continues to create new MVCC versions that cannot be reclaimed because readers are still attached to old snapshots and writers are stalled behind locks. Operators observe high CPU from poor plans, rising lock-wait time and deadlock reports, steadily growing table size, bloated indexes, widening gaps between planner estimates and actual row counts, and dramatic drops in overall transaction throughput coupled with surging application-level timeouts.\n\nCausally, a sub-optimal plan often performs wide table scans or nested-loop explosions that touch many more rows than necessary, enlarging the lock footprint and lock duration. The resulting blocking keeps transactions open, preventing vacuum/cleanup workers from advancing the version horizon; this accelerates MVCC bloat. In turn, the swollen heap and indexes skew the optimizer’s cost calculations, making it even more likely to choose poor plans for subsequent compilations. The larger on-disk structures also lengthen lock hold times for index or page-level locks, intensifying contention. Meanwhile, the backlog of obsolete versions elevates I/O and CPU pressure, slowing both foreground statements and background cleaners, further aggravating plan quality and lock congestion in a self-reinforcing loop.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.43107080354823324,
+            "bm25_score": 25.730199887803455,
+            "lexical_score": 0.14597306212204508,
+            "matched_terms": [
+                "activity",
+                "and",
+                "are",
+                "at",
+                "be",
+                "between",
+                "can",
+                "check",
+                "long",
+                "or",
+                "query",
+                "reports",
+                "still",
+                "that",
+                "the",
+                "this",
+                "time",
+                "when",
+                "while"
+            ],
+            "match_count": 185,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

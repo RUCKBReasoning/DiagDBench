@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Database Memory Allocation Anomaly + Replication Synchronization Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Engine-level settings (e.g., buffer-pool size, work-memory limits, checkpoint cadence, parallelism caps) are mis-tuned relative to hardware and workload so that they themselves become the bottleneck.\nDatabase Memory Allocation Anomaly : Total memory consumed by caches, work areas, background workers, and sessions grows beyond safe physical capacity, leading to OS pressure, paging, and OOM events.\nReplication Synchronization Anomaly : Standbys or downstream consumers cannot receive, write, or replay WAL at the pace the primary emits it, causing widening log-position gaps and blocked log recycling.\n\nWhen all three root causes occur concurrently the system exhibits a mixed symptom set: sustained OS memory pressure, sporadic or continuous OOM kills, and cache-churn driven latency spikes on the primary; at the same time replicas show accelerating receive/write/replay lag, stale read-only queries, and ever-growing retained WAL segments that inflate both memory-mapped log buffers and on-disk archives. Checkpoint storms or aggressive autovacuum triggered by mis-set parameters may overlap with memory-hungry hash/sort bursts, further depleting memory and pushing the primary and replicas into swap. Administrators may notice wait-event patterns that keep alternating between memory-allocation waits and replication-send/receive waits, making it difficult to attribute the slowdown to a single layer.\n\nCausally, unsafe configuration parameters (oversized work-mem, undersized checkpoint segments, overly aggressive parallelism) inflate per-query and background memory footprints, directly instigating the Memory Allocation Anomaly. The ensuing OS memory pressure throttles I/O and CPU scheduling on both primary and replicas, slowing WAL generation as well as WAL apply. Slower apply causes Replication Synchronization Anomaly, which in turn forces the primary to retain additional log segments in memory-mapped buffers and on disk, further increasing its memory demand and amplifying the original memory pressure. This feedback loop leads to escalating lag, rising swap usage, and increased likelihood of crash or fail-over, producing a composite failure state that is more severe than each anomaly in isolation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 1833,
+            "score": 0.4539015658499963,
+            "bm25_score": 49.93298899484277,
+            "lexical_score": 0.19154471544715446,
+            "matched_terms": [
+                "and",
+                "apply",
+                "between",
+                "configuration",
+                "downstream",
+                "failure",
+                "is",
+                "keep",
+                "lag",
+                "log",
+                "on",
+                "or",
+                "replication",
+                "show",
+                "stale",
+                "state",
+                "the",
+                "to",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "2022",
+                "error_name": "CR_PROBE_REPLICA_STATUS",
+                "official_description": "Error on SHOW REPLICA STATUS:",
+                "error_class": null,
+                "severity_type": null,
+                "category": "client_library_error",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

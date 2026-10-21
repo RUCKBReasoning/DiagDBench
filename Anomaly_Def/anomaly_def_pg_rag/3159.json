@@ -1,0 +1,60 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Transaction Lock Contention Anomaly + Database Memory Allocation Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Row-count and data-distribution statistics are stale, absent, or incomplete, causing the optimizer to misestimate cardinalities and choose sub-optimal access paths and join orders.\nTransaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same resources, leading to long blocking chains or deadlocks that stall or abort user work.\nDatabase Memory Allocation Anomaly : The database engine allocates more working memory than the host can safely supply, triggering paging, OOM events, and cache-turnover stalls.\n\nWhen all three root causes strike together, the system exhibits a mixed pattern of symptoms: queries generate poor plans that scan far more rows than expected, inflating their lock footprint and holding locks for longer; the resulting lock queues lengthen response-time tails, while sessions that are blocked still retain work buffers, plan cache entries, and pinned pages, accelerating memory growth. Under continued pressure, the host begins swapping, which in turn extends lock-hold durations and widens the gap between estimated and actual execution times. Administrators may observe exploding waits on both locks and memory pressure, frequent deadlock reports interleaved with out-of-memory terminations, erratic query throughput, and plan re-compilations that repeatedly pick inefficient paths because statistics remain stale.\n\nCausal interaction: stale or missing statistics push the optimizer toward full scans, broad range scans, or unordered join strategies, greatly increasing the number of rows touched and thus the number and duration of locks acquired. The enlarged lock footprint heightens the probability of contention and deadlocks in a highly concurrent OLTP workload. While sessions wait, they keep their allocated work buffers, pinned cache pages, and partially filled hash/sort areas, inflating overall memory consumption. Rising memory pressure forces the OS to page or the engine to trim caches, prolonging I/O latency, which further lengthens transaction execution and lock holding periods—a positive feedback loop that reinforces both lock contention and memory exhaustion. Because blocking prevents timely data changes from committing, statistics refresh jobs may be delayed, perpetuating the optimizer-statistics inaccuracy and deepening the cycle.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.6266431016104831,
+            "bm25_score": 34.42898360767404,
+            "lexical_score": 0.17345514950166113,
+            "matched_terms": [
+                "and",
+                "because",
+                "blocking",
+                "database",
+                "for",
+                "holding",
+                "incompatible",
+                "lock",
+                "longer",
+                "of",
+                "or",
+                "row",
+                "sessions",
+                "than",
+                "that",
+                "the",
+                "time",
+                "to",
+                "transaction",
+                "user",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 317,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

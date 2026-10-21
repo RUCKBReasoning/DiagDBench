@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Replication Synchronization Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Critical runtime settings (memory, checkpointing, parallelism, etc.) are mis-tuned relative to hardware capacity, workload profile, or software version, so the engine’s internal behavior itself becomes the bottleneck.\nReplication Synchronization Anomaly : Stand-by or subscriber nodes cannot receive, persist, or apply WAL/redo traffic as fast as the primary produces it, causing widening log-position gaps and retention of log segments.\nNetwork and Connectivity Resource Anomaly : Network paths, listener sockets, or connection-handling resources are saturated or unstable, impeding data flow or session establishment between hosts and clients (including replicas).\n\nWhen these three conditions overlap, the database exhibits a multi-layer degradation pattern: replication lag surges while primary-side WAL files pile up and cannot be recycled; replicas report both I/O or apply backlogs and frequent disconnect/reconnect churn; monitoring shows bursts of write-intensive waits on the primary even though storage and CPU are under-utilised, alongside steep increases in network retransmissions, half-open sockets, and authentication queueing. End-user sessions experience sporadic timeouts, stale reads from lagging replicas, and sudden latency spikes after each forced checkpoint or replica catch-up. Operations such as failover, switchover, or scaling out read traffic become risky because replicas are simultaneously behind and unstable.\n\nCausally, an unfitting configuration (e.g., aggressive checkpoint_interval, undersized wal_sender timeout, or excessive max_connections) drives high redo generation and spawns more background and connection processes than the host or network can handle. The inflated WAL rate stresses the replication pipeline; meanwhile, network congestion or socket exhaustion slows delivery to replicas, amplifying apply lag. The primary, seeing replication slots behind, is forced to retain additional log segments, inflating disk pressure and triggering even more frequent checkpoints—feedback that intensifies the original configuration problem. Replicas, burdened by delayed apply and intermittent network drops, further throttle back acknowledgement, convincing the primary to hold more WAL and fueling a vicious cycle that degrades both local performance and cross-node consistency.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.7430743243243243,
+            "bm25_score": 25.191470027217935,
+            "lexical_score": 0.14358108108108109,
+            "matched_terms": [
+                "and",
+                "be",
+                "because",
+                "behind",
+                "from",
+                "is",
+                "more",
+                "of",
+                "or",
+                "out",
+                "pattern",
+                "resource",
+                "session",
+                "than",
+                "that",
+                "the",
+                "timeout",
+                "user",
+                "when",
+                "workload"
+            ],
+            "match_count": 188,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

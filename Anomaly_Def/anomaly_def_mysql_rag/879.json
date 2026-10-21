@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Replication Synchronization Anomaly + Storage Space Capacity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Replication Synchronization Anomaly : Standbys or downstream consumers cannot receive or apply WAL/redo fast enough to keep up with the primary, widening the log-position gap.\nStorage Space Capacity Anomaly : Physical or logical free space in data, log, archive, temp, or backup areas is exhausted, causing allocation failures and stalls.\nOperating System Resource Limit Anomaly : Kernel-enforced limits on file handles, shared memory, semaphores, threads, or similar objects are reached, preventing the database from creating or accessing required resources.\n\nWhen all three conditions arise together, the database estate experiences a spiraling failure mode: replication lag grows, retained WAL or relay logs accumulate, and the resulting surge in on-disk log volume drives the underlying storage toward full. At the same time, exhausted OS limits prevent archiver, cleanup, or apply processes from opening additional files, allocating shared memory, or spawning workers, so neither the primary nor the replicas can reclaim space or accelerate catch-up. Symptoms include rapidly inflating disk usage on primaries and standbys, replica replay lag jumping while apply workers crash or refuse to start, repeated \"no space\" or \"too many open files\" errors in both database and system logs, stalled checkpoints, disabled autovacuum or compaction tasks, and an increasing number of read-only queries served stale data from far-behind replicas.\n\nCausal chain and reinforcement: (1) Initial OS resource exhaustion (e.g., file-descriptor limits) throttles replication apply processes and archive writers; (2) slowed apply causes WAL retention on the primary, inflating log volume; (3) the sudden consumption of disk space triggers storage-capacity breaches that further block WAL archiving and temp-space operations; (4) with storage full, retry storms and additional worker spawns push the system even harder against the same OS limits, causing more process failures; (5) the feedback loop leaves both primary and replicas unable to advance, risking total outage or data-loss exposure if the primary crashes before replicas catch up.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.6521039170014852,
+            "bm25_score": 26.401680551006102,
+            "lexical_score": 0.15032967032967032,
+            "matched_terms": [
+                "and",
+                "are",
+                "before",
+                "data",
+                "from",
+                "is",
+                "more",
+                "number",
+                "of",
+                "or",
+                "read",
+                "replica",
+                "replication",
+                "stale",
+                "the",
+                "time",
+                "to",
+                "when"
+            ],
+            "match_count": 42,
+            "entry": {
+                "timeout_id": "mysql84_replica_network_timeout",
+                "parameter_name": "replica_net_timeout",
+                "timeout_category": "replication_network_timeout",
+                "scope": "global/replication",
+                "official_definition": "The number of seconds to wait for more data from a source/replica connection before aborting the read.",
+                "trigger_condition": "A replica waits longer than replica_net_timeout for more data from the source connection.",
+                "workload_impact": "The replication network read is aborted and the replica considers the connection interrupted.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

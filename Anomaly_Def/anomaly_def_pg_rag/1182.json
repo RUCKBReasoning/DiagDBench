@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Storage I/O Throughput Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Sessions serialize on hot buffer-cache pages, latches, or page pins, stalling CPU threads while they wait to read, modify, or flush pages. \nStorage I/O Throughput Anomaly : The underlying storage subsystem cannot deliver the required read/write bandwidth or IOPS, so physical I/O latency and queue depths surge and database I/O waits dominate. \nNetwork and Connectivity Resource Anomaly : The network path, listener, or connection slots are saturated or unstable, causing slow or failed connection establishment and prolonged client read/write waits. \n\nWhen all three root causes strike simultaneously, the database experiences a layered slowdown: 1) internal workers spin or block on buffer-latch waits, 2) outstanding I/O requests pile up because the storage layer is already at its throughput ceiling, and 3) client sessions struggle to connect or to consume results across an overloaded network. Observable symptoms blend and amplify—buffer-busy and page-latch waits coexist with soaring read/write latencies, while active session counts, socket queues, and retry storms grow. Application response times fluctuate wildly; some statements hang inside the engine, others time out on the wire, making the true bottleneck difficult to pinpoint. \n\nCausally, saturated storage keeps dirty or requested pages in flight longer, extending latch hold times and magnifying buffer contention. Prolonged execution increases session lifetime and concurrency, swelling the number of open connections and the volume of result data, which in turn stresses network and listener resources. Conversely, network stalls delay acknowledgement of commits and fetches, holding transactions open and keeping their locked and latched pages active, which further inflates buffer pressure. The compounded effect is a feedback loop: storage slowness fuels latch contention, latch contention lengthens transactions, and protracted transactions multiply network usage—all three reinforcing each other and driving the database into a severe, multi-layer performance collapse.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.37260210520722453,
+            "bm25_score": 13.906363616269084,
+            "lexical_score": 0.16323644933228593,
+            "matched_terms": [
+                "an",
+                "and",
+                "are",
+                "client",
+                "connection",
+                "establishment",
+                "holding",
+                "inside",
+                "is",
+                "latency",
+                "longer",
+                "of",
+                "open",
+                "or",
+                "session",
+                "sessions",
+                "the",
+                "time",
+                "when",
+                "with"
+            ],
+            "match_count": 219,
+            "entry": {
+                "timeout_id": "pg16_idle_session_timeout",
+                "parameter_name": "idle_session_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle, but not within an open transaction, for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle and not inside an open transaction longer than the configured threshold.",
+                "workload_impact": "The session is terminated; the documentation warns about using this with connection pools or middleware.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Obsolete row versions, rollback records, and logically-deleted index entries accumulate faster than background cleaners can reclaim them, inflating on-disk and in-memory structures and lengthening visibility checks.\nBuffer Cache and Latch Contention Anomaly : Concurrent sessions repeatedly fight for hot buffer pages, page pins, and latches, causing stalls, CPU spin, and prolonged waits in the buffer manager.\n\nWhen both root causes strike at once, the system experiences a compound failure mode in which bloated MVCC metadata increases the number and churn rate of buffer pages while those same pages become hotspots contended for by many sessions. Observable symptoms include: 1) rapidly growing table and index size that pushes the working set beyond the ideal buffer-pool footprint, 2) sharp rises in buffer-busy/latch wait events coinciding with background vacuum/cleaner activity, 3) CPU usage dominated by spin-loops and visibility scans rather than useful work, 4) escalating I/O as the cache thrashes between old and freshly dirtied versions, and 5) unstable query plans as the optimizer misjudges bloat-inflated statistics and fluctuating cache hit ratios.\n\nCausally, heavy update/delete churn generates excess MVCC garbage, swelling the number of distinct physical pages that must stay resident or be repeatedly fetched. This expansion dilutes buffer-pool effectiveness and forces more sessions to converge on the remaining truly hot root, index, and free-space pages, intensifying latch contention. At the same time, cleaners that try to prune dead versions issue additional reads and writes, further saturating the buffer manager and extending latch hold times. The longer latches are held, the more they delay other sessions, allowing even more obsolete versions to pile up. The feedback loop between version-store bloat and latch congestion accelerates resource exhaustion, leading to severe throughput degradation and potentially catastrophic wraparound or emergency autovacuum scenarios.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.514989869272582,
+            "bm25_score": 20.656801721317073,
+            "lexical_score": 0.1499926836406204,
+            "matched_terms": [
+                "activity",
+                "and",
+                "are",
+                "be",
+                "can",
+                "dead",
+                "failure",
+                "number",
+                "of",
+                "on",
+                "or",
+                "sessions",
+                "system",
+                "that",
+                "the",
+                "this",
+                "time",
+                "to",
+                "when"
+            ],
+            "match_count": 172,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_count",
+                "parameter_name": "tcp_keepalives_count",
+                "timeout_category": "network_keepalive_failure_threshold",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the number of TCP keepalive messages that can be lost before the server connection to the client is considered dead.",
+                "trigger_condition": "The number of lost TCP keepalive probes reaches tcp_keepalives_count on systems supporting TCP_KEEPCNT.",
+                "workload_impact": "The server can consider the client connection dead after the configured keepalive failure threshold.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

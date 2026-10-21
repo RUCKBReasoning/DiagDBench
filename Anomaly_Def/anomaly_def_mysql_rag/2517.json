@@ -1,0 +1,46 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Buffer Cache and Latch Contention Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level statements or transaction patterns force the engine to touch more rows, hold locks longer, or perform excessive round-trips beyond actual business need.\nBuffer Cache and Latch Contention Anomaly : Concurrent sessions serialize on hot buffer pages, latches, or page-pin structures, causing CPU spinning and wait events rather than true resource shortage.\nOperating System Resource Limit Anomaly : Kernel-enforced ceilings on file descriptors, shared memory, semaphores, threads, or cgroup quotas prevent the database from allocating new low-level resources.\n\nWhen these three root causes manifest together, the workload generates oversized scans and long-running transactions that hammer a limited buffer pool, creating hot pages and latch hotspots. At the same time, the database process periodically fails to obtain additional kernel objects, intensifying stalls. Observable symptoms include: explosive growth of slow-query log entries, buffer-busy and latch wait events spiking in lockstep with application timeouts, CPU cores saturated by spin loops yet low transactional throughput, sudden \"cannot allocate shared memory / file handle / thread\" errors, aborted background workers, and severe variance in response times. Monitoring may show buffer cache hit ratios oscillating as pages churn, while OS metrics reveal descriptor or memory namespace exhaustion exactly when latch waits peak.\n\nCausally, chatty or bulk-scan SQL inflates the rate and duration of page accesses, concentrating pressure on a subset of data blocks. This amplifies latch contention in the buffer manager; each stall extends transaction lifetimes, which in turn holds resources longer and issues more I/O, deepening the hotspot. Prolonged contention causes threads to linger and proliferate, quickly consuming kernel file handles, shared-memory segments, or thread slots. Once OS limits are hit, the engine cannot create new worker threads or allocate additional shared buffers, so latch contention can no longer be alleviated by scaling concurrency, and blocked sessions accumulate. The feedback loop—inefficient SQL driving latch storms that balloon process counts and exhaust kernel quotas—leads to cascading slowdowns, partial outages, and ultimately systemic unavailability unless both the workload logic and the underlying resource ceilings are corrected.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 277,
+            "score": 0.36201347523120814,
+            "bm25_score": 33.57879833644179,
+            "lexical_score": 0.11510297482837528,
+            "matched_terms": [
+                "and",
+                "as",
+                "cannot",
+                "engine",
+                "or",
+                "running",
+                "so",
+                "sql",
+                "that",
+                "the",
+                "this",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "1289",
+                "error_name": "ER_OPTION_PREVENTS_STATEMENT",
+                "official_description": "The MySQL server is running with the %s option so it cannot execute this statement",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "sql_and_parser",
+                "cause_analysis": "The failure is typically associated with unsupported syntax, invalid statement structure, or feature usage that the target engine version cannot execute as written.",
+                "solution_guidance": "Validate SQL syntax, target-engine compatibility, statement shape, and whether the feature is supported under the current engine version or execution context.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "syntax error",
+                    "feature rejection"
+                ]
+            }
+        }
+    }
+]

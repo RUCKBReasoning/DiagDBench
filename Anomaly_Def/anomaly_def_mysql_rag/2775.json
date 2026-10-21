@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Composite Definition: This anomaly represents the concurrent occurrence of a sub-optimal execution plan chosen by the optimizer (Query Plan Selection Anomaly) together with saturation or mis-configuration of the write-ahead log infrastructure (Transaction Log Subsystem Anomaly). Both root causes are active at the same time, so the workload suffers from inefficient SQL execution paths while every data-modification operation is additionally throttled by log I/O delays.\n\nCombined Observable Phenomena: • Highly variant and often degraded response times: some statements suddenly switch to full scans or row-by-row nested loops, inflating CPU and I/O, while commits stall on log-flush waits. • Dramatic spikes in redo generation, frequent log file switches, and enlarged archive backlogs driven by the extra work performed by sub-optimal plans (e.g., unnecessary wide-range updates or large sort/merge spill redo). • Plan instability that coincides with rising log-related wait events, making it difficult to attribute performance drops to either the optimizer or logging alone. • Elevated contention on buffer cache and temp space caused by poor plans, further increasing the volume of dirty pages that must be flushed at checkpoint, which in turn competes with log writes for the same I/O channels. • Application-level symptoms include timeouts, deadlock-like stalls at commit boundaries, erratic throughput, and exponential latency under peak write load.\n\nCausal Interaction: Poor plan selection can magnify the rate and burstiness of data modifications—e.g., choosing a table scan plus large hash aggregation that spills to disk may touch and dirty far more pages than a selective index access, thereby generating excessive redo. This surge stresses the log buffer, amplifies log file switch frequency, and exposes any sizing or device-placement weaknesses in the transaction-log subsystem. Conversely, when log-flush latency rises, transactions stay open longer, holding locks and keeping their execution contexts alive. This inflates the working set and can prompt the optimizer to evict or recompile plans, increasing the probability of unstable or downgraded plan choices. The feedback loop between growing redo pressure and deteriorating plan quality accelerates resource exhaustion, leading to severe throughput collapse in write-intensive OLTP workloads.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.6957633137741025,
+            "bm25_score": 33.84069685974316,
+            "lexical_score": 0.17345095859961102,
+            "matched_terms": [
+                "access",
+                "and",
+                "be",
+                "by",
+                "contention",
+                "execution",
+                "for",
+                "is",
+                "operation",
+                "or",
+                "performed",
+                "quality",
+                "query",
+                "resource",
+                "the",
+                "this",
+                "time",
+                "together",
+                "when",
+                "with",
+                "work",
+                "workload"
+            ],
+            "match_count": 132,
+            "entry": {
+                "timeout_id": "mysql84_regular_expression_time_limit",
+                "parameter_name": "regexp_time_limit",
+                "timeout_category": "expression_evaluation_time_limit",
+                "scope": "global/session",
+                "official_definition": "The time limit for regular expression matching operations performed by the regular expression engine.",
+                "trigger_condition": "A regular expression match operation exceeds regexp_time_limit.",
+                "workload_impact": "The regular expression operation is constrained by the configured time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

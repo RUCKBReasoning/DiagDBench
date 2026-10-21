@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Optimizer Statistics Anomaly",
+            "Description": "Schema and Index Design Anomaly : Physical data-model structures (tables, partitions, indexes, constraints, data types) are mis-aligned with workload access patterns, forcing the optimizer to consider inherently inefficient access paths even when good statistics are available.\nOptimizer Statistics Anomaly : Row-count, histogram, and correlation metadata are stale or incomplete, leading the optimizer to misestimate cardinalities and choose sub-optimal plans even when adequate physical structures exist.\n\nComposite definition: The database simultaneously suffers from poor physical schema/index design and inaccurate optimizer statistics, so both the set of access paths considered and the cost estimates for those paths are systematically wrong. The optimizer is therefore trapped between a limited set of inefficient structures and misleading metadata about those structures, resulting in chronically bad execution plans.\n\nCombined anomalous phenomena:  • Queries show extreme and unstable latency, with some executions scanning huge volumes of data while others spill to disk due to underestimated memory needs.  • Execution plans contain full table scans, unselective index range scans, repeated key lookups, or partition elimination failures, and the estimated versus actual row counts differ by several orders of magnitude.  • Plan performance oscillates after data loads or index rebuilds but never stabilizes, and automatic statistics refreshes or index hints give only temporary relief.  • DML operations experience high blocking and log growth because oversized or redundant indexes are maintained unnecessarily, yet the optimizer still ignores them due to bad statistics.  • Monitoring tools show both high physical I/O from design issues and excessive re-compilations or plan cache churn from statistics issues, making the root cause appear ambiguous.\n\nCausal chain: The absence of well-targeted or covering indexes forces the optimizer to rely on broad scans; stale statistics then exaggerate or underplay the cost of those scans, causing it to pick even worse plans such as nested loops against massive row sets or hash joins spilling to temp space. Conversely, redundant or poorly chosen indexes inflate maintenance cost, but because statistics on them are outdated, the optimizer cannot recognize when they would actually be beneficial, leaving them unused yet still expensive to maintain. Stale global statistics on mis-partitioned tables hide hot partitions that suffer from skew, amplifying latch contention and I/O hotspots already introduced by the flawed schema design. Thus, each anomaly masks and reinforces the other, degrading both read and write performance across OLTP and OLAP workloads while complicating diagnosis.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.739773325237806,
+            "bm25_score": 24.124691079393827,
+            "lexical_score": 0.13257775079268702,
+            "matched_terms": [
+                "access",
+                "and",
+                "be",
+                "because",
+                "by",
+                "contention",
+                "execution",
+                "for",
+                "global",
+                "is",
+                "operations",
+                "or",
+                "other",
+                "the",
+                "when",
+                "with",
+                "workload"
+            ],
+            "match_count": 150,
+            "entry": {
+                "timeout_id": "mysql84_regular_expression_time_limit",
+                "parameter_name": "regexp_time_limit",
+                "timeout_category": "expression_evaluation_time_limit",
+                "scope": "global/session",
+                "official_definition": "The time limit for regular expression matching operations performed by the regular expression engine.",
+                "trigger_condition": "A regular expression match operation exceeds regexp_time_limit.",
+                "workload_impact": "The regular expression operation is constrained by the configured time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

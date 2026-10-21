@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + MVCC Version Maintenance Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions hold or request incompatible locks on the same resources, causing wait chains or deadlocks that stall or abort statements.\nMVCC Version Maintenance Anomaly : Obsolete row versions and rollback records accumulate faster than background cleaners can reclaim them, enlarging data structures and slowing visibility checks.\nOperating System Resource Limit Anomaly : Database processes hit kernel-enforced ceilings for file descriptors, shared-memory segments, semaphores, threads, or other OS objects, preventing further allocations.\n\nWhen all three root causes strike together, the database experiences compound symptoms: long lock-wait times and deadlock retries surface alongside rapidly growing version stores, bloated tables, and constantly busy autovacuum/cleaner tasks. Simultaneously, background workers, parallel query helpers, or even ordinary sessions intermittently fail to start because the process exhausts file-handle, semaphore, or shared-memory limits. Administrators see lock-manager wait graphs, surging deadlock victim counts, soaring disk usage from version bloat, cleanup workers stuck or throttled, and operating-system logs complaining about resource exhaustion. From the client side this manifests as unpredictable latency spikes, timeouts, aborted transactions that must be retried, and sporadic \"cannot allocate OS resource\" errors.\n\nCausal chain: heavy OLTP update/delete activity creates many row versions; long-running or blocked transactions (due to lock contention) keep old snapshots alive, preventing version cleanup and inflating the version store. The swelling version store enlarges on-disk structures and lengthens checkpoint and vacuum cycles, which in turn extend lock durations and increase contention. To cope, the database spawns more cleanup or parallel worker processes—quickly approaching or exceeding OS limits on file descriptors, shared memory, or process counts. Once those limits are hit, new workers cannot start, further stalling vacuum and deadlock-detector activity, so both version bloat and lock queues worsen. Each anomaly therefore reinforces the others, driving a feedback loop that degrades throughput and may culminate in partial or full service outage.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.408102034871829,
+            "bm25_score": 18.343150765077706,
+            "lexical_score": 0.14943396226415093,
+            "matched_terms": [
+                "aborted",
+                "activity",
+                "and",
+                "are",
+                "client",
+                "data",
+                "for",
+                "from",
+                "latency",
+                "more",
+                "or",
+                "sessions",
+                "than",
+                "the",
+                "this",
+                "to",
+                "wait",
+                "when"
+            ],
+            "match_count": 76,
+            "entry": {
+                "timeout_id": "mysql84_network_read_timeout",
+                "parameter_name": "net_read_timeout",
+                "timeout_category": "network_read_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for more data from a connection before aborting the read.",
+                "trigger_condition": "The server waits for additional data from a connection longer than net_read_timeout.",
+                "workload_impact": "The network read is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

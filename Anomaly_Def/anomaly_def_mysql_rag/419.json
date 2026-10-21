@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Transaction Log Subsystem Anomaly + CPU Resource Anomaly",
+            "Description": "Schema and Index Design Anomaly : Physical data-model structures, indexes, partitions, and data types do not match workload access patterns, forcing inefficient access paths.\nTransaction Log Subsystem Anomaly : The write-ahead logging pipeline—generation, buffering, flushing, archiving—cannot keep pace with redo volume, causing commit stalls and log-related waits.\nCPU Resource Anomaly : Database processes consume sustained, near-saturation CPU, leaving insufficient cycles for other work and inflating run-queue latency.\n\nWhen all three root causes co-exist, the database exhibits a blended symptom set: queries that already scan whole tables or fetch many rows because of missing or non-covering indexes amplify redo generation, which in turn overwhelms the log buffer and I/O band­width. As commits wait for log flushes, user sessions pile up, yet they remain CPU-hungry while looping on retries or scanning data, driving host utilization to saturation. Observers see mixed wait profiles—log-flush and CPU scheduler waits spike together—alongside escalating query latencies, checkpoint storms, and sharp drops in TPS. Monitoring dashboards may misleadingly attribute the slowdown to any one layer, while in reality lock contention, log stalls, and CPU thrashing are interleaved.\n\nCausally, inefficient schema and index design multiplies the amount of data each DML or SELECT touches, inflating both CPU cycles and redo bytes per transaction. The surplus redo intensifies pressure on the transaction-log subsystem; once log-flush latency lengthens, foreground sessions hold locks longer and re-execute scans, compounding CPU load. Elevated CPU utilization then slows background log writer and archive processes, further delaying flushes and creating a feedback loop. The synergy of these root causes therefore magnifies performance degradation far beyond what each would inflict in isolation, pushing an OLTP system into a cascading slowdown that is difficult to diagnose without recognizing their mutual reinforcement.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.643193406884967,
+            "bm25_score": 26.278419593928337,
+            "lexical_score": 0.1425,
+            "matched_terms": [
+                "an",
+                "and",
+                "because",
+                "cannot",
+                "for",
+                "in",
+                "is",
+                "lock",
+                "longer",
+                "of",
+                "or",
+                "schema",
+                "sessions",
+                "the",
+                "transaction",
+                "up",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 21,
+            "entry": {
+                "timeout_id": "mysql84_innodb_row_lock_wait_timeout",
+                "parameter_name": "innodb_lock_wait_timeout",
+                "timeout_category": "innodb_row_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "The length of time in seconds an InnoDB transaction waits for a row lock before giving up.",
+                "trigger_condition": "An InnoDB transaction waits longer than innodb_lock_wait_timeout for a row lock.",
+                "workload_impact": "The lock wait gives up; by default only the current statement is rolled back unless innodb_rollback_on_timeout is enabled.",
+                "default_behavior": "Defined as an InnoDB system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

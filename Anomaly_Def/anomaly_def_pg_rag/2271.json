@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Storage I/O Throughput Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly: Commit processing is throttled because log-buffer flush, log-file switching, archiving, or retention stalls the write-ahead logging path.\nStorage I/O Throughput Anomaly: Physical devices or virtualization layers cannot sustain the required read/write throughput or latency budget for data, temp, or log files.\nNetwork and Connectivity Resource Anomaly: Client-to-server transport, listener, authentication, or socket resources are saturated, causing connection establishment or data transfer delays.\n\nWhen these three root causes strike concurrently, the database exhibits a multi-layer bottleneck: commits queue behind slow log flushes, those flushes in turn wait on an overloaded storage subsystem, and inflight application sessions accumulate because network handshakes, result shipping, or keep-alive traffic are throttled. Observable symptoms include prolonged commit and transaction response times, surging log-related wait events alongside high device queue depths and elevated read/write latency, growing redo and archive backlogs, connection timeouts, rising counts of half-open sockets, and sessions stuck in client I/O waits. System-wide throughput collapses even though server CPU may remain under-utilised, and performance troubleshooting becomes difficult as wait-event profiles oscillate between log, I/O, and network categories.\n\nCausally, restricted storage bandwidth slows every log-buffer flush; this inflates commit latency and prolongs transaction lifetimes, increasing the number of concurrent connections and the volume of network traffic each must sustain. The swelling session pool and larger in-flight result sets then overrun listener backlogs and socket buffers, introducing additional delays that further defer application ACKs needed for synchronous commits. These extra delays, in turn, keep transactions open longer, extending redo generation intervals and swelling log segments, which worsens the already saturated storage channel and pushes archive and replication pipelines further behind. The intertwined feedback loops between log pressure, storage saturation, and network congestion therefore amplify each other, rapidly degrading OLTP workload performance and raising the risk of service outage or data-loss scenarios if durability SLAs are violated.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.5620224710855548,
+            "bm25_score": 18.747700033540287,
+            "lexical_score": 0.17228598014888336,
+            "matched_terms": [
+                "and",
+                "are",
+                "authentication",
+                "budget",
+                "client",
+                "connection",
+                "data",
+                "establishment",
+                "is",
+                "latency",
+                "longer",
+                "may",
+                "on",
+                "or",
+                "remain",
+                "session",
+                "sessions",
+                "system",
+                "the",
+                "this",
+                "when"
+            ],
+            "match_count": 273,
+            "entry": {
+                "timeout_id": "pg16_tcp_user_timeout",
+                "parameter_name": "tcp_user_timeout",
+                "timeout_category": "network_unacknowledged_data_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies how long transmitted data may remain unacknowledged before the TCP connection is forcibly closed.",
+                "trigger_condition": "TCP data sent by PostgreSQL remains unacknowledged longer than tcp_user_timeout on systems supporting TCP_USER_TIMEOUT.",
+                "workload_impact": "The TCP connection is forcibly closed.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

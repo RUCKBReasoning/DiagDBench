@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Database Memory Allocation Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently chooses a markedly sub-optimal execution plan even though statistics are reasonably accurate, leading to inefficient access paths, incorrect join orders, or inappropriate parallelism settings.\nDatabase Memory Allocation Anomaly : The database engine allocates or leaks so much memory to caches, work areas, and background structures that the host experiences sustained RAM pressure, paging, or OOM events, degrading every component that depends on predictable memory availability.\nTransaction Log Subsystem Anomaly : The write-ahead logging machinery—log buffers, redo files, flush and archive operations—cannot keep pace with the workload’s commit rate, causing log-related waits and potential stalls on the write path.\n\nWhen these three root causes occur concurrently, the system exhibits a blended failure pattern: a poor query plan may trigger excessive logical and physical I/O, large hash or sort buffers, and elevated redo generation; the inflated memory footprint from those work areas—combined with uncontrolled plan and buffer cache growth—pushes the host into memory pressure and paging, which in turn slows log buffer flushes and data-file I/O. The log subsystem, already undersized or on a saturated device, now faces a spike in redo volume and longer flush times, driving commit latency higher and forcing additional waits inside sessions already executing inefficient plans. Symptoms therefore include: rapid oscillation between different bad plans, surge in memory reservations per session, abrupt drops in page-cache hit ratios, escalating log write/sync waits, frequent checkpoint or log-switch storms, and eventual process throttling or termination by the OS as swap fills—making it difficult to isolate a single culprit.\n\nCausally, an ill-chosen plan (e.g., nested loops on skewed data) multiplies row processing and generates large temporary structures, inflating per-query work memory. This accelerates memory exhaustion, which induces OS-level paging; the resulting I/O contention further degrades plan performance and extends transaction lifetimes, amplifying redo generation. The overtaxed log subsystem must now flush bigger, bursty redo streams while competing with paging and data reads, lengthening commit durations. Prolonged commits keep locks held longer, increasing concurrency and memory usage, which feeds back into higher cache bloat and additional sub-optimal plan selections as the optimizer misinterprets transient statistics. Thus, each anomaly intensifies the others, creating a self-reinforcing loop that can cripple an OLTP system.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5738,
+            "score": 0.45389048877745747,
+            "bm25_score": 46.82812600813113,
+            "lexical_score": 0.16205536653263222,
+            "matched_terms": [
+                "access",
+                "and",
+                "are",
+                "data",
+                "different",
+                "engine",
+                "failure",
+                "file",
+                "files",
+                "growth",
+                "latency",
+                "log",
+                "or",
+                "paths",
+                "pressure",
+                "redo",
+                "the",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013895",
+                "error_name": "ER_IB_MSG_LOG_FILE_DIFFERENT_FORMATS",
+                "official_description": "Found redo log files with different formats: %s has format v%lu, %s has format v%lu.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

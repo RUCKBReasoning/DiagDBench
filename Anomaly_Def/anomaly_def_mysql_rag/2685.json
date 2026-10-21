@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Transaction Log Subsystem Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer repeatedly chooses a substantially sub-optimal execution plan even though statistics are acceptable, leading to inefficient data access patterns and resource over-consumption.\nTransaction Log Subsystem Anomaly : The write-ahead logging path (log buffer, log files, flushing, switching, archiving, replication retention) becomes the primary bottleneck, inflating commit latency and stalling write activity.\nStorage Space Capacity Anomaly : The database approaches or reaches hard space limits in data, log, archive, temp, or backup areas, causing allocation failures and cascading stalls.\n\nWhen all three root causes coexist, the system exhibits a compound failure signature: • Queries that once used selective index access flip to wide scans or Cartesian joins, exploding row touches, temporary‐space usage, and change volume. • The bloated change sets generate surges of redo that saturate the log buffer and log devices, driving up log flush and commit waits and triggering rapid log-file switches. • Accelerated log and data growth quickly exhausts remaining free space; auto-extension failures, archive-destinations running full, and temp-space errors appear together. • End-user symptoms include sharp spikes in response times, intermittent \"cannot allocate extent\" or \"log file switch timeout\" errors, and sudden session terminations when space limits are hit.\n\nCausal interaction: The sub-optimal plans inflate I/O and modify more rows than necessary, dramatically increasing redo generation and data growth. This additional pressure magnifies any latent weakness in the transaction-log subsystem, so log flush waits and checkpoint storms lengthen transaction duration and hold locks longer, creating more contention and further workload skew. Because the log subsystem struggles, archive and recycle operations slow, preventing space reclamation and hastening exhaustion of both log and data areas. As free space dwindles, auto-extension failures and emergency space-management actions fragment files and may trigger additional plan invalidations, perpetuating the optimizer mis-choices. The three anomalies therefore reinforce each other, turning what might have been isolated inefficiencies or capacity alerts into a cascading OLTP outage.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5706,
+            "score": 0.45184977650795444,
+            "bm25_score": 47.99207201946491,
+            "lexical_score": 0.18511627906976744,
+            "matched_terms": [
+                "access",
+                "and",
+                "are",
+                "capacity",
+                "data",
+                "failure",
+                "failures",
+                "file",
+                "growth",
+                "latency",
+                "log",
+                "management",
+                "or",
+                "pressure",
+                "redo",
+                "storage",
+                "the",
+                "to",
+                "when",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013863",
+                "error_name": "ER_IB_MSG_LOG_WRITER_WRITE_FAILED",
+                "official_description": "Error %d encountered when writing to the redo log file: %s.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

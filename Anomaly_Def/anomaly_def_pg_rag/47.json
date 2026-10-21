@@ -1,0 +1,61 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Schema and Index Design Anomaly + Database Memory Allocation Anomaly",
+            "Description": "SQL Workload Logic Anomaly: Application-level statements and transaction boundaries are written in a way that touches far more rows, columns, or time than the business logic really requires.\nSchema and Index Design Anomaly: The physical table, partition, and index layout is mis-aligned with the workload’s access patterns, forcing even well-written queries into inefficient scans and lookups.\nDatabase Memory Allocation Anomaly: The database engine allocates or leaks more memory than the host can safely supply, creating sustained OS pressure, paging, or OOM terminations.\n\nWhen these three root causes strike together, the database experiences a multi-layer performance collapse. Poorly scoped SQL drives large scans; the absence of adequate indexes prevents selective access; and the excessive data volume inflates sort, hash, buffer-cache, and work-area allocations until the memory subsystem is saturated. Observable symptoms include: extremely long and highly variable statement latency, waves of slow-query log entries paired with full-table or non-covering index scans, temporary-segment or spill activity escalating to disk, rapid growth and churn of buffer-pool pages, shrinking cache hit ratios, spike-and-stall CPU patterns caused by memory contention, lock and latch waits that snowball as transactions stay open longer, and eventually paging storms or OOM crashes that take down nodes or entire clusters. Because each layer masks or amplifies the others, plan-level diagnostics alone may not reveal the full problem, and fixes applied at a single layer often show only transient relief.\n\nCausally, inefficient SQL logic initiates oversized data access. The deficient schema and index design removes any opportunity for the optimizer to prune this workload, so the engine must physically process the bloated result set. The resulting scans, joins, and sorts demand large work areas and flood the buffer cache. As memory consumption climbs, the allocator competes for scarce RAM, triggering eviction of useful pages, spilling of intermediate results to temporary space, and OS-level paging. Elevated latency keeps transactions open longer, further enlarging memory footprints for session state and undo/redo, which feeds back into even higher memory pressure—a positive feedback loop that magnifies both performance degradation and stability risks.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.705754968756755,
+            "bm25_score": 35.86901450362447,
+            "lexical_score": 0.17404358353510896,
+            "matched_terms": [
+                "and",
+                "any",
+                "because",
+                "database",
+                "for",
+                "index",
+                "is",
+                "lock",
+                "longer",
+                "of",
+                "or",
+                "schema",
+                "session",
+                "statement",
+                "table",
+                "than",
+                "that",
+                "the",
+                "this",
+                "time",
+                "to",
+                "transaction",
+                "waits",
+                "when"
+            ],
+            "match_count": 166,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

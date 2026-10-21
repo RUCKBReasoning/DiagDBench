@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Database Configuration Parameter Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Transaction Lock Contention Anomaly: Concurrent transactions request incompatible locks on the same data or metadata objects, causing prolonged blocking chains or deadlocks that the lock manager must resolve.\nDatabase Configuration Parameter Anomaly: Critical engine parameters (memory sizes, checkpoint cadence, parallelism, etc.) are mis-tuned relative to hardware and workload, so bottlenecks arise even when physical resources are not yet exhausted.\nOperating System Resource Limit Anomaly: The database process hits kernel-enforced ceilings for files, memory segments, threads, or other OS objects, preventing new allocations and stalling activity.\n\nWhen all three root causes manifest together, the system exhibits compounded symptoms: lock-wait and deadlock frequency soar while overall throughput and connection availability plummet; sessions pile up waiting not only on locks but also on artificially throttled I/O, CPU, or background workers; deadlock detectors or autovacuum/cleanup tasks fail to start because the process has exhausted file descriptors or thread quotas; error logs show a mix of lock-timeout/victim-abort messages, parameter-driven warnings about buffer, log, or worker shortages, and kernel errors for resource denial. Recovery spikes (checkpoints, flush storms) can coincide with massive blocking, making performance swings sudden and severe and obscuring which layer is primary.\n\nCausally, mis-tuned database parameters can lengthen transaction lifetimes (e.g., small work_mem causing extra sorts, aggressive checkpoints inducing I/O stalls), so locks are held longer and contention intensifies. The attempt to compensate—by opening more connections or parallel workers—consumes additional file handles, threads, and shared memory, pushing the process toward OS limits. Once those limits are breached, new backend or auxiliary processes cannot start, deadlock detectors or background writers stall, and waiting transactions remain blocked indefinitely, further deepening lock queues. Conversely, OS denials of resources can thwart parameter settings (e.g., requested shared_buffers exceeds kernel SHMMAX), forcing the engine into degraded fall-back configurations that amplify the original mis-tuning. The interlocking feedback among lock contention, poor configuration, and OS resource exhaustion creates a vicious cycle that severely degrades OLTP responsiveness and can culminate in partial or full outage.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 208,
+            "score": 0.17462971594149512,
+            "bm25_score": 13.360632166157162,
+            "lexical_score": 0.1460708782742681,
+            "matched_terms": [
+                "and",
+                "but",
+                "by",
+                "configuration",
+                "engine",
+                "error",
+                "errors",
+                "in",
+                "is",
+                "must",
+                "or",
+                "resource",
+                "system",
+                "the",
+                "to",
+                "together",
+                "with",
+                "workload"
+            ],
+            "match_count": 10,
+            "entry": {
+                "error_code": "58030",
+                "error_name": "io_error",
+                "official_description": "io error",
+                "error_class": "Class 58 - System Error (errors external to PostgreSQL itself)",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

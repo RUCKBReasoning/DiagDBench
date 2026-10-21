@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Query Plan Selection Anomaly",
+            "Description": "Schema and Index Design Anomaly: The physical table, index, and partition design does not fit actual access patterns, forcing even well-written SQL to use inherently inefficient access paths.\nQuery Plan Selection Anomaly: The optimizer chooses a markedly sub-optimal execution plan despite having reasonably accurate statistics, often because of cost-model or plan-cache quirks.\n\nComposite definition: Both a static mismatch in the physical schema and a dynamic mis-selection of execution plans coexist. Poor or missing indexes, oversized or redundant structures, and ill-suited partitions leave only a small set of viable access paths, while the optimizer still fails to pick the best among those, compounding inefficiency.\n\nCombined anomalous phenomena: Workload exhibits frequent full table or non-covering index scans, but even when suitable indexes are present the same statements sometimes flip between different bad plans. You may observe extreme variance in response times, sudden CPU or I/O spikes, bloated buffer-pool churn, and lock contention as long-running scans block short OLTP lookups. Adding or modifying an index may help one statement yet unexpectedly slow another because the optimizer latches onto the new structure with an ill-costed plan. Performance improvements gained by manual hinting or index tuning are fragile, disappearing after plan cache invalidations, statistics refreshes, or version upgrades.\n\nCausal interaction: The deficient physical design narrows the pool of efficient plans, increasing the likelihood that any costing inaccuracy or plan-cache quirk will land on a pathological path. Conversely, when the optimizer does stumble upon a partly efficient plan, the absence of covering or selective indexes forces additional key lookups or broad range scans that negate the benefit. Repeated plan flips driven by parameter sensitivity or cache pollution obscure the root schema issue, while the schema flaw magnifies the cost gaps between good and bad plans, making performance instability more severe and harder to diagnose. Together, the two anomalies reinforce each other and degrade both transactional and analytical workloads far beyond the impact each would have in isolation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.7477567567567567,
+            "bm25_score": 41.35337288511177,
+            "lexical_score": 0.15918918918918917,
+            "matched_terms": [
+                "access",
+                "and",
+                "any",
+                "because",
+                "contention",
+                "execution",
+                "long",
+                "more",
+                "of",
+                "or",
+                "other",
+                "path",
+                "query",
+                "running",
+                "sql",
+                "statement",
+                "that",
+                "the",
+                "together",
+                "when",
+                "with",
+                "workload"
+            ],
+            "match_count": 261,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

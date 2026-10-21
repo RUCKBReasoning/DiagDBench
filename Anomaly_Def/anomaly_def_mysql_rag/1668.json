@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Database Configuration Parameter Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer consistently chooses a markedly sub-optimal execution plan even though statistics are reasonable, leading to excessive I/O, CPU, or skewed access paths.\nDatabase Configuration Parameter Anomaly : Critical engine settings (memory pools, checkpoint cadence, parallelism, etc.) are mis-tuned for the hardware and workload, so the instance’s behavior is limited more by configuration than by true resource scarcity.\nBuffer Cache and Latch Contention Anomaly : Sessions serialize on hot buffer pages or latches inside the buffer manager, causing buffer-busy waits, CPU spin, and throughput collapse.\n\nWhen these three root causes coincide, the database exhibits a compound failure pattern: 1) erratic plan switches or uniformly bad plans inflate logical I/O and amplify page-touch frequency; 2) mis-sized buffer pools, aggressive checkpoints, or poor parallelism settings force constant page eviction and dirty-page flush storms; 3) the flood of page accesses converges on a limited cache, driving latch spins and buffer-busy waits. Observable symptoms therefore include extreme variance in response times, sudden drops in throughput even while CPU or storage appear partially idle, surges of page-latch and log-write waits interleaved with optimizer-related recompile or plan-cache misses, and workload regressions immediately after parameter changes or engine upgrades.\n\nCausal chain: a sub-optimal plan increases the volume and concurrency of page accesses. Because configuration parameters have left the buffer pool undersized and checkpoint cadence too aggressive, these extra pages cannot stay resident; they churn rapidly, keeping dirty-page queues full and forcing frequent flushes. The elevated churn creates hotspots (e.g., index root pages, allocation map pages) on which many sessions contend, escalating latch acquisition time. Meanwhile, mis-tuned parallelism or work-memory settings can inflate the number of concurrent workers executing the bad plan, multiplying the contention. The resulting feedback loop—bad plan → higher I/O → cache churn → latch contention → longer execution → even more concurrent executions—drives a systemic performance meltdown that is far more severe than any single anomaly acting alone.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 1204,
+            "score": 0.5306105629497718,
+            "bm25_score": 46.195617290608254,
+            "lexical_score": 0.13714446634750774,
+            "matched_terms": [
+                "access",
+                "and",
+                "because",
+                "cannot",
+                "execution",
+                "failure",
+                "for",
+                "is",
+                "or",
+                "settings",
+                "the",
+                "these",
+                "they",
+                "time",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "3638",
+                "error_name": "ER_CREDENTIALS_CONTRADICT_TO_HISTORY",
+                "official_description": "Cannot use these credentials for '%.*s@%.*s' because they contradict the password history policy",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "authentication_and_authorization",
+                "cause_analysis": "The failure is typically associated with user identity, privilege scope, object access checks, or credential validation at session establishment or statement execution time.",
+                "solution_guidance": "Verify account credentials, privilege grants, object ownership, role settings, and whether the execution context has sufficient access rights.",
+                "observable_symptoms": [
+                    "access denied",
+                    "authentication failure",
+                    "permission error"
+                ]
+            }
+        }
+    }
+]

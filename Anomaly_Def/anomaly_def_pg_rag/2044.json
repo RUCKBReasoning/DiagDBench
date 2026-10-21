@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Database Memory Allocation Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Composite Definition: The database concurrently suffers from (1) stale or inaccurate optimizer statistics that drive systematic cardinality misestimation, (2) runaway memory consumption that pushes the instance and host beyond safe memory limits, and (3) saturation of the transaction-log generation / flush path. Together, these three orthogonal yet interacting root causes form a compound failure state that degrades both query processing and commit throughput under OLTP workloads.\n\nCombined Observable Phenomena: Execution plans show severe row-estimate errors, often selecting hash or sort strategies that demand excessive work memory. The inflated work areas, plus bloated buffer and plan caches, exhaust physical RAM, leading to paging, memory pressure waits, or OOM terminations. At the same time, commit latency, LOG FLUSH/WRITE waits, and log-buffer stall events spike because log flushing competes with paging I/O, frequent checkpoints, and large redo bursts produced by mis-planned bulk or spill operations. Users see alternating patterns of slow queries, aborted transactions, and periods where the entire instance freezes or is force-restarted by the cluster manager.\n\nCausal Interaction: Stale statistics first mislead the optimizer into choosing memory-intensive plans (e.g., multi-GB hash joins, over-parallelized sorts). These plans inflate per-session work areas and swell the buffer cache with mispredicted read-ahead, pushing the engine into memory overcommit. The resulting OS paging and cache churn slow down datafile and log-file I/O alike, lengthening log flush times. Prolonged commits keep log buffers full, forcing back-pressure on application threads and increasing transaction duration; the longer transactions retain log segments, causing more frequent log switches and checkpoints, which in turn intensify both memory usage (dirty-page queues) and disk traffic. Memory pressure also impedes the archiver and replication workers, keeping log files active longer and exacerbating log-space shortages. Thus, cardinality misestimation fuels memory exhaustion, which magnifies log contention, and the stalled log subsystem further propagates memory retention—creating a feedback loop that drives the database into severe throughput collapse.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 97,
+            "score": 0.19814977968492492,
+            "bm25_score": 14.063837865364267,
+            "lexical_score": 0.1366233766233766,
+            "matched_terms": [
+                "active",
+                "and",
+                "by",
+                "engine",
+                "execution",
+                "failure",
+                "in",
+                "is",
+                "or",
+                "pressure",
+                "state",
+                "the",
+                "to",
+                "together",
+                "transaction",
+                "with"
+            ],
+            "match_count": 13,
+            "entry": {
+                "error_code": "25001",
+                "error_name": "active_sql_transaction",
+                "official_description": "active sql transaction",
+                "error_class": "Class 25 - Invalid Transaction State",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + MVCC Version Maintenance Anomaly + Database Configuration Parameter Anomaly",
+            "Description": "Schema and Index Design Anomaly: The physical table, index, datatype, or partition design mismatches workload access patterns, forcing inefficient scans and excessive index maintenance work.\nMVCC Version Maintenance Anomaly: Obsolete row versions, rollback records, and dead index entries accumulate faster than background cleanup processes can purge them, inflating storage and visibility-check cost.\nDatabase Configuration Parameter Anomaly: Memory, background-worker, checkpoint, and parallelism settings are mis-tuned for the hardware and workload, so internal subsystems receive too few or too many resources at the wrong moments.\n\nWhen these three root causes coexist, the database experiences a feedback loop of bloat, latency spikes, and erratic resource utilisation. Poorly chosen or missing indexes drive large table and index scans that touch every page, but those pages are swollen with dead tuples because vacuum/garbage-collection cannot keep up. Each scan therefore reads more data than expected, further extending execution times and holding snapshots open longer, which in turn slows or blocks version reclamation. Misconfigured memory and worker-pool parameters exacerbate the situation: undersized buffer pools cause constant cache churn of the bloated objects, while too-small or too-aggressive maintenance-worker, checkpoint, or autovacuum settings alternately starve or overload I/O, producing bursts of write amplification and log-write waits even when the underlying disks are not fully utilised. Statistics become stale quickly, so the optimizer keeps choosing full scans over non-covering or missing indexes, reinforcing the cycle.\n\nCausally, the deficient schema design raises the baseline I/O and write-amplification costs, generating more dead tuples per transaction (e.g., non-covering indexes force extra lookups and updates). The surging update/delete churn feeds the MVCC version store; if configuration parameters throttle cleanup workers or limit maintenance memory, reclamation lags behind growth. The swelling heap and indexes then consume buffer cache and elongate checkpoints, which, when ill-tuned, intensify I/O storms that pre-empt regular queries. Longer-running queries hold old snapshots, delaying version reuse and causing still more bloat. Thus, each anomaly magnifies the others, pushing the system into a degrading spiral of increasing storage, CPU, and latency costs under transactional workloads.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.42395254062806076,
+            "bm25_score": 17.99466229333267,
+            "lexical_score": 0.14989706639217704,
+            "matched_terms": [
+                "and",
+                "are",
+                "but",
+                "check",
+                "for",
+                "holding",
+                "latency",
+                "longer",
+                "not",
+                "of",
+                "open",
+                "or",
+                "pools",
+                "stale",
+                "than",
+                "that",
+                "the",
+                "transaction",
+                "when",
+                "with"
+            ],
+            "match_count": 298,
+            "entry": {
+                "timeout_id": "pg16_idle_session_timeout",
+                "parameter_name": "idle_session_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle, but not within an open transaction, for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle and not inside an open transaction longer than the configured threshold.",
+                "workload_impact": "The session is terminated; the documentation warns about using this with connection pools or middleware.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Data Block and Index Integrity Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Composite definition: The database is simultaneously limited by a saturated transaction-log subsystem, suffering from on-disk data/index corruption, while the underlying storage layer is unable to supply adequate read/write throughput. All three conditions are active at the same time, forming a multi-layer fault that degrades durability, consistency, and performance, and greatly complicates recovery and diagnosis.\n\nObserved phenomena: 1) Commit operations stall behind escalating log-flush, log-write, and log-sync waits; archive or replication pipelines fall behind and trigger checkpoint storms. 2) Queries intermittently return missing or duplicate rows, integrity-check utilities report page-checksum, key-order, or pointer errors, and execution plans degrade to full scans. 3) Device metrics show queue depths pegged, soaring read/write latencies, and prolonged data-file, temp-file, and log-file I/O waits. When these symptoms overlap, end-user sessions may see timeouts, deadlocks on allocation pages, repeated crash-recovery cycles, or sudden read-only failovers as the engine attempts to protect itself from further corruption.\n\nCausal interaction: Sustained storage I/O saturation throttles both data-page and redo-log traffic, directly slowing log flushes and amplifying the transaction-log bottleneck. The resulting backlog forces larger checkpoints and keeps dirty pages and un-archived log segments on disk longer, increasing the window in which any latent media error can corrupt data or index pages. In turn, corrupted pages provoke repeated read retries, verification scans, and failed recovery attempts that generate additional I/O and log activity, pushing the already overloaded storage further past its limits. This feedback loop deepens commit latency, broadens corruption scope, and can ultimately exhaust log space or crash the instance, making the three anomalies mutually reinforcing and highly disruptive to OLTP workloads.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 4380,
+            "score": 0.5069144888464882,
+            "bm25_score": 52.78576456779057,
+            "lexical_score": 0.19857142857142857,
+            "matched_terms": [
+                "and",
+                "are",
+                "can",
+                "check",
+                "data",
+                "disk",
+                "durability",
+                "engine",
+                "error",
+                "file",
+                "in",
+                "is",
+                "latency",
+                "log",
+                "only",
+                "or",
+                "read",
+                "redo",
+                "storage",
+                "the",
+                "to",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-012497",
+                "error_name": "OBSOLETE_ER_IB_MSG_673",
+                "official_description": "Can't set redo log tablespace to be encrypted in read-only mode.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

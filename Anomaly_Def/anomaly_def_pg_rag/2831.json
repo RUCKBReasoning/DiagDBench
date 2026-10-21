@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Database Memory Allocation Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly: Excessive accumulation of obsolete row versions and rollback data because background cleanup cannot keep pace with update-/delete-churn, inflating storage footprints and visibility-check cost.\nDatabase Memory Allocation Anomaly: Unbounded growth of buffer, work, and auxiliary memory areas that pushes the host into heavy paging, OOM kills, or node eviction.\nData Block and Index Integrity Anomaly: Physical pages or index structures become internally inconsistent, causing logical/physical corruption and unreliable access paths.\n\nWhen all three anomalies coexist, the database exhibits a compound failure mode: version bloat swells table and index sizes, driving up buffer-cache demand and temporary-work memory; the overstressed memory subsystem begins paging, which slows background vacuum/cleaner threads, further accelerating version accumulation. Simultaneously, memory pressure and incessant dirty-page churn shorten write-back intervals and increase I/O bursts, heightening the risk of torn pages or incomplete writes that manifest as page-checksum errors, mismatched heap-to-index entries, and sudden \"could not read block\" or \"index corrupted\" errors. Symptomatically, administrators observe: rapidly growing disk usage, declining live-row density, long-running snapshot queries, vacuum workers perpetually lagging, escalating RSS and swap use, intermittent OOM terminations of worker or autovacuum processes, sporadic integrity-check failures, index scans returning inconsistent row counts, and emergency restarts that only partially resolve corruption reports.\n\nCausally, heavy update/delete churn initiates sustained version buildup. The bloated heap and indexes enlarge the buffer pool footprint and lengthen cleaner cycles, forcing the engine to allocate ever-more memory for caching and for the large intermediate sort/hash operations now needed to handle expanded data ranges. Once physical memory is exhausted, the operating system pages or kills processes, interrupting vacuum or checkpoint activity mid-operation. These aborted maintenance actions, together with write storms from swap-in/swap-out and aggressive check-pointing, create windows where critical pages are only partially written, amplifying susceptibility to block corruption. Corruption, in turn, invalidates indexes and requires full-table scans, which touch even more bloated pages, feeding back into memory pressure and leaving cleaners powerless to advance the version horizon. The intertwined feedback loops among version bloat, memory exhaustion, and structural corruption rapidly degrade both performance and data reliability in transactional workloads.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.4575288977263767,
+            "bm25_score": 17.127250974190837,
+            "lexical_score": 0.11725490196078431,
+            "matched_terms": [
+                "aborted",
+                "activity",
+                "and",
+                "are",
+                "check",
+                "is",
+                "long",
+                "not",
+                "or",
+                "queries",
+                "reports",
+                "running",
+                "system",
+                "that",
+                "the",
+                "when"
+            ],
+            "match_count": 301,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,61 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Database Configuration Parameter Anomaly + CPU Resource Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions request mutually incompatible locks on the same objects, producing long blocker-waiter chains or deadlocks that stall commit progress.\nDatabase Configuration Parameter Anomaly : Engine-level settings for memory, logging, checkpointing, parallelism, and worker pools are mis-tuned for the actual hardware and workload, creating artificial pressure or throttling where no physical limit is yet reached.\nCPU Resource Anomaly : Database processes drive host CPU utilization to sustained saturation, pushing run-queue lengths and context-switch rates high enough to inflate latency for all work.\n\nWhen these three root causes overlap, the system exhibits a compound failure mode in which lock wait time, deadlock frequency, and overall latency soar while throughput collapses. Long lock holds slow every subsequent transaction, amplifying connection-pool exhaustion and user‐visible timeouts. Mis-sized memory pools, checkpoint cadence, or parallelism knobs exacerbate the problem by forcing extra I/O, aggressive flushing, or excessive worker spawning, which in turn drives CPU usage to 100 %. The saturated CPU then starves the lock manager and background cleaners, lengthening lock-grant times and delaying deadlock detection. Monitoring views show simultaneous spikes in lock waits, scheduler or run-queue waits, and configuration-driven waits (e.g., excessive checkpoint or work-memory spills), making single-factor diagnosis difficult.\n\nCausally, sub-optimal configuration settings can increase the number and duration of lock acquisitions—for example, small buffer pools cause more page faults that extend critical sections, while overly high max parallelism or per-query work memory spawns many worker threads that compete for CPU. The extra CPU demand both from the application and from background tasks (checkpoint, vacuum, log flush) pushes the host into sustained compute saturation. Once CPU headroom disappears, lock acquisition and deadlock detection algorithms run more slowly, so blocked sessions wait longer, keep locks held, and propagate contention further. The resulting positive feedback loop between lock contention, configuration-induced resource churn, and CPU saturation quickly drives the database into a severe throughput collapse typical of high-concurrency OLTP systems.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.7507060063224447,
+            "bm25_score": 30.467677250946345,
+            "lexical_score": 0.1690200210748156,
+            "matched_terms": [
+                "and",
+                "context",
+                "for",
+                "from",
+                "incompatible",
+                "is",
+                "lock",
+                "locks",
+                "long",
+                "longer",
+                "of",
+                "or",
+                "overlap",
+                "query",
+                "sessions",
+                "that",
+                "the",
+                "time",
+                "transaction",
+                "transactions",
+                "user",
+                "vacuum",
+                "when",
+                "while"
+            ],
+            "match_count": 164,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

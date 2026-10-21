@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Transaction Lock Contention Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer chooses a markedly sub-optimal execution plan even though statistics are adequate, leading to inefficient access paths, excessive I/O, or wrong join methods.\nTransaction Lock Contention Anomaly: Concurrent transactions request incompatible locks on the same resources, creating long blocker–waiter chains or deadlocks that stall throughput.\n\nWhen both root causes strike together, an ill-chosen plan dramatically enlarges the lock footprint and execution time of critical statements while the lock manager simultaneously becomes saturated with incompatible requests. Observable symptoms include: sudden shifts from index seeks to full table scans that acquire thousands of row, page, or even table locks; explosive growth of lock queues, deadlock frequency, and victim rollbacks; erratic query runtimes where identical statements alternate between fast, parallel index access and slow, blocking scans; rising CPU and I/O due to the bad plan coupled with application-level timeouts as sessions wait on locks; and volatile throughput with alternating bursts of progress and stalls.\n\nCausally, the optimizer’s poor plan increases both the number and duration of locks it holds—e.g., a hash join that spills or a nested-loop on the wrong join order—thereby lengthening critical-section time and magnifying the probability of conflicts. Conversely, the resulting lock waits and deadlocks prolong transaction lifetimes and inflate table cardinalities seen by later optimizer invocations, which can bias plan selection further toward full scans or conservative join orders. This feedback loop between sub-optimal plan reuse and escalating lock contention amplifies performance degradation, making it difficult to attribute slowness to either component in isolation and potentially driving the database into sustained throughput collapse under transactional workloads.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2644,
+            "score": 0.6470670889846752,
+            "bm25_score": 80.38643935813512,
+            "lexical_score": 0.18184884578897437,
+            "matched_terms": [
+                "acquire",
+                "and",
+                "blocking",
+                "by",
+                "chains",
+                "concurrent",
+                "conflicts",
+                "incompatible",
+                "lock",
+                "on",
+                "or",
+                "order",
+                "resources",
+                "same",
+                "the",
+                "to",
+                "transaction",
+                "transactions",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010759",
+                "error_name": "ER_CANT_LOCK_TABLE",
+                "official_description": "Unable to acquire lock on %s.%s",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "concurrency_and_transaction",
+                "cause_analysis": "The failure is typically associated with concurrent transactions contending for the same logical resources, incompatible lock acquisition order, or transaction-state conflicts surfaced by the engine.",
+                "solution_guidance": "Inspect blocking chains, reduce conflicting write overlap, shorten transaction lifetime, review lock acquisition order, and verify whether transaction scheduling or retry logic needs adjustment.",
+                "observable_symptoms": [
+                    "blocking",
+                    "rollback",
+                    "retry",
+                    "stalled transaction"
+                ]
+            }
+        }
+    }
+]

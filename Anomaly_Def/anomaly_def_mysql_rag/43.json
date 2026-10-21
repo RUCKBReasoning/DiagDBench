@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Query Plan Selection Anomaly + Replication Synchronization Anomaly",
+            "Description": "Composite Definition: The database is simultaneously burdened by inefficient application-level SQL logic, a mis-chosen optimizer execution plan, and an overwhelmed replication pipeline. Together, these three root causes inflate data access and modification volume, execute them with an overly expensive physical plan, and then replicate the excessive redo more quickly than replicas can receive or apply it.\n\nSQL Workload Logic Anomaly: Application-issued statements or transaction scopes process far more rows, columns, or time than business logic requires.\nQuery Plan Selection Anomaly: The optimizer selects a markedly sub-optimal plan even though statistics are adequate, producing needless scans, joins, or memory usage.\nReplication Synchronization Anomaly: Standby or downstream replicas cannot consume, write, or replay the primary’s log stream at the rate it is generated, leading to lag and log-retention growth on the primary.\n\nCombined Symptoms: • Individual statements show extreme and highly variable latency, with the same SQL text occasionally exploding into multi-second or multi-minute runtimes. • Primary nodes exhibit CPU spikes, inflated logical and physical I/O, and rapid transaction-log growth. • Replicas report widening receive/replay lag, accumulate large relay logs, serve increasingly stale reads, and may fall out of synchronous commit windows. • Application tiers observe both foreground timeouts (from slow queries) and eventual consistency anomalies (stale replica reads). • Monitoring tools reveal erratic plan-cache behavior, large gaps between estimated and actual costs, and replication performance alerts, making isolation of any single culprit difficult.\n\nCausal Chain and Reinforcement: Inefficient SQL statements (workload logic anomaly) generate large scans, wide result sets, or unnecessarily long transactions. When the optimizer compounds this by choosing a poor plan (plan selection anomaly), resource usage and redo generation surge. The bloated and prolonged transactions emit voluminous and bursty log streams that must be shipped and applied downstream. Replicas, already limited by network bandwidth, single-threaded apply, or hardware constraints, fall behind (replication synchronization anomaly). The growing replica lag prevents timely log truncation on the primary, expanding storage pressure and lengthening recovery time objectives. Meanwhile, lagging replication can starve read-only workloads of fresh data, prompting additional load on the primary and further worsening the optimizer’s plan quality through changing cache and memory pressure. Thus the three anomalies form a feedback loop that degrades both primary performance and replication health in OLTP and mixed analytical scenarios.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 15,
+            "score": 0.4164404209570738,
+            "bm25_score": 19.75723273175139,
+            "lexical_score": 0.13280118255728013,
+            "matched_terms": [
+                "and",
+                "are",
+                "behavior",
+                "data",
+                "is",
+                "latency",
+                "level",
+                "network",
+                "or",
+                "out",
+                "read",
+                "slow",
+                "the",
+                "this",
+                "when",
+                "write"
+            ],
+            "match_count": 2,
+            "entry": {
+                "timeout_id": "mysql84_xplugin_read_timeout",
+                "parameter_name": "mysqlx_read_timeout",
+                "timeout_category": "x_protocol_network_read_timeout",
+                "scope": "global/session/X Plugin",
+                "official_definition": "Read timeout for X Plugin network communication.",
+                "trigger_condition": "A MySQL X Protocol read operation exceeds mysqlx_read_timeout.",
+                "workload_impact": "The X Protocol network read operation times out.",
+                "default_behavior": "Defined as a MySQL X Plugin system variable.",
+                "system_domain": "network_transport",
+                "cause_analysis": "This timeout is usually triggered when network data is not acknowledged, received, or written within the configured transport-level waiting window.",
+                "solution_guidance": "Inspect packet loss, transport latency, client responsiveness, proxy behavior, and whether slow consumers or unstable links are delaying network progress.",
+                "observable_symptoms": [
+                    "network timeout",
+                    "disconnect",
+                    "read/write interruption"
+                ]
+            }
+        }
+    }
+]

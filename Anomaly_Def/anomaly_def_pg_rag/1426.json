@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Query Plan Selection Anomaly + Database Configuration Parameter Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-issued statements or transaction boundaries are written so that they process more data or hold resources longer than business logic requires.\nQuery Plan Selection Anomaly : The optimizer chooses a markedly sub-optimal execution plan despite having reasonably accurate statistics.\nDatabase Configuration Parameter Anomaly : Engine runtime parameters are mis-tuned relative to hardware capacity, workload mix, or version defaults, causing non-ideal resource behavior.\n\nWhen these three root causes coexist, the database experiences a multilayered performance regression. Poorly written SQL generates excessive logical work; the optimizer then multiplies the cost by selecting inefficient plans (e.g., full scans, bad join orders, missing parallelism); finally, mis-set memory, parallelism, or I/O parameters prevent the engine from masking these inefficiencies, exposing the system to compounded stalls. Operators observe a flood of slow-query log entries whose execution plans oscillate between variants, long-running transactions that monopolize locks and latches, dramatic swings in CPU and I/O utilization unrelated to real hardware saturation, and checkpoint or logging spikes that appear disconnected from actual data-change volume. End-users perceive unpredictable latency, timeouts, and sporadic throughput collapses, while monitoring shows both plan instability and resource wait patterns that do not align with host-level metrics.\n\nCausally, problematic SQL shapes the workload toward large scans, wide result sets, and chatty access patterns. The optimizer, already challenged by this input, may misjudge costs or recycle an ill-suited cached plan, amplifying the data touched per execution. Misconfigured parameters—such as undersized buffer pools, inadequate work memory, or aggressive parallelism—then throttle the engine’s ability to execute even a good plan, let alone a bad one, leading to spill-to-disk, excessive context switching, or checkpoint storms. Conversely, sub-optimal plans inflate memory and I/O demand, making otherwise safe configuration settings suddenly inadequate. The feedback loop between inefficient SQL, fragile plan selection, and mis-aligned configuration accelerates resource contention, heightens variability, and obscures the root cause, thereby worsening the overall database state.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.45518541326115897,
+            "bm25_score": 22.95791896746718,
+            "lexical_score": 0.13218803418803418,
+            "matched_terms": [
+                "an",
+                "and",
+                "change",
+                "context",
+                "from",
+                "locks",
+                "long",
+                "longer",
+                "of",
+                "or",
+                "query",
+                "than",
+                "that",
+                "the",
+                "this",
+                "transaction",
+                "transactions",
+                "when",
+                "while"
+            ],
+            "match_count": 232,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Replication Synchronization Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer persistently chooses a sub-optimal execution plan despite having reasonably accurate statistics, leading to excessive CPU, I/O, or memory consumption per statement.\nReplication Synchronization Anomaly: Standby or subscriber nodes cannot receive or apply WAL / redo as fast as the primary produces it, causing growing log-position gaps and replay lag.\nOperating System Resource Limit Anomaly: Kernel-enforced limits on file descriptors, shared memory, semaphores, threads, or similar resources prevent the database from opening new objects or spawning background workers.\n\nWhen all three root causes manifest concurrently, the system exhibits a blend of symptoms that blur subsystem boundaries:  \n• Queries that used to be fast suddenly slow down or fluctuate because the optimizer has switched to scan-heavy or single-threaded plans; parallel workers may be missing due to OS thread limits.  \n• The inefficient plans inflate transaction duration and generate excessive redo, which in turn causes replication send and apply queues to balloon; monitoring shows rapidly widening WAL/LSN gaps and replicas falling minutes or hours behind.  \n• At the same time, OS resource ceilings are hit—log-sender or apply processes fail to open additional files, allocate shm segments, or start extra apply threads—leading to error messages in both database logs and kernel logs, further throttling replication and occasionally aborting query executions.  \n• The primary’s pg_wal or redo area grows uncontrollably because old segments cannot be recycled while replicas lag, risking full disks and cascading slowdowns.  \nOverall, users observe erratic response times, timeouts, stale read traffic on replicas, and declining fail-over readiness, yet the individual symptoms overlap enough to obscure the multi-layered root cause.\n\nCausal interaction: A poor plan elevates I/O and CPU load, inflating the volume and rate of transaction log generation. This heavier WAL stream must traverse the replication channel, but replicas already struggle because OS-level limits cap the number of receiver/apply workers and restrict kernel objects (file handles, AIO contexts). The constrained replication workers fall further behind, which prevents log recycling on the primary, amplifying storage pressure and increasing contention for file descriptors—tightening the OS resource squeeze. Simultaneously, the exhausted kernel quotas prevent the optimizer from spawning parallel execution or maintaining plan cache structures, encouraging more plan switches and further entrenching sub-optimal plans. The feedback loop between wasteful plans, replication backlog, and kernel-level throttling drives the database into a degraded, unstable state.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.7423658536585366,
+            "bm25_score": 29.651508502784683,
+            "lexical_score": 0.14121951219512194,
+            "matched_terms": [
+                "and",
+                "be",
+                "because",
+                "behind",
+                "contention",
+                "error",
+                "execution",
+                "for",
+                "in",
+                "limit",
+                "or",
+                "query",
+                "resource",
+                "statement",
+                "the",
+                "this",
+                "time",
+                "when"
+            ],
+            "match_count": 104,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

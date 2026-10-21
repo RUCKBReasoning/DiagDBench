@@ -1,0 +1,44 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Buffer Cache and Latch Contention Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Composite Definition: The database simultaneously suffers from runaway accumulation of obsolete MVCC versions, severe buffer-cache/latch contention, and impending exhaustion of allocated storage space. These three root causes coexist and interact, leading to compounded performance degradation, space shortages, and amplified concurrency stalls.\n\nMVCC Version Maintenance Anomaly: Obsolete row versions and rollback records outpace background cleanup, bloating data structures and lengthening visibility checks.\nBuffer Cache and Latch Contention Anomaly: Hot or rapidly churning pages cause sessions to compete for buffer pins and latches, inflating CPU spin time and wait events.\nStorage Space Capacity Anomaly: Data, log, or temp areas approach hard size limits, provoking allocation failures, log-switch stalls, and emergency space conservation behaviors by the engine.\n\nCombined Phenomena: While version churn expands tables and indexes, the working-set footprint in the buffer pool swells, forcing more pages to be loaded, dirtied, and flushed. The oversized version store and growing data files accelerate buffer turnover, increasing buffer-busy and page-latch waits. As space fills, background checkpoints and auto-extension attempts intensify, causing longer write-back stalls that hold latches even longer and block foreground operations. Clients may observe escalating latency spikes, frequent \"out of space\" or \"cannot extend\" errors, sudden slowdown of both reads and writes, and erratic query plans due to inaccurate statistics on the bloated heap. Cleanup workers, throttled by latch waits and lack of free disk space for new segment allocation, fall further behind, causing a positive feedback loop of storage growth, contention, and stalled transactions.\n\nCausal Interaction: Heavy update/delete workloads create large version chains that inflate on-disk structures, rapidly consuming storage and enlarging the hot set of pages. The swollen data footprint forces more frequent page replacements, increasing the probability that many sessions converge on the same root or index pages, which amplifies latch contention. Simultaneously, shrinking free space lengthens and serializes checkpoints and dirty-page evictions, because each flush now competes for scarce allocation units and log space. These prolonged I/O and latch holds slow down autovacuum/cleanup tasks, allowing even more dead versions to pile up, thereby accelerating space exhaustion. The three anomalies hence reinforce one another: MVCC bloat drives space consumption and hot-page pressure; latch contention throttles cleanup and I/O; and near-full disks further delay writes and cleanup, culminating in widespread throughput collapse and potential service outages.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 179,
+            "score": 0.300896575492429,
+            "bm25_score": 21.514380635651296,
+            "lexical_score": 0.09402397566648774,
+            "matched_terms": [
+                "and",
+                "as",
+                "cannot",
+                "database",
+                "definition",
+                "engine",
+                "or",
+                "that",
+                "the",
+                "version"
+            ],
+            "match_count": 14,
+            "entry": {
+                "error_code": "42P12",
+                "error_name": "invalid_database_definition",
+                "official_description": "invalid database definition",
+                "error_class": "Class 42 - Syntax Error or Access Rule Violation",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "sql_and_parser",
+                "cause_analysis": "The failure is typically associated with unsupported syntax, invalid statement structure, or feature usage that the target engine version cannot execute as written.",
+                "solution_guidance": "Validate SQL syntax, target-engine compatibility, statement shape, and whether the feature is supported under the current engine version or execution context.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "syntax error",
+                    "feature rejection"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Replication Synchronization Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "SQL Workload Logic Anomaly: Application-layer statement or transaction design forces the engine to process or return more data than business logic requires.\nReplication Synchronization Anomaly: Downstream replicas cannot receive or apply primary WAL/redo at production rate, creating widening replay lag.\nOperating System Resource Limit Anomaly: Kernel-enforced limits on handles, threads, shared memory, or similar objects choke database and auxiliary processes.\n\nWhen these three root causes strike together, the system shows an extreme mix of symptoms: end-user statements experience long-tail latency and timeouts; primary-side WAL files and replica relay logs accumulate rapidly; replica read staleness and failover RPO/RTO violations grow; and both primary and replica emit errors about failing to open files, fork workers, allocate shmem, or schedule async I/O. Monitoring may reveal surging transaction durations, massive unresolved replication backlogs, sudden pauses in apply threads, and spurious partial outages where established sessions limp on while new sessions, background writers, or logical decoding workers fail to start.\n\nCausally, inefficient SQL inflates row scans, I/O, and transaction sizes, driving up WAL generation. The heavier WAL stream must traverse the replication channel; apply workers already slowed by CPU or I/O contention now meet even steeper backlogs. As lag balloons, the server retains more WAL segments and spawns extra sender, receiver, and apply processes to catch up, sharply increasing demands for file handles, shmem, semaphores, threads, and AIO contexts. If OS limits are low or already close to saturation, these extra processes hit hard caps, causing replication workers to crash or stall, further delaying apply and magnifying backlog. The vicious circle tightens: larger backlog leads to more retained WAL, which consumes more descriptors and disk, while application logic continues to generate oversized transactions. Ultimately the interplay of excessive workload, replication stress, and kernel resource exhaustion destabilizes both primary and replicas, complicating diagnosis because each layer manifests errors that mask the others.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.7434467564259486,
+            "bm25_score": 37.793724829845594,
+            "lexical_score": 0.14482252141982863,
+            "matched_terms": [
+                "and",
+                "apply",
+                "causing",
+                "channel",
+                "data",
+                "downstream",
+                "lag",
+                "long",
+                "or",
+                "receiver",
+                "replica",
+                "replication",
+                "sender",
+                "than",
+                "the",
+                "to",
+                "when"
+            ],
+            "match_count": 99,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

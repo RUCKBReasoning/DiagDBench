@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Storage Space Capacity Anomaly + CPU Resource Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly: Excessive accumulation of obsolete row versions and rollback data that outpaces background cleanup, inflating data structures and visibility-check overhead.\nStorage Space Capacity Anomaly: Exhaustion of physical or logical free space for data, indexes, logs, or temp areas, leading to allocation failures and stalled database operations.\nCPU Resource Anomaly: Sustained saturation of host CPUs by database processes, producing long run-queue waits and broad latency spikes across workloads.\n\nComposite definition: The database simultaneously suffers from runaway MVCC version bloat, dwindling available storage, and CPU saturation. Cleanup workers cannot reclaim dead tuples quickly enough, data and log files swell toward their size limits, and the extra housekeeping load drives CPU utilization to or above capacity.\n\nCombined phenomena: Administrators observe an accelerating drop in free disk space as bloated tables and indexes expand; auto-extend or allocation failures begin to surface alongside growing transaction logs that cannot be recycled because long-running snapshots persist. Concurrently, background vacuum/garbage-collection workers run continuously, yet application queries and maintenance tasks experience rising latency due to CPU queuing (high run-queue depth, scheduler wait events) and longer table scans through sparsely populated pages. Planner cardinality errors increase, temporary-space requests for sorts or index builds fail, and once storage reaches critical thresholds, write operations stall, compounding transaction backlogs and further inflating CPU demand.\n\nCausal interaction: MVCC version bloat rapidly consumes disk space, pushing the system toward storage exhaustion; as free space shrinks, auto-extension retries and log/archive retention work generate additional I/O and CPU load. At the same time, limited CPU capacity slows vacuum and log-archive workers, allowing obsolete versions and unrecycled logs to accumulate even faster. Storage near capacity forces more aggressive cleanup and checkpoint activity, which competes for already scarce CPU cycles. The feedback loop—bloat → space pressure → intensified cleanup → CPU saturation → slower reclamation—drives the database into a vicious spiral culminating in halted writes, transaction timeouts, and potential downtime.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 633,
+            "score": 0.5741173720882126,
+            "bm25_score": 50.020501445172364,
+            "lexical_score": 0.1298854447439353,
+            "matched_terms": [
+                "and",
+                "as",
+                "at",
+                "cannot",
+                "limited",
+                "log",
+                "or",
+                "row",
+                "storage",
+                "table",
+                "that",
+                "the",
+                "to",
+                "version",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "1656",
+                "error_name": "ER_BINLOG_ROW_MODE_AND_STMT_ENGINE",
+                "official_description": "Cannot execute statement: impossible to write to binary log since BINLOG_FORMAT = ROW and at least one table uses a storage engine limited to statement-based logging.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "sql_and_parser",
+                "cause_analysis": "The failure is typically associated with unsupported syntax, invalid statement structure, or feature usage that the target engine version cannot execute as written.",
+                "solution_guidance": "Validate SQL syntax, target-engine compatibility, statement shape, and whether the feature is supported under the current engine version or execution context.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "syntax error",
+                    "feature rejection"
+                ]
+            }
+        }
+    }
+]

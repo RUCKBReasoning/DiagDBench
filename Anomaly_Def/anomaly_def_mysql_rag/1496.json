@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Replication Synchronization Anomaly + CPU Resource Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly : The log-writing, flushing, switching, or archiving path on the primary instance becomes the bottleneck, throttling commit progress and preventing timely log recycling.\nReplication Synchronization Anomaly : Downstream replicas or subscribers cannot receive, persist, or apply the primary’s log stream fast enough, causing widening apply and retention lags.\nCPU Resource Anomaly : Database-related processes collectively oversubscribe host CPU cycles, driving sustained saturation and scheduler contention.\n\nWhen all three root causes strike together the system exhibits compound symptoms: commit latency and log-flush wait times rise sharply; log file switches and checkpoints pile up but archive and replication queues keep growing because replicas fall further behind; monitoring shows ballooning retained WAL/redo segments on the primary, swollen relay logs on replicas, and replication apply delay measured in minutes or hours. Meanwhile, hosts on both primary and replicas run at or near 100 % CPU, with long run queues and frequent context switches. Application threads stall behind log-sync and scheduler wait events, while read-only replicas deliver increasingly stale data and may become unavailable for failover due to excessive replay lag.\n\nCausally, a saturated CPU starves critical background threads—log flusher, archiver, and replication sender/receiver—reducing their throughput and amplifying the inherent bottleneck in the transaction-log subsystem. Slower log writes lengthen commit paths and defer log file recycling, which in turn forces the primary to retain more segments for lagging replicas. The replication backlog grows because replicas, themselves CPU-constrained, cannot parse and apply incoming redo quickly enough, further delaying acknowledgment to the primary. This feedback loop increases disk pressure in the log area, heightens checkpoint frequency, and propagates latency spikes across all transactional workloads, ultimately risking forced shutdowns or failovers when log space is exhausted.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5635,
+            "score": 0.5603940861506402,
+            "bm25_score": 58.507055966939234,
+            "lexical_score": 0.1796153846153846,
+            "matched_terms": [
+                "and",
+                "apply",
+                "downstream",
+                "failover",
+                "is",
+                "keep",
+                "lag",
+                "log",
+                "on",
+                "or",
+                "parse",
+                "receiver",
+                "replication",
+                "retention",
+                "sender",
+                "stale",
+                "the",
+                "to",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013784",
+                "error_name": "ER_GRP_RPL_FAILOVER_CONF_PARSE_ON_MEMBER_JOIN",
+                "official_description": "Unable to parse the replication failover channels configuration sent by the group on member join.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Transaction Log Subsystem Anomaly + CPU Resource Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Sessions serialize on hot buffer-cache pages, page pins, and latches, stalling logical I/O even when physical memory is available.\nTransaction Log Subsystem Anomaly : Commit processing is throttled by log buffer flush, log file write, or archiver activity, making the log path the critical choke point.\nCPU Resource Anomaly : Database processes drive host CPU to sustained saturation, starving all threads—including internal background workers—of scheduler time.\n\nWhen all three root causes strike together, the system exhibits an intertwined symptom set:  • End-to-end transaction latency and commit latency rise sharply, with wait-event views showing a mix of LOG-WRITE, LOG-FLUSH, BUFFER-BUSY, and PAGE-LATCH waits.  • CPU usage stays at or near 100 %, yet throughput plateaus or declines; spin loops on buffer latches crowd the run queue while log writer and archiver threads contend for CPU slices to perform synchronous writes.  • Checkpoint storms and rapid log-file switches amplify dirty-buffer pressure, so foreground sessions alternately wait for latch access to hot pages and for log space to be freed.  • Monitoring tools may mis-attribute the slowdown because the dominant symptom—CPU saturation—masks the underlying dual I/O bottlenecks on buffers and the redo log.\n\nCausal interaction: Hot pages and frequent page churn inflate latch acquisition attempts; many of those attempts spin rather than sleep, inflating CPU consumption. The elevated CPU load delays log writer, archiver, and buffer-flush threads, stretching commit latency and prolonging the time dirty pages remain pinned. Those pinned or dirty buffers, in turn, intensify latch contention because they cannot be evicted or reused until the log is persisted, further increasing spin and CPU pressure. Meanwhile, slow log advancement forces aggressive checkpoints, which flush more dirty pages and request additional latches, closing a feedback loop that binds buffer contention, log backlog, and CPU starvation into a self-reinforcing performance collapse.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 638,
+            "score": 0.5011176825599418,
+            "bm25_score": 46.55025611926482,
+            "lexical_score": 0.14075672420714572,
+            "matched_terms": [
+                "and",
+                "at",
+                "cannot",
+                "is",
+                "log",
+                "more",
+                "or",
+                "self",
+                "than",
+                "that",
+                "the",
+                "to",
+                "usage",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "1661",
+                "error_name": "ER_BINLOG_MULTIPLE_ENGINES_AND_SELF_LOGGING_ENGINE",
+                "official_description": "Cannot execute statement: impossible to write to binary log since more than one engine is involved and at least one engine is self-logging.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "sql_and_parser",
+                "cause_analysis": "The failure is typically associated with unsupported syntax, invalid statement structure, or feature usage that the target engine version cannot execute as written.",
+                "solution_guidance": "Validate SQL syntax, target-engine compatibility, statement shape, and whether the feature is supported under the current engine version or execution context.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "syntax error",
+                    "feature rejection"
+                ]
+            }
+        }
+    }
+]

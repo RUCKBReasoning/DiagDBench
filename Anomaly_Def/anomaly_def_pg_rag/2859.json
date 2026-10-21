@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Replication Synchronization Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Composite Definition: The database simultaneously suffers from hot-page/latch contention inside the buffer manager, a stalled replication pipeline that cannot keep up with primary log generation, and approaching or reached exhaustion of physical or logical storage space. Each problem alone can degrade performance, but their coexistence creates a tightly-coupled failure scenario that endangers both throughput and data safety.\n\nCombined Observable Phenomena: Users notice sharp and erratic response-time spikes as sessions spin on buffer latches while dirty pages linger in memory. Checkpoints and background flushers run more aggressively yet free space continues to shrink because archived or shipped log segments accumulate—replicas lag behind, preventing log recycling. Monitoring dashboards show simultaneously high buffer-busy and page-latch wait events, widening replication lag metrics, rapidly declining free-space alarms, and possibly \"cannot extend\" or \"out-of-space\" errors. CPU usage is elevated without proportional throughput; I/O queues deepen from forced flushes; and replica read consistency deteriorates as standby snapshots fall minutes or hours behind.\n\nCausal Interaction: 1) Buffer and latch contention slows transaction completion, lengthening the time dirty pages and unflushed log records stay active. 2) The replication subsystem, already unable to consume WAL/redo fast enough, leaves log files retained on the primary, inflating disk usage. 3) Growing log retention and churn consume the remaining free space; once space becomes scarce, data-file or log auto-extension fails, causing emergency checkpoints that intensify buffer flushing and further magnify latch contention. Conversely, space pressure can throttle background writers and archivers, making dirty-page eviction slower and keeping hot pages pinned longer, which heightens buffer contention. The feedback loop between clogged replication, latch hot spots, and space exhaustion accelerates degradation, potentially culminating in system-wide stalls or forced shutdown.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.46965928382769534,
+            "bm25_score": 13.802798447635533,
+            "lexical_score": 0.10348258706467661,
+            "matched_terms": [
+                "and",
+                "but",
+                "inside",
+                "is",
+                "longer",
+                "of",
+                "or",
+                "sessions",
+                "that",
+                "the",
+                "time",
+                "transaction",
+                "with"
+            ],
+            "match_count": 302,
+            "entry": {
+                "timeout_id": "pg16_idle_session_timeout",
+                "parameter_name": "idle_session_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle, but not within an open transaction, for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle and not inside an open transaction longer than the configured threshold.",
+                "workload_impact": "The session is terminated; the documentation warns about using this with connection pools or middleware.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

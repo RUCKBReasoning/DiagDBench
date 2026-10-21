@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + MVCC Version Maintenance Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Schema and Index Design Anomaly: Static mismatch between table/ index / partition design and workload access patterns forces inefficient access paths regardless of optimizer or statistics quality.\nMVCC Version Maintenance Anomaly: Accumulation of obsolete row versions and dead tuples outpaces background cleanup, inflating storage and adding visibility-check overhead.\nNetwork and Connectivity Resource Anomaly: Saturated or unstable network, listener, or connection-pool resources delay session establishment and data transfer between clients and the database.\n\nWhen all three root causes strike together, the database must scan bloated heaps and non-covering indexes while also navigating layers of stale MVCC versions; each statement therefore touches far more pages, returns larger intermediate result sets, and holds server back-ends open longer. The elongated execution widens the window in which network sockets remain active, increasing the likelihood of socket-buffer exhaustion, retransmissions, and connection timeouts. Clients experience erratic response times: some calls stall during table or index scans, others hang during result transmission or authentication, and retries triggered by perceived timeouts multiply the incoming connection load. On the server side, statistics show ballooning on-disk relation sizes, vacuum/cleanup workers perpetually busy yet ineffective, rising full-scan counts, swelling per-backend memory, and a growing backlog of connections waiting on client I/O or slot availability.\n\nCausal chain: Poor schema and index design forces wide scans that prolong transaction duration; these longer transactions widen the oldest-xmin horizon, throttling MVCC cleanup and accelerating table and index bloat. The expanding data footprint further degrades scan speed, intensifying the performance hit from the design flaw. The heavier I/O and longer query runtimes keep network sockets busy, while the increased volume of data transferred (due to larger tables and lack of selective indexing) stresses bandwidth and server process limits. Network slowdowns, in turn, extend transaction lifetimes even more, delaying VACUUM or purge processes and allowing dead versions to accumulate. The three anomalies thus create a feedback loop in which design inefficiency, version bloat, and network congestion amplify each other, driving the system into a state of chronic latency, high resource consumption, and escalating risk of transaction-ID or connection exhaustion.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.5940754499334979,
+            "bm25_score": 22.1468029365316,
+            "lexical_score": 0.16836206896551725,
+            "matched_terms": [
+                "and",
+                "authentication",
+                "check",
+                "client",
+                "connection",
+                "data",
+                "establishment",
+                "from",
+                "latency",
+                "longer",
+                "more",
+                "network",
+                "of",
+                "or",
+                "server",
+                "session",
+                "stale",
+                "the",
+                "to",
+                "triggered",
+                "when"
+            ],
+            "match_count": 154,
+            "entry": {
+                "timeout_id": "mysql84_network_read_timeout",
+                "parameter_name": "net_read_timeout",
+                "timeout_category": "network_read_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for more data from a connection before aborting the read.",
+                "trigger_condition": "The server waits for additional data from a connection longer than net_read_timeout.",
+                "workload_impact": "The network read is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

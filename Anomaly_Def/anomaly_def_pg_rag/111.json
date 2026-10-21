@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Database Configuration Parameter Anomaly",
+            "Description": "Composite definition: The database simultaneously suffers from application-level SQL that requests or manipulates far more data than required and from engine parameters that are mis-tuned for the actual hardware and workload, so neither layer can compensate for the other’s inefficiencies.\nSQL Workload Logic Anomaly: Inefficient or ill-scoped statements/transactions that inflate data access, hold resources too long, or create excessive round-trips beyond business need.\nDatabase Configuration Parameter Anomaly: Misconfigured memory, logging, checkpoint, parallelism, or session limits that create artificial bottlenecks or under-utilize available hardware resources.\n\nCombined phenomena: • Slow-query logs and statement statistics show extreme, erratic latencies; the same queries sometimes complete quickly and other times stall for minutes. • Wait-class distributions become skewed—e.g., concurrent scans spill to disk due to undersized work memory while CPU cores remain partially idle because parallelism caps are too low. • Prolonged transactions from chatty or scan-heavy logic trigger frequent checkpoints or log-flush storms configured too aggressively, causing I/O bursts followed by idle periods. • Lock waits, deadlocks, and connection pool exhaustion increase as sessions linger in resource waits created by both excessive work and tight limits. • Monitoring displays paradoxes such as high logical I/O but low physical I/O, or memory pressure alongside low buffer-cache hit ratios.\n\nCausal chain: Verbose or poorly filtered SQL expands row sets, consumes more buffer cache, work memory, and redo space, pushing the engine toward its configured ceilings. Because critical parameters (buffer pool size, work_mem, max_parallelism, checkpoint_timeout, etc.) are mis-aligned, the inflated demand cannot be absorbed gracefully: memory spills to temp files, checkpoints fire prematurely, and log files wrap too quickly, each inducing additional waits. Conversely, if parameters are over-provisioned, each heavy query can monopolize large swaths of RAM or worker threads, starving other sessions and amplifying contention created by the flawed workload logic. The two root causes therefore reinforce each other—inefficient SQL raises resource pressure, while poor configuration converts that pressure into severe contention or wasted capacity—making performance regressions broader, harder to predict, and more difficult to diagnose.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.3858227030568781,
+            "bm25_score": 20.34084060404725,
+            "lexical_score": 0.11949653223734907,
+            "matched_terms": [
+                "and",
+                "are",
+                "be",
+                "can",
+                "connection",
+                "idle",
+                "long",
+                "or",
+                "queries",
+                "query",
+                "session",
+                "sessions",
+                "sets",
+                "that",
+                "the",
+                "while"
+            ],
+            "match_count": 169,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

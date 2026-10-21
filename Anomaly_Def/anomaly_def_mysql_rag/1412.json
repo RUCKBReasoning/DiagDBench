@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Database Configuration Parameter Anomaly + Replication Synchronization Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Costing inputs (row counts, histograms, correlations) are stale or incomplete, causing systematic cardinality misestimation and sub-optimal plans.\nDatabase Configuration Parameter Anomaly : Engine-level memory, I/O, parallelism, and checkpoint/redo settings are mis-tuned for the actual hardware and workload, distorting runtime behavior regardless of physical capacity.\nReplication Synchronization Anomaly : Standby or downstream replicas cannot receive or apply WAL/redo as fast as the primary generates it, leading to growing replication lag and log-retention pressure.\n\nComposite definition: The database concurrently suffers from inaccurate optimizer statistics, ill-calibrated configuration parameters, and impaired replication throughput. Together they create a multi-layer performance and availability degradation in which poor plan quality, resource misallocation, and backlog in the replication pipeline reinforce one another.\n\nCombined anomalous phenomena: 1) Queries on the primary intermittently swing between very fast and severely slow executions, with explain plans showing grossly off row-count estimates, high memory spills, or runaway parallelism. 2) Mis-sized buffers, work-mem, or checkpoint intervals inflate redo generation and increase flush storms, amplifying log-write waits even while CPU or storage remain under-utilised. 3) Replication monitor views show widening receive/replay lag, growing retained log segments, and replicas serving progressively staler data; failovers become risky as retained logs approach disk limits. 4) After bulk loads or schema changes, statistics staleness triggers massive sequential scans whose bloated I/O, memory, and redo output collide with poorly tuned background writer and WAL parameters, further starving replication workers and extending apply latency. Symptoms cross domains, obscuring root causes: log bloat may be misattributed to storage when it is jointly driven by bad plans and sub-optimal checkpoint sizing.\n\nCausal interaction: Stale or missing statistics generate inefficient plans (e.g., full-table scans, oversized hash aggregates) that explode I/O and redo volume. Because configuration parameters (buffer pool, work_mem, checkpoint_timeout, wal_buffers, parallelism limits) are mis-set, the engine cannot absorb the extra load, leading to more frequent checkpoints, longer log flush times, and head-of-line blocking. The surge in WAL traffic overwhelms replication channels already operating near capacity; as replicas fall behind, the primary must retain additional log segments, increasing disk pressure and further lengthening checkpoints. Elevated write and memory contention from mis-configured resources slows statistics auto-collection, perpetuating staleness and creating a reinforcing loop where each anomaly exacerbates the others, culminating in severe performance volatility, storage exhaustion risk, and degraded high-availability posture.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2300,
+            "score": 0.5137050565890464,
+            "bm25_score": 55.218199483510375,
+            "lexical_score": 0.18525641025641024,
+            "matched_terms": [
+                "and",
+                "apply",
+                "be",
+                "between",
+                "channels",
+                "configuration",
+                "cross",
+                "downstream",
+                "for",
+                "from",
+                "is",
+                "lag",
+                "log",
+                "must",
+                "of",
+                "or",
+                "replication",
+                "retention",
+                "stale",
+                "the",
+                "to",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010413",
+                "error_name": "ER_RPL_CHANNELS_REQUIRE_NON_ZERO_SERVER_ID",
+                "official_description": "For the creation of replication channels the server id must be different from 0",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

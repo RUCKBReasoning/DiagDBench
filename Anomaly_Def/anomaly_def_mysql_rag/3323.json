@@ -1,0 +1,60 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Schema and Index Design Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "SQL Workload Logic Anomaly: Application-level statements or transaction boundaries force the engine to process more data and hold resources longer than business logic really requires.\nSchema and Index Design Anomaly: Physical table, index, or partition design is not aligned with access patterns, so even well-written statements are pushed onto inefficient access paths.\nBuffer Cache and Latch Contention Anomaly: Sessions compete for hot buffer pages and associated latches, causing serialization and CPU spin without overall throughput gain.\n\nWhen all three root causes are present simultaneously, the workload generates excessive logical I/O, performs wide scans or repeated row fetches over poorly indexed tables, and concentrates that traffic on a handful of pages. The engine records long-tail statement latency in slow-query logs, execution plans dominated by full scans or non-covering index probes, rising buffer-busy and page-latch wait events, and periodic CPU spikes with little progress. Transactions stay open longer, amplifying resource holds and keeping hot pages in exclusive or shared states, leading to cascading slowdowns, time-outs, and retry storms visible at the application tier.\n\nCausal chain: poorly written SQL (Workload Logic Anomaly) triggers larger data accesses; the missing or sub-optimal indexes and partitions (Schema and Index Design Anomaly) prevent the optimizer from choosing selective access paths, forcing the engine to touch and re-touch the same data pages. Those pages become hot spots in the buffer pool, and because the schema offers no alternative access paths, every concurrent session converges on the same root or leaf pages. The intensified traffic exhausts buffer pins and inflates latch acquisition time (Buffer Cache and Latch Contention Anomaly). In turn, latch waits elongate statement execution, keeping transactions and cursors open even longer, which feeds back into higher concurrency on the same deficient schema objects. This self-reinforcing loop degrades both read and write performance until either the offending SQL is rewritten, the physical design is corrected, or the buffer/latch hot spots are eliminated.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.5222375006291811,
+            "bm25_score": 23.219802505658613,
+            "lexical_score": 0.19786780383795305,
+            "matched_terms": [
+                "and",
+                "are",
+                "data",
+                "for",
+                "from",
+                "is",
+                "latency",
+                "longer",
+                "more",
+                "not",
+                "of",
+                "or",
+                "progress",
+                "read",
+                "session",
+                "sessions",
+                "than",
+                "the",
+                "this",
+                "time",
+                "to",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 155,
+            "entry": {
+                "timeout_id": "mysql84_replica_network_timeout",
+                "parameter_name": "replica_net_timeout",
+                "timeout_category": "replication_network_timeout",
+                "scope": "global/replication",
+                "official_definition": "The number of seconds to wait for more data from a source/replica connection before aborting the read.",
+                "trigger_condition": "A replica waits longer than replica_net_timeout for more data from the source connection.",
+                "workload_impact": "The replication network read is aborted and the replica considers the connection interrupted.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

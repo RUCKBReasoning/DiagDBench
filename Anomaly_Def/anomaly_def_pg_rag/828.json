@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Database Configuration Parameter Anomaly + Storage Space Capacity Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Obsolete row versions, rollback records, and dead index entries accumulate faster than background cleanup can reclaim them, inflating the version store and increasing visibility-check work.\nDatabase Configuration Parameter Anomaly : Critical engine settings for memory, background workers, checkpointing, and parallelism are mis-tuned for the hardware and workload, so internal subsystems operate with inappropriate resource budgets or cadences.\nStorage Space Capacity Anomaly : Data files, log areas, or temporary/backup destinations run out of free space, producing allocation failures, stalled writes, and growth-limit errors.\n\nWhen all three root causes strike at once, the database exhibits a compounding failure pattern: dead tuples and rollback segments bloat tables and indexes, while mis-configured memory and worker limits prevent vacuum/garbage-collection processes from keeping up, causing version stores and relation files to balloon until the underlying tablespace, log, or temp volumes exhaust their physical capacity. Operators see a convergence of symptoms: rapidly escalating disk-usage alarms, sudden log-archive or data-file growth spikes, longer and less predictable query latencies due to enlarged heap scans and bloated indexes, frequent autovacuum or cleanup workers stuck or thrashing, checkpoints triggering under duress yet unable to flush because target filesystems are full, sessions receiving \"no space left on device\" or \"cannot extend\" errors, and wait events oscillating between space-allocation stalls and version-visibility scans.\n\nCausally, excessive MVCC churn is the initial generator of extra pages and undo records. Mis-tuned configuration parameters (e.g., undersized cleanup worker budgets, conservative vacuum cost limits, small log segments, overly aggressive checkpoint intervals, or insufficient temp/maintenance memory) throttle the very mechanisms that should reclaim that space, so the bloat progresses unchecked. The swollen relation and log files rapidly consume the finite storage allotment, pushing the system into a capacity crisis. Once space becomes scarce, checkpoint and vacuum operations slow further because they cannot allocate new segments, which in turn leaves even more dead versions on disk, forming a positive feedback loop that magnifies latency spikes and increases the probability of outright service outage. Together, the three anomalies reinforce one another, turning what would be benign bloat, mild mis-tuning, or manageable space usage in isolation into a self-amplifying OLTP outage scenario.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 54,
+            "score": 0.22980519061699942,
+            "bm25_score": 18.893966259519377,
+            "lexical_score": 0.1348146617059391,
+            "matched_terms": [
+                "and",
+                "be",
+                "configuration",
+                "data",
+                "engine",
+                "failure",
+                "generator",
+                "in",
+                "is",
+                "limit",
+                "or",
+                "resource",
+                "the",
+                "to",
+                "together",
+                "with",
+                "workload"
+            ],
+            "match_count": 10,
+            "entry": {
+                "error_code": "2200H",
+                "error_name": "sequence_generator_limit_exceeded",
+                "official_description": "sequence generator limit exceeded",
+                "error_class": "Class 22 - Data Exception",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

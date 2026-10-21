@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Database Configuration Parameter Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Schema and Index Design Anomaly : A static physical-model mismatch that forces queries and DML to use inefficient access paths because tables, indexes, or partitions are not aligned with workload access patterns.\nDatabase Configuration Parameter Anomaly : Mis-tuned engine parameters (memory pools, checkpoint cadence, parallelism, etc.) that make the runtime environment unsuitable for the hardware and workload, creating throttling or storms despite adequate raw resources.\nBuffer Cache and Latch Contention Anomaly : Page-level serialization inside the buffer manager where many sessions compete for the same cache pages, latches, or I/O slots, stalling while buffers are pinned, dirtied, or flushed.\n\nComposite anomaly definition: The system simultaneously suffers from a poor physical schema/index design, sub-optimal instance configuration, and intensified buffer-cache/latch contention. Ill-suited data structures generate excessive or hotspot-focused page activity; misconfigured memory, checkpoint, or parallelism settings prevent the engine from absorbing that activity smoothly; together they create severe page-level contention and resource thrashing.\n\nCombined anomalous phenomena: 1) Queries that should be selective degrade into full scans, inflating logical and physical I/O. 2) Undersized or over-committed buffer pools, work memory, or checkpoint parameters cause constant cache eviction or flush storms, visible as alternating periods of I/O idleness and bursty write spikes. 3) Buffer-busy/latch waits and CPU spin events surge on hot index root pages or monotonically growing tables; at the same time, storage and CPU utilization appear paradoxically low or oscillatory because sessions are stalled on synchronization rather than raw resource limits. 4) Adding an index or changing a parameter in isolation yields only marginal or short-lived relief, and the interplay of symptoms makes plan analysis, wait-event interpretation, and conventional tuning misleading.\n\nCausal chain and mutual reinforcement: Sub-optimal schema/index design amplifies page reuse on a small set of blocks (e.g., a missing composite index funnels all lookups through one non-covering index), creating hot pages. Misconfigured memory or checkpoint cadence reduces the residence time of those pages, forcing frequent re-latching and dirty-page flushes. Each flush evicts useful pages and triggers additional I/O and latch acquisition, lengthening critical sections and spreading contention to other objects. Conversely, excessive latch waits elongate statement runtimes, increasing concurrent session counts, which in turn exceed the memory or worker limits set by faulty parameters, triggering even more cache churn and background activity. The feedback loop between design flaws, configuration mis-sizing, and buffer-manager choke points culminates in unpredictable throughput, erratic latency, and difficulty isolating the primary performance inhibitor.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5773,
+            "score": 0.34541328761978646,
+            "bm25_score": 42.91685311496754,
+            "lexical_score": 0.15346153846153848,
+            "matched_terms": [
+                "and",
+                "be",
+                "by",
+                "configuration",
+                "engine",
+                "for",
+                "in",
+                "level",
+                "makes",
+                "only",
+                "or",
+                "resource",
+                "session",
+                "set",
+                "statement",
+                "system",
+                "the",
+                "to",
+                "together",
+                "with",
+                "workload"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013930",
+                "error_name": "ER_TMP_SESSION_FOR_VAR",
+                "official_description": "Setting session values for system variables only makes sense in a user session (failed to set '%.256s').",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

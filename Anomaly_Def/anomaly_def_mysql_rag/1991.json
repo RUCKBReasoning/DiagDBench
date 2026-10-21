@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Query Plan Selection Anomaly + MVCC Version Maintenance Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level statement or transaction design forces the engine to touch far more data and keep transactions open longer than the business case requires.\nQuery Plan Selection Anomaly : The optimizer chooses an execution plan that is materially worse than the available alternatives even though statistics are adequate.\nMVCC Version Maintenance Anomaly : Obsolete row versions and rollback information accumulate because background cleaners cannot reclaim them fast enough.\n\nWhen all three root causes surface together, the database exhibits extreme and erratic response times: the same statement alternates between different and generally poor plans, appears constantly in slow-query logs, and holds locks or snapshots for extended periods. Heap and index sizes grow rapidly, sequential scans become longer, and the optimizer’s cost estimates diverge further from reality, resulting in a vicious circle of plan instability. Autovacuum or equivalent cleaners run almost continuously yet still fall behind, while application sessions experience timeouts, increased dead tuples, and occasional transaction-ID wraparound warnings. Diagnostics simultaneously show bloated tables, exploding version stores, and wide row scans triggered by inefficient application SQL.\n\nCausal chain: overly broad or poorly filtered SQL drives high row churn and large result sets. Because the workload is already heavy, even a minor mis-estimated predicate or missing index causes the optimizer to pick plans that devolve into full scans or nested-loop explosions, inflating execution time and the number of modified rows per statement. Longer-running transactions and higher update/delete volume generate vast numbers of MVCC versions. As cleaners lag, table bloat skews statistics and page density, which feeds back into the optimizer and increases the probability of future bad plans. The growing version store also slows visibility checks, compounding the latency induced by both the workload logic flaw and the sub-optimal plans, ultimately degrading OLTP performance across the system.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.7294615046168262,
+            "bm25_score": 27.889906305477435,
+            "lexical_score": 0.14833333333333332,
+            "matched_terms": [
+                "and",
+                "because",
+                "behind",
+                "by",
+                "execution",
+                "for",
+                "in",
+                "is",
+                "or",
+                "query",
+                "running",
+                "statement",
+                "the",
+                "time",
+                "together",
+                "triggered",
+                "when",
+                "workload"
+            ],
+            "match_count": 94,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

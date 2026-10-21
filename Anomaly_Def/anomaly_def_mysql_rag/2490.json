@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Database Configuration Parameter Anomaly",
+            "Description": "Schema and Index Design Anomaly : Static mismatch between the physical data model (tables, partitions, indexes, constraints, data types) and the workload’s access patterns, forcing otherwise well-written SQL into inefficient access paths.\nDatabase Configuration Parameter Anomaly : Miscalibrated engine-level settings (memory, checkpoint cadence, parallelism, background workers, etc.) that do not reflect hardware capacity, workload mix, or version defaults, creating artificial pressure or underutilisation of resources.\n\nWhen both root causes are present, the system shows compounded symptoms:  • Queries already slowed by full-table scans or non-covering indexes also suffer extra page faults because the buffer pool is undersized or aggressively flushed.  • Log-write, checkpoint, or memory-grant waits spike after every large scan or bulk modification, yet CPU, I/O, or memory remain paradoxically under-utilised.  • Execution plans oscillate between equally poor alternatives as the optimiser reacts to volatile memory and parallelism limits, making performance nondeterministic.  • Background cleaners, auto-vacuum or statistics refresh jobs lag behind, amplifying bloat and stale metadata, which further degrades index selectivity and plan quality.  • Performance improves dramatically only when both an index change and a parameter correction are applied, making single-knob tuning appear ineffective.\n\nCausally, the defective schema/index design inflates I/O, memory, and logging demands. Mis-set configuration parameters then prevent the engine from absorbing that excess load—e.g., a small buffer pool forces each unnecessary full scan to thrash the cache; a tight work-memory cap makes the optimiser choose even less efficient plans; an aggressive checkpoint interval turns the surplus dirty pages from the scans into frequent flush storms; and oversized parallelism or connection limits waste memory on sessions that spend most of their time doing table scans. Conversely, because the configuration hides real hardware headroom or triggers artificial bottlenecks, DBAs may overlook the design flaw, allowing both issues to reinforce each other and drive the system into chronic, workload-wide slowdowns that affect both transactional and analytical queries.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.39477394665400867,
+            "bm25_score": 13.69156419017985,
+            "lexical_score": 0.10936424306287319,
+            "matched_terms": [
+                "an",
+                "and",
+                "because",
+                "change",
+                "is",
+                "metadata",
+                "not",
+                "or",
+                "schema",
+                "sessions",
+                "the",
+                "to",
+                "waits",
+                "when"
+            ],
+            "match_count": 117,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Storage I/O Throughput Anomaly + Storage Space Capacity Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly: Excessive accumulation of obsolete row versions and rollback information outpaces background cleanup, inflating on-disk structures and visibility-check cost.\nStorage I/O Throughput Anomaly: Physical read/write bandwidth or IOPS of the underlying storage is saturated, driving up latency and I/O wait while CPU remains under-utilised.\nStorage Space Capacity Anomaly: Available free space on data, log, temp, or archive volumes approaches or reaches hard limits, leading to allocation failures and write stalls.\n\nWhen these three root causes manifest together, the database exhibits compounding symptoms: version stores, heaps, and indexes grow rapidly and consume the shrinking free space, while every page read or dirty-page flush contends with an already saturated I/O path, producing long device queues, soaring latency, and persistent \"disk full\" or \"cannot extend\" errors. Autovacuum/garbage-collection workers remain permanently backlogged, yet their own activity intensifies the I/O storm. Transaction response times swing from sluggish to outright timeouts; checkpoints, log flushes, and background writer operations stall, causing spikes in replication lag, lock retention, and risk of crash-recovery amplification. Monitoring shows simultaneous escalation of obsolete-row ratios, I/O wait events, and free-space depletion, making it difficult to attribute any single metric to a unique root cause.\n\nCausally, heavy update/delete churn inflates the version store. The extra dirty pages and enlarged tables amplify read and write volumes, pushing the storage subsystem beyond its throughput envelope. Elevated I/O latency slows vacuum/cleaner progress, letting even more obsolete versions pile up and further enlarging the on-disk footprint. The bloated data structures, together with sustained high write rates, accelerate space consumption until capacity thresholds are crossed; at that point, failed extensions and frozen log recycling prevent new transactions, holding snapshots open and creating even more version retention. Thus each anomaly feeds the others: MVCC bloat drives I/O pressure and space usage, I/O saturation throttles cleanup, and space exhaustion blocks recovery actions—forming a self-reinforcing loop that can cripple an OLTP system.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.46859305145091434,
+            "bm25_score": 15.964021997379922,
+            "lexical_score": 0.13376804843968326,
+            "matched_terms": [
+                "activity",
+                "an",
+                "and",
+                "are",
+                "check",
+                "holding",
+                "is",
+                "it",
+                "latency",
+                "of",
+                "on",
+                "or",
+                "progress",
+                "remains",
+                "the",
+                "when"
+            ],
+            "match_count": 42,
+            "entry": {
+                "timeout_id": "mysql84_idle_interactive_session_timeout",
+                "parameter_name": "interactive_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds the server waits for activity on an interactive connection before closing it.",
+                "trigger_condition": "An interactive session remains idle longer than interactive_timeout.",
+                "workload_impact": "The server closes the idle interactive connection.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

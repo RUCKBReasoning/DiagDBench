@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Storage I/O Throughput Anomaly + CPU Resource Anomaly",
+            "Description": "SQL Workload Logic Anomaly: Application-level SQL or transaction design forces the engine to touch far more rows, columns, or pages than business logic requires.\nStorage I/O Throughput Anomaly: The physical or virtual storage layer is saturated, so read/write latency, IOPS, or bandwidth no longer meet engine demand.\nCPU Resource Anomaly: Database processes consume nearly all available CPU cycles, driving run-queue pressure and broad latency inflation.\n\nWhen these three root causes coexist, the database experiences a compound failure mode in which overly chatty or bloated SQL drives a flood of physical reads, large writes, and long-running transactions. The excessive I/O demand collides with a storage subsystem already at or beyond its throughput limits, generating steep I/O wait times, deep device queues, and stalled checkpoints or redo flushes. Simultaneously, CPU cores become saturated by the sheer volume of data processing, predicate evaluation, and context switching spawned by the inefficient workload and by threads waiting and retrying after I/O stalls. The mixed wait profile alternates between high CPU usage and prolonged I/O waits, producing erratic yet persistently high statement latencies, lock hold times, application timeouts, and unpredictable throughput that can cascade into connection pool exhaustion and node failovers.\n\nCausally, sub-optimal SQL logic is the ignition point: wide scans, Cartesian joins, and long transactions amplify both I/O and CPU demand. This surplus demand overwhelms the storage layer first; as I/O slows, worker threads stay active longer, consuming additional CPU for predicate re-evaluation, buffer management, and lock maintenance. The resulting CPU saturation prevents the engine from efficiently issuing asynchronous I/O or processing completed I/O interrupts, which in turn further depresses effective I/O throughput. The feedback loop between bad SQL, clogged storage, and starved CPU resources escalates resource contention across all tiers, making each individual anomaly more severe and masking the original source of the problem.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.747264678471575,
+            "bm25_score": 30.820039765915563,
+            "lexical_score": 0.1575489282385834,
+            "matched_terms": [
+                "and",
+                "contention",
+                "context",
+                "from",
+                "is",
+                "long",
+                "longer",
+                "more",
+                "of",
+                "or",
+                "resource",
+                "running",
+                "sql",
+                "statement",
+                "than",
+                "that",
+                "the",
+                "this",
+                "when",
+                "with",
+                "workload"
+            ],
+            "match_count": 205,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

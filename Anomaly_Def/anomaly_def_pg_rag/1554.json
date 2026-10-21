@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Buffer Cache and Latch Contention Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Row-count and data-distribution metadata are stale, missing, or incomplete, causing systematic cardinality misestimation and sub-optimal plan selection.\nBuffer Cache and Latch Contention Anomaly : Hot buffer pages and their protecting latches become serialization points, forcing sessions to spin or sleep while competing for page access or I/O slots.\nTransaction Log Subsystem Anomaly : The write-ahead logging path (log buffer, log file, flush, switch, or archive) cannot keep up with redo generation, lengthening commit latency and back-pressuring writers.\n\nWhen all three root causes coexist, the database exhibits intertwined symptoms: queries choose inefficient plans that inadvertently hammer a small set of index or data pages, sharply increasing buffer hit traffic and latch waits; the resulting page churn produces a surge of dirty buffers whose flushes queue behind an already saturated transaction log, inflating log-flush and checkpoint waits. End users observe erratic response times, spikes in CPU spin, blocked commits, and sudden throughput collapses after data-modification bursts or bulk-load events. Execution-plan explain outputs show severe cardinality errors, while performance views simultaneously record high buffer busy/latch contention and log-related waits, making the dominant bottleneck difficult to isolate.\n\nCausally, stale or missing statistics drive the optimizer toward plans that concentrate reads or inserts on a few root/leaf pages or hot ranges, amplifying latch contention in the buffer pool. The repeated retries and page splits from this contention generate excess redo, which in turn overwhelms the transaction-log subsystem and delays buffer flush completion. The slowed log flush prolongs page-write hold times, further intensifying latch pressure and starving the buffer cache of free pages, which increases page eviction and reload cycles. This feedback loop magnifies latency and stalls across the stack, turning three individually manageable issues into a cascading performance collapse during write-intensive OLTP workloads.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.3336809789601246,
+            "bm25_score": 12.460323373271951,
+            "lexical_score": 0.1254377463332687,
+            "matched_terms": [
+                "after",
+                "an",
+                "and",
+                "are",
+                "for",
+                "latency",
+                "of",
+                "on",
+                "or",
+                "sessions",
+                "stale",
+                "that",
+                "the",
+                "this",
+                "to",
+                "when",
+                "which"
+            ],
+            "match_count": 237,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_interval",
+                "parameter_name": "tcp_keepalives_interval",
+                "timeout_category": "network_keepalive_retry_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time after which a TCP keepalive message that has not been acknowledged by the client should be retransmitted.",
+                "trigger_condition": "A TCP keepalive probe is not acknowledged for tcp_keepalives_interval on systems supporting TCP_KEEPINTVL or an equivalent socket option.",
+                "workload_impact": "Controls retry timing for keepalive probes used to detect unresponsive client connections.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

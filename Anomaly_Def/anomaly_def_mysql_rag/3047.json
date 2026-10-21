@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + MVCC Version Maintenance Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-layer statements and transaction scopes are written so inefficiently that the database engine must scan or modify far more rows and keep transactions open far longer than the business task requires.\nMVCC Version Maintenance Anomaly : Obsolete row versions, undo segments, and dead index entries accumulate faster than background cleaners can reclaim them, inflating on-disk and in-memory storage and adding visibility-check overhead.\nNetwork and Connectivity Resource Anomaly : The transport, listener, authentication, or socket layer cannot provide enough bandwidth, round-trip performance, or connection slots to satisfy the client request rate, leading to connection stalls, retries, or drops.\n\nWhen these three root causes strike together, the workload exhibits an extreme long-tail of statement latencies, high counts of slow or timed-out transactions, ballooning table and index sizes, surging connection attempts, and back-end processes stuck in client-read/client-write or vacuum/clean-up states. Bulk or chatty queries created by sub-optimal SQL logic send oversized result sets over a saturated network, prolonging transaction lifetimes. The prolonged transactions, in turn, hold old MVCC snapshots that prevent version cleanup, so each retry or leaked connection leaves more dead tuples behind. As tables bloat, the optimizer underestimates row counts, causing even heavier scans and further swelling result sets, which exacerbates network congestion and connection pool exhaustion. Meanwhile, overworked vacuum or purge workers compete for I/O with the now larger user queries, deepening latency spikes and amplifying retry storms.\n\nCausal chain: Inefficient application SQL multiplies the amount of data touched and the duration of each transaction, creating large intermediate and final result sets. These long-lived, update-heavy transactions generate and retain many obsolete versions, pushing MVCC maintenance into perpetual backlog. The enlarged on-disk structures slow subsequent scans, inflating response times and producing even bigger network transfers. The heightened latency causes clients to hold or reopen more connections, which overloads listeners and exhausts socket and process pools, introducing additional waits and failures. Each layer’s slowdown feeds the others: network stalls prolong transactions, stalled transactions impede version cleanup, version bloat slows queries, and inefficient SQL sustains the pressure, leading to a self-reinforcing degradation spiral across application, storage, and connectivity tiers.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.531440238781192,
+            "bm25_score": 23.183393637398243,
+            "lexical_score": 0.12070807853234632,
+            "matched_terms": [
+                "an",
+                "and",
+                "attempts",
+                "cannot",
+                "for",
+                "in",
+                "longer",
+                "or",
+                "retry",
+                "statement",
+                "than",
+                "the",
+                "to",
+                "transaction",
+                "waits",
+                "when"
+            ],
+            "match_count": 142,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

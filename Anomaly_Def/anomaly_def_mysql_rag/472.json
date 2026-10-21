@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Transaction Lock Contention Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Stale, missing, or insufficient statistics distort the optimizer’s cardinality estimates and costing inputs, driving systematically poor plan choices.\nTransaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same resources, producing long blocking chains or deadlocks that stall throughput.\nOperating System Resource Limit Anomaly : Database processes hit kernel-enforced ceilings for handles, memory segments, semaphores, threads, or similar OS objects, preventing new allocations and halting growth of work.\n\nCombined phenomena: When all three root causes coexist, the system exhibits severe and erratic slowdowns. Misestimated row counts lead the optimizer to pick plans that scan or update far more data than necessary, inflating lock footprints, extending lock hold times, and triggering cascades of blocking and deadlocks. Sessions that become stuck waiting on locks or deadlock retries remain logged in, consuming connections, file descriptors, shared-memory slots, or semaphore entries until global OS quotas are exhausted. Once kernel limits are reached, new client logins, background workers, or parallel query processes fail to start, causing partial outages and amplifying application time-outs. Monitoring may show exploding lock-wait queues, skyrocketing wait-on-OS resource allocation failures, drastic drops in throughput, and sudden bursts of deadlock victim errors, all while execution plans display grossly inaccurate cardinality estimates.\n\nCausal chain: (1) Stale or missing statistics mislead the optimizer into choosing high-cost, bulk-locking execution plans (e.g., full table scans without useful indexes), thereby lengthening transaction duration and widening the scope of acquired locks; (2) the prolonged and enlarged lock holding intensifies lock contention, inducing blocker-waiter trees and frequent deadlocks; (3) each blocked or orphaned backend continues to hold kernel objects—file handles, semaphores, threads—pushing the database toward OS resource limits; (4) once those limits are hit, new sessions and maintenance workers (including auto-statistics refresh jobs) cannot start, preventing correction of the stale statistics and forcing more sessions into lock waits. This feedback loop compounds latency, throughput collapse, and availability degradation in OLTP workloads.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5856,
+            "score": 0.5943866963768792,
+            "bm25_score": 75.46572614494632,
+            "lexical_score": 0.1396091758708581,
+            "matched_terms": [
+                "acquired",
+                "and",
+                "blocking",
+                "chains",
+                "concurrent",
+                "for",
+                "incompatible",
+                "lock",
+                "on",
+                "or",
+                "resources",
+                "same",
+                "table",
+                "the",
+                "transaction",
+                "transactions"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-014018",
+                "error_name": "ER_IB_RESURRECT_ACQUIRE_TABLE_LOCK",
+                "official_description": "Acquired lock on table ID: %lu, name: %s",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "concurrency_and_transaction",
+                "cause_analysis": "The failure is typically associated with concurrent transactions contending for the same logical resources, incompatible lock acquisition order, or transaction-state conflicts surfaced by the engine.",
+                "solution_guidance": "Inspect blocking chains, reduce conflicting write overlap, shorten transaction lifetime, review lock acquisition order, and verify whether transaction scheduling or retry logic needs adjustment.",
+                "observable_symptoms": [
+                    "blocking",
+                    "rollback",
+                    "retry",
+                    "stalled transaction"
+                ]
+            }
+        }
+    }
+]

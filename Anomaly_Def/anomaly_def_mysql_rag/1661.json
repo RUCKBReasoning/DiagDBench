@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Buffer Cache and Latch Contention Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer selects markedly sub-optimal execution plans even though statistics are accurate.\nBuffer Cache and Latch Contention Anomaly: Sessions serialize on hot buffer pages and latches, causing CPU spin and wait amplification.\nTransaction Log Subsystem Anomaly: The write-ahead logging path (log buffer, flush, and archiving) becomes the primary bottleneck on the commit path.\n\nCombined phenomena: When these three root causes manifest together, the database shows erratic plan flips that drive excessive logical I/O, intense BUFFER_BUSY and LATCH_* waits, and rising LOG_FLUSH / LOG_SYNC latencies. Full scans or poorly chosen nested-loop joins repeatedly access the same root or leaf pages, heating them in the buffer pool and inflating latch contention. As transactions wait on both latches and commits, CPU utilization rises without matching throughput, checkpoints become more frequent, log files grow rapidly, and application response time oscillates unpredictably.\n\nCausal chain: Sub-optimal plans increase page touch frequency and concentrate I/O on a narrow set of blocks, which escalates buffer-cache and latch contention. Prolonged latch waits lengthen transaction lifetimes, causing more redo to be generated and retained in memory. The swollen redo stream overtaxes the log subsystem; delayed log flushes extend commit latency, holding transactions and their latches even longer and further heating hot pages. Log stalls can also trigger additional optimizer recompilations and plan cache invalidations, risking another round of poor plan selection. The three anomalies therefore reinforce one another in a feedback loop that degrades both read and write paths and can quickly exhaust the system’s performance headroom.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1984,
+            "score": 0.45366872437645067,
+            "bm25_score": 40.02254265384954,
+            "lexical_score": 0.121369201894718,
+            "matched_terms": [
+                "access",
+                "and",
+                "are",
+                "files",
+                "generated",
+                "latency",
+                "log",
+                "of",
+                "or",
+                "path",
+                "paths",
+                "the",
+                "to",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010097",
+                "error_name": "ER_SEC_FILE_PRIV_EMPTY",
+                "official_description": "Insecure configuration for --secure-file-priv: Current value does not restrict location of generated files. Consider setting it to a valid, non-empty path.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

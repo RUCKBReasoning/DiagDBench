@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Storage Space Capacity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Schema and Index Design Anomaly : Physical data-model and indexing choices do not match workload access patterns, forcing inefficient plans and excess I/O.\nStorage Space Capacity Anomaly : The database or related log/temporary areas run out of free space, leading to allocation failures and halted operations.\nOperating System Resource Limit Anomaly : Kernel-enforced limits on file handles, shared memory, threads, or similar objects are exhausted, preventing the database from creating or accessing required resources.\n\nWhen all three root causes are present, symptoms intertwine: poorly indexed queries trigger large full-table scans and spill to temp segments, rapidly consuming tablespace and temp space; background growth of data files or logs fails because host file-descriptor quotas or filesystem space are simultaneously exhausted; error logs show a mix of \"no space left on device\" and \"too many open files\" while query latency escalates and write operations stall. Autovacuum, index rebuilds, and backup jobs may start but abort mid-way due to both space exhaustion and lost OS resources, leaving partially created objects that further waste space and ties up additional file handles. End-user experience degrades from slow responses to outright session failures as new connections cannot allocate shared memory or temp work areas.\n\nCausally, the inefficient physical design inflates I/O volume and temporary allocations, accelerating consumption of both disk space and kernel objects (e.g., temp files, workfile descriptors). Rapid space growth forces frequent file extensions, each of which requires additional file handles and shared memory mappings, pushing the system toward OS limits. Conversely, once OS handle or memory limits are hit, auto-extension and cleanup tasks fail, preventing space reclamation and exacerbating space shortages. The mutual reinforcement of design-driven bloat, space exhaustion, and OS limit saturation produces a feedback loop that intensifies resource starvation and makes the composite anomaly harder to diagnose than any single constituent issue.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.3378756884285298,
+            "bm25_score": 13.32941652779291,
+            "lexical_score": 0.11992799819995499,
+            "matched_terms": [
+                "and",
+                "any",
+                "are",
+                "but",
+                "latency",
+                "not",
+                "of",
+                "open",
+                "or",
+                "session",
+                "than",
+                "that",
+                "the",
+                "user",
+                "when"
+            ],
+            "match_count": 306,
+            "entry": {
+                "timeout_id": "pg16_idle_session_timeout",
+                "parameter_name": "idle_session_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle, but not within an open transaction, for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle and not inside an open transaction longer than the configured threshold.",
+                "workload_impact": "The session is terminated; the documentation warns about using this with connection pools or middleware.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

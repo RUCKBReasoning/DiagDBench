@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Optimizer Statistics Anomaly: Execution-plan costing relies on stale, missing, or inaccurate catalog statistics, producing systematic cardinality misestimates and sub-optimal plans.\nOperating System Resource Limit Anomaly: Database processes hit kernel-enforced ceilings on file descriptors, shared memory, semaphores, threads, or cgroup quotas, causing allocation failures and blocking new work.\n\nWhen both root causes strike concurrently, the workload exhibits a mix of logical and infrastructural pathologies: queries choose wrong join orders or degrees of parallelism and then abruptly abort with system-level errors such as “cannot create shared memory segment,” “too many open files,” or “failed to start worker.” Batch jobs may swing between severe under-estimation (tiny memory grants leading to spills) and over-estimation (requests for memory or workers that the OS refuses), resulting in thrashing, frequent plan recompilations, intermittent session failures, and oscillating performance. Because failures appear in both the execution plan (row-count gaps, excessive I/O, temp spills) and the system log (resource exhaustion messages), symptoms can seem unrelated, elongating triage time.\n\nCausal interplay: stale statistics can inflate optimizer estimates, prompting the engine to ask the OS for large memory areas, high parallel-worker counts, extra temp files, or additional file handles; if kernel quotas are tight, those requests are denied, turning a performance issue into hard errors and session drops. Conversely, once OS limits are hit, automatic statistics jobs and parallel scan workers cannot start, preventing statistics refreshes and locking the system into an ever more outdated cost model. This feedback loop escalates misestimation and resource starvation, degrading throughput and reliability across both transactional and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.29352862229233007,
+            "bm25_score": 9.117736085011233,
+            "lexical_score": 0.1139344262295082,
+            "matched_terms": [
+                "and",
+                "are",
+                "for",
+                "of",
+                "or",
+                "session",
+                "stale",
+                "that",
+                "the",
+                "this",
+                "time",
+                "when",
+                "with"
+            ],
+            "match_count": 43,
+            "entry": {
+                "timeout_id": "mysql84_connection_handshake_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "connection_handshake_timeout",
+                "scope": "global",
+                "official_definition": "The number of seconds that the mysqld server waits for a connect packet before responding with Bad handshake.",
+                "trigger_condition": "A client does not complete the initial connection packet exchange within connect_timeout.",
+                "workload_impact": "The connection attempt fails during handshake.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

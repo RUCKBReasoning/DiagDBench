@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Storage Space Capacity Anomaly + CPU Resource Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Optimizer input metadata (row counts, histograms, correlations) is stale or incomplete, causing systematic cardinality misestimates and mis-costed execution plans.\nStorage Space Capacity Anomaly : Available space for data, indexes, logs, temp, or backup areas falls to critical levels or is exhausted, producing allocation failures and blocking I/O activity.\nCPU Resource Anomaly : Database or co-located processes drive host CPU utilization to sustained saturation, starving other work of compute cycles and inflating run-queue waits.\n\nWhen these three root causes co-exist, the system exhibits a compound failure mode: poorly costed plans spawn inefficient, CPU-intensive scans, joins, and sorts that try to spill to temporary or redo space that is already near full, while global CPU saturation lengthens every I/O, log flush, and space-management operation. Observed symptoms include: wildly inaccurate row-count estimates in plans that nevertheless keep reusing bad cache entries; sudden spikes of CPU and context-switch waits; temp-segment or log-file space errors mid-query; aborted DML due to \"no space left\" conditions; slow or failed statistics jobs; and an escalating pattern of lock contention, statement timeouts, and instance-wide latency as both compute and storage headroom disappear.\n\nCausal interaction: Stale or absent statistics provoke the optimizer to choose plan shapes that scan or sort much more data than expected, inflating CPU consumption and generating excess temp and redo usage. The resulting CPU saturation slows background tasks responsible for automatic statistics refresh, file auto-extension, log archival, and space reclamation, allowing space to deplete even faster. In parallel, shrinking free space limits the ability of queries to create temp segments or extend data/log files, causing repeated retries and latch contention that further burn CPU. Each anomaly therefore reinforces the others: bad statistics drive CPU and space demand upward; CPU exhaustion throttles corrective maintenance and inflates I/O wait times; space pressure blocks the very operations (statistics refresh, sorts, index builds) needed to restore plan quality—creating a vicious feedback loop that can culminate in widespread query failures or a complete database outage.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.3071349414072204,
+            "bm25_score": 16.63597607622687,
+            "lexical_score": 0.11711322869955157,
+            "matched_terms": [
+                "activity",
+                "an",
+                "and",
+                "can",
+                "count",
+                "for",
+                "is",
+                "latency",
+                "no",
+                "of",
+                "or",
+                "stale",
+                "system",
+                "than",
+                "the",
+                "to",
+                "when"
+            ],
+            "match_count": 259,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_idle",
+                "parameter_name": "tcp_keepalives_idle",
+                "timeout_category": "network_idle_keepalive_probe_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time with no network activity after which the operating system should send a TCP keepalive message to the client.",
+                "trigger_condition": "A TCP client connection has no network activity longer than tcp_keepalives_idle on systems supporting TCP_KEEPIDLE or an equivalent socket option.",
+                "workload_impact": "Starts TCP keepalive probing for an otherwise idle client connection; together with interval and count settings this can lead to dead connection detection.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,47 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Data Block and Index Integrity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Composite definition: The database concurrently suffers from on-disk data/index corruption and from host-level resource exhaustion, so that logical storage structures are damaged while the engine is also prevented from obtaining the kernel objects (file descriptors, shared-memory segments, threads, etc.) it needs to detect, isolate, or repair the corruption.\n\nData Block and Index Integrity Anomaly: Physical pages or index structures have become internally inconsistent, breaking key order, page links, checksums, or heap–index mappings and causing wrong, lost, or duplicated rows.\nOperating System Resource Limit Anomaly: Kernel-enforced ceilings on file handles, shared memory, semaphores, threads, or related objects are hit, denying the database process further allocations and impairing normal operation.\n\nCombined observable phenomena:  • Queries intermittently fail or return wrong result counts due to corrupted indexes, while other sessions receive \"unable to open file\", \"cannot allocate shared memory\", or \"failed to start worker\" errors.  • Integrity-checking or backup utilities may abort early because they cannot acquire additional descriptors, leaving corruption only partially reported.  • Recovery or checkpoint operations may stall: the engine detects damaged pages yet also cannot allocate the I/O contexts or background workers required for recovery, causing prolonged startup times, replication lag, or sudden crash-looping.  • Monitoring shows rising I/O errors, checksum failures, and a plateau of kernel resource counters (open files, semaphores) at their limits.  • Performance degrades unpredictably as the optimizer switches from corrupted indexes to full scans, which in turn spawn additional temporary files whose creation fails due to file-handle exhaustion.\n\nCausal interaction: Resource limits can precipitate or exacerbate physical corruption—for example, a shortage of file descriptors or asynchronous I/O slots can interrupt checkpoint flushing, leaving pages only partially written and vulnerable to torn-page corruption. Conversely, once corruption exists, the database engine may attempt aggressive background validation, index rebuilds, or repeated retries, each consuming extra threads, memory arenas, or kernel objects and thereby accelerating exhaustion of the already tight OS limits. This feedback loop masks the true origin of errors, producing overlapping symptoms that complicate diagnosis and prolong outage duration.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 91,
+            "score": 0.6038636920634307,
+            "bm25_score": 37.79909218564973,
+            "lexical_score": 0.12012962962962963,
+            "matched_terms": [
+                "and",
+                "corruption",
+                "data",
+                "index",
+                "integrity",
+                "is",
+                "key",
+                "logical",
+                "or",
+                "repair",
+                "required",
+                "storage",
+                "the"
+            ],
+            "match_count": 11,
+            "entry": {
+                "error_code": "23503",
+                "error_name": "foreign_key_violation",
+                "official_description": "foreign key violation",
+                "error_class": "Class 23 - Integrity Constraint Violation",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "integrity_and_constraints",
+                "cause_analysis": "The failure is typically associated with logical data inconsistency, structural corruption, uniqueness conflicts, or referential-integrity rules being violated by the workload or storage state.",
+                "solution_guidance": "Validate data consistency, inspect constraints and index integrity, and check whether data-cleaning, repair, or workload correction is required before retrying.",
+                "observable_symptoms": [
+                    "constraint failure",
+                    "duplicate data rejection",
+                    "corruption warning"
+                ]
+            }
+        }
+    }
+]

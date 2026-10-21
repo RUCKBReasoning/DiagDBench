@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Storage I/O Throughput Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly: The log-writer path (log buffer, log files, archive/replication pipeline) becomes the bottleneck, inflating commit and log-flush latency.\nStorage I/O Throughput Anomaly: The physical storage layer saturates its IOPS/MB-per-s capacity, driving up read-write latencies and queue depths for all database files.\nOperating System Resource Limit Anomaly: Kernel-enforced ceilings on file descriptors, asynchronous-I/O contexts, shared memory, or process threads are reached, preventing the database from issuing or completing additional I/O or spawning helper tasks.\n\nWhen these three root causes strike concurrently, the database experiences compound symptoms: commit operations stall behind saturated log devices whose writes themselves wait in deep OS-level I/O queues; data and log read/write latencies climb simultaneously, obscuring whether slowness originates in the engine or the device; background tasks such as checkpoint, archiver, and replication sender processes intermittently fail to open new log segments or allocate AIO contexts, producing error bursts in both database and system logs; queue build-up in the log subsystem triggers frequent checkpoints and aggressive log switches, which further inflate I/O pressure on an already bandwidth-starved storage array; overall throughput collapses while CPU remains under-utilised and sessions time out.\n\nCausally, log-heavy OLTP traffic generates sustained redo that must be flushed. The undersized or co-located log files hit the physical throughput ceiling of the shared storage, lengthening sync times. As waits accumulate, the database spawns more helper processes and AIO requests, quickly consuming kernel file-handle and AIO limits. Once those limits are breached, new I/O submissions are throttled or fail, forcing the engine to fall back to synchronous, single-threaded or buffered I/O, which further degrades throughput and amplifies storage congestion. The persistent storage backlog, in turn, keeps log segments open longer, blocks checkpoints, and inflates recovery-related disk activity, creating a feedback loop that deepens the performance crisis and can escalate into a full write stall or service outage.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.6714582191582924,
+            "bm25_score": 20.1818993968356,
+            "lexical_score": 0.12178271965001822,
+            "matched_terms": [
+                "an",
+                "and",
+                "for",
+                "from",
+                "longer",
+                "of",
+                "open",
+                "or",
+                "preventing",
+                "remains",
+                "sessions",
+                "that",
+                "the",
+                "time",
+                "transaction",
+                "when",
+                "while"
+            ],
+            "match_count": 268,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

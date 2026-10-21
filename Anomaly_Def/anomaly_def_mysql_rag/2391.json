@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Buffer Cache and Latch Contention Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Composite Definition: The database simultaneously suffers from runaway accumulation of obsolete MVCC versions, severe buffer-cache/latch contention, and impending exhaustion of allocated storage space. These three root causes coexist and interact, leading to compounded performance degradation, space shortages, and amplified concurrency stalls.\n\nMVCC Version Maintenance Anomaly: Obsolete row versions and rollback records outpace background cleanup, bloating data structures and lengthening visibility checks.\nBuffer Cache and Latch Contention Anomaly: Hot or rapidly churning pages cause sessions to compete for buffer pins and latches, inflating CPU spin time and wait events.\nStorage Space Capacity Anomaly: Data, log, or temp areas approach hard size limits, provoking allocation failures, log-switch stalls, and emergency space conservation behaviors by the engine.\n\nCombined Phenomena: While version churn expands tables and indexes, the working-set footprint in the buffer pool swells, forcing more pages to be loaded, dirtied, and flushed. The oversized version store and growing data files accelerate buffer turnover, increasing buffer-busy and page-latch waits. As space fills, background checkpoints and auto-extension attempts intensify, causing longer write-back stalls that hold latches even longer and block foreground operations. Clients may observe escalating latency spikes, frequent \"out of space\" or \"cannot extend\" errors, sudden slowdown of both reads and writes, and erratic query plans due to inaccurate statistics on the bloated heap. Cleanup workers, throttled by latch waits and lack of free disk space for new segment allocation, fall further behind, causing a positive feedback loop of storage growth, contention, and stalled transactions.\n\nCausal Interaction: Heavy update/delete workloads create large version chains that inflate on-disk structures, rapidly consuming storage and enlarging the hot set of pages. The swollen data footprint forces more frequent page replacements, increasing the probability that many sessions converge on the same root or index pages, which amplifies latch contention. Simultaneously, shrinking free space lengthens and serializes checkpoints and dirty-page evictions, because each flush now competes for scarce allocation units and log space. These prolonged I/O and latch holds slow down autovacuum/cleanup tasks, allowing even more dead versions to pile up, thereby accelerating space exhaustion. The three anomalies hence reinforce one another: MVCC bloat drives space consumption and hot-page pressure; latch contention throttles cleanup and I/O; and near-full disks further delay writes and cleanup, culminating in widespread throughput collapse and potential service outages.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.41711358387671016,
+            "bm25_score": 16.387228898394742,
+            "lexical_score": 0.0945679012345679,
+            "matched_terms": [
+                "and",
+                "be",
+                "because",
+                "behind",
+                "by",
+                "contention",
+                "for",
+                "in",
+                "or",
+                "query",
+                "the",
+                "time"
+            ],
+            "match_count": 112,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

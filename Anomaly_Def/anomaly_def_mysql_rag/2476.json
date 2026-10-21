@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Data Block and Index Integrity Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Transaction Lock Contention Anomaly: Concurrent transactions request incompatible locks on the same resources, creating long blocker-waiter chains or deadlocks that the lock manager must resolve.\nData Block and Index Integrity Anomaly: Physical pages or index structures on disk become corrupted or internally inconsistent, making access paths unreliable and forcing error handling or full-scan fall-backs.\nStorage I/O Throughput Anomaly: The underlying storage subsystem becomes bandwidth, IOPS, or latency bound, stretching read/write times and inflating I/O wait events for data, temp, and log files.\n\nWhen all three anomalies coexist, the database exhibits a multilayer failure pattern: transactions pile up behind locks that are held far longer than normal because each locked operation spends excessive time waiting for slow I/O and for corruption-handling retries. Queries that fall back from index access to full table scans (due to detected index/heap inconsistencies) further inflate I/O volume, deepening storage saturation. The prolonged execution time of these scans or repair attempts extends transaction lifetimes, lengthens lock hold periods, and increases the probability of deadlocks and lock-wait cascades. Users observe severe throughput collapse, erratic response times, deadlock victim errors, repeated statement restarts, spikes in lock-wait and I/O wait metrics, integrity-check failures, and potentially an accelerating incidence of corruption messages as stress on the storage path grows.\n\nCausally, underlying storage throughput exhaustion slows every physical page read and write. This delay widens the window during which locks remain active, amplifying lock contention. Simultaneously, strained I/O paths heighten the risk of incomplete writes or torn pages, seeding new data and index corruptions. Once corruption appears, the optimizer may discard damaged indexes or force index rebuilds, generating large sequential and random I/O that further overloads the already saturated storage system. The resulting feedback loop—slow I/O → longer locks → more blocking/deadlocks → more rollbacks/retries → higher I/O pressure—drives an escalating spiral that can bring transactional workloads to a standstill and jeopardize data integrity.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5463,
+            "score": 0.4727619465350757,
+            "bm25_score": 55.24921829732767,
+            "lexical_score": 0.18183962264150944,
+            "matched_terms": [
+                "access",
+                "and",
+                "are",
+                "check",
+                "data",
+                "detected",
+                "disk",
+                "error",
+                "failure",
+                "failures",
+                "files",
+                "latency",
+                "log",
+                "operation",
+                "or",
+                "path",
+                "paths",
+                "pressure",
+                "storage",
+                "the",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013603",
+                "error_name": "ER_IB_TABLESPACE_PATH_VALIDATION_SKIPPED",
+                "official_description": "Skipping InnoDB tablespace path validation. Manually moved tablespace files will not be detected!",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

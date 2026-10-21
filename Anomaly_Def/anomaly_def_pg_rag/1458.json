@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Buffer Cache and Latch Contention Anomaly + Replication Synchronization Anomaly",
+            "Description": "Optimizer Statistics Anomaly: Inaccurate, stale, or incomplete optimizer statistics cause systematic cardinality misestimates that mis-guide plan selection and operator choices.\nBuffer Cache and Latch Contention Anomaly: Excessive competition for hot buffer pages, latches, and I/O slots forces sessions to spin or wait, throttling throughput even when adequate memory exists overall.\nReplication Synchronization Anomaly: Downstream replicas cannot receive, write, or apply WAL/redo changes as fast as the primary generates them, producing widening log-position lag and blocking log recycling.\n\nWhen all three conditions occur together, the database exhibits a compound performance crisis: the primary produces sub-optimal, latch-heavy execution plans that hammer a small set of pages; these hot-page storms inflate buffer latch waits and CPU spin on the primary while simultaneously generating large, bursty transaction logs. The bloated and write-amplified redo stream overwhelms network or replica apply capacity, causing replication lag and retention of unsent or unapplied log segments. End-users observe erratic query latencies, periodic throughput collapses, and stale or unavailable read replicas; administrators see ballooning primary log storage, chronic buffer_busy/latch contention, and extreme estimated-vs-actual row count divergence in plan diagnostics.\n\nCausally, stale or missing statistics mislead the optimizer into choosing access paths—such as nested loops into hot index root pages or overly selective filters—that concentrate traffic on very few buffers. This localized I/O and latch pressure increases CPU spin and stretches commit times, enlarging individual transactions and the volume of redo emitted. The intensified log generation then widens replication lag; replicas that already struggle to replay suffer further because inefficient plans are re-executed during apply, compounding their CPU and I/O deficit. Conversely, replication delay prevents log recycling, lengthening checkpoint cycles and keeping more dirty pages in memory, which raises buffer flush pressure and prolongs latch hold times on the primary, completing a reinforcing negative feedback loop that degrades both primary and replica performance.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.24513164641631519,
+            "bm25_score": 10.262755237655636,
+            "lexical_score": 0.1033492822966507,
+            "matched_terms": [
+                "and",
+                "are",
+                "for",
+                "in",
+                "of",
+                "or",
+                "sessions",
+                "stale",
+                "the",
+                "this",
+                "wait",
+                "when"
+            ],
+            "match_count": 163,
+            "entry": {
+                "timeout_id": "pg16_libpq_connection_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "client_connection_establishment_timeout",
+                "scope": "libpq/client connection parameter",
+                "official_definition": "Maximum wait for connection, in seconds; zero or not specified means wait indefinitely.",
+                "trigger_condition": "A libpq client connection attempt exceeds connect_timeout seconds.",
+                "workload_impact": "The client connection attempt fails instead of waiting indefinitely.",
+                "default_behavior": "Zero or absent value means wait indefinitely.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

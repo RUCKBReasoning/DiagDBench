@@ -1,0 +1,63 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Database Memory Allocation Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Engine-level runtime settings (e.g., buffer-pool size, per-session work memory, checkpoint cadence, connection limits) are mis-aligned with hardware capacity, workload mix, or version defaults.\nDatabase Memory Allocation Anomaly : Database components collectively consume more physical memory or swap than the host can safely supply, leading to paging, OOM events, or node eviction.\nNetwork and Connectivity Resource Anomaly : Transport, listener, authentication, or socket resources cannot sustain the offered connection or data-transfer rate, producing connection errors, backlog growth, or elevated client-read/write waits.\n\nWhen all three root causes appear together, symptoms overlap and amplify: connection storms and retry loops inflate backend counts that already exceed mis-tuned connection limits; every new session reserves oversized work memory, rapidly exhausting RAM and triggering operating-system paging or OOM kills. Memory pressure stalls backends, lengthening query turnaround and enlarging in-flight result sets, which in turn hold sockets open and deepen network backlog. Wait-event charts show simultaneous client-read/client-write stalls, log-write or checkpoint spikes divorced from actual I/O utilization, and CPU time lost to memory-pressure spin waits. The database may repeatedly restart, dropping TCP sessions and forcing clients into further reconnect attempts, while half-open sockets accumulate because listener backlog and keepalive timers are set too low.\n\nCausal chain: misconfigured parameters (high work_mem, high parallel-worker counts, lenient connection caps) initiate excessive per-session memory reservation. The resulting memory exhaustion slows or terminates backends, which increases latency and provokes client retries, swelling the active connection pool and socket queues. Network bottlenecks then prolong each session’s lifetime, causing even more memory to remain pinned. Conversely, dropped or timed-out connections create bursts of new logins that re-invoke the misconfiguration and allocation cycle. Thus, each root cause reinforces the others—parameter mis-tuning drives memory over-consumption, memory pressure magnifies network latency, and network congestion feeds back into connection growth—producing a cascading degradation that is more severe and harder to diagnose than any single anomaly alone.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.7345344043090499,
+            "bm25_score": 32.76077659318825,
+            "lexical_score": 0.1848783185840708,
+            "matched_terms": [
+                "and",
+                "are",
+                "authentication",
+                "can",
+                "client",
+                "connection",
+                "is",
+                "keepalive",
+                "latency",
+                "network",
+                "of",
+                "operating",
+                "or",
+                "session",
+                "sessions",
+                "settings",
+                "socket",
+                "system",
+                "tcp",
+                "than",
+                "the",
+                "time",
+                "to",
+                "together",
+                "when",
+                "which",
+                "with"
+            ],
+            "match_count": 232,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_idle",
+                "parameter_name": "tcp_keepalives_idle",
+                "timeout_category": "network_idle_keepalive_probe_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time with no network activity after which the operating system should send a TCP keepalive message to the client.",
+                "trigger_condition": "A TCP client connection has no network activity longer than tcp_keepalives_idle on systems supporting TCP_KEEPIDLE or an equivalent socket option.",
+                "workload_impact": "Starts TCP keepalive probing for an otherwise idle client connection; together with interval and count settings this can lead to dead connection detection.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

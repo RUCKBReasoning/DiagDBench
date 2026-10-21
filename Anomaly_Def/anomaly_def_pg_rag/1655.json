@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Storage Space Capacity Anomaly + Operating System Resource Limit Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Storage Space Capacity Anomaly: Exhaustion of physical or logical free space for data files, logs, temp areas, backups, or diagnostic outputs, leading to allocation failures and write stalls.\nOperating System Resource Limit Anomaly: Hitting kernel-enforced ceilings on file descriptors, shared memory, semaphores, threads, or cgroup quotas, preventing the database from opening files, spawning workers, or attaching shared memory.\nNetwork and Connectivity Resource Anomaly: Saturation or exhaustion of listener, socket, authentication, or network bandwidth resources that blocks new client connections or slows data transfer.\n\nWhen all three anomalies manifest together, symptoms overlap and amplify: connection attempts pile up while the listener’s socket queues are full and kernel file-descriptor limits are reached; existing sessions hang in client I/O or log-file-write waits because archive, redo, or temp spaces are full; background processes fail to allocate shared memory or threads, yet errors cannot be written because diagnostic log files and destinations lack space. Administrators observe surging connection timeouts, \"too many open files\" or \"cannot allocate memory\" errors, sudden inability to create new sessions, and critical write failures for data, temp, or log files. Performance degrades erratically—some transactions block on space, others on OS resource denials, while still others stall on network retransmissions—making the outage pattern appear intermittent and hard to pinpoint.\n\nCausal chain: space exhaustion in logs or datafiles forces the database to issue additional file-open, extend, and archive operations, rapidly consuming file handles and shared memory descriptors, thereby triggering OS resource limit breaches. Once kernel limits are hit, the listener and background writers cannot open new sockets or files, which in turn causes connection queues to back up and network sockets to linger in half-open states, aggravating the network resource bottleneck. Simultaneously, clients retry failed connections, inflating the socket and process counts and accelerating OS limit exhaustion, while prolonged result streaming holds disk space and network buffers longer, further delaying log archival and space reclamation. The intertwined feedback loops among dwindling storage, depleted kernel resources, and choked connectivity quickly cascade into a full system outage that is more severe and harder to remediate than any single anomaly alone.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.7017890604914944,
+            "bm25_score": 24.221150737322436,
+            "lexical_score": 0.15836206896551724,
+            "matched_terms": [
+                "and",
+                "are",
+                "authentication",
+                "client",
+                "connection",
+                "for",
+                "is",
+                "longer",
+                "network",
+                "of",
+                "on",
+                "operating",
+                "or",
+                "sessions",
+                "socket",
+                "system",
+                "than",
+                "the",
+                "to",
+                "together",
+                "when",
+                "which"
+            ],
+            "match_count": 243,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_idle",
+                "parameter_name": "tcp_keepalives_idle",
+                "timeout_category": "network_idle_keepalive_probe_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time with no network activity after which the operating system should send a TCP keepalive message to the client.",
+                "trigger_condition": "A TCP client connection has no network activity longer than tcp_keepalives_idle on systems supporting TCP_KEEPIDLE or an equivalent socket option.",
+                "workload_impact": "Starts TCP keepalive probing for an otherwise idle client connection; together with interval and count settings this can lead to dead connection detection.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

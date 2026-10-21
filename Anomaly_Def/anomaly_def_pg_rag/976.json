@@ -1,0 +1,45 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Transaction Log Subsystem Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer persistently chooses a sub-optimal execution plan despite accurate statistics, leading to excessive I/O, CPU, or row versions.\nTransaction Log Subsystem Anomaly: The write-ahead logging path—log buffer, log file, flushing, or archiving—cannot keep pace with redo generation, inflating commit latency and stalling writers.\nOperating System Resource Limit Anomaly: Kernel-enforced ceilings on file handles, I/O contexts, threads, or shared memory are reached, preventing the database from allocating the low-level resources it needs.\n\nWhen these three root causes arise together, workloads experience a perfect storm of symptoms: queries unexpectedly switch from efficient indexed access to scan-heavy or nested-loop plans that emit far more redo, causing explosive growth in transaction-log volume. The log device shows sustained 100 % utilization, with surging log flush and commit wait times. Simultaneously, the database and archiver processes begin reporting \"too many open files,\" \"cannot allocate shared memory,\" or \"AIO context limit reached,\" further throttling log writes and causing checkpoints, replication catch-up, or crash-recovery to stall. Applications observe erratic response times—some statements hang on plan compilation or commit, others fail outright with OS-level resource errors—while existing sessions linger in lock-held states, amplifying contention.\n\nCausally, a bad plan that scans or loops excessively multiplies the volume of row modifications and undo/redo records, driving the log subsystem toward saturation. As log flush latency rises, transactions take longer to commit, leading to a backlog of database processes waiting on log space or syncs. This surge in concurrent waiting sessions grows the number of open files, I/O requests, threads, and shared-memory attachments, quickly consuming the host’s kernel quotas. Once OS limits are hit, the database can no longer create additional log write contexts, archiver threads, or temporary files, which further slows or blocks both query compilation and log flushing. The feedback loop between poor plan-induced write amplification, an overtaxed log path, and hard OS ceilings escalates into widespread slowdown or partial outage, making each individual anomaly harder to diagnose and resolve in isolation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 191,
+            "score": 0.1783754573461042,
+            "bm25_score": 9.337523303653613,
+            "lexical_score": 0.10246753246753246,
+            "matched_terms": [
+                "and",
+                "context",
+                "execution",
+                "in",
+                "level",
+                "limit",
+                "or",
+                "resource",
+                "the",
+                "to",
+                "together",
+                "with"
+            ],
+            "match_count": 10,
+            "entry": {
+                "error_code": "54000",
+                "error_name": "program_limit_exceeded",
+                "official_description": "program limit exceeded",
+                "error_class": "Class 54 - Program Limit Exceeded",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

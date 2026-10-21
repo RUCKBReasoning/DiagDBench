@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Data Block and Index Integrity Anomaly + CPU Resource Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-layer SQL or transaction design forces the engine to process more data, rows, or time than business logic requires.\nData Block and Index Integrity Anomaly : On-disk table or index pages have become physically or logically corrupt, making access paths unreliable and occasionally incorrect.\nCPU Resource Anomaly : Database processes consume persistently high CPU, saturating host compute resources and throttling all concurrent work.\n\nWhen these three root causes strike together, the system exhibits an extreme mix of symptoms: statements already bloated by poor SQL design run even longer because index corruption pushes them from targeted probes to full table scans; the extra scanning work magnifies CPU saturation, driving run-queue spikes, context-switch storms, and widespread latency. Applications see inconsistent or missing rows on some requests and duplicated rows on others, while timeouts, retries, and lock waits mushroom as overloaded CPUs delay execution and corrupt structures force expensive consistency checks. Engine logs may alternate between slow-query entries, corruption alerts, and CPU-throttling or scheduler wait events, making diagnosis ambiguous.\n\nCausally, inefficient workload logic inflates I/O and CPU demand; if the targeted indexes or data pages are corrupt, the optimizer abandons or retries access paths, escalating demand further through full scans and revalidation work. The resulting CPU saturation lengthens checkpoint, recovery, and background verification cycles, which can in turn defer detection of additional corruption and prolong transaction lifetimes, increasing the window for ill-formed SQL to lock larger data sets. The feedback loop between excessive logical workload, structural corruption, and compute exhaustion amplifies each individual issue, degrading performance, correctness, and stability far more than any single anomaly would in isolation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.5156557385812263,
+            "bm25_score": 26.68434693468342,
+            "lexical_score": 0.15022150624244862,
+            "matched_terms": [
+                "an",
+                "and",
+                "any",
+                "because",
+                "context",
+                "delay",
+                "for",
+                "from",
+                "lock",
+                "longer",
+                "of",
+                "or",
+                "query",
+                "than",
+                "the",
+                "time",
+                "transaction",
+                "when",
+                "while",
+                "window"
+            ],
+            "match_count": 267,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

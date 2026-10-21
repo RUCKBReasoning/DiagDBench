@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Storage I/O Throughput Anomaly + CPU Resource Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Storage I/O Throughput Anomaly : Physical read/write bandwidth or IOPS on the underlying storage devices is saturated, driving up I/O latency and queue depths independent of database engine settings.\nCPU Resource Anomaly : Host CPU cycles are exhausted, leaving insufficient compute capacity for database foreground and background tasks, which inflates run-queue waits and overall response time.\nOperating System Resource Limit Anomaly : Kernel-enforced ceilings on file handles, processes/threads, shared memory, AIO contexts, or other kernel objects are reached, preventing the database from allocating required OS resources.\n\nWhen these three root causes arise concurrently, the database exhibits a multi-layer resource crunch: 1) response times degrade as I/O queues lengthen and disk latencies spike, 2) CPU utilization plateaus at or near 100 %, with elevated context-switch and scheduler waits, while some processes spin or back-off waiting for I/O, and 3) new sessions, background workers, or asynchronous I/O requests intermittently fail with OS-level \"resource exhausted\" errors. Wait-event profiles simultaneously show heavy data-file/log-file I/O waits, CPU run-queue waits, and sudden surges in OS-error-related waits. Batch windows overrun, interactive transactions stall, and recovery or checkpoint operations lag, making it difficult to pinpoint a single bottleneck because symptoms oscillate between compute, I/O, and kernel allocation failures.\n\nCausally, the three anomalies can reinforce one another in a vicious cycle: storage saturation elongates I/O service times, causing worker threads to hold CPU longer or spin in kernel space, which raises overall CPU demand. Elevated CPU load inflates context switching and system-call overhead, consuming additional kernel objects (threads, AIO contexts) and pushing the process toward OS resource limits. Once those limits are reached, failed allocations further stall I/O submission and worker scheduling, deepening both the storage backlog and CPU queuing. Conversely, hitting OS limits (e.g., AIO context caps or file-descriptor ceilings) can throttle parallel I/O issuance, reducing effective throughput while worker threads busy-wait, inflating CPU usage. The intertwined feedback loops between saturated disks, maxed-out CPUs, and exhausted kernel limits rapidly deteriorate database throughput and availability unless all three layers are relieved together.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.3323731611988914,
+            "bm25_score": 12.183164172950935,
+            "lexical_score": 0.11905458089668615,
+            "matched_terms": [
+                "and",
+                "are",
+                "for",
+                "in",
+                "is",
+                "latency",
+                "of",
+                "or",
+                "sessions",
+                "the",
+                "time",
+                "wait",
+                "waiting",
+                "when"
+            ],
+            "match_count": 141,
+            "entry": {
+                "timeout_id": "pg16_libpq_connection_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "client_connection_establishment_timeout",
+                "scope": "libpq/client connection parameter",
+                "official_definition": "Maximum wait for connection, in seconds; zero or not specified means wait indefinitely.",
+                "trigger_condition": "A libpq client connection attempt exceeds connect_timeout seconds.",
+                "workload_impact": "The client connection attempt fails instead of waiting indefinitely.",
+                "default_behavior": "Zero or absent value means wait indefinitely.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

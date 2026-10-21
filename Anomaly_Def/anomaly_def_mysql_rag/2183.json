@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Database Configuration Parameter Anomaly + CPU Resource Anomaly",
+            "Description": "Optimizer Statistics Anomaly: Costing metadata (row counts, histograms, correlation stats) is stale, missing, or inaccurate, causing systematic cardinality misestimation and sub-optimal plan choices.\nDatabase Configuration Parameter Anomaly: Critical engine parameters for memory, parallelism, checkpoints, and background workers are mis-tuned relative to hardware, workload, or version defaults, leading to resource imbalance and atypical wait profiles.\nCPU Resource Anomaly: Host CPUs become saturated by database processes, driving high run-queue pressure, context switching, and widespread latency inflation.\n\nWhen all three root causes coexist, workloads exhibit extreme and volatile performance degradation: queries abruptly switch to grossly inefficient plans that explode CPU seconds consumed per execution; parallel workers proliferate or starve depending on mis-set parallel-degree limits; system-wide CPU utilisation hovers near or at 100 %, yet individual statements still show large estimated-vs-actual row disparities. Checkpoint or log-flush storms may intermittently pre-empt CPU, amplifying latency spikes. Wait-event views report a confusing mix of CPU-related waits (RUNNABLE, SOS_SCHEDULER_YIELD, CPU_QC) alongside configuration-induced stalls (CHECKPOINT_QUEUE, LOG_BUFFER) and frequent plan recompilations triggered by statistics updates. Performance may nosedive immediately after bulk loads, parameter changes, or version upgrades, and recovers only briefly after manual intervention before regressing again under load.\n\nCausal chain: stale or absent statistics push the optimizer toward plans with underestimated costs that choose small hash tables, serial scans, or overly aggressive parallelism; mis-configured memory/parallelism parameters then fail to supply sufficient work memory or spawn excessive worker threads, inflating CPU demand through spills, rescans, and context switches. The resultant CPU saturation feeds back negatively: throttled background workers delay automatic statistics refresh and checkpoint processing, further aging statistics and triggering emergency checkpoints that hold critical latches on hot CPUs. Together, these feedback loops entrench poor plan quality, resource thrashing, and sustained compute exhaustion, creating a self-reinforcing composite anomaly that is far more severe than each issue in isolation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.41257792457187503,
+            "bm25_score": 14.601513079300902,
+            "lexical_score": 0.14294117647058824,
+            "matched_terms": [
+                "and",
+                "are",
+                "before",
+                "for",
+                "is",
+                "latency",
+                "more",
+                "of",
+                "or",
+                "seconds",
+                "stale",
+                "than",
+                "the",
+                "to",
+                "triggered",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 102,
+            "entry": {
+                "timeout_id": "mysql84_network_read_timeout",
+                "parameter_name": "net_read_timeout",
+                "timeout_category": "network_read_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for more data from a connection before aborting the read.",
+                "trigger_condition": "The server waits for additional data from a connection longer than net_read_timeout.",
+                "workload_impact": "The network read is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

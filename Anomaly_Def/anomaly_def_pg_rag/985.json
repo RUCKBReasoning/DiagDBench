@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Replication Synchronization Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Composite Definition: The database simultaneously suffers from (1) stale or missing optimizer statistics that drive systematic cardinality misestimates, (2) replication channels that cannot receive or apply the primary’s change stream in real time, and (3) on-disk data or index corruption that compromises physical page and key integrity. Together these three independent root causes create a multi-layer failure in which the optimizer, the replication pipeline, and the storage layer are all impaired at once.\n\nCombined Observable Phenomena: Queries on the primary may flip unpredictably between long-running full-table scans and erroneous index probes, showing extreme plan regressions and wildly inaccurate row-count estimates. These inefficient plans inflate I/O, CPU, and transaction-log generation, which in turn floods the replication queue; standbys display rapidly widening replay lag, swollen relay / retained log segments, and intermittent apply errors or pauses. Corrupted pages or index structures can surface first on replicas during redo-apply, manifesting as replication-side checksum failures, apply-phase panics, or forced replica restarts, while the primary reports page-verification warnings and begins discarding corrupted indexes, triggering further plan shifts and emergency full scans. Application symptoms range from time-outs and stale read results on replicas to inconsistent row counts or silent data errors on the primary.\n\nCausal Interaction: Stale or incomplete statistics mislead the optimizer into choosing plans that generate excessive I/O and large batched modifications, expanding the volume and burstiness of redo traffic. The inflated and irregular log stream overstresses an already bandwidth- or CPU-constrained replica set, deepening replication lag and increasing the window during which un-recycled log segments must be retained. Simultaneously, latent data or index corruption causes additional I/O retries and error handling on the primary and may corrupt log records that must be shipped. When these damaged blocks reach the replica, apply failures force repeated retries or pauses, compounding lag. The stalled or broken replication prevents off-host integrity checks and hampers failover options, while the corruption itself can block automatic statistics refreshes, perpetuating the optimizer’s misinformation. Thus each anomaly feeds the others: bad statistics create heavy workloads, heavy workloads overload replication, and corruption both triggers and is masked by the other two issues, driving the system into a spiraling degradation of performance, consistency, and availability.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 187,
+            "score": 0.6996983750419449,
+            "bm25_score": 37.11975416223822,
+            "lexical_score": 0.11915705412599822,
+            "matched_terms": [
+                "and",
+                "are",
+                "data",
+                "disk",
+                "error",
+                "failure",
+                "failures",
+                "full",
+                "is",
+                "log",
+                "or",
+                "storage",
+                "the"
+            ],
+            "match_count": 11,
+            "entry": {
+                "error_code": "53100",
+                "error_name": "disk_full",
+                "official_description": "disk full",
+                "error_class": "Class 53 - Insufficient Resources",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

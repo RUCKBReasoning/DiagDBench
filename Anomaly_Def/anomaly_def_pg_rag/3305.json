@@ -1,0 +1,45 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Replication Synchronization Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level query or transaction design forces the engine to process far more data, rows, or time than business logic requires.\nReplication Synchronization Anomaly : The cross-node log shipping and apply path falls behind, creating widening gaps between primary and replica positions.\nData Block and Index Integrity Anomaly : On-disk pages or index structures are internally inconsistent, leading to corrupt or unreliable access paths.\n\nWhen all three root causes coexist, the system exhibits an intertwined failure pattern: expensive or chatty statements generate voluminous redo that must be shipped to replicas; the overwhelmed replication pipeline accumulates unapplied log segments whose contents include corrupt pages or malformed index changes; replicas show rapidly growing apply lag, intermittent apply failures, repeated retry loops, and may abruptly switch to full table scans because their local indexes are flagged unusable. On the primary, the same heavyweight statements suffer from inconsistent execution plans and erratic runtimes as corrupted indexes intermittently omit or duplicate rows, triggering application-level retries that further inflate workload volume. Monitoring dashboards simultaneously report chronic slow queries, soaring replication delay, rising disk space consumption from unrecycled logs, page-checksum errors on both primary and replica, and divergent result sets between nodes, making diagnosis difficult.\n\nCausally, inefficient SQL inflates data change volume and transaction size, amplifying the byte rate the primary emits and extending transaction lifetimes so that unrecycled log segments pile up. The swollen log stream increases replica I/O and CPU pressure, lengthening the window during which any latent page or index corruption can surface during apply or query execution. Corrupt data blocks encountered by the replica can stall or abort replay, which in turn exacerbates replication lag and forces the primary to retain even more log data. Meanwhile, corruption on the primary can propagate downstream, causing replay errors that cascade into replica downtime. The resulting feedback loop—inefficient workload producing excess log traffic, replication backlog magnifying the impact of corruption, and corruption causing further replication failures—drives escalating latency, data divergence risks, and potential loss of high-availability guarantees.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 167,
+            "score": 0.19662562583355989,
+            "bm25_score": 10.478653360559244,
+            "lexical_score": 0.10689894778638079,
+            "matched_terms": [
+                "access",
+                "and",
+                "as",
+                "duplicate",
+                "engine",
+                "execution",
+                "failure",
+                "or",
+                "sql",
+                "that",
+                "the"
+            ],
+            "match_count": 15,
+            "entry": {
+                "error_code": "42P05",
+                "error_name": "duplicate_prepared_statement",
+                "official_description": "duplicate prepared statement",
+                "error_class": "Class 42 - Syntax Error or Access Rule Violation",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "sql_and_parser",
+                "cause_analysis": "The failure is typically associated with unsupported syntax, invalid statement structure, or feature usage that the target engine version cannot execute as written.",
+                "solution_guidance": "Validate SQL syntax, target-engine compatibility, statement shape, and whether the feature is supported under the current engine version or execution context.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "syntax error",
+                    "feature rejection"
+                ]
+            }
+        }
+    }
+]

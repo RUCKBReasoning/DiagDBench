@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Replication Synchronization Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Optimizer Statistics Anomaly: The optimizer relies on stale, incomplete, or missing statistics, systematically misestimating cardinalities and choosing inefficient execution plans.\nReplication Synchronization Anomaly: Standby or downstream replicas fall behind the primary because they cannot receive, write, or apply WAL/redo at the pace it is generated.\nOperating System Resource Limit Anomaly: The database engine or its background workers hit kernel-enforced ceilings such as file-descriptor, shared-memory, semaphore, or thread limits, causing allocation failures and process throttling.\n\nWhen all three anomalies co-exist, the system exhibits compounded symptoms: queries on the primary choose bloated plans that spill to disk, saturate I/O, and generate unusually large redo streams; replicas show rapidly widening log-position gaps, growing retained WAL segments, and stale read data. Meanwhile, the mounting number of open log files, temporary spill files, parallel-worker threads, and lingering replication processes exhaust kernel limits on file handles, shared memory, or process counts. Operators observe a mixture of plan-estimate skew warnings, replication lag alarms, and intermittent \"too many open files\", \"cannot allocate shared memory\", or \"failed to fork worker\" errors. Automatic statistics jobs and replication apply workers may crash or refuse to start, making it difficult to distinguish whether performance problems stem from the optimizer, replication, or the host OS.\n\nCausally, stale or missing statistics cause the optimizer to favor plan shapes that read or sort far more data than necessary, driving up CPU, memory, and especially write-ahead logging volume. The inflated WAL stream overwhelms network, I/O, and CPU capacity on replicas, triggering replication synchronization delays. As lag accumulates, the primary is forced to retain ever-growing sets of log segments and file descriptors. The surge in simultaneously open WAL, temp files, and worker processes pushes the database up against operating-system limits; once those limits are reached, new background workers (including auto-analyze and replication apply processes) fail to start, preventing statistics refreshes and further slowing replay on replicas. This feedback loop amplifies all three root causes, leading to severe performance degradation, disk exhaustion risk, impaired failover readiness, and partial service outages.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.7375152983171851,
+            "bm25_score": 21.338898929922696,
+            "lexical_score": 0.12505099439061704,
+            "matched_terms": [
+                "and",
+                "because",
+                "behind",
+                "execution",
+                "from",
+                "is",
+                "more",
+                "of",
+                "or",
+                "resource",
+                "than",
+                "that",
+                "the",
+                "this",
+                "too",
+                "when",
+                "whether"
+            ],
+            "match_count": 274,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Replication Synchronization Anomaly + CPU Resource Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Sessions serialize on hot buffer-cache pages, page pins, or latches, stalling logical I/O without exhausting physical memory.\nReplication Synchronization Anomaly : Replicas fall behind because they cannot receive, persist, or apply WAL / redo as fast as the primary generates it.\nCPU Resource Anomaly : Database processes monopolize host CPU, driving utilization to sustained saturation and elongating every code path.\n\nWhen all three root causes strike concurrently, the database exhibits a mingled symptom set: CPU usage stays pegged while throughput drops; wait-event dashboards alternate between page-latch waits, replication sender/receiver backlog waits, and scheduler run-queue waits. Standbys show rapidly widening replay lag, yet the primary’s log recycling stalls, inflating on-disk log volume. Hot index root pages and monotonic insert pages on the primary incur heavy latch spin, amplifying CPU burn and exposing latency spikes for both foreground queries and background writer/checkpointer threads. The same CPU saturation slows the replica’s single-threaded apply workers, so relay logs accumulate and feedback pressure to the primary intensifies. Administrators may mis-attribute the issue to any one layer because the symptoms overlap and mask each other.\n\nCausal interaction: page-level contention on the primary forces processes into tight spin loops, inflating CPU demand; the inflated CPU demand lengthens log generation intervals and stretches commit latency. High commit latency and spin burning delay the shipping of finished log segments, so replication lag widens. As replicas fall behind, the primary must retain more unrecycled log files, filling buffer cache with log-writer pages and further choking the same latch paths already under pressure. The sustained spin-loop activity keeps CPU saturated on both primary and replica, slowing latch release and apply threads alike, thereby reinforcing buffer contention and replication backlog in a positive feedback loop that degrades the entire cluster’s resilience and performance.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.3167640101970436,
+            "bm25_score": 12.376369322351204,
+            "lexical_score": 0.11018998272884283,
+            "matched_terms": [
+                "activity",
+                "and",
+                "latency",
+                "of",
+                "or",
+                "replication",
+                "sender",
+                "sessions",
+                "that",
+                "the",
+                "wal",
+                "when"
+            ],
+            "match_count": 25,
+            "entry": {
+                "timeout_id": "pg16_wal_sender_timeout",
+                "parameter_name": "wal_sender_timeout",
+                "timeout_category": "replication_sender_timeout",
+                "scope": "server/replication",
+                "official_definition": "Terminates replication connections that are inactive longer than the specified amount of time.",
+                "trigger_condition": "A WAL sender replication connection is inactive longer than wal_sender_timeout.",
+                "workload_impact": "The replication connection is terminated.",
+                "default_behavior": "PostgreSQL documentation defines the parameter under replication sending server settings.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

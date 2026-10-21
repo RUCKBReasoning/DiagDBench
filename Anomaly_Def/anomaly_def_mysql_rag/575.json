@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Storage Space Capacity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application SQL and transaction design compel the engine to scan or manipulate far more data and hold resources longer than functionally required.\nStorage Space Capacity Anomaly : Physical or logical free space for data files, logs, and temporary areas is exhausted or cannot grow, causing allocation failures.\nOperating System Resource Limit Anomaly : Kernel-enforced ceilings on file descriptors, shared memory, processes, or related objects are reached, blocking further resource acquisition by the database.\n\nWhen these three root causes manifest together, the system experiences compound symptoms: long-running or repetitive statements consume excessive CPU and memory, inflate redo and undo logs, and generate large temporary segments. The surging I/O and spill-to-disk activity accelerate space consumption until tablespaces, logs, and temp areas hit hard limits, at which point DML, queries, index builds, and checkpoint operations stall with \"no space\" or \"cannot extend\" errors. Simultaneously, the same bloat drives a spike in open files, shared memory segments, and background worker creation; as kernel quotas are met, new sessions fail to connect, parallel workers abort, and existing tasks receive OS-level \"too many open files\" or \"cannot allocate memory\" errors. The overlap of storage exhaustion and OS-resource exhaustion leaves the engine partially frozen: some sessions hang on I/O or log writes, others on kernel denials, producing a confusing mosaic of timeouts, lock contention, and crash-recovery events.\n\nCausally, poorly written SQL amplifies data churn, flooding redo, undo, and temp space and forcing the engine to open additional data files, sort runs, and temporary objects—each requiring file handles and shared memory. Rapid space depletion causes frequent auto-extension or archive operations, further multiplying file opens and background processes until kernel limits are breached. Conversely, once OS limits are reached, the database cannot allocate the very handles and shared segments it needs to recycle space or archive logs, so space remains unreclaimed and fills even faster. The intertwined feedback loop between inefficient workload, space exhaustion, and OS resource starvation escalates into a systemic outage far more severe than any of the individual anomalies alone.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.7185927009240329,
+            "bm25_score": 34.4416760933039,
+            "lexical_score": 0.15773584905660376,
+            "matched_terms": [
+                "and",
+                "by",
+                "contention",
+                "for",
+                "in",
+                "is",
+                "limit",
+                "long",
+                "or",
+                "resource",
+                "running",
+                "runs",
+                "statements",
+                "the",
+                "together",
+                "too",
+                "when",
+                "with",
+                "workload"
+            ],
+            "match_count": 28,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,45 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Pages in the buffer pool become hot bottlenecks; sessions spend excessive time spinning or waiting on latches, buffer-busy events, or page-pin contention rather than doing useful work.\nData Block and Index Integrity Anomaly : Physical data-file or index structures are corrupted—checksums fail, page links are broken, or key ordering is incorrect—so the storage layer can no longer be trusted.\n\nComposite anomaly definition:\nBoth anomalies are present simultaneously: the system must serialize access to a small set of buffer-cache pages while some of those very pages (or others they reference) are physically or logically corrupted. The engine therefore contends for buffers that may be unreadable, fail verification, or require rebuild/repair logic, coupling heavy latch pressure with integrity faults.\n\nCombined observable phenomena:\n• Extremely high buffer-busy, page-latch, and pin waits mixed with bursts of physical I/O retries, checksum failures, or corruption error messages.\n• Queries alternately hang (due to latch spin or waits) and abort (due to corruption detection), causing erratic latency and throughput collapse.\n• Repeated automatic page rereads, forced checkpoints, or background verification tasks intensify buffer churn, while failing index lookups trigger fall-back full scans that further stress the buffer pool.\n• Recovery or consistency-checker utilities run longer than usual, holding latches while rereading or rebuilding corrupted pages, which starves foreground workloads.\n\nCausal interaction and amplification:\nCorrupted pages often force extra I/O, checksum validation, or reconstruction work, keeping the corresponding buffer frames pinned and latches held far longer than normal; this multiplies latch wait times and propagates hot-page contention across sessions. Conversely, severe latch contention slows dirty-page flushing and recovery operations, increasing the window during which corrupted or partially written pages remain in play, raising the likelihood of additional integrity errors. The intertwined feedback loop of prolonged latch holds and recurring corruption checks can eventually exhaust worker pools, trigger automatic fail-safe shutdowns, or lead to cascading query failures, making rapid identification and coordinated remediation essential.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 176,
+            "score": 0.32097056565202225,
+            "bm25_score": 14.586384371909007,
+            "lexical_score": 0.10772043884599755,
+            "matched_terms": [
+                "access",
+                "and",
+                "engine",
+                "error",
+                "is",
+                "or",
+                "reference",
+                "that",
+                "the",
+                "with",
+                "written"
+            ],
+            "match_count": 9,
+            "entry": {
+                "error_code": "42P10",
+                "error_name": "invalid_column_reference",
+                "official_description": "invalid column reference",
+                "error_class": "Class 42 - Syntax Error or Access Rule Violation",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "sql_and_parser",
+                "cause_analysis": "The failure is typically associated with unsupported syntax, invalid statement structure, or feature usage that the target engine version cannot execute as written.",
+                "solution_guidance": "Validate SQL syntax, target-engine compatibility, statement shape, and whether the feature is supported under the current engine version or execution context.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "syntax error",
+                    "feature rejection"
+                ]
+            }
+        }
+    }
+]

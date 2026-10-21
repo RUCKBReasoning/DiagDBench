@@ -1,0 +1,61 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Transaction Log Subsystem Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Row-count, histogram, correlation, or partition statistics are stale or incomplete, so the optimizer systematically misestimates cardinalities and chooses sub-optimal execution plans.\nTransaction Log Subsystem Anomaly : The write-ahead log buffer, files, or archiver become a throughput or latency bottleneck, inflating commit time and stalling write-intensive operations.\nNetwork and Connectivity Resource Anomaly : Client-to-server transport, listener, socket, or authentication resources are saturated or unstable, causing connection failures, retransmissions, and session stalls.\n\nWhen these three root causes coincide, the system exhibits a blended symptom set: queries compile into inefficient, row-hungry plans that generate excessive data modifications, undo, and temporary spill, inflating redo volume exactly when the log subsystem is least able to absorb it. Commit latency and log-flush waits rise, provoking application time-outs and an explosion of concurrent sessions as connection pools retry. The overloaded network layer meanwhile amplifies perceived database slowness—handshakes, result-set transfers, and commit acknowledgements linger in TCP queues—so client connections pile up, OS socket tables fill, and listener backlog overflows. Monitoring shows severe cardinality error warnings, surging log I/O waits, and escalating client-side timeouts all in the same window, making it difficult to attribute the slowdown to a single tier.\n\nCausal chain: stale or missing statistics mislead the optimizer into choosing plans that scan or update far more rows than expected, producing a spike in redo generation. The bloated redo stream overruns undersized or contended log groups, stretching commit durations. Prolonged commits hold transactions open, extending lock lifetimes and keeping network connections busy while clients wait, which in turn consumes socket descriptors and increases traffic bursts when retries fire. Concurrently, network congestion or listener saturation slows log-flush acknowledgements for synchronous commits, further throttling the log writer. The feedback loop—poor statistics → heavier logging → slower commits → longer-lived connections → network saturation → even slower commit acks—drives compound degradation, making the overall database state markedly worse than any single anomaly would cause alone.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.7533571428571428,
+            "bm25_score": 33.74702610915417,
+            "lexical_score": 0.17785714285714285,
+            "matched_terms": [
+                "an",
+                "and",
+                "any",
+                "database",
+                "for",
+                "is",
+                "lock",
+                "longer",
+                "of",
+                "or",
+                "retry",
+                "row",
+                "session",
+                "sessions",
+                "than",
+                "that",
+                "the",
+                "time",
+                "to",
+                "transaction",
+                "waits",
+                "when",
+                "while",
+                "window"
+            ],
+            "match_count": 264,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

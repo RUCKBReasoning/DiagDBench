@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Transaction Lock Contention Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Composite Definition: The database simultaneously suffers from (1) sub-optimal application SQL that touches and changes more data than necessary, (2) intense lock-manager conflicts among concurrent transactions, and (3) saturation of the write-ahead logging path. Together these three root causes form a reinforcing feedback loop that degrades throughput and inflates response times in write-heavy, concurrent workloads.\n\nCombined Observable Phenomena: End-user requests exhibit long and highly variable latencies, with frequent time-outs and retries. Engine instrumentation shows the same fat or repetitively executed statements dominating the slow-query and statement-statistics views; meanwhile, lock tables reveal deep blocking chains and recurrent deadlocks, and wait-event histograms are dominated by log-flush, log-sync, and lock-wait classes. Commit operations linger, causing transactions to retain row/page/table locks far beyond normal duration. Connection pools back up, replication or archive processes lag, and checkpoint frequency rises as log files fill rapidly. Because waiting can be attributed either to lock contention or to synchronous log I/O, the two signals become entangled and hard to disentangle during triage.\n\nCausal Chain and Interaction: Inefficient workload logic increases the number of scanned and modified rows per transaction, inflating lock footprints and prolonging transaction execution time. The expanded work set raises the probability that multiple sessions contend for the same hot rows or ranges, creating longer blocking queues and more deadlock cycles. At the same time, the surplus data modifications amplify redo generation; every enlarged transaction emits more log bytes and must wait for log flush on commit. The overloaded log subsystem lengthens commit latency, causing transactions to hold locks even after finishing their in-memory work. These extended lock holds, in turn, intensify contention for subsequent transactions, which further escalate redo volume as they retry or time out, thereby pushing the log subsystem deeper into saturation. The mutual reinforcement between bloated SQL, lock contention, and log-write bottlenecks can precipitate a cascade that stalls the entire OLTP workload unless all three contributing layers are addressed in concert.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.6893989868890371,
+            "bm25_score": 38.98714092378899,
+            "lexical_score": 0.1589667163437655,
+            "matched_terms": [
+                "and",
+                "be",
+                "because",
+                "by",
+                "contention",
+                "engine",
+                "execution",
+                "for",
+                "long",
+                "operations",
+                "or",
+                "path",
+                "query",
+                "statement",
+                "the",
+                "time",
+                "together",
+                "with",
+                "work",
+                "workload"
+            ],
+            "match_count": 142,
+            "entry": {
+                "timeout_id": "mysql84_regular_expression_time_limit",
+                "parameter_name": "regexp_time_limit",
+                "timeout_category": "expression_evaluation_time_limit",
+                "scope": "global/session",
+                "official_definition": "The time limit for regular expression matching operations performed by the regular expression engine.",
+                "trigger_condition": "A regular expression match operation exceeds regexp_time_limit.",
+                "workload_impact": "The regular expression operation is constrained by the configured time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

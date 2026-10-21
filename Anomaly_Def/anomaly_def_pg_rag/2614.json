@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + MVCC Version Maintenance Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently chooses a sub-optimal execution plan despite having reasonably accurate statistics, leading to inefficient access paths, poor parallelism choices, or pathological join orders.\nMVCC Version Maintenance Anomaly : Obsolete row versions and rollback records accumulate faster than background cleaners can reclaim them, inflating table and index size and lengthening visibility checks.\nBuffer Cache and Latch Contention Anomaly : Concurrent sessions compete for hot buffer pages and their latches, causing wait events, spinning, and throughput collapse.\n\nWhen all three faults coexist, the workload exhibits cascading performance degradation: execution plans flip between selective index probes and full scans over bloated base tables; scans and joins touch far more pages because of MVCC bloat, which in turn overpopulates the buffer cache and keeps hot root and visibility-map pages under heavy latch pressure. Operators that the optimizer mistakenly favored (e.g., nested loops on underestimated row counts) encounter massive I/O and latch waits, producing sharp latency spikes, CPU spin, and stall chains that are hard to attribute to any single layer. Autovacuum or cleanup workers may run continuously yet fail to catch up, while query plans churn in the cache as statistics drift due to the bloated heap, further destabilizing performance.\n\nThe causal loop is self-reinforcing: sub-optimal plans increase I/O volume and prolong statement execution, which delays transaction completion and lengthens the lifespan of old snapshots, thereby slowing MVCC cleanup and enlarging the version store. The growing heap and index bloat enlarge the working-set footprint, forcing more pages through a limited buffer pool and creating hot-page hotspots where many sessions contend for latches. Elevated latch waits extend query runtimes, giving the optimizer more chances to mis-select plans based on stale or skewed runtime feedback, and stretching transactions even further. This spiraling interaction among poor plan choice, MVCC bloat, and buffer contention can push an OLTP system into a persistent low-throughput, high-latency state until all three issues are addressed in concert.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.40137923182767293,
+            "bm25_score": 17.300598876346722,
+            "lexical_score": 0.1290909090909091,
+            "matched_terms": [
+                "and",
+                "are",
+                "between",
+                "can",
+                "checks",
+                "is",
+                "latency",
+                "or",
+                "query",
+                "sessions",
+                "stale",
+                "system",
+                "that",
+                "the",
+                "this",
+                "when",
+                "while"
+            ],
+            "match_count": 290,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

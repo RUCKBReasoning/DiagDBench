@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + MVCC Version Maintenance Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions hold or request incompatible locks on the same resources, causing wait chains or deadlocks that stall or abort statements.\nMVCC Version Maintenance Anomaly : Obsolete row versions and rollback records accumulate faster than background cleaners can reclaim them, enlarging data structures and slowing visibility checks.\nOperating System Resource Limit Anomaly : Database processes hit kernel-enforced ceilings for file descriptors, shared-memory segments, semaphores, threads, or other OS objects, preventing further allocations.\n\nWhen all three root causes strike together, the database experiences compound symptoms: long lock-wait times and deadlock retries surface alongside rapidly growing version stores, bloated tables, and constantly busy autovacuum/cleaner tasks. Simultaneously, background workers, parallel query helpers, or even ordinary sessions intermittently fail to start because the process exhausts file-handle, semaphore, or shared-memory limits. Administrators see lock-manager wait graphs, surging deadlock victim counts, soaring disk usage from version bloat, cleanup workers stuck or throttled, and operating-system logs complaining about resource exhaustion. From the client side this manifests as unpredictable latency spikes, timeouts, aborted transactions that must be retried, and sporadic \"cannot allocate OS resource\" errors.\n\nCausal chain: heavy OLTP update/delete activity creates many row versions; long-running or blocked transactions (due to lock contention) keep old snapshots alive, preventing version cleanup and inflating the version store. The swelling version store enlarges on-disk structures and lengthens checkpoint and vacuum cycles, which in turn extend lock durations and increase contention. To cope, the database spawns more cleanup or parallel worker processes—quickly approaching or exceeding OS limits on file descriptors, shared memory, or process counts. Once those limits are hit, new workers cannot start, further stalling vacuum and deadlock-detector activity, so both version bloat and lock queues worsen. Each anomaly therefore reinforces the others, driving a feedback loop that degrades throughput and may culminate in partial or full service outage.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.5036873104480206,
+            "bm25_score": 22.593717156522477,
+            "lexical_score": 0.15427302996670367,
+            "matched_terms": [
+                "aborted",
+                "activity",
+                "and",
+                "are",
+                "be",
+                "can",
+                "checks",
+                "client",
+                "kernel",
+                "latency",
+                "long",
+                "or",
+                "query",
+                "running",
+                "sessions",
+                "system",
+                "that",
+                "the",
+                "this",
+                "when"
+            ],
+            "match_count": 240,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

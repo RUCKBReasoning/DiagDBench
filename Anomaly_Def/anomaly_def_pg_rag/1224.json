@@ -1,0 +1,46 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + CPU Resource Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly : The write-ahead logging path (log buffer, log files, archiver/replication pipeline) becomes the primary bottleneck, throttling commit throughput and forcing sessions to wait on log-related events.\nCPU Resource Anomaly : Database executable and worker threads saturate available CPU cores, driving run-queue growth and inflating response times across the workload.\nOperating System Resource Limit Anomaly : Database processes hit kernel-enforced ceilings on objects such as file descriptors, threads, shared-memory segments, or AIO contexts, preventing further resource acquisition.\n\nWhen these three root causes strike concurrently, the database exhibits an intertwined symptom set: commit latency and log-flush waits spike while overall query latency rises in lock-step with host CPU saturation; OS logs show ‘too many open files’, inability to create threads, or exhausted AIO slots, and the database reports both log write stalls and scheduler/runqueues waits. Archiver or replication lag grows because CPU-starved and file-handle-starved background processes cannot keep up, causing log directories to bloat, more log file switches, and periodic freezes where new transactions or worker threads cannot start. The mixture of symptoms makes it difficult to isolate any single layer—log, CPU, or kernel limits—because each amplifies the others, producing a system-wide slowdown that can culminate in partial or full service outage.\n\nCausally, heavy write workloads generate high redo volume that drives both log I/O activity and CPU consumption. As CPU headroom disappears, log-related background tasks (flush, archive, replication) are delayed, lengthening log occupancy time. The prolonged presence of many active log segments inflates the number of open files, AIO contexts, and background threads, quickly breaching conservative OS limits. Once those limits are hit, further log file creation, thread spawning, or I/O submission fails, which in turn blocks commits and forces even more foreground sessions to spin on CPU waiting for log space. This feedback loop—log congestion raising CPU demand, CPU saturation slowing log handling, and OS limits choking both—drives the database into a compounded degraded state that is significantly worse than any single anomaly acting alone.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 194,
+            "score": 0.2847900676117704,
+            "bm25_score": 16.93072374563252,
+            "lexical_score": 0.10784481418130928,
+            "matched_terms": [
+                "and",
+                "in",
+                "is",
+                "limit",
+                "many",
+                "or",
+                "resource",
+                "state",
+                "the",
+                "to",
+                "too",
+                "with",
+                "workload"
+            ],
+            "match_count": 11,
+            "entry": {
+                "error_code": "54023",
+                "error_name": "too_many_arguments",
+                "official_description": "too many arguments",
+                "error_class": "Class 54 - Program Limit Exceeded",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly : The write-ahead logging pipeline—covering in-memory log buffers, log file groups, flushing, switching, archiving, and replication retention—cannot keep pace with commit generation, making the log subsystem the primary bottleneck on the write path.\nStorage Space Capacity Anomaly : One or more storage areas (data, log, archive, temp, backup, diagnostic) reach or approach physical or logical space exhaustion, causing allocation failures and stalling operations that require additional space.\n\nWhen both anomalies are active, the database experiences compounding symptoms: commit latency and log-flush waits rise while free space in the online redo or archive destinations simultaneously plummets; log switches become abnormally frequent yet stall because the next log segment cannot be created; archiver or replication processes back up, filling remaining disk quickly; checkpoints and background writers thrash to reclaim space; DML sessions encounter \"cannot allocate log\", \"out of space\", or \"archive destination full\" errors; temporary-space and data-file growth operations may also fail, leading to widespread transaction timeouts, lock contention, and potential instance-wide freeze.\n\nCausally, an overloaded log subsystem emits log data faster than it can be flushed or archived, accelerating space consumption in the log and archive areas. As space dwindles, the storage capacity anomaly prevents new log segments or archives from being created, which in turn blocks log switches and commit processing, amplifying log-write latency. The stalled log pipeline then prolongs transaction hold times, increases in-memory pressure, and may force emergency checkpoints that further inflate I/O and space demand. Thus each root cause feeds the other: slow or stuck log handling hastens space exhaustion, while space exhaustion further degrades log throughput, spiraling the database into a hard stop unless both logging performance and free-space availability are simultaneously remediated.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.538426124538471,
+            "bm25_score": 20.322143747581745,
+            "lexical_score": 0.14120218579234972,
+            "matched_terms": [
+                "additional",
+                "and",
+                "are",
+                "data",
+                "from",
+                "handling",
+                "latency",
+                "more",
+                "of",
+                "or",
+                "sessions",
+                "than",
+                "the",
+                "to",
+                "waits",
+                "when"
+            ],
+            "match_count": 106,
+            "entry": {
+                "timeout_id": "mysql84_network_read_timeout",
+                "parameter_name": "net_read_timeout",
+                "timeout_category": "network_read_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for more data from a connection before aborting the read.",
+                "trigger_condition": "The server waits for additional data from a connection longer than net_read_timeout.",
+                "workload_impact": "The network read is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Transaction Lock Contention Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer selects a substantially sub-optimal execution plan even though statistics are acceptable.\nTransaction Lock Contention Anomaly: Concurrent transactions acquire incompatible locks, causing long waits, blocking chains, or deadlocks.\nStorage Space Capacity Anomaly: Critical data, log, or temp areas run out of free space, preventing new allocations and stalling work.\n\nWhen these three root causes strike at once, the database experiences a compound failure pattern. A poor plan (e.g., full-table scan instead of an index seek) inflates I/O, CPU, and row touch counts, lengthening statement execution and transaction duration. The prolonged transactions keep locks active far longer, expanding blocker–waiter chains, increasing deadlock frequency, and raising lock-wait timeouts. Simultaneously, the bloated I/O from the bad plans and the pile-up of uncommitted work accelerate growth of data files, undo segments, and especially transaction logs and temp space. As lock queues deepen, many sessions remain open and idle in wait states, preventing log truncation or space reclamation; the swollen logs and temp segments then drive the system into space exhaustion. Once space limits are reached, new page, extent, or log-file allocations fail, which in turn forces even trivial statements to error out, widens lock hold times further, and forces additional plan recompilations that may again select sub-optimal plans, completing a vicious reinforcing loop.\n\nCausally, the sub-optimal plans initiate the chain by amplifying resource consumption and execution time. Longer-running transactions elevate lock contention, which both blocks other sessions and prevents log cleanup. The resulting backlog accelerates space consumption; when space becomes scarce, allocation stalls further delay or abort running statements, propagating more lock waits and forcing the optimizer to recompile queries under degraded conditions (e.g., reduced temp space, emergency plan changes). Thus each anomaly feeds the others: bad plans create lock and space pressure, contention prevents space reclamation, and space exhaustion magnifies planning and execution instability, producing a severe, self-reinforcing degradation of OLTP throughput and availability.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5890,
+            "score": 0.5272606785138242,
+            "bm25_score": 59.275804864379374,
+            "lexical_score": 0.13017241379310346,
+            "matched_terms": [
+                "and",
+                "blocking",
+                "by",
+                "chains",
+                "concurrent",
+                "failure",
+                "incompatible",
+                "lock",
+                "logs",
+                "or",
+                "that",
+                "the",
+                "to",
+                "transaction",
+                "transactions",
+                "wait"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-014053",
+                "error_name": "ER_LOG_CANNOT_PURGE_BINLOG_WITH_BACKUP_LOCK",
+                "official_description": "Could not purge binary logs since another session is executing LOCK INSTANCE FOR BACKUP. Wait for that session to release the lock.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "concurrency_and_transaction",
+                "cause_analysis": "The failure is typically associated with concurrent transactions contending for the same logical resources, incompatible lock acquisition order, or transaction-state conflicts surfaced by the engine.",
+                "solution_guidance": "Inspect blocking chains, reduce conflicting write overlap, shorten transaction lifetime, review lock acquisition order, and verify whether transaction scheduling or retry logic needs adjustment.",
+                "observable_symptoms": [
+                    "blocking",
+                    "rollback",
+                    "retry",
+                    "stalled transaction"
+                ]
+            }
+        }
+    }
+]

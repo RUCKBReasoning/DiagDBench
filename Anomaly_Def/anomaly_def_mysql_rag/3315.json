@@ -1,0 +1,62 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Transaction Log Subsystem Anomaly + Replication Synchronization Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same rows, pages, or metadata objects, resulting in wait queues or deadlock cycles that stall statement progress until a lock is granted or a victim is aborted.\nTransaction Log Subsystem Anomaly : The write-ahead log buffer, log file group, or archive/redo shipping mechanism cannot flush or switch log segments at the rate commits generate redo, turning the log subsystem itself into the bottleneck for every commit.\nReplication Synchronization Anomaly : Downstream replicas cannot receive, persist, or apply the primary’s log stream fast enough, causing replay lag and forcing the primary to retain log segments beyond its normal recycling window.\n\nWhen all three root causes appear together, the database shows a compound \"grid-lock\": commit latency rises sharply, session wait graphs display interleaved LOCK_* and LOG_* waits, deadlock detectors frequently kill victims that must be replayed after application retries, replication lag numbers climb, and disk space consumed by live log files and retained relay/redo logs balloons. Read replicas fall ever further behind, stale reads mislead applications, and failover windows lengthen. Monitoring dashboards may alternately attribute the slowdown to lock waits, log I/O, or replication lag, making the primary bottleneck hard to pinpoint.\n\nCausal chain: lock contention lengthens transaction lifetimes, so locks are held while more redo accumulates; this increases log flush pressure. A saturated log subsystem further delays commits, extending the time locks are held and enlarging blocking chains. At the same time, replicas already struggling to keep up with redo now face bursts of large, long-running transactions flushed in clumps, widening replication gaps. Because replicas hold retention pins on un-replayed segments, the primary cannot recycle log files, forcing additional log switches that intensify log-device pressure. The enlarged log backlog inflates commit latency even more, creating a feedback loop that magnifies both lock contention and log saturation, while replication lag continues to grow and threatens disk exhaustion on both primary and replicas.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.7480856551061479,
+            "bm25_score": 35.846219874597026,
+            "lexical_score": 0.19524557395773845,
+            "matched_terms": [
+                "aborted",
+                "and",
+                "be",
+                "because",
+                "blocking",
+                "cannot",
+                "for",
+                "incompatible",
+                "is",
+                "lock",
+                "metadata",
+                "of",
+                "or",
+                "session",
+                "statement",
+                "the",
+                "this",
+                "to",
+                "transaction",
+                "wait",
+                "waits",
+                "when",
+                "while",
+                "window",
+                "write"
+            ],
+            "match_count": 155,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

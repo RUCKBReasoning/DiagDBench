@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Database Configuration Parameter Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer persistently chooses a sub-optimal execution plan despite reasonably accurate statistics, often because of flawed cost estimation, unstable plan reuse, or version/option changes.\nDatabase Configuration Parameter Anomaly: Engine-level settings for memory, parallelism, logging, and background tasks are mis-tuned, so runtime behavior no longer matches hardware capacity or workload needs.\nData Block and Index Integrity Anomaly: On-disk pages or index structures are physically or logically corrupted, leading to unreliable access paths and incorrect row visibility.\n\nWhen all three problems coexist, the database exhibits a volatile and hard-to-triage performance and correctness pattern: identical queries oscillate among radically different plans; some executions fall back to full table scans because damaged indexes fail validation, while others keep inefficient index-based nested loops due to sticky bad plans in the cache. Mis-sized memory or parallelism parameters aggravate the situation—small work or buffer pools force excessive I/O for the accidental full scans, whereas over-allocated settings trigger OOM kills or throttling waits without the CPUs or disks actually being saturated. Concurrently, corruption-induced checksum errors, page-verification failures, or silent row omissions surface intermittently, sometimes only after a checkpoint or log flush storm initiated by the same misconfiguration. The mixed symptom set—plan churn, unexplained wait spikes, sporadic error logs, and mismatched result counts—creates a noisy diagnostic picture in which any single anomaly can masquerade as the primary culprit.\n\nCausally, mis-tuned configuration parameters distort both the optimizer’s cost model (e.g., reduced effective cache size, altered parallelism thresholds) and the runtime resource envelopes, increasing the likelihood that it picks or reuses fragile plans. Those fragile plans amplify the impact of latent page or index corruption by exercising edge code paths (e.g., random I/O probes, backward scans) that hit bad pages earlier and more often. In parallel, overly aggressive checkpoint or log settings—another facet of the configuration anomaly—can precipitate or expose corruption by forcing rapid page recycling or recovering from frequent crashes. Once corruption invalidates indexes or forces the engine to disable them, the optimizer’s already misguided plan repertoire grows even worse, and the subsequent performance degradation feeds back into more emergency configuration tweaks, perpetuating the vicious cycle. Together, the three anomalies reinforce one another, leading to compounded performance regression, unpredictable query results, and elevated risk of data-loss events.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2744,
+            "score": 0.4222351818197668,
+            "bm25_score": 44.475893850149276,
+            "lexical_score": 0.14246411483253588,
+            "matched_terms": [
+                "access",
+                "and",
+                "are",
+                "capacity",
+                "data",
+                "disk",
+                "engine",
+                "error",
+                "failures",
+                "for",
+                "it",
+                "log",
+                "or",
+                "paths",
+                "recovering",
+                "the",
+                "to",
+                "when"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010859",
+                "error_name": "ER_BINLOG_CANT_CLEAR_IN_USE_FLAG_FOR_CRASHED_BINLOG",
+                "official_description": "Failed to clear LOG_EVENT_BINLOG_IN_USE_F for the crashed binlog file when source server is recovering it.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

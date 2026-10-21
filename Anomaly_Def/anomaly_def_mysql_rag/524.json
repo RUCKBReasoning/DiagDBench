@@ -1,0 +1,47 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Query Plan Selection Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Critical metadata such as row-count, histogram, and correlation statistics are stale, missing, or too coarse, causing systematic cardinality misestimation.\nQuery Plan Selection Anomaly : The optimizer’s costing logic or plan-cache reuse chooses a sub-optimal execution plan even when statistical inputs would in principle allow a better one.\nTransaction Log Subsystem Anomaly : The write-ahead log path—generation, buffering, flushing, switching, or archiving—cannot keep up with the volume of redo, becoming the primary bottleneck for commits and checkpoints.\n\nWhen all three anomalies coexist, symptoms multiply and overlap:  \n• Queries may oscillate between very different plans, often landing on an inefficient plan that amplifies row counts and random I/O because statistics are stale and the cost model mis-ranks alternatives.  \n• Poor plans drive excessive row versioning, large sort runs, and wide index or table scans, sharply increasing redo generation; meanwhile the saturated log subsystem lengthens commit latency and holds locks longer, feeding back into even larger active-row sets sampled by future statistics or plan captures.  \n• Execution plans show grossly inaccurate estimates, high actual vs. estimated rows, and unexpected operators (full scans, nested loops) together with surging LOG WRITE/LOG FLUSH waits, frequent log-file switches, and checkpoint storms.  \n• Application perspective: sporadic but severe slowdowns on both read and write statements, timeouts during peak write bursts, and dramatic variance between executions of the same SQL text.\n\nCausal chain and interaction: Stale or incomplete statistics mislead the optimizer, increasing the probability that the cost model will pick an already risky plan; the resulting plan then produces outsized data modifications, UNDO/REDO, and temp spill volume. This surge in redo overwhelms an undersized or poorly configured transaction-log subsystem, elongating commit and flush times. Extended commit latency lengthens transaction lifetimes, preventing timely auto-statistics refresh, and keeps heavily modified objects locked or pinned, which in turn skews future sampling and encourages further plan mis-selection. The feedback loop thus reinforces both the optimizer’s blindness and the log bottleneck, degrading throughput and predictability across the entire OLTP workload.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2762,
+            "score": 0.5549328305759783,
+            "bm25_score": 61.17649624720234,
+            "lexical_score": 0.10759264058046125,
+            "matched_terms": [
+                "active",
+                "an",
+                "and",
+                "back",
+                "modifications",
+                "or",
+                "row",
+                "that",
+                "the",
+                "transaction",
+                "will",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010877",
+                "error_name": "ER_INNODB_CLOSING_CONNECTION_ROLLS_BACK",
+                "official_description": "MySQL is closing a connection that has an active InnoDB transaction. %llu row modifications will roll back.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "connection_and_network",
+                "cause_analysis": "The failure is typically associated with connection establishment, authentication exchange, protocol correctness, network reachability, or client/server communication stability.",
+                "solution_guidance": "Check endpoint reachability, authentication flow, connection limits, protocol compatibility, transport stability, and client connection lifecycle management.",
+                "observable_symptoms": [
+                    "connection failure",
+                    "disconnect",
+                    "handshake failure",
+                    "unreachable session"
+                ]
+            }
+        }
+    }
+]

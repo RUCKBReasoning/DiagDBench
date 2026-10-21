@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + MVCC Version Maintenance Anomaly + CPU Resource Anomaly",
+            "Description": "Schema and Index Design Anomaly: Physical data-model and indexing choices do not align with access patterns, forcing inefficient access paths regardless of optimizer decisions.\nMVCC Version Maintenance Anomaly: Obsolete row versions and rollback records accumulate faster than background cleanup can reclaim them, inflating storage and read-path costs in update-heavy workloads.\nCPU Resource Anomaly: Database processes drive sustained CPU saturation that throttles overall throughput and inflates latency across the workload.\n\nWhen these three root causes co-exist, the system exhibits compound symptoms: queries already forced into full-table scans or non-covering index probes run against bloated heaps and indexes swollen by dead versions, dramatically enlarging I/O and CPU demand. Sequential scans traverse many more pages than contain live data, while point lookups suffer both from missing/inefficient indexes and from extra visibility checks through long version chains. Background vacuum/cleaner tasks contend for CPU with foreground queries yet still fail to stem version-store growth, so table and index files expand rapidly, statistics drift, and the optimizer’s cost estimates become increasingly inaccurate. Host metrics show near-continuous CPU saturation, rising context-switch and run-queue depths, and a gradual degradation of transaction latency and throughput that standard tuning of isolation levels or hardware alone cannot fix.\n\nCausally, the poor schema and index design amplifies the impact of MVCC bloat: lack of proper indexing or partitioning magnifies the number of pages touched per statement, spreading obsolete versions across a wider footprint and slowing cleanup processes that must scan these structures. As cleanup falls behind, each query must traverse longer version chains and ever-larger relations, further increasing CPU cycles per row and keeping cores busy. The resulting CPU exhaustion slows both user queries and maintenance workers, allowing even more dead tuples to accumulate and inducing a feedback loop that accelerates storage growth and performance collapse. Thus, sub-optimal physical design, unchecked MVCC debris, and compute saturation form a mutually reinforcing triad that can cripple OLTP systems unless all three dimensions are addressed together.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.5223214568357023,
+            "bm25_score": 20.017884318573888,
+            "lexical_score": 0.13269151138716356,
+            "matched_terms": [
+                "and",
+                "are",
+                "data",
+                "for",
+                "from",
+                "latency",
+                "longer",
+                "more",
+                "not",
+                "number",
+                "of",
+                "or",
+                "read",
+                "than",
+                "the",
+                "to",
+                "when"
+            ],
+            "match_count": 94,
+            "entry": {
+                "timeout_id": "mysql84_replica_network_timeout",
+                "parameter_name": "replica_net_timeout",
+                "timeout_category": "replication_network_timeout",
+                "scope": "global/replication",
+                "official_definition": "The number of seconds to wait for more data from a source/replica connection before aborting the read.",
+                "trigger_condition": "A replica waits longer than replica_net_timeout for more data from the source connection.",
+                "workload_impact": "The replication network read is aborted and the replica considers the connection interrupted.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

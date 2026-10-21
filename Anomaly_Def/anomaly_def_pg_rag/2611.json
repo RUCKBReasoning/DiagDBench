@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Transaction Log Subsystem Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Composite definition: The database simultaneously suffers from (1) a physical data-model and indexing layout that forces excessive or non-selective data access and heavy index maintenance, (2) a transaction-log subsystem that cannot absorb or flush the resulting surge of redo records, and (3) storage that is approaching or has reached its free-space limits. Together, these three root causes create a feedback loop in which inefficient data access multiplies write volume, overwhelms log handling, and rapidly exhausts available space, crippling both query execution and commit processing.\n\nCombined anomalous phenomena: • Queries that should be index-efficient devolve into full scans, row-by-row lookups, or repeated non-covering index probes, causing inflated I/O and redo generation. • Concurrent DML shows rising commit and checkpoint latency, with spikes in LOG_WRITE / LOG_FLUSH waits, frequent log switches, and archiver backlogs. • Free space in data, temp, and especially log or archive destinations plummets; auto-extend and allocation failures, \"out of space\" errors, and emergency space reclamation events appear. • Application sessions observe a mixture of slow query response, stalled commits, temporary-space errors, and, in extreme cases, database‐wide hang as log segments cannot be created or recycled. The overlapping symptom set can obscure diagnosis because performance waits (from design flaws) and hard space errors (from storage pressure) manifest simultaneously with log-related stalls.\n\nCausal interaction: Suboptimal schema and missing/oversized indexes inflate the amount and size of data modified per transaction and multiply index maintenance work. This drives up redo generation and forces the transaction-log subsystem to flush larger volumes more frequently. As the log subsystem approaches its throughput ceiling, commits queue and log switches accelerate, generating even more archived segments. The elevated churn, combined with space-wasting indexes and fragmented tables, rapidly consumes disk capacity. Shrinking free space further slows both data and log I/O, while full archive or data destinations prevent log recycling, amplifying commit stalls. The inability to rebuild or drop problematic indexes due to space scarcity locks the system in a self-reinforcing degradation loop that severely impacts OLTP workload throughput and availability.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.433285875397559,
+            "bm25_score": 17.88314028216359,
+            "lexical_score": 0.13676182308257778,
+            "matched_terms": [
+                "amount",
+                "and",
+                "be",
+                "by",
+                "handling",
+                "has",
+                "is",
+                "latency",
+                "of",
+                "or",
+                "probes",
+                "sessions",
+                "should",
+                "system",
+                "that",
+                "the",
+                "this",
+                "to",
+                "which"
+            ],
+            "match_count": 290,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_interval",
+                "parameter_name": "tcp_keepalives_interval",
+                "timeout_category": "network_keepalive_retry_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time after which a TCP keepalive message that has not been acknowledged by the client should be retransmitted.",
+                "trigger_condition": "A TCP keepalive probe is not acknowledged for tcp_keepalives_interval on systems supporting TCP_KEEPINTVL or an equivalent socket option.",
+                "workload_impact": "Controls retry timing for keepalive probes used to detect unresponsive client connections.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

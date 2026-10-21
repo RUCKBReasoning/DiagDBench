@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Transaction Log Subsystem Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Schema and Index Design Anomaly : Tables, partitions, and indexes are not aligned with access patterns, forcing the optimizer into inefficient full scans, non-covering look-ups, and excessive maintenance work.\nTransaction Log Subsystem Anomaly : Generation, flushing, or archiving of write-ahead logs cannot keep up with the commit rate, causing commit stalls and log-related wait events.\nNetwork and Connectivity Resource Anomaly : Transport paths, listeners, or connection slots are saturated or unreliable, delaying session establishment and result transmission.\n\nWhen all three root causes strike together, the database exhibits a mixed pattern of symptoms: 1) queries perform unnecessary full scans that inflate I/O and redo volume, 2) the oversized redo stream accumulates in the log buffer and waits for slow log flushes, lengthening commit latency, and 3) clients waiting on congested network channels or exhausted back-end slots experience timeouts and retry storms. End-to-end response times fluctuate wildly; small write transactions intermittently block behind log-sync waits, while read requests pile up inside the engine because client sockets cannot drain result sets quickly enough. Monitoring shows simultaneous spikes in logical and physical I/O, LOG_WRITE or LOG_FLUSH waits, and CLIENT_READ/CLIENT_WRITE waits, making it hard to attribute delays to a single layer.\n\nCausally, the poor schema and index design amplifies redo production and buffer-cache churn, putting sustained pressure on the transaction log subsystem. The log subsystem, already tuned too tightly for peak throughput, elongates commit cycles; longer commits hold latches and row locks for extra time, which in turn stretches the duration that back-end processes occupy network sockets. As network resources saturate, new sessions and retries further raise concurrency, driving even more ad-hoc queries through sub-optimal access paths and accelerating redo generation. This positive feedback loop—inefficient data access → excess redo → log-flush bottleneck → prolonged transactions → connection pile-ups → higher concurrency → more inefficient work—creates a cascading performance collapse that is far more severe than any individual anomaly would cause.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5963,
+            "score": 0.3741784844438644,
+            "bm25_score": 37.09319715373264,
+            "lexical_score": 0.14540932811480756,
+            "matched_terms": [
+                "access",
+                "and",
+                "are",
+                "data",
+                "engine",
+                "is",
+                "latency",
+                "log",
+                "or",
+                "paths",
+                "pressure",
+                "read",
+                "retry",
+                "sync",
+                "the",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-015040",
+                "error_name": "ER_IB_FIXED_PAGE_ID",
+                "official_description": "Fixed wrong page_id with sync read: buf_block_t[space_id=%zu, page_no=%zu], buf_frame_t[space_id=%zu, page_no=%zu], file=%s, retry=%zu",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

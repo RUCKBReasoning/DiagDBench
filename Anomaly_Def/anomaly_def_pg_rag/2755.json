@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Database Configuration Parameter Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Row-count, histogram, and correlation metadata are stale or incomplete, leading the optimizer to misestimate cardinalities and pick inefficient plans.\nDatabase Configuration Parameter Anomaly : Critical engine parameters for memory, parallelism, logging, and background workers are mis-tuned relative to hardware, workload mix, or version defaults, so the engine’s internal resource governance does not match real demand.\nOperating System Resource Limit Anomaly : Kernel-enforced ceilings on file handles, shared memory, threads, or other OS objects are reached, blocking the database from allocating the resources it requests.\n\nWhen these three root causes coexist, the system exhibits a tangled symptom set: queries suddenly switch to plans that demand far more memory, I/O, or worker processes than the engine or kernel can grant; execution plans show huge gaps between estimated and actual rows, while concurrent sessions stall on memory-allocation, file-open, or worker-spawn errors. Wait events oscillate between CPU-bound parallel workers and OS-reported resource-exhaustion waits; checkpoint storms or log-write stalls appear even though storage and CPU remain under-utilised. Administrators may observe flurries of statement re-plans, background process restarts, and kernel messages about ENOMEM, EMFILE, or EAGAIN, all interleaved with optimizer-related recompiles and configuration warnings, making single-cause diagnosis difficult.\n\nCausally, stale statistics drive the optimizer to over- or under-estimate work, which, under mis-set memory/parallelism parameters, inflates per-query resource requests (e.g., oversized hash tables, excessive parallel workers). These exaggerated requests push the database to the brink of configured limits; when the engine then asks the OS for large shared-memory extents, additional threads, or many file descriptors, it collides with tight kernel quotas. Each rejection by the OS triggers retries, plan invalidations, or emergency fallbacks that further skew workload timing and data distributions, which in turn exacerbate statistics staleness and prompt more aggressive (but still misguided) plan and parameter usage. The feedback loop among bad statistics, poor configuration, and OS denials amplifies contention, degrades throughput, and can precipitate partial or total service outages.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.7318761535501476,
+            "bm25_score": 32.11378315331943,
+            "lexical_score": 0.14877734877734877,
+            "matched_terms": [
+                "and",
+                "blocking",
+                "configured",
+                "database",
+                "for",
+                "metadata",
+                "of",
+                "or",
+                "other",
+                "row",
+                "sessions",
+                "statement",
+                "than",
+                "that",
+                "the",
+                "timing",
+                "to",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 298,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

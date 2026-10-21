@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Database Configuration Parameter Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Transaction Lock Contention Anomaly: Simultaneous requests for incompatible locks create long blocker-waiter chains or deadlocks in the lock-manager layer, stalling transactional progress.\nDatabase Configuration Parameter Anomaly: Mis-tuned engine settings (memory, parallelism, checkpoint, commit, etc.) mis‐align system behavior with hardware and workload characteristics, introducing artificial bottlenecks.\nTransaction Log Subsystem Anomaly: The write-ahead log’s buffering, flushing, or archiving path becomes saturated, lengthening commit latency and stalling write traffic.\n\nWhen all three anomalies coexist, the database experiences a feedback loop of delay and congestion: mis-sized log buffers, aggressive synchronous-commit or checkpoint settings, or undersized log files throttle log throughput; each commit pause keeps locks held longer, amplifying lock queues and deadlock frequency. Growing blocking chains in turn prolong the lifespan of open transactions, preventing log truncation and pushing log files to switch or archive more often, which further taxes the already constrained log subsystem. Operators observe a mosaic of symptoms—skyrocketing lock-wait and log-flush wait events, surging deadlock alerts, dramatic drops in transaction throughput, sudden checkpoint storms, expanding log directories, and application timeouts—even though CPU and storage may appear only moderately utilized.\n\nCausally, unfortunate parameter choices (e.g., minimal log buffer, tight max log file size, over-aggressive checkpoint intervals, or enforced synchronous durability) first slow down log flushes. The resulting commit latency extends the duration for which transactions retain locks, seeding blocker chains. As locks pile up, some transactions remain active for so long that checkpoints cannot advance and reused log space is withheld, intensifying log file pressure and triggering more frequent flushes and switches. Each subsystem therefore exacerbates the others: configuration mis-tuning throttles the log path; log stalls lengthen lock hold times; expanded lock contention further blocks log-space–releasing commits, ultimately spiraling into system-wide throughput collapse and repeated deadlock victimizations.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.2897449195922611,
+            "bm25_score": 12.662222594507078,
+            "lexical_score": 0.10579748864547153,
+            "matched_terms": [
+                "and",
+                "for",
+                "in",
+                "is",
+                "latency",
+                "of",
+                "or",
+                "parameter",
+                "progress",
+                "the",
+                "wait",
+                "when"
+            ],
+            "match_count": 173,
+            "entry": {
+                "timeout_id": "pg16_libpq_connection_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "client_connection_establishment_timeout",
+                "scope": "libpq/client connection parameter",
+                "official_definition": "Maximum wait for connection, in seconds; zero or not specified means wait indefinitely.",
+                "trigger_condition": "A libpq client connection attempt exceeds connect_timeout seconds.",
+                "workload_impact": "The client connection attempt fails instead of waiting indefinitely.",
+                "default_behavior": "Zero or absent value means wait indefinitely.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

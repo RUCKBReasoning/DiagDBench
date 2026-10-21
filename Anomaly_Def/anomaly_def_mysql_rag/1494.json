@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Database Memory Allocation Anomaly + Replication Synchronization Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Engine-level settings (e.g., buffer-pool size, work-memory limits, checkpoint cadence, parallelism caps) are mis-tuned relative to hardware and workload so that they themselves become the bottleneck.\nDatabase Memory Allocation Anomaly : Total memory consumed by caches, work areas, background workers, and sessions grows beyond safe physical capacity, leading to OS pressure, paging, and OOM events.\nReplication Synchronization Anomaly : Standbys or downstream consumers cannot receive, write, or replay WAL at the pace the primary emits it, causing widening log-position gaps and blocked log recycling.\n\nWhen all three root causes occur concurrently the system exhibits a mixed symptom set: sustained OS memory pressure, sporadic or continuous OOM kills, and cache-churn driven latency spikes on the primary; at the same time replicas show accelerating receive/write/replay lag, stale read-only queries, and ever-growing retained WAL segments that inflate both memory-mapped log buffers and on-disk archives. Checkpoint storms or aggressive autovacuum triggered by mis-set parameters may overlap with memory-hungry hash/sort bursts, further depleting memory and pushing the primary and replicas into swap. Administrators may notice wait-event patterns that keep alternating between memory-allocation waits and replication-send/receive waits, making it difficult to attribute the slowdown to a single layer.\n\nCausally, unsafe configuration parameters (oversized work-mem, undersized checkpoint segments, overly aggressive parallelism) inflate per-query and background memory footprints, directly instigating the Memory Allocation Anomaly. The ensuing OS memory pressure throttles I/O and CPU scheduling on both primary and replicas, slowing WAL generation as well as WAL apply. Slower apply causes Replication Synchronization Anomaly, which in turn forces the primary to retain additional log segments in memory-mapped buffers and on disk, further increasing its memory demand and amplifying the original memory pressure. This feedback loop leads to escalating lag, rising swap usage, and increased likelihood of crash or fail-over, producing a composite failure state that is more severe than each anomaly in isolation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.6335237567551926,
+            "bm25_score": 17.695759091380836,
+            "lexical_score": 0.14404471544715447,
+            "matched_terms": [
+                "and",
+                "by",
+                "cannot",
+                "in",
+                "is",
+                "of",
+                "only",
+                "or",
+                "overlap",
+                "scheduling",
+                "sessions",
+                "than",
+                "the",
+                "this",
+                "time",
+                "triggered",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 71,
+            "entry": {
+                "timeout_id": "mysql84_innodb_row_lock_wait_timeout",
+                "parameter_name": "innodb_lock_wait_timeout",
+                "timeout_category": "innodb_row_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "The length of time in seconds an InnoDB transaction waits for a row lock before giving up.",
+                "trigger_condition": "An InnoDB transaction waits longer than innodb_lock_wait_timeout for a row lock.",
+                "workload_impact": "The lock wait gives up; by default only the current statement is rolled back unless innodb_rollback_on_timeout is enabled.",
+                "default_behavior": "Defined as an InnoDB system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

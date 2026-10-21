@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Operating System Resource Limit Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Simultaneous transactions hold or request mutually incompatible locks on the same data items, creating long blocking chains or deadlocks inside the lock-manager layer and stalling statement execution. \nOperating System Resource Limit Anomaly : The database process or its children hit kernel-enforced ceilings for file descriptors, shared memory, semaphores, threads, or other OS-level objects, preventing creation of new backends, workers, or I/O contexts. \nNetwork and Connectivity Resource Anomaly : Server- or network-side constraints on sockets, listener backlogs, authentication threads, or transport capacity limit the establishment and servicing of client connections.\n\nWhen these three root causes co-exist, the system exhibits a blended failure pattern: existing sessions become trapped in prolonged lock waits or cyclical deadlocks while new clients experience connection refusals, timeouts, or prolonged authentication delays. Lock-bound backends that cannot complete free their locks slowly or hold them indefinitely if OS limits block their ability to write to WAL, open extra files, or spawn background workers; this prolongs blocking chains and inflates wait-event and deadlock counters. Concurrently, exhausted file-handle or thread quotas reduce the pool of accept()able sockets, so the listener queues overflow, causing TCP resets and application-level connection storms that repeatedly retry and further raise incoming connection pressure. Monitoring shows runaway lock-wait times, rising deadlock victim counts, sharp drops in completed transactions per second, escalating OS error messages about \"too many open files\" or \"cannot create thread\", and surges in half-open sockets and retransmissions.\n\nCausally, heavy lock contention increases backend counts and prolongs session lifetimes, accelerating consumption of OS resources (descriptors, semaphores, threads). Once kernel limits are hit, the database cannot create additional server processes or worker threads, which in turn prevents deadlock detectors, autovacuum workers, or I/O helpers from starting, delaying lock resolution and log flushing and deepening the backlog. Simultaneously, socket and backlog exhaustion triggered by the same OS limits or by retry storms prevents blocked applications from reconnecting to roll back or retry, leaving their orphaned transactions and locks in limbo. The feedback loop between in-engine lock stalls, OS-level exhaustion, and network-layer connection failures amplifies service degradation, potentially leading to a full outage even though each individual anomaly might have been survivable on its own.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 16,
+            "score": 0.36227306972263806,
+            "bm25_score": 18.85297897957198,
+            "lexical_score": 0.14293824319140774,
+            "matched_terms": [
+                "and",
+                "are",
+                "client",
+                "data",
+                "delaying",
+                "for",
+                "level",
+                "network",
+                "or",
+                "session",
+                "the",
+                "this",
+                "times",
+                "transport",
+                "triggered",
+                "when",
+                "write"
+            ],
+            "match_count": 99,
+            "entry": {
+                "timeout_id": "mysql84_xplugin_write_timeout",
+                "parameter_name": "mysqlx_write_timeout",
+                "timeout_category": "x_protocol_network_write_timeout",
+                "scope": "global/session/X Plugin",
+                "official_definition": "Write timeout for X Plugin network communication.",
+                "trigger_condition": "A MySQL X Protocol write operation exceeds mysqlx_write_timeout.",
+                "workload_impact": "The X Protocol network write operation times out.",
+                "default_behavior": "Defined as a MySQL X Plugin system variable.",
+                "system_domain": "network_transport",
+                "cause_analysis": "This timeout is usually triggered when network data is not acknowledged, received, or written within the configured transport-level waiting window.",
+                "solution_guidance": "Inspect packet loss, transport latency, client responsiveness, proxy behavior, and whether slow consumers or unstable links are delaying network progress.",
+                "observable_symptoms": [
+                    "network timeout",
+                    "disconnect",
+                    "read/write interruption"
+                ]
+            }
+        }
+    }
+]

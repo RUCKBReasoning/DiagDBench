@@ -1,0 +1,46 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Storage Space Capacity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly: Redo generation, buffering, flushing, or archiving becomes the bottleneck on the write path.\nStorage Space Capacity Anomaly: Critical free-space exhaustion anywhere in the database storage hierarchy, causing allocation failures rather than pure latency problems.\nOperating System Resource Limit Anomaly: Kernel-enforced limits on file handles, shared memory, semaphores, threads, or similar objects are reached, preventing the database from acquiring additional OS resources.\n\nWhen these three root causes strike simultaneously, the database experiences a multi-layer blockage on every path needed to persist and manage redo. Commits begin to queue behind long log-flush waits; alert logs show rapid log-file switches that cannot complete; archiver and backup processes report \"device full\" or \"cannot open file\" errors; free space in both active log and archive destinations plummets; and parallel workers or new client sessions intermittently fail because the engine cannot obtain additional file descriptors, shm segments, or threads. The overlapping symptoms make it appear as a generic \"database hang,\" but metrics reveal concurrent spikes in commit latency, space-usage alarms, and kernel denials.\n\nCausal chain: Heavy transactional load pushes the log subsystem to create and switch log segments at a high rate. This accelerates space consumption; once archive or log destinations near capacity, switches stall, trapping active transactions in \"log file switch (checkpoint incomplete)\" waits. Meanwhile, the same churn inflates the number of open log files, archive handles, and background workers, quickly exhausting per-process or cgroup file-handle and thread limits. Hitting OS limits causes archiver and checkpoint processes to fail at opening new files, which in turn prevents log recycling and releases no space, pushing the storage tier to full even faster. Conversely, storage exhaustion forces the engine to keep more log files open and retry writes, further leaking kernel objects and accelerating the breach of OS quotas. The feedback loop between log bottlenecks, space exhaustion, and OS resource starvation amplifies latency, precipitates commit freezes, and can culminate in a full outage that persists until all three constraints—log throughput, free space, and OS limits—are relieved together.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 228,
+            "score": 0.5144812028031122,
+            "bm25_score": 37.302509503330334,
+            "lexical_score": 0.09777777777777777,
+            "matched_terms": [
+                "allocation",
+                "and",
+                "client",
+                "constraints",
+                "consumption",
+                "engine",
+                "latency",
+                "memory",
+                "or",
+                "per",
+                "the"
+            ],
+            "match_count": 13,
+            "entry": {
+                "error_code": "HV090",
+                "error_name": "fdw_invalid_string_length_or_buffer_length",
+                "official_description": "fdw invalid string length or buffer length",
+                "error_class": "Class HV - Foreign Data Wrapper Error (SQL/MED)",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "memory_and_buffer",
+                "cause_analysis": "The failure is typically associated with insufficient memory headroom, buffer pressure, oversized intermediate state, or memory-allocation constraints inside the engine or client library.",
+                "solution_guidance": "Check memory availability, per-session memory settings, large sorts or hashes, and whether workload concurrency is amplifying memory consumption.",
+                "observable_symptoms": [
+                    "memory pressure",
+                    "allocation failure",
+                    "spill",
+                    "unstable latency"
+                ]
+            }
+        }
+    }
+]

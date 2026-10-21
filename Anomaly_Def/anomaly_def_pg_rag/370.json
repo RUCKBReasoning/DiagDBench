@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Replication Synchronization Anomaly + CPU Resource Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly: Obsolete row versions and logically deleted index entries pile up faster than background cleanup can reclaim them, bloating the heap and indexes.\nReplication Synchronization Anomaly: Stand-by or subscriber nodes fall behind because they cannot ingest or replay the primary’s WAL stream at the rate it is produced.\nCPU Resource Anomaly: Database-related processes saturate host CPU, starving both foreground queries and essential background workers of compute cycles.\n\nWhen all three root causes strike together, the system shows a compound symptom set: sustained near-100 % CPU, long run queues, and pervasive latency spikes; rapidly growing table and index sizes with falling live-row density; sequential scans and UPDATE/DELETEs slowing as visibility checks touch ever-larger version chains; replication views displaying widening receive, flush, and replay lags together with a swelling stock of retained WAL segments; VACUUM or equivalent cleanup workers reported as backlogged while still consuming high CPU; replica read traffic returning increasingly stale data; and disk usage rising on both primary (due to unrecycled WAL) and replicas (due to redo backlog).\n\nCausal chain: excessive update/delete churn or long-running snapshots start the version buildup. The bloated pages force foreground scans and background VACUUM to do more work per row, driving CPU demand upward. CPU saturation slows both cleanup workers and the single-threaded or poorly parallelized replication apply processes, letting more dead versions and unreplayed WAL accumulate. In turn, replication lag prevents the primary from advancing its \"oldest xmin\" horizon, blocking further removal of dead tuples and accelerating heap bloat. The feedback loop—MVCC bloat → higher CPU → slower replication → frozen xmin → even more MVCC bloat—can quickly spiral, degrading throughput, enlarging storage footprints, and eroding failover safety.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.485270460429189,
+            "bm25_score": 17.407961726273985,
+            "lexical_score": 0.12266089108910891,
+            "matched_terms": [
+                "and",
+                "can",
+                "dead",
+                "equivalent",
+                "is",
+                "latency",
+                "of",
+                "on",
+                "or",
+                "stale",
+                "system",
+                "than",
+                "the",
+                "to",
+                "together",
+                "when",
+                "with"
+            ],
+            "match_count": 181,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_idle",
+                "parameter_name": "tcp_keepalives_idle",
+                "timeout_category": "network_idle_keepalive_probe_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time with no network activity after which the operating system should send a TCP keepalive message to the client.",
+                "trigger_condition": "A TCP client connection has no network activity longer than tcp_keepalives_idle on systems supporting TCP_KEEPIDLE or an equivalent socket option.",
+                "workload_impact": "Starts TCP keepalive probing for an otherwise idle client connection; together with interval and count settings this can lead to dead connection detection.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Database Memory Allocation Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Runtime parameters governing memory, I/O cadence, background workers, and parallelism are mis-tuned relative to hardware capacity, workload characteristics, or version defaults.\nDatabase Memory Allocation Anomaly : Database memory regions (buffer cache, work areas, plan cache, parallel worker buffers, etc.) grow beyond the physical limits of the host, causing sustained operating-system memory pressure.\n\nWhen both root causes exist concurrently, the system exhibits a compound failure pattern: sudden or sustained spikes in paging, swap or OOM killer events occur alongside wait-event distributions that do not align with actual resource usage (e.g., log flush waits while disks are idle, CPU spin while cores are under-utilized). Checkpoints, log flushes, or background cleanup may thrash because incorrectly sized parameters force frequent flushes, while at the same time memory pressure evicts hot buffer pages, driving down cache hit ratios and inflating I/O. Parallel queries can stall or be force-cancelled when the per-worker memory set by configuration oversubscribes RAM already depleted by runaway allocations, leading to unpredictable latency, connection aborts, or instance restarts that are hard to attribute to a single layer.\n\nCausally, mis-tuned parameters often initiate excessive or fragmented memory reservations—large buffer pools, overly generous per-query work memory, or inflated parallel-worker caps—that push the engine into physical memory overcommit, triggering the memory-allocation anomaly. In turn, the resulting OS memory pressure feeds back into the database: evicted pages slow operations, which prompts even more intensive background activity (checkpoints, re-reads, cache repopulation) that was already scheduled too aggressively by the faulty configuration. The two anomalies therefore reinforce each other, creating a loop where configuration-induced over-allocation exhausts memory and memory exhaustion amplifies the performance pathologies caused by the bad configuration, degrading both OLTP and OLAP workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.3228094142729268,
+            "bm25_score": 13.08617593422511,
+            "lexical_score": 0.15099524658348185,
+            "matched_terms": [
+                "activity",
+                "and",
+                "are",
+                "be",
+                "can",
+                "connection",
+                "failure",
+                "idle",
+                "latency",
+                "not",
+                "of",
+                "or",
+                "pools",
+                "system",
+                "that",
+                "the",
+                "time",
+                "to",
+                "when"
+            ],
+            "match_count": 266,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_count",
+                "parameter_name": "tcp_keepalives_count",
+                "timeout_category": "network_keepalive_failure_threshold",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the number of TCP keepalive messages that can be lost before the server connection to the client is considered dead.",
+                "trigger_condition": "The number of lost TCP keepalive probes reaches tcp_keepalives_count on systems supporting TCP_KEEPCNT.",
+                "workload_impact": "The server can consider the client connection dead after the configured keepalive failure threshold.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

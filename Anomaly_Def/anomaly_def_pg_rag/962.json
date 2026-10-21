@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Database Memory Allocation Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same rows, pages, or metadata, leading to wait chains or deadlocks that stall or abort user work. \nDatabase Memory Allocation Anomaly : The engine’s aggregate memory footprint grows beyond safe limits, provoking host-level pressure, paging, or OOM terminations as caches, work areas, and background heaps expand uncontrollably. \nBuffer Cache and Latch Contention Anomaly : Sessions serialize on hot buffer-cache pages, latches, or I/O slots, producing high latch and buffer-busy waits and CPU spin without useful progress. \n\nWhen all three anomalies coincide, the system experiences compounding symptoms: lock wait times and deadlock rates surge while CPU usage oscillates between spin-looping on latches and kernel scheduling delays caused by memory pressure. Throughput collapses as transactions queue behind both lock owners and latch holders, while memory overcommitment forces buffer evictions and paging, further inflating latch durations and lengthening lock hold times. Users observe erratic response times, frequent query cancellations or victim rollbacks, intermittent \"out of memory\" or node-eviction events, and sharp drops in cache hit ratios that aggravate I/O latency and extend blocking intervals.\n\nCausal interaction: excessive memory allocation shrinks true free memory, increasing buffer churn and forcing more frequent page replacement and flush activity; this elevates buffer-latch contention as many sessions compete for the same hot pages. Longer latch acquisition extends the time transactions keep logical locks, intensifying lock contention and enlarging blocker-waiter chains. Conversely, lock queues slow statement completion, allowing work areas, sort buffers, and session heaps to stay resident longer and inflate memory pressure. The resulting paging amplifies latch hold times, forming a positive feedback loop that escalates all three anomalies and can ultimately trigger deadlocks, OOM terminations, or engine restarts.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.25714802421805516,
+            "bm25_score": 10.845212498711563,
+            "lexical_score": 0.13601258581235698,
+            "matched_terms": [
+                "activity",
+                "and",
+                "for",
+                "in",
+                "latency",
+                "of",
+                "or",
+                "progress",
+                "session",
+                "sessions",
+                "the",
+                "this",
+                "time",
+                "wait",
+                "when"
+            ],
+            "match_count": 151,
+            "entry": {
+                "timeout_id": "pg16_libpq_connection_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "client_connection_establishment_timeout",
+                "scope": "libpq/client connection parameter",
+                "official_definition": "Maximum wait for connection, in seconds; zero or not specified means wait indefinitely.",
+                "trigger_condition": "A libpq client connection attempt exceeds connect_timeout seconds.",
+                "workload_impact": "The client connection attempt fails instead of waiting indefinitely.",
+                "default_behavior": "Zero or absent value means wait indefinitely.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

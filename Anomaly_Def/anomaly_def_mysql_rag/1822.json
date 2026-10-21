@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Database Configuration Parameter Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Stale, incomplete, or missing optimizer metadata causes systematic cardinality misestimation and drives the optimizer toward sub-optimal plans.\nDatabase Configuration Parameter Anomaly : Engine-level parameters (memory pools, parallelism, checkpoint cadence, etc.) are mis-tuned so that runtime behavior diverges from hardware capacity and workload demands.\nStorage Space Capacity Anomaly : Physical or logical free space for data, log, or temporary areas reaches hard limits, producing allocation failures and stalls.\n\nWhen all three anomalies coexist, symptoms overlap and amplify: plans chosen on the basis of wrong statistics request excessive parallel workers or memory, but mis-set parameters cap usable resources, forcing large intermediate results to spill to TEMP. Repeated spills, enlarged by the same misestimates, quickly consume remaining tempfiles or tablespace quota, producing “no space left” errors, session aborts, or sudden query slowdowns. Simultaneously, undersized redo/log areas configured by poor parameters fill faster because mis-planned queries generate bloated undo and redo; once full, checkpoints and log switches stall foreground activity, appearing as log-write or buffer-busy waits even though I/O bandwidth is idle. Automatic statistics refresh jobs may fail to run or to persist results when catalog tablespaces are full, freezing bad statistics in place and masking the original cause. Monitoring will show a confusing mix of cardinality skew, memory-related spills, unexpected parallel downgrade, and space-exhaustion alerts, making root-cause isolation difficult.\n\nCausally, stale or missing statistics mislead the optimizer into choosing resource-hungry execution strategies (e.g., multi-way hash joins, wide index scans) that inflate memory and temp usage. Misconfigured parameters—such as low work-memory, aggressive checkpoint intervals, or small temp/log file size caps—prevent the engine from absorbing these demands, forcing spills and frequent checkpoints that intensify I/O and space consumption. The resulting surge in temp and log growth accelerates storage exhaustion. Once space becomes scarce, mandatory operations like statistics persistence, temp allocation, or log archival begin to fail, which in turn blocks auto-statistics refresh and increases plan staleness, creating a positive feedback loop that rapidly degrades overall performance and availability.\n",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.38027151264399695,
+            "bm25_score": 13.59479579215875,
+            "lexical_score": 0.12655177245341181,
+            "matched_terms": [
+                "activity",
+                "and",
+                "are",
+                "bad",
+                "for",
+                "idle",
+                "is",
+                "of",
+                "or",
+                "pools",
+                "session",
+                "stale",
+                "that",
+                "the",
+                "waits",
+                "when"
+            ],
+            "match_count": 80,
+            "entry": {
+                "timeout_id": "mysql84_connection_handshake_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "connection_handshake_timeout",
+                "scope": "global",
+                "official_definition": "The number of seconds that the mysqld server waits for a connect packet before responding with Bad handshake.",
+                "trigger_condition": "A client does not complete the initial connection packet exchange within connect_timeout.",
+                "workload_impact": "The connection attempt fails during handshake.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

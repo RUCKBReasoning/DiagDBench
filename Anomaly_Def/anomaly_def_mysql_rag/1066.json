@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + MVCC Version Maintenance Anomaly",
+            "Description": "SQL Workload Logic Anomaly: Application-level SQL or transaction design forces the engine to scan or modify far more data, rows, or time than business logic actually requires.\nMVCC Version Maintenance Anomaly: Excessive accumulation of obsolete row versions and undo/rollback segments outpaces background cleanup, inflating on-disk structures and visibility-check cost.\n\nComposite definition: The database simultaneously suffers from poorly written workload logic that drives unnecessary row accesses and prolonged transactions, while MVCC version garbage is not reclaimed fast enough. Together, these conditions form a feedback loop where bloated version stores degrade performance and further magnify the inefficiencies of the SQL workload.\n\nCombined observable phenomena:  • Sharp and erratic tail latencies, frequent application timeouts, and growing slow-query logs.  • Rapid growth of table and index size despite stable business data volume; rising dead-to-live row ratios and increasing checkpoint or vacuum runtimes.  • Long-running transactions that pin old snapshots, causing vacuum freezes, and in turn exacerbate bloat.  • Escalating I/O and memory consumption as wide scans touch many stale pages, leading to cache churn, higher CPU spent on visibility checks, and potential autovacuum saturation.  • Optimizer misestimates due to inflated statistics, yielding even less efficient plans and reinforcing the original workload inefficiencies.\n\nCausal interaction: Inefficient SQL patterns (e.g., bulk updates without selective predicates, chatty ORM loops, transactions left open across think time) generate high churn of updates/deletes and create extensive undo/version chains. Those same long transactions also hold old snapshots, preventing garbage collection. As background cleaners fall behind, table and index bloat increases, making each subsequent oversized query or scan more expensive, which prolongs execution and transaction lifetimes. The compounded effect is a vicious cycle: bad workload logic produces more MVCC debris, the unreclaimed debris slows queries and elongates transactions, and the prolonged transactions inhibit cleanup, driving the system into progressively degraded throughput and escalating resource consumption.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.4527928933304963,
+            "bm25_score": 15.92773010615602,
+            "lexical_score": 0.11224806201550387,
+            "matched_terms": [
+                "and",
+                "check",
+                "data",
+                "from",
+                "is",
+                "more",
+                "not",
+                "of",
+                "or",
+                "stale",
+                "than",
+                "the",
+                "time",
+                "to"
+            ],
+            "match_count": 51,
+            "entry": {
+                "timeout_id": "mysql84_replica_network_timeout",
+                "parameter_name": "replica_net_timeout",
+                "timeout_category": "replication_network_timeout",
+                "scope": "global/replication",
+                "official_definition": "The number of seconds to wait for more data from a source/replica connection before aborting the read.",
+                "trigger_condition": "A replica waits longer than replica_net_timeout for more data from the source connection.",
+                "workload_impact": "The replication network read is aborted and the replica considers the connection interrupted.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

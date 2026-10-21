@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Replication Synchronization Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Critical engine settings (memory, logging, parallelism, checkpoint cadence, etc.) are mis-tuned relative to hardware capacity and workload needs.\nReplication Synchronization Anomaly : Standbys or downstream consumers cannot receive or apply WAL/redo at the rate the primary produces it, causing ever-growing replication lag.\nOperating System Resource Limit Anomaly : Kernel-enforced quotas on file descriptors, shared memory, processes, or other OS objects throttle the database independently of its own internal resource management.\n\nWhen all three faults coexist, the system exhibits a blended failure signature: replication slots stall and retain large volumes of primary WAL, checkpoint frequency spikes yet log recycling is blocked, background workers or apply processes fail to start due to exhausted OS handles, and wait-event statistics show both idle hardware and intense spin or log-write waits. End-users observe increasing replica staleness, sudden session or worker creation errors, erratic latency on the primary, and rapid disk-space consumption from unrecycled logs. Troubleshooting is complicated because each layer (engine parameters, replication, kernel) shows partial symptoms that mask or mimic the others.\n\nCausally, an undersized checkpoint or work-memory setting can inflate WAL generation and stall autovacuum, pushing more redo toward replicas. If OS limits simultaneously cap network sockets, async-I/O contexts, or background threads, the apply side or even the primary’s replication sender processes cannot keep pace, amplifying lag. The growing log backlog prevents log truncation, which in turn triggers aggressive checkpoints per the misconfigured parameters, intensifying I/O surges and memory pressure. Each layer’s throttling therefore compounds the next: mis-tuned engine parameters accelerate load, OS limits restrict the threads and kernel objects needed to digest that load, and replication becomes the visible bottleneck while the primary itself edges toward resource exhaustion. Together they create a self-reinforcing loop that degrades throughput, threatens availability, and obscures root-cause isolation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.40235729245391544,
+            "bm25_score": 12.915251742171243,
+            "lexical_score": 0.12466772993088782,
+            "matched_terms": [
+                "and",
+                "are",
+                "idle",
+                "is",
+                "latency",
+                "of",
+                "or",
+                "replication",
+                "sender",
+                "session",
+                "that",
+                "the",
+                "wal",
+                "when"
+            ],
+            "match_count": 21,
+            "entry": {
+                "timeout_id": "pg16_wal_sender_timeout",
+                "parameter_name": "wal_sender_timeout",
+                "timeout_category": "replication_sender_timeout",
+                "scope": "server/replication",
+                "official_definition": "Terminates replication connections that are inactive longer than the specified amount of time.",
+                "trigger_condition": "A WAL sender replication connection is inactive longer than wal_sender_timeout.",
+                "workload_impact": "The replication connection is terminated.",
+                "default_behavior": "PostgreSQL documentation defines the parameter under replication sending server settings.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

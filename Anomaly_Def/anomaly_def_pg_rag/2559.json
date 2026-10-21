@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Data Block and Index Integrity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Excessive accumulation of obsolete row versions and rollback records outpacing background cleanup, inflating the version store and slowing visibility checks.\nData Block and Index Integrity Anomaly : Physical pages, index key order, or page links become corrupted so that on-disk structures no longer faithfully represent logical contents.\nOperating System Resource Limit Anomaly : Kernel-enforced caps on file handles, shared-memory segments, threads, or other OS objects are reached, preventing the database from allocating additional resources.\n\nWhen all three root causes manifest simultaneously, the system exhibits a mixture of version-bloat symptoms (rapid table/index growth, long scans, autovacuum saturation), corruption symptoms (checksum errors, inconsistent index vs. heap counts, sudden planner fall-backs), and OS-level allocation failures (\"too many open files,\" inability to spawn workers, intermittent session starts). The overlap makes diagnosis harder: corruption errors may appear only intermittently when a scan that already struggles with MVCC bloat touches a damaged page, while background vacuums needed to control bloat terminate early because they cannot open additional file descriptors. Query latency spikes, some result sets are silently incomplete, and maintenance jobs or crash-recovery phases may hang or abort.\n\nCausally, heavy update/delete churn characteristic of MVCC bloat forces the engine to touch many pages and create more files (e.g., segment extensions, temp files for vacuum) which quickly consumes file descriptors and shared-memory slots, pushing the system against OS limits. Once limits are hit, vacuum or index-rebuild tasks exit prematurely, leaving even more obsolete versions and partially written pages. These incomplete writes increase the probability of physical corruption, especially if an abrupt worker termination leaves pages half-flushed. Conversely, existing block or index corruption can cause repeated vacuum restarts that leak handles or semaphores, accelerating exhaustion of OS resources. The three anomalies thus reinforce one another: OS limits throttle the cleanup needed to control MVCC growth, MVCC growth magnifies I/O and metadata pressure that reveals or induces corruption, and corruption further inflates bloat and resource leakage, leading to a rapid decline in overall database health.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.4708397092359915,
+            "bm25_score": 21.646624619981182,
+            "lexical_score": 0.1199274423425758,
+            "matched_terms": [
+                "and",
+                "are",
+                "can",
+                "checks",
+                "kernel",
+                "latency",
+                "long",
+                "or",
+                "query",
+                "session",
+                "sets",
+                "system",
+                "that",
+                "the",
+                "when",
+                "while"
+            ],
+            "match_count": 287,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

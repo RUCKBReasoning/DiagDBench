@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Database Memory Allocation Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Core runtime settings (buffer pools, work-mem, parallelism, checkpoint cadence, etc.) are mis-tuned relative to hardware and workload. \nDatabase Memory Allocation Anomaly : The engine’s aggregate memory footprint grows beyond safe physical RAM or swap capacity, provoking paging, OOM events, and cache churn. \nOperating System Resource Limit Anomaly : Kernel-level ceilings on virtual memory, shared memory, file handles, and processes/threads are reached, preventing further allocations or session creation.\n\nWhen these three root causes coincide, the system exhibits a compound failure pattern: 1) sudden or cyclical surges in memory consumption driven by aggressive engine settings, 2) operating-system paging, swap storms, or outright OOM kills, 3) intermittent errors indicating inability to obtain shared memory segments, create threads, or open files, 4) erratic checkpoint or log-flush bursts followed by long I/O stalls, 5) plummeting cache hit ratios and escalating CPU wait time despite low measured CPU utilization, and 6) partial outages where existing sessions hang while new connections, background workers, or parallel tasks are rejected.\n\nCausal chain: Oversized or unbalanced configuration parameters (e.g., buffer caches and per-query work-mem) push the engine to allocate more memory than the host can sustain, immediately triggering the memory-allocation anomaly. As the resident set swells, the database hits kernel limits on address space, shared memory, or locked memory, converting pure memory pressure into hard allocation failures. Each kernel denial feeds back into the engine: aborted worker creation disables parallel query, failed shared-buffer extensions force aggressive checkpointing, and OOM terminations leave orphaned semaphores and file handles that further consume limited kernel objects. The three anomalies therefore reinforce one another, amplifying instability and making the performance degradation harder to diagnose because symptoms oscillate between internal waits, OS-level memory pressure, and explicit kernel limit violations.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.47665246382546544,
+            "bm25_score": 19.51259408723456,
+            "lexical_score": 0.14304812834224598,
+            "matched_terms": [
+                "aborted",
+                "and",
+                "are",
+                "between",
+                "can",
+                "kernel",
+                "long",
+                "or",
+                "pools",
+                "query",
+                "session",
+                "sessions",
+                "system",
+                "that",
+                "the",
+                "time",
+                "when",
+                "while"
+            ],
+            "match_count": 215,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

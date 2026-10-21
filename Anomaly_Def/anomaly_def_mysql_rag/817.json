@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + CPU Resource Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : The engine is started with sub-optimal runtime parameters (memory pools, parallelism, checkpoint cadence, etc.), so the database behaves inefficiently even though the underlying hardware may still have headroom. \nCPU Resource Anomaly : Database processes drive the host CPU to sustained saturation, producing long run-queues, high context-switching, and broad latency inflation across statements. \nOperating System Resource Limit Anomaly : The database reaches kernel-enforced ceilings such as file-handle, thread, or shared-memory limits, causing allocation failures or the inability to spawn new workers.\n\nWhen all three anomalies coincide the system shows a confused and rapidly degrading performance pattern: CPU utilization hovers at or near 100 %, yet some cores sit idle because mis-tuned parallelism, work-memory, or background-worker settings keep useful tasks from being dispatched while kernel limits silently block new threads. Wait-event histograms simultaneously report CPU-bound waits, configuration-specific waits (e.g., excessive checkpoint or log-write stalls), and sporadic \"cannot allocate resource\" errors from the OS. Throughput becomes erratic: bursts of work briefly clear, then stall again when the engine hits a kernel object limit or triggers a heavy checkpoint, causing run-queue spikes. Monitoring tools may mislead—showing CPU exhaustion that persists even after cancelling the top SQL—because background flushers and orphaned worker threads are spinning but unable to acquire the kernel resources they need.\n\nCausal chain: a mis-set configuration (e.g., overly aggressive parallelism and tiny checkpoint segments) first inflates CPU demand and spawns many workers; the surge pushes total runnable threads toward the host’s logical-CPU count, creating a CPU Resource Anomaly. As more workers are launched, they collectively exhaust kernel limits on threads, file descriptors, or AIO contexts, triggering an Operating System Resource Limit Anomaly. The OS denials then force the engine to retry or spin, which consumes yet more CPU, while configuration parameters such as short checkpoint intervals amplify I/O and flush activity, further increasing thread creation and handle usage. Each anomaly therefore feeds the next: bad parameters create excess work, excess work saturates CPU, CPU saturation and worker proliferation hit OS ceilings, and the resulting allocation failures loop back to make the configuration’s side effects (checkpoint storms, parallelism thrashing) even harder to resolve, deepening the overall performance collapse.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3983,
+            "score": 0.5086021597691678,
+            "bm25_score": 50.718233664539305,
+            "lexical_score": 0.14893162393162393,
+            "matched_terms": [
+                "and",
+                "are",
+                "because",
+                "cannot",
+                "count",
+                "creation",
+                "engine",
+                "failures",
+                "file",
+                "flush",
+                "is",
+                "latency",
+                "log",
+                "or",
+                "the",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-012099",
+                "error_name": "OBSOLETE_ER_IB_MSG_275",
+                "official_description": "Cannot close file %s, because modification count %lld != flush count %lld",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

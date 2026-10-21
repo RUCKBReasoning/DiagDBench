@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Database Memory Allocation Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Engine-level parameters are mis-tuned relative to hardware capacity, workload intensity, or version defaults, creating artificial bottlenecks that do not reflect true resource exhaustion.\nDatabase Memory Allocation Anomaly : Database memory structures (buffer cache, work areas, plan cache, background heaps, etc.) grow beyond the safe physical or virtual memory envelope, leading to OS pressure, paging, or OOM events.\nTransaction Log Subsystem Anomaly : The write-ahead logging pipeline (log buffer, log files, archiver, replication retention) becomes the throughput or latency bottleneck on the write path, stalling commits and checkpoints.\n\nWhen these three root causes co-exist, the system exhibits a blended symptom pattern that is louder and harder to attribute:  • Commit latency and log-flush waits rise while CPUs and disks oscillate between idle and 100 % utilization;  • Memory pressure causes buffer eviction and plan-cache churn, inflating redo generation and checkpoint frequency, which in turn amplifies log-write peaks;  • Sudden log-file switches, archive backlogs, or replication gaps coincide with kernel swap bursts, background autovacuum/cleaner backlog, and sharp drops in cache hit ratio;  • Instance restarts or node evictions may occur when OOM killers intervene during a prolonged log-flush stall;  • Wait-event histograms show an unusual mix of memory-allocation stalls, log-sync waits, and configuration-driven spin loops, masking the primary culprit.\n\nCausal chain: Mis-set parameters (e.g., oversized per-session work memory, undersized log buffer, aggressive checkpoint timeout) trigger excessive allocation that pushes the host into swap. Memory pressure elongates dirty-buffer flush times and forces more frequent checkpoints, driving up redo volume. The swollen redo stream overwhelms the already under-provisioned log subsystem, further delaying commits and causing the checkpointer to fall behind. Each delay prolongs the lifetime of in-memory modified pages and private work areas, escalating memory consumption even more. The vicious cycle—mis-tuned settings → runaway memory usage → heavier log workload → log subsystem saturation → further memory retention—results in a self-reinforcing feedback loop that degrades OLTP throughput and stability far beyond what any single anomaly would produce alone.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.40008299336743725,
+            "bm25_score": 12.306169605388632,
+            "lexical_score": 0.12540754541220306,
+            "matched_terms": [
+                "and",
+                "are",
+                "idle",
+                "in",
+                "is",
+                "latency",
+                "not",
+                "of",
+                "or",
+                "parameter",
+                "session",
+                "the",
+                "timeout",
+                "wait",
+                "when"
+            ],
+            "match_count": 133,
+            "entry": {
+                "timeout_id": "pg16_libpq_connection_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "client_connection_establishment_timeout",
+                "scope": "libpq/client connection parameter",
+                "official_definition": "Maximum wait for connection, in seconds; zero or not specified means wait indefinitely.",
+                "trigger_condition": "A libpq client connection attempt exceeds connect_timeout seconds.",
+                "workload_impact": "The client connection attempt fails instead of waiting indefinitely.",
+                "default_behavior": "Zero or absent value means wait indefinitely.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

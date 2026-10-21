@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + CPU Resource Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Mis-tuned engine parameters (memory, parallelism, checkpoints, etc.) that distort resource usage patterns and introduce artificial bottlenecks independent of true hardware limits.\nCPU Resource Anomaly : Host CPU cores are genuinely saturated or oversubscribed by database processes, causing elevated run-queue delays and system-wide latency.\n\nWhen both root causes coexist the system presents a confusing mixture of symptoms: CPU utilisation hovers at or near 100 %, yet individual sessions may simultaneously report waits that suggest they are \"spinning\" or throttled by configuration limits (e.g., small work-memory forcing excessive batch-loop processing, aggressive parallel-worker allocation leading to context-switch storms, or checkpoint storms producing bursts of log-flush CPU). Wait-event histograms show an interleaving of CPU-bound activity (CPU time, scheduler waits) and configuration-induced waits (buffer-pin, log-write, flush-queue), and performance counters may oscillate as background processes kick in late due to CPU starvation. Response-time spikes appear across both read and write paths; even after workload subsides, recovery and autovacuum/cleanup tasks lag because mis-sized maintenance workers cannot acquire CPU.\n\nCausally, sub-optimal configuration settings inflate the amount of CPU work per transaction (e.g., too-small caches trigger extra page decompression and checksum verification, over-parallel plans multiply worker threads, tight checkpoint intervals force frequent flush bookkeeping). This artificial demand pushes the host CPU past sustainable limits, producing a true CPU Resource Anomaly. In turn, sustained CPU saturation amplifies the negative impact of the bad settings: background writers miss their cadence, causing larger and more expensive checkpoints, while worker shortages lead the optimizer to fall back to inefficient serial plans that again raise per-query CPU cost. The feedback loop between poor configuration and CPU exhaustion deepens latency, obscures which layer is primary, and can ultimately stall throughput or trigger failover mechanisms.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 4446,
+            "score": 0.4599820315087524,
+            "bm25_score": 41.09137896853452,
+            "lexical_score": 0.1346153846153846,
+            "matched_terms": [
+                "allocation",
+                "and",
+                "buffer",
+                "engine",
+                "is",
+                "latency",
+                "memory",
+                "or",
+                "per",
+                "recovery",
+                "settings",
+                "the",
+                "to",
+                "workload"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-012563",
+                "error_name": "ER_IB_MSG_739",
+                "official_description": "Recovery parsing buffer extended to %zu.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "memory_and_buffer",
+                "cause_analysis": "The failure is typically associated with insufficient memory headroom, buffer pressure, oversized intermediate state, or memory-allocation constraints inside the engine or client library.",
+                "solution_guidance": "Check memory availability, per-session memory settings, large sorts or hashes, and whether workload concurrency is amplifying memory consumption.",
+                "observable_symptoms": [
+                    "memory pressure",
+                    "allocation failure",
+                    "spill",
+                    "unstable latency"
+                ]
+            }
+        }
+    }
+]

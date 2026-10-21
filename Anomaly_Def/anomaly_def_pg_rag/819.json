@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + CPU Resource Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : The engine is started with sub-optimal runtime parameters (memory pools, parallelism, checkpoint cadence, etc.), so the database behaves inefficiently even though the underlying hardware may still have headroom. \nCPU Resource Anomaly : Database processes drive the host CPU to sustained saturation, producing long run-queues, high context-switching, and broad latency inflation across statements. \nOperating System Resource Limit Anomaly : The database reaches kernel-enforced ceilings such as file-handle, thread, or shared-memory limits, causing allocation failures or the inability to spawn new workers.\n\nWhen all three anomalies coincide the system shows a confused and rapidly degrading performance pattern: CPU utilization hovers at or near 100 %, yet some cores sit idle because mis-tuned parallelism, work-memory, or background-worker settings keep useful tasks from being dispatched while kernel limits silently block new threads. Wait-event histograms simultaneously report CPU-bound waits, configuration-specific waits (e.g., excessive checkpoint or log-write stalls), and sporadic \"cannot allocate resource\" errors from the OS. Throughput becomes erratic: bursts of work briefly clear, then stall again when the engine hits a kernel object limit or triggers a heavy checkpoint, causing run-queue spikes. Monitoring tools may mislead—showing CPU exhaustion that persists even after cancelling the top SQL—because background flushers and orphaned worker threads are spinning but unable to acquire the kernel resources they need.\n\nCausal chain: a mis-set configuration (e.g., overly aggressive parallelism and tiny checkpoint segments) first inflates CPU demand and spawns many workers; the surge pushes total runnable threads toward the host’s logical-CPU count, creating a CPU Resource Anomaly. As more workers are launched, they collectively exhaust kernel limits on threads, file descriptors, or AIO contexts, triggering an Operating System Resource Limit Anomaly. The OS denials then force the engine to retry or spin, which consumes yet more CPU, while configuration parameters such as short checkpoint intervals amplify I/O and flush activity, further increasing thread creation and handle usage. Each anomaly therefore feeds the next: bad parameters create excess work, excess work saturates CPU, CPU saturation and worker proliferation hit OS ceilings, and the resulting allocation failures loop back to make the configuration’s side effects (checkpoint storms, parallelism thrashing) even harder to resolve, deepening the overall performance collapse.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.612019095018669,
+            "bm25_score": 23.850056563053798,
+            "lexical_score": 0.11977361977361978,
+            "matched_terms": [
+                "and",
+                "because",
+                "context",
+                "from",
+                "is",
+                "long",
+                "more",
+                "of",
+                "or",
+                "pattern",
+                "resource",
+                "sql",
+                "that",
+                "the",
+                "when",
+                "with",
+                "work"
+            ],
+            "match_count": 203,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

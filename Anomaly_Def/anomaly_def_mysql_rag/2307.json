@@ -1,0 +1,59 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Buffer Cache and Latch Contention Anomaly + Storage Space Capacity Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level statements or transaction patterns force the engine to scan, join, or retain far more data and hold locks longer than business logic actually requires.\nBuffer Cache and Latch Contention Anomaly : Hot pages or an undersized/over-tuned buffer manager cause sessions to block or spin on page pins, latches, or dirty-page flush slots rather than progressing.\nStorage Space Capacity Anomaly : Data, log, or temp files exhaust their allocated space, triggering allocation failures, stalled writes, or checkpoint/archiver back-pressure.\n\nWhen all three root causes manifest together, the workload generates excessive and poorly targeted I/O, overloading a limited buffer pool whose hot pages are already points of intense latch contention. The same bloated or long-running SQL repeatedly touches a small set of index root pages and high-churn data blocks, producing long buffer-busy waits, CPU spin cycles, and growing dirty-page queues. Meanwhile, relentless data growth and prolonged transaction lifetimes consume table, index, temp, and log space faster than it can be recycled, leading to near-synchronous space exhaustion. Symptoms surface as \"slow query\" spikes that coincide with buffer-latch wait surges, checkpoint slowdowns, auto-extend failures, and finally \"no space left\" errors or frozen commits. Monitoring tools may struggle to isolate a single layer because latency, buffer contention, and space alerts rise in lock-step.\n\nCausal chain: sub-optimal SQL drives higher row and page touch rates, inflating both logical and physical I/O. This churn heats a few critical pages, intensifying latch competition inside a buffer cache that is already pressured by frequent evictions. The elevated dirty-page volume delays checkpoints and extends the residency of full pages in memory and on disk. Because transactions stay open longer and redo/undo growth accelerates, log segments cannot be recycled, and data files grow rapidly toward configured limits. As free space dwindles, background writers and checkpointers are forced into aggressive flush patterns, further increasing latch holds and I/O latency. Ultimately, the vicious cycle of chatty SQL, buffer contention, and shrinking disk space converges, degrading throughput and threatening abrupt service outages.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.74335909029807,
+            "bm25_score": 31.13311550896174,
+            "lexical_score": 0.15891557496360992,
+            "matched_terms": [
+                "an",
+                "and",
+                "back",
+                "because",
+                "by",
+                "cannot",
+                "configured",
+                "in",
+                "is",
+                "lock",
+                "longer",
+                "of",
+                "or",
+                "row",
+                "sessions",
+                "than",
+                "the",
+                "this",
+                "transaction",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 108,
+            "entry": {
+                "timeout_id": "mysql84_innodb_row_lock_wait_timeout",
+                "parameter_name": "innodb_lock_wait_timeout",
+                "timeout_category": "innodb_row_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "The length of time in seconds an InnoDB transaction waits for a row lock before giving up.",
+                "trigger_condition": "An InnoDB transaction waits longer than innodb_lock_wait_timeout for a row lock.",
+                "workload_impact": "The lock wait gives up; by default only the current statement is rolled back unless innodb_rollback_on_timeout is enabled.",
+                "default_behavior": "Defined as an InnoDB system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

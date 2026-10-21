@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + MVCC Version Maintenance Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same rows, pages, or metadata, producing long blocker-waiter chains or deadlocks and throttling throughput.\nMVCC Version Maintenance Anomaly : Obsolete row versions, undo records, and deleted index entries pile up faster than background cleaners can reclaim them, inflating storage and visibility-check overhead.\nData Block and Index Integrity Anomaly : On-disk pages, index structures, or page links become physically or logically inconsistent, making access paths unreliable and raising corruption errors.\n\nWhen all three conditions co-exist, the database experiences an intertwined failure mode: corruption in data or index pages forces the optimizer to abandon efficient index probes in favor of wide scans over bloated heaps swollen by unreclaimed MVCC debris. These scans hold locks far longer than normal, intensifying lock queues, deadlock frequency, and application time-outs. Simultaneously, pervasive blocking stalls vacuum/cleanup workers exactly when the version store is already expanding, while the corrupted pages they must touch repeatedly abort or skip their passes, letting dead versions accumulate still further. The runaway bloat amplifies I/O and buffer-cache pressure, prolonging lock hold times and increasing the chance that recovery or page-verification reads will surface additional integrity faults. Corruption in index or heap pages can also cause spurious lock retention by orphaned transactions, exacerbating contention.\n\nCausally, each root cause reinforces the others: (1) integrity faults trigger plan shifts and retries that lengthen transactions and widen their lock footprint; (2) the resulting lock contention delays snapshot-advancing commits and blocks autovacuum or purge tasks, accelerating version buildup; (3) excessive version chains enlarge tables and indexes, driving more page splits and writes that raise the probability of further physical corruption on stressed storage; and (4) repeated corruption-induced rollbacks inject yet more undo records, feeding the MVCC store. The feedback loop degrades concurrency, inflates storage, and threatens data correctness, making recovery increasingly difficult without coordinated intervention.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.2855011807060102,
+            "bm25_score": 11.971240180487461,
+            "lexical_score": 0.10403439153439153,
+            "matched_terms": [
+                "and",
+                "check",
+                "data",
+                "is",
+                "longer",
+                "more",
+                "of",
+                "or",
+                "than",
+                "the",
+                "time",
+                "to",
+                "when"
+            ],
+            "match_count": 113,
+            "entry": {
+                "timeout_id": "mysql84_replica_network_timeout",
+                "parameter_name": "replica_net_timeout",
+                "timeout_category": "replication_network_timeout",
+                "scope": "global/replication",
+                "official_definition": "The number of seconds to wait for more data from a source/replica connection before aborting the read.",
+                "trigger_condition": "A replica waits longer than replica_net_timeout for more data from the source connection.",
+                "workload_impact": "The replication network read is aborted and the replica considers the connection interrupted.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

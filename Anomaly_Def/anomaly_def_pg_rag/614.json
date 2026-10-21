@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Transaction Log Subsystem Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Obsolete row versions, rollback records, and logically deleted index entries accumulate faster than background cleanup can reclaim them, inflating the version store and bloating on-disk structures.\nTransaction Log Subsystem Anomaly : The generation, flushing, switching, or archiving of write-ahead log records becomes the bottleneck on the commit path, inflating commit latency and log storage.\nStorage I/O Throughput Anomaly : The physical storage layer is saturated, so read/write latency, queue depths, and IOPS limits are exceeded across data, temp, and log volumes.\n\nWhen these three root causes occur together, the database exhibits a compound symptom pattern: 1) rapidly expanding tables, indexes, version store, and transaction-log directories; 2) soaring commit and checkpoint latency dominated by log-flush and device-I/O waits; 3) long-running queries and autovacuum/clean-up workers that never catch up; 4) device-level queues pegged, with wait profiles simultaneously showing MVCC visibility checks, log-related waits, and generic data-file I/O stalls; 5) escalating risk of transaction-ID or log-segment wraparound, emergency checkpoints, and sudden write stalls that block both OLTP traffic and background maintenance.\n\nCausally, high update/delete churn inflates the version store, which in turn increases redo generation because every version change must be logged; this heavier log stream stresses the transaction-log subsystem. Frequent log flushes and larger log archives multiply write pressure on the same storage back-end that is already servicing bloated data-file writes and long sequential scans caused by MVCC bloat. As the storage layer saturates, log flush latency rises, stretching transaction completion times and prolonging snapshot retention; the longer snapshots further delay version reclamation, feeding back into MVCC bloat. The intertwined feedback loops—more versions ⇒ more log writes ⇒ more physical I/O ⇒ slower cleanup ⇒ even more versions—can rapidly degrade throughput and threaten database availability.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.5040625177673397,
+            "bm25_score": 18.752289825026587,
+            "lexical_score": 0.12262808349146109,
+            "matched_terms": [
+                "and",
+                "are",
+                "be",
+                "can",
+                "checks",
+                "is",
+                "latency",
+                "long",
+                "or",
+                "queries",
+                "running",
+                "that",
+                "the",
+                "this",
+                "when"
+            ],
+            "match_count": 193,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

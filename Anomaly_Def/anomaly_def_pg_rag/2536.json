@@ -1,0 +1,45 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Transaction Log Subsystem Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Composite Definition: The database simultaneously suffers from (1) runaway accumulation of obsolete row versions that outpaces background cleanup, (2) a saturated write-ahead logging path that cannot flush or archive redo fast enough, and (3) exhaustion of critical operating-system limits such as file descriptors, shared-memory segments, or I/O contexts. Together these three root causes form a reinforcing feedback loop that stalls write throughput, hampers maintenance workers, and degrades overall availability of an OLTP system.\n\nCombined Observable Phenomena: • Rapid growth of table and index sizes, high dead-tuple ratios, and autovacuum/cleaner processes that appear permanently backlogged. • Escalating commit latency with prominent log-flush or log-sync wait events, frequent log-switch alerts, and expanding on-disk/archived log volumes. • Intermittent errors when opening additional WAL files, spawning vacuum or archiver workers, or allocating shared memory; kernel logs show \"too many open files\", \"cannot allocate memory\", or semaphore exhaustion. • Checkpoints and recovery operations lengthen, long-running transactions hold old snapshots that block log truncation and heap cleanup, and front-end sessions experience time-outs or hang during commits or scans. • Monitoring dashboards show both rising version-store and log-file consumption while system calls related to file I/O or memory mapping start failing under OS limits.\n\nCausal Chain and Interaction: Heavy update/delete churn generates large volumes of WAL records, inflating both the version store and the transaction log. Bloated heaps slow scans and prolong transactions, which in turn keep old snapshots active; this prevents VACUUM/cleanup and log recycling, so log segments and obsolete versions accumulate even faster. As the log subsystem approaches capacity, it requires additional file handles, buffers, and background archiver threads; simultaneous MVCC cleanup workers also ask for these kernel resources. If OS-level limits on open files, shared memory, or processes are too low, the database cannot create or manage the extra WAL segments, vacuum workers, or archivers it needs. The resulting failures further delay log archiving and version cleanup, causing a vicious cycle: un-truncated logs retain old row versions, ballooning storage; excessive storage and I/O amplify log-flush times; rising latencies prolong transactions and hold even more snapshots open. Ultimately the intertwined pressures of version bloat, log saturation, and kernel resource exhaustion can bring write traffic and maintenance to a halt, risking data-loss windows and prolonged recovery times.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 192,
+            "score": 0.241830572467214,
+            "bm25_score": 19.124778790429264,
+            "lexical_score": 0.10368933790366228,
+            "matched_terms": [
+                "and",
+                "as",
+                "cannot",
+                "limit",
+                "or",
+                "that",
+                "the",
+                "too",
+                "under",
+                "version",
+                "with"
+            ],
+            "match_count": 14,
+            "entry": {
+                "error_code": "54001",
+                "error_name": "statement_too_complex",
+                "official_description": "statement too complex",
+                "error_class": "Class 54 - Program Limit Exceeded",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "sql_and_parser",
+                "cause_analysis": "The failure is typically associated with unsupported syntax, invalid statement structure, or feature usage that the target engine version cannot execute as written.",
+                "solution_guidance": "Validate SQL syntax, target-engine compatibility, statement shape, and whether the feature is supported under the current engine version or execution context.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "syntax error",
+                    "feature rejection"
+                ]
+            }
+        }
+    }
+]

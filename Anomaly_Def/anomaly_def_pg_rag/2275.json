@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly: Excessive accumulation of obsolete row versions, rollback records, and dead index entries that outpaces background cleanup, inflating the version store and increasing visibility-check and I/O overhead.\nData Block and Index Integrity Anomaly: Physical corruption or logical inconsistency in on-disk data or index pages, leading to broken page links, bad checksums, or mismatched heap-to-index mappings.\n\nWhen both root causes strike together, administrators may observe an explosive growth of disk space and severe query divergence: sequential scans lengthen because of massive dead tuples, while index scans intermittently miss or duplicate rows due to corrupt leaf pages. Autovacuum or purge workers can run continuously yet fail, repeatedly crashing or skipping damaged pages, so the dead-row ratio and version store continue to climb unchecked. CHECKDB-style utilities report both bloated heaps and structural defects; execution plans oscillate between slow full scans (triggered by planner distrust in corrupt indexes) and mis-guided index probes that still return incorrect results. Error logs may alternate between \"cannot find snapshot/clog\" warnings and \"page checksum mismatch\" or \"index inconsistent\" errors, making isolation of a single culprit difficult.\n\nCausally, heavy update/delete churn first inflates the MVCC version store; the enlarged heap and index structures expand the surface area for I/O and memory faults, increasing the probability of physical corruption. Conversely, once block or index corruption appears, cleanup workers may abort or skip corrupted pages, allowing even more obsolete versions to linger and accelerating version-store exhaustion and table bloat. Repeated crash-recovery cycles caused by corruption can interrupt vacuuming windows, further delaying reclamation. The feedback loop between failed cleanup and structural corruption amplifies performance collapse, risks transaction-ID wraparound or undo-segment exhaustion, and ultimately threatens data correctness and availability.\n",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.4733633249835341,
+            "bm25_score": 15.608638784662476,
+            "lexical_score": 0.09579831932773109,
+            "matched_terms": [
+                "and",
+                "between",
+                "can",
+                "check",
+                "or",
+                "query",
+                "still",
+                "that",
+                "the",
+                "triggered",
+                "when",
+                "while"
+            ],
+            "match_count": 273,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

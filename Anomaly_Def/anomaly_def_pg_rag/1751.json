@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Storage Space Capacity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Database Memory Allocation Anomaly : Run-away or poorly governed growth of buffer caches, work areas, and other engine heaps that pushes the database process beyond the amount of physical memory the host can safely provide.\nStorage Space Capacity Anomaly : Depletion of free bytes in data, log, archive, temp, or backup destinations until new allocations, extensions, or log switches fail.\nOperating System Resource Limit Anomaly : Exhaustion of kernel-enforced quotas such as file descriptors, shared-memory segments, semaphores, threads, or address space, preventing the database from obtaining new kernel objects.\n\nWhen all three conditions surface together the system is bombarded by overlapping symptoms: resident-set size and swap usage climb while dirty pages cannot be flushed because datafiles, tempfiles, or log destinations are full; simultaneously the engine emits ENOSPC, EMFILE, ENOMEM, or \"cannot allocate shared memory/thread\" errors. Checkpoints, log writers, and background workers may hang waiting for space or kernel objects, causing user sessions to stall, new connections to be refused, and cluster watchdogs to evict the node. Operating-system logs show paging storms, out-of-memory kills, and resource-limit denials, while database views report both shrinking free space and plummeting cache hit ratios driven by allocation churn.\n\nCausally, unchecked data growth or failed housekeeping fills disk, preventing log rotation and forcing the buffer cache to retain dirty pages longer, inflating memory consumption. The bloated memory footprint heightens kernel pressure; once physical RAM is exhausted the engine requests additional shared memory, threads, or temp files, quickly colliding with conservative ulimit or cgroup quotas. At the same time, space exhaustion blocks creation of on-disk temp segments, pushing more work areas to reside in RAM and further amplifying memory pressure. Each anomaly therefore reinforces the others—disk fullness prolongs memory residency, memory bloat increases the number of file handles and shared-memory requests, and tight OS limits convert what would be recoverable pressure into hard allocation failures—culminating in a compound failure state that is more severe and harder to remediate than any single anomaly alone.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.49800662153671493,
+            "bm25_score": 20.322214975256067,
+            "lexical_score": 0.149783315276273,
+            "matched_terms": [
+                "amount",
+                "and",
+                "any",
+                "because",
+                "cannot",
+                "for",
+                "from",
+                "is",
+                "longer",
+                "of",
+                "or",
+                "preventing",
+                "sessions",
+                "than",
+                "that",
+                "the",
+                "time",
+                "user",
+                "waiting",
+                "when",
+                "while"
+            ],
+            "match_count": 248,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

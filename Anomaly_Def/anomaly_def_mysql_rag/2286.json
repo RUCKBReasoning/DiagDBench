@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Database Memory Allocation Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly: Obsolete row versions and index entries accumulate faster than background cleanup workers can reclaim them, enlarging the version store and bloating tables and indexes.\nDatabase Memory Allocation Anomaly: Total in-engine memory demanded by caches, work areas, and background components pushes the host into sustained pressure, paging, or OOM events.\nBuffer Cache and Latch Contention Anomaly: Concurrent sessions serialize on hot buffer-cache pages and latches, creating wait spikes and CPU spin without corresponding throughput gains.\n\nCombined anomalous phenomena: While the version store and heap bloat grow, ever-increasing dirty pages and old row versions must be kept in memory. This expands the buffer pool footprint and forces the engine to reserve more private and shared work memory, driving the overall RSS upward. Under pressure, the operating system begins paging; page faults slow down cleanup workers, which in turn fall further behind, allowing even more dead tuples to accumulate. Hot pages such as index roots, free-space-map pages, and version-chain heads become latch hotspots because both foreground queries (doing long MVCC visibility scans) and background cleaners (doing deletes and vacuum-style work) continuously touch them. Users observe a mix of high buffer-busy/latch waits, rising memory usage, erratic cache-hit ratios, longer table scans, frequent checkpoints, and occasional OOM terminations or instance restarts that are hard to attribute to any single layer.\n\nCausal chain and reinforcement: Heavy update/delete churn produces large numbers of dead tuples, inflating both the heap and the version store. The extra pages must be cached and flushed, directly increasing memory consumption; when memory caps are exceeded, the OS pages out, lengthening I/O latency. Slower I/O prolongs latch hold times on dirty or hot pages, amplifying buffer contention. At the same time, memory pressure throttles or starves background cleaners, so version buildup accelerates, creating a feedback loop: more dead tuples ⇒ larger memory footprint ⇒ higher paging and slower cleaners ⇒ still more dead tuples. The three anomalies therefore reinforce one another in a vicious cycle that degrades OLTP throughput and latency far more severely than any of them would in isolation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.7342668488160291,
+            "bm25_score": 20.241940667895605,
+            "lexical_score": 0.11422282938676381,
+            "matched_terms": [
+                "and",
+                "be",
+                "because",
+                "behind",
+                "by",
+                "contention",
+                "engine",
+                "long",
+                "or",
+                "the",
+                "this",
+                "time",
+                "when",
+                "work"
+            ],
+            "match_count": 107,
+            "entry": {
+                "timeout_id": "mysql84_regular_expression_time_limit",
+                "parameter_name": "regexp_time_limit",
+                "timeout_category": "expression_evaluation_time_limit",
+                "scope": "global/session",
+                "official_definition": "The time limit for regular expression matching operations performed by the regular expression engine.",
+                "trigger_condition": "A regular expression match operation exceeds regexp_time_limit.",
+                "workload_impact": "The regular expression operation is constrained by the configured time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Database Memory Allocation Anomaly + Replication Synchronization Anomaly",
+            "Description": "Composite definition: The database is simultaneously burdened by inefficient or over-broad SQL logic, runaway memory consumption inside the engine, and lagging downstream replicas that cannot keep pace with the primary’s write-ahead log stream.\n\nCombined anomalous phenomena: End-user requests show highly variable and often excessive latency; some stall while waiting for memory or lock release, others time out due to stale replica reads or failovers that take longer than expected. On the primary, statement and transaction statistics expose wide table scans, oversized result sets, and long-lived transactions that hold buffer pages and transaction IDs. Memory graphs reveal rising resident-set size, frequent swapping, and oscillating buffer-cache hit ratios caused by churn in work areas and plan cache. In parallel, replication monitoring views show widening write/flush/replay lags, growing retained WAL segments or relay logs, and periodic cascading back-pressure where the primary blocks log recycling. Cluster managers may detect node heart-beat stalls or trigger failover because memory pressure and replication backlog jointly lengthen recovery point objectives.\n\nCausal chain and interaction: Inefficient SQL constructs inflate result sets and prolong transactions, inflating per-query work memory, sort/hash buffers, and plan-cache entries. This accelerates overall memory allocation growth; once physical RAM is saturated, the OS begins paging, slowing local I/O and CPU scheduling. The same heavy queries generate larger and more numerous log records, which must traverse the replication channel. Memory pressure on both primary and replicas throttles apply workers and can evict useful cache lines, diminishing replay throughput. As replicas fall behind, the primary is forced to retain additional log segments, further consuming memory and storage and exacerbating the allocation anomaly. Conversely, memory stalls on the primary delay log generation and transmission bursts, producing uneven flow control and amplifying replication lag. The intertwined feedback loop between bloated workload semantics, memory exhaustion, and impaired replication escalates resource contention, degrades performance for both OLTP requests and analytical queries, and erodes high-availability guarantees.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.6803648626762027,
+            "bm25_score": 28.300380437858713,
+            "lexical_score": 0.14477385275668536,
+            "matched_terms": [
+                "and",
+                "because",
+                "cannot",
+                "delay",
+                "for",
+                "in",
+                "is",
+                "lock",
+                "longer",
+                "or",
+                "scheduling",
+                "statement",
+                "than",
+                "the",
+                "this",
+                "to",
+                "transaction",
+                "waiting",
+                "while"
+            ],
+            "match_count": 150,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

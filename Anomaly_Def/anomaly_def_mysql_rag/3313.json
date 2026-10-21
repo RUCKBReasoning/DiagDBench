@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Transaction Log Subsystem Anomaly + Replication Synchronization Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same rows, pages, or metadata objects, resulting in wait queues or deadlock cycles that stall statement progress until a lock is granted or a victim is aborted.\nTransaction Log Subsystem Anomaly : The write-ahead log buffer, log file group, or archive/redo shipping mechanism cannot flush or switch log segments at the rate commits generate redo, turning the log subsystem itself into the bottleneck for every commit.\nReplication Synchronization Anomaly : Downstream replicas cannot receive, persist, or apply the primary’s log stream fast enough, causing replay lag and forcing the primary to retain log segments beyond its normal recycling window.\n\nWhen all three root causes appear together, the database shows a compound \"grid-lock\": commit latency rises sharply, session wait graphs display interleaved LOCK_* and LOG_* waits, deadlock detectors frequently kill victims that must be replayed after application retries, replication lag numbers climb, and disk space consumed by live log files and retained relay/redo logs balloons. Read replicas fall ever further behind, stale reads mislead applications, and failover windows lengthen. Monitoring dashboards may alternately attribute the slowdown to lock waits, log I/O, or replication lag, making the primary bottleneck hard to pinpoint.\n\nCausal chain: lock contention lengthens transaction lifetimes, so locks are held while more redo accumulates; this increases log flush pressure. A saturated log subsystem further delays commits, extending the time locks are held and enlarging blocking chains. At the same time, replicas already struggling to keep up with redo now face bursts of large, long-running transactions flushed in clumps, widening replication gaps. Because replicas hold retention pins on un-replayed segments, the primary cannot recycle log files, forcing additional log switches that intensify log-device pressure. The enlarged log backlog inflates commit latency even more, creating a feedback loop that magnifies both lock contention and log saturation, while replication lag continues to grow and threatens disk exhaustion on both primary and replicas.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3480,
+            "score": 0.4469418090464269,
+            "bm25_score": 53.27755437960077,
+            "lexical_score": 0.17856310679611648,
+            "matched_terms": [
+                "and",
+                "apply",
+                "be",
+                "downstream",
+                "group",
+                "is",
+                "keep",
+                "lag",
+                "log",
+                "or",
+                "replication",
+                "retention",
+                "running",
+                "shipping",
+                "stale",
+                "the",
+                "to",
+                "when",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-011596",
+                "error_name": "OBSOLETE_ER_GRP_RPL_TRANS_WRITE_SET_EXTRACTION_NOT_SET",
+                "official_description": "A transaction_write_set_extraction algorithm should be selected when running Group Replication",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

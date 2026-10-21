@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Replication Synchronization Anomaly + CPU Resource Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly : The log-writing, flushing, switching, or archiving path on the primary instance becomes the bottleneck, throttling commit progress and preventing timely log recycling.\nReplication Synchronization Anomaly : Downstream replicas or subscribers cannot receive, persist, or apply the primary’s log stream fast enough, causing widening apply and retention lags.\nCPU Resource Anomaly : Database-related processes collectively oversubscribe host CPU cycles, driving sustained saturation and scheduler contention.\n\nWhen all three root causes strike together the system exhibits compound symptoms: commit latency and log-flush wait times rise sharply; log file switches and checkpoints pile up but archive and replication queues keep growing because replicas fall further behind; monitoring shows ballooning retained WAL/redo segments on the primary, swollen relay logs on replicas, and replication apply delay measured in minutes or hours. Meanwhile, hosts on both primary and replicas run at or near 100 % CPU, with long run queues and frequent context switches. Application threads stall behind log-sync and scheduler wait events, while read-only replicas deliver increasingly stale data and may become unavailable for failover due to excessive replay lag.\n\nCausally, a saturated CPU starves critical background threads—log flusher, archiver, and replication sender/receiver—reducing their throughput and amplifying the inherent bottleneck in the transaction-log subsystem. Slower log writes lengthen commit paths and defer log file recycling, which in turn forces the primary to retain more segments for lagging replicas. The replication backlog grows because replicas, themselves CPU-constrained, cannot parse and apply incoming redo quickly enough, further delaying acknowledgment to the primary. This feedback loop increases disk pressure in the log area, heightens checkpoint frequency, and propagates latency spikes across all transactional workloads, ultimately risking forced shutdowns or failovers when log space is exhausted.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.7536842105263157,
+            "bm25_score": 35.28839612304513,
+            "lexical_score": 0.17894736842105263,
+            "matched_terms": [
+                "and",
+                "apply",
+                "causing",
+                "data",
+                "downstream",
+                "is",
+                "lag",
+                "long",
+                "or",
+                "preventing",
+                "progress",
+                "receiver",
+                "replication",
+                "sender",
+                "the",
+                "this",
+                "timely",
+                "times",
+                "to",
+                "when"
+            ],
+            "match_count": 72,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

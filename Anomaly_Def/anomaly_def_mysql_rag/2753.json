@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Database Configuration Parameter Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Row-count, histogram, and correlation metadata are stale or incomplete, leading the optimizer to misestimate cardinalities and pick inefficient plans.\nDatabase Configuration Parameter Anomaly : Critical engine parameters for memory, parallelism, logging, and background workers are mis-tuned relative to hardware, workload mix, or version defaults, so the engine’s internal resource governance does not match real demand.\nOperating System Resource Limit Anomaly : Kernel-enforced ceilings on file handles, shared memory, threads, or other OS objects are reached, blocking the database from allocating the resources it requests.\n\nWhen these three root causes coexist, the system exhibits a tangled symptom set: queries suddenly switch to plans that demand far more memory, I/O, or worker processes than the engine or kernel can grant; execution plans show huge gaps between estimated and actual rows, while concurrent sessions stall on memory-allocation, file-open, or worker-spawn errors. Wait events oscillate between CPU-bound parallel workers and OS-reported resource-exhaustion waits; checkpoint storms or log-write stalls appear even though storage and CPU remain under-utilised. Administrators may observe flurries of statement re-plans, background process restarts, and kernel messages about ENOMEM, EMFILE, or EAGAIN, all interleaved with optimizer-related recompiles and configuration warnings, making single-cause diagnosis difficult.\n\nCausally, stale statistics drive the optimizer to over- or under-estimate work, which, under mis-set memory/parallelism parameters, inflates per-query resource requests (e.g., oversized hash tables, excessive parallel workers). These exaggerated requests push the database to the brink of configured limits; when the engine then asks the OS for large shared-memory extents, additional threads, or many file descriptors, it collides with tight kernel quotas. Each rejection by the OS triggers retries, plan invalidations, or emergency fallbacks that further skew workload timing and data distributions, which in turn exacerbate statistics staleness and prompt more aggressive (but still misguided) plan and parameter usage. The feedback loop among bad statistics, poor configuration, and OS denials amplifies contention, degrades throughput, and can precipitate partial or total service outages.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 1208,
+            "score": 0.4054003630370148,
+            "bm25_score": 40.86151471491352,
+            "lexical_score": 0.13729729729729728,
+            "matched_terms": [
+                "and",
+                "are",
+                "data",
+                "does",
+                "engine",
+                "file",
+                "for",
+                "log",
+                "match",
+                "not",
+                "or",
+                "storage",
+                "the",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "3642",
+                "error_name": "ER_TABLESPACE_ENGINE_MISMATCH",
+                "official_description": "Engine '%.192s' does not match stored engine '%.192s' for tablespace '%.192s'",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

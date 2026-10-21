@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Storage Space Capacity Anomaly + CPU Resource Anomaly",
+            "Description": "Storage Space Capacity Anomaly : Exhaustion of physical or logical free space for data, logs, or temporary areas, causing allocation failures and write stalls.\nCPU Resource Anomaly : Saturation of host CPU cycles by database processes, driving high run-queue waits and global latency.\n\nComposite phenomena: When space is running out while CPUs are already saturated, the database may exhibit a cascade of symptoms—DML, index builds, and temp-space operations first slow because the scheduler is starved, then fail outright with \"no space\" or \"cannot extend\" errors. Log writer, checkpoint, and archive processes contend for CPU at the same moment they are blocked on space, inflating commit latency and replica lag. Auto-extend attempts or space-reclaim jobs invoke additional background workers, spiking CPU even higher. From the client side the system appears intermittently hung, with query response times oscillating between CPU wait events and space-allocation errors, making the primary bottleneck hard to isolate.\n\nCausal chain and interaction: Space exhaustion forces the database to perform emergency tasks—auto-extension, space-reclamation, aggressive checkpointing, or archival moves—that themselves consume CPU. Conversely, heavy CPU saturation can delay or starve regular purge, compression, or backup jobs that would normally free space, allowing unused segments and logs to accumulate until the capacity threshold is hit. The two anomalies therefore reinforce each other: lack of CPU prevents space cleanup, while lack of space spawns more CPU-intensive exception handling, ultimately degrading throughput and raising the probability of a full outage.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.7463057825267128,
+            "bm25_score": 29.981097456090783,
+            "lexical_score": 0.15435260842237586,
+            "matched_terms": [
+                "and",
+                "because",
+                "blocked",
+                "from",
+                "is",
+                "more",
+                "of",
+                "or",
+                "other",
+                "out",
+                "query",
+                "resource",
+                "running",
+                "that",
+                "the",
+                "threshold",
+                "until",
+                "when",
+                "with"
+            ],
+            "match_count": 318,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

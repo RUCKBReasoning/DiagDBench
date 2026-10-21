@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Replication Synchronization Anomaly + CPU Resource Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same objects, forming blocking chains or deadlocks that stall commit progress and inflate lock-wait time.\nReplication Synchronization Anomaly : Standbys or downstream replicas are unable to receive or apply log records as fast as the primary generates them, causing growing log-position lag and retention of old log segments.\nCPU Resource Anomaly : Database processes consume nearly all available CPU cycles, driving run-queue growth and broad latency spikes across the workload.\n\nWhen all three root causes arise together the database exhibits a blended failure pattern: application sessions pile up in lock-wait queues while overall query and transaction latency lengthens; at the same time replica apply and replay lag widens sharply, with relay logs or retained WAL segments ballooning on both primary and replicas. Monitoring views show surging lock-wait counters, escalating CPU utilization on primary and replica nodes, frequent deadlock victim errors, and replication delay alerts all at once. Because commit completion is blocked, primary log generation becomes bursty—alternating between idle periods and spikes—while replicas, already CPU-bound, struggle to catch up, leading to stale read-only traffic, compromised failover objectives, and disk pressure from unrecycled logs.\n\nCausally, intense lock contention forces transactions to hold locks and keep their redo in the primary’s log for longer, inflating the volume of WAL that must eventually stream to replicas in a short time window. These bursts drive higher CPU demand for log shipping, decompression, and apply logic on both sides of the replication channel. Simultaneously, the CPU Resource Anomaly slows lock-manager arbitration and deadlock detection on the primary, prolonging blocking chains and further delaying commits. On replicas, CPU saturation throttles redo apply rates, which increases replication lag and prevents the primary from discarding old log segments, amplifying storage pressure and background housekeeping work that itself consumes more CPU. The feedback loop between lock-induced commit stalls, replication backlog, and compute exhaustion deepens end-to-end latency and threatens both transactional throughput and high-availability objectives.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 205,
+            "score": 0.1936284729990723,
+            "bm25_score": 11.30609557694084,
+            "lexical_score": 0.12942813765182185,
+            "matched_terms": [
+                "and",
+                "database",
+                "failure",
+                "in",
+                "is",
+                "logic",
+                "must",
+                "or",
+                "pressure",
+                "resource",
+                "the",
+                "to",
+                "together",
+                "with",
+                "workload"
+            ],
+            "match_count": 9,
+            "entry": {
+                "error_code": "57P04",
+                "error_name": "database_dropped",
+                "official_description": "database dropped",
+                "error_class": "Class 57 - Operator Intervention",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

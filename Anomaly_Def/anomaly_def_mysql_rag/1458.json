@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Buffer Cache and Latch Contention Anomaly + Replication Synchronization Anomaly",
+            "Description": "Optimizer Statistics Anomaly: Inaccurate, stale, or incomplete optimizer statistics cause systematic cardinality misestimates that mis-guide plan selection and operator choices.\nBuffer Cache and Latch Contention Anomaly: Excessive competition for hot buffer pages, latches, and I/O slots forces sessions to spin or wait, throttling throughput even when adequate memory exists overall.\nReplication Synchronization Anomaly: Downstream replicas cannot receive, write, or apply WAL/redo changes as fast as the primary generates them, producing widening log-position lag and blocking log recycling.\n\nWhen all three conditions occur together, the database exhibits a compound performance crisis: the primary produces sub-optimal, latch-heavy execution plans that hammer a small set of pages; these hot-page storms inflate buffer latch waits and CPU spin on the primary while simultaneously generating large, bursty transaction logs. The bloated and write-amplified redo stream overwhelms network or replica apply capacity, causing replication lag and retention of unsent or unapplied log segments. End-users observe erratic query latencies, periodic throughput collapses, and stale or unavailable read replicas; administrators see ballooning primary log storage, chronic buffer_busy/latch contention, and extreme estimated-vs-actual row count divergence in plan diagnostics.\n\nCausally, stale or missing statistics mislead the optimizer into choosing access paths—such as nested loops into hot index root pages or overly selective filters—that concentrate traffic on very few buffers. This localized I/O and latch pressure increases CPU spin and stretches commit times, enlarging individual transactions and the volume of redo emitted. The intensified log generation then widens replication lag; replicas that already struggle to replay suffer further because inefficient plans are re-executed during apply, compounding their CPU and I/O deficit. Conversely, replication delay prevents log recycling, lengthening checkpoint cycles and keeping more dirty pages in memory, which raises buffer flush pressure and prolongs latch hold times on the primary, completing a reinforcing negative feedback loop that degrades both primary and replica performance.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.5139032598536349,
+            "bm25_score": 18.010768908376455,
+            "lexical_score": 0.10854066985645933,
+            "matched_terms": [
+                "access",
+                "and",
+                "because",
+                "contention",
+                "execution",
+                "for",
+                "in",
+                "or",
+                "query",
+                "the",
+                "this",
+                "together",
+                "when"
+            ],
+            "match_count": 69,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

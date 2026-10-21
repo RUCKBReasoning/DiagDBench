@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + MVCC Version Maintenance Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently picks or re-uses an execution plan whose estimated cost is far lower than its real runtime cost, even though statistics are adequate.\nMVCC Version Maintenance Anomaly : Obsolete row versions and logically deleted index entries accumulate faster than background cleaners can reclaim them, inflating table and index size and adding visibility-check overhead.\nTransaction Log Subsystem Anomaly : Redo/commit log generation, flushing, or archival becomes the primary bottleneck, driving up commit latency and stalling write activity.\n\nComposite definition: The database simultaneously suffers from sub-optimal plan selection, runaway MVCC version buildup, and saturation of the transaction-log path. All three root causes are active at the same time, creating a compound performance and stability issue that spans the optimizer, storage engine, and durability layer.\n\nCombined phenomena: 1) Queries that once completed quickly now switch between table scans and poorly parameterized index paths, inflating row touch counts. 2) The excess row touches manifest as a surge of UPDATE/DELETE and vacuum traffic, causing the version store and on-disk heap to grow rapidly. 3) Checkpoints, log-flush waits, and archive-lag alerts appear alongside rising commit latency; long-running queries held open by bad plans keep old snapshots alive, preventing cleanup and forcing the log manager to retain older segments. 4) Planner misestimates grow worse because bloat skews statistics, leading to even heavier scans, more undo/redo generation, and longer transaction lifetimes, making it increasingly difficult to isolate any single symptom from the others.\n\nCausal chain: Sub-optimal plans amplify row accesses and modification volume, which explodes MVCC version creation. The inflated version store increases physical I/O and statistics drift, feeding back into even poorer plan choices. The heightened DML throughput and prolonged transactions generate large bursts of redo; simultaneously, the MVCC cleanup lag forces the log subsystem to retain old segments for snapshot visibility, pushing log buffers, disk groups, and archivers past capacity. Log-flush delays lengthen commit times, extending transaction lifespans, which further pins row versions and perpetuates the cycle. The intertwined feedback loops among the optimizer, MVCC cleaner, and log manager thus escalate latency, resource consumption, and risk of outage far beyond what any of the individual anomalies would cause in isolation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5671,
+            "score": 0.6853958961458695,
+            "bm25_score": 76.39144035788964,
+            "lexical_score": 0.13387374461979912,
+            "matched_terms": [
+                "all",
+                "and",
+                "as",
+                "back",
+                "check",
+                "for",
+                "is",
+                "log",
+                "more",
+                "or",
+                "primary",
+                "query",
+                "single",
+                "stability",
+                "switch",
+                "table",
+                "that",
+                "the",
+                "to",
+                "version",
+                "what"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013822",
+                "error_name": "ER_GRP_RPL_ERROR_SET_MULTI_CONSENSUS_LEADER",
+                "official_description": "Something went wrong trying to set all members as consensus leaders. Please query the performance_schema.replication_group_communication_information table to see whether the operation took effect, i.e. whether the consensus leaders match all members. If not, consider resetting the group communication protocol to a version < 8.0.22, or switch to single-primary mode and back again to multi-primary mode, to try again. Please check the error log and GCS_DEBUG_TRACE for more information that may help understanding what went wrong.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "connection_and_network",
+                "cause_analysis": "The failure is typically associated with connection establishment, authentication exchange, protocol correctness, network reachability, or client/server communication stability.",
+                "solution_guidance": "Check endpoint reachability, authentication flow, connection limits, protocol compatibility, transport stability, and client connection lifecycle management.",
+                "observable_symptoms": [
+                    "connection failure",
+                    "disconnect",
+                    "handshake failure",
+                    "unreachable session"
+                ]
+            }
+        }
+    }
+]

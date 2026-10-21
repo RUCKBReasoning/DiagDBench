@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Transaction Log Subsystem Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Database Memory Allocation Anomaly : Excessive or runaway allocation of buffer caches, work areas, plan caches, and other engine heaps pushes total database memory demand beyond the safe limits of the host.\nTransaction Log Subsystem Anomaly : The write-ahead logging path—generation, flushing, switching, or archiving of redo—becomes the primary bottleneck, inflating commit latency and stalling write activity.\nStorage I/O Throughput Anomaly : The physical volumes that service data, temp, and log files are saturated in IOPS, bandwidth, or latency, making device service time the limiting factor for I/O.\n\nWhen these three root causes strike simultaneously, the database exhibits a blended failure signature: memory pressure drives aggressive dirty-page eviction and larger, more frequent log flushes just as the log subsystem itself struggles to switch or archive segments on an already saturated storage layer. Observable effects include surging commit and checkpoint latency, oscillating buffer-cache hit ratios, prolonged foreground and background waits on log file sync, buffer IO, and direct path read/write events, escalating paging or swapping on the host, and periods of near-stall where sessions block behind log space or I/O completion while CPU remains under-utilized. Monitoring may show the database process’s resident set swelling, log and data volumes with deep device queues, archive destinations ballooning, and ultimately instance eviction or crash due to out-of-memory or inability to advance the redo pointer.\n\nCausally, excessive memory allocation shortens the usable in-memory write-back window, forcing the engine to flush dirty buffers and large log batches more aggressively. Those extra writes hit a transaction-log subsystem that is already size- or configuration-limited; the backlog there prolongs commit and checkpoint completion, causing yet more buffers to accumulate and further elevating memory pressure. Meanwhile, both the forced buffer flushes and the heavy redo traffic converge on an over-subscribed storage layer whose throughput ceiling amplifies every flush and sync delay. The three anomalies therefore form a positive feedback loop: memory over-consumption accelerates log pressure; log stalls extend buffer lifetimes and increase memory usage; both inflate I/O volume, which hammers the storage subsystem and propagates latency back up the stack, degrading overall database stability and performance.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2714,
+            "score": 0.40212349074421755,
+            "bm25_score": 40.15419068878017,
+            "lexical_score": 0.15779816513761466,
+            "matched_terms": [
+                "and",
+                "are",
+                "crash",
+                "data",
+                "engine",
+                "failure",
+                "file",
+                "is",
+                "latency",
+                "log",
+                "or",
+                "pressure",
+                "safe",
+                "storage",
+                "the",
+                "to",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010829",
+                "error_name": "ER_BINLOG_CANT_APPEND_LOG_TO_TMP_INDEX",
+                "official_description": "MYSQL_BIN_LOG::add_log_to_index failed to append log file name: %s, to crash safe index file.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

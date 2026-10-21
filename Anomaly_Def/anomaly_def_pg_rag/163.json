@@ -1,0 +1,63 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + MVCC Version Maintenance Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Transaction Lock Contention Anomaly: concurrent transactions block or deadlock each other while competing for incompatible locks on the same rows, pages, or metadata. \nMVCC Version Maintenance Anomaly: obsolete row versions and undo records accumulate faster than background cleaners can reclaim them, inflating on-disk/ in-memory version stores and slowing visibility checks. \nBuffer Cache and Latch Contention Anomaly: sessions stall on buffer-pool page pins, latches, or I/O slots when many workers hammer the same hot pages or when dirty-page flushes back up.\n\nComposite definition: The system simultaneously suffers from excessive lock conflicts, runaway MVCC version buildup, and intense buffer-pool/latch contention. Blocking and deadlocked transactions hold locks for long periods; their uncommitted updates leave large trails of undo/row versions that must be tracked in a crowded buffer cache whose pages are themselves hotly contested. \n\nCombined observable phenomena: 1) Steep increases in lock-wait time, deadlock victim errors, and cascading application retries; 2) Rapid growth of undo segments or version stores, falling live-row density, and autovacuum/cleaner processes perpetually active yet ineffective; 3) Surging buffer_busy, page_latch_x/sh waits, high CPU spin, and prolonged checkpoint or flush cycles; 4) Multiplicative slowdown where blocked or rolled-back transactions re-execute, further flooding the buffer cache and version store, while latch waits mask underlying lock wait statistics, making diagnosis harder.\n\nCausal reinforcement: Long-lived or repeatedly aborted transactions caused by lock contention delay the advancement of the MVCC vacuum horizon, preventing cleanup and letting obsolete versions balloon. The bloated relation size and heavier visibility map scans increase buffer-pool pressure, forcing frequent page replacements and dirty flushes that intensify latch contention. Conversely, latch and I/O stalls lengthen the time each transaction holds its locks, deepening blocking chains and raising deadlock probability. The swollen version store also forces additional page reads and writes, amplifying buffer contention. Together, these feedback loops degrade throughput, exhaust memory and I/O bandwidth, and can precipitate systemic thrashing or emergency shutdown due to space exhaustion or wraparound risk.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.7553953488372093,
+            "bm25_score": 41.75272267491082,
+            "lexical_score": 0.18465116279069765,
+            "matched_terms": [
+                "aborted",
+                "active",
+                "and",
+                "blocking",
+                "cleanup",
+                "delay",
+                "for",
+                "from",
+                "incompatible",
+                "lock",
+                "locks",
+                "long",
+                "metadata",
+                "of",
+                "or",
+                "preventing",
+                "sessions",
+                "than",
+                "that",
+                "the",
+                "time",
+                "transaction",
+                "transactions",
+                "vacuum",
+                "when",
+                "while"
+            ],
+            "match_count": 172,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

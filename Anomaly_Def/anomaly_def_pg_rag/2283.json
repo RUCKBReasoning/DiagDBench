@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Optimizer Statistics Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Schema and Index Design Anomaly : Physical data model and indexing choices do not align with workload access patterns, forcing otherwise well-written queries into inherently inefficient access paths.\nOptimizer Statistics Anomaly : The optimizer relies on stale, missing, or biased statistics, causing systematic cardinality errors that mislead plan generation.\nStorage I/O Throughput Anomaly : The underlying storage layer cannot sustain the read/write demands placed on it, leading to persistent I/O saturation and elevated latency.\n\nWhen these three root causes coexist, the database exhibits a compounded symptom set: queries that already use sub-optimal access paths (full scans, non-covering index probes, excessive lookups) are paired with plans produced from wildly inaccurate row-count estimates, often selecting even more I/O-intensive strategies such as hash joins, broad parallel scans, or redundant bitmap probes. The resulting flood of random and large-volume I/O pushes the storage subsystem beyond its throughput and IOPS limits, driving queue depths high, inflating wait events (buffer reads, write-log flushes, temp-spill I/O), and creating long tail latencies perceived by both OLTP and analytical sessions. Performance becomes highly unstable: small data changes or plan recompiles can swing execution times from seconds to minutes, batch windows overrun, while foreground transactions experience intermittent stalls despite moderate CPU utilization.\n\nCausally, a poor physical design forms the groundwork for heavy data movement; stale or missing statistics then misinform the optimizer, selecting plans that magnify the design inefficiencies; the amplified physical I/O finally collides with a saturated storage layer, turning what would have been tolerable inefficiency into a critical bottleneck. The feedback loop intensifies: slow I/O lengthens maintenance windows, delaying statistics refreshes; delayed refreshes perpetuate bad plans; prolonged write activity aggravates storage saturation. Together, these factors reinforce each other, degrading overall throughput, increasing lock durations, and eroding service-level objectives far more severely than any single anomaly alone.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.7421619047619047,
+            "bm25_score": 30.00743967761443,
+            "lexical_score": 0.14053968253968252,
+            "matched_terms": [
+                "and",
+                "any",
+                "cannot",
+                "database",
+                "for",
+                "index",
+                "lock",
+                "of",
+                "or",
+                "other",
+                "row",
+                "schema",
+                "sessions",
+                "than",
+                "that",
+                "the",
+                "to",
+                "when",
+                "while"
+            ],
+            "match_count": 274,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

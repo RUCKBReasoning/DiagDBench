@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Concurrent sessions serialize on hot buffer-cache pages, latches, or page pins, stalling while they wait for access to shared in-memory blocks.\nStorage Space Capacity Anomaly : The database runs out of free physical or logical space for data files, logs, or temp areas, leading to allocation failures and write stoppages.\n\nWhen these two root causes strike at the same time, the system exhibits a hybrid failure pattern: extreme buffer-busy and page-latch waits coexist with space-related allocation, extend, and redo/archive stalls. Checkpoints, background writers, and user processes spin or block on latches while dirty pages accumulate, yet they cannot be flushed because data files, temp segments, or log destinations have no room to grow. Symptoms include skyrocketing latch wait time, CPU spin without progress, repeated \"no space left\" or \"cannot extend\" errors, log switch holdups that freeze commits, and abrupt latency spikes on all I/O paths. Monitoring may show the buffer pool nearly full of dirty or pinned pages, IO throughput plummeting despite high device activity, and free-space gauges dropping to zero.\n\nCausal chain: space exhaustion throttles or outright blocks background flushes and log writes, forcing dirty pages to remain in the buffer longer; those pages stay latched, amplifying buffer contention for every session that needs them. Simultaneously, the prolonged latch holds slow transaction throughput, so log segments remain active and cannot be recycled, accelerating space depletion in both data and log areas. Failed auto-extension attempts further increase latch hold times as processes repeatedly retry buffer flushes and metadata updates. The two anomalies therefore reinforce each other: space shortages prevent relieving buffer pressure, while buffer contention slows down the very maintenance actions (flush, archive, cleanup) required to free space, driving the database into a self-sustaining spiral of stalls and eventual service outage.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.36689202662282827,
+            "bm25_score": 15.804054152474722,
+            "lexical_score": 0.12734192037470726,
+            "matched_terms": [
+                "access",
+                "and",
+                "be",
+                "because",
+                "contention",
+                "for",
+                "or",
+                "other",
+                "pattern",
+                "runs",
+                "session",
+                "the",
+                "time",
+                "when",
+                "with"
+            ],
+            "match_count": 23,
+            "entry": {
+                "timeout_id": "mysql84_regular_expression_time_limit",
+                "parameter_name": "regexp_time_limit",
+                "timeout_category": "expression_evaluation_time_limit",
+                "scope": "global/session",
+                "official_definition": "The time limit for regular expression matching operations performed by the regular expression engine.",
+                "trigger_condition": "A regular expression match operation exceeds regexp_time_limit.",
+                "workload_impact": "The regular expression operation is constrained by the configured time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

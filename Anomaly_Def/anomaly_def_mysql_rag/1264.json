@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Transaction Log Subsystem Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Excessive accumulation of obsolete row versions, undo/rollback records, and stale index entries outpaces background cleanup, inflating data structures and extending visibility-check work.\nTransaction Log Subsystem Anomaly : The write-ahead logging path—generation, flush, switch, or archival—becomes the primary bottleneck, stretching commit latency and stalling further DML until log space or I/O bandwidth is freed.\nNetwork and Connectivity Resource Anomaly : Client/server transport, listener, or socket resources saturate or flap, delaying connection establishment and slowing or interrupting result streaming.\n\nWhen all three root causes strike concurrently, the database exhibits a compound pathology: 1) commits and statement completions slow first at the server (log-flush and version-chain scanning waits) and then at the client (network send/receive stalls); 2) transaction throughput collapses while session counts, half-open sockets, version-store bytes, and unarchived log segments all climb in tandem; 3) planner estimates drift because of table bloat, causing long-running scans that emit large result sets which further congest the network, amplifying front-end timeouts and retry storms; 4) monitoring shows cleanup workers, log writer, and archiver pegged, yet disk devices may appear only moderately busy because pauses are dominated by dependency back-pressure rather than raw I/O saturation.\n\nCausally, heavy update/delete activity produces a flood of redo records that must be flushed, growing the transaction log. Log flush slowdowns delay commit completion, stretching transaction lifetimes and preventing MVCC cleanup from advancing its snapshot horizon; this in turn accelerates version bloat, generating still more redo and further enlarging the log. Meanwhile, the increasing payload of bloated table scans and prolonged transactions expand result sets and keep backend processes open longer, consuming connection slots and network buffers. Network congestion or socket exhaustion feeds back by raising commit acknowledgment and client-ack wait times, which lengthens transactions even more, giving rollback segments additional time to swell. The intertwined feedback loops among version buildup, log saturation, and network pressure cause a reinforcing spiral that degrades overall OLTP performance and complicates diagnosis because symptoms from one layer mask or exacerbate those in the others.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 861,
+            "score": 0.5223394319994383,
+            "bm25_score": 53.97129648424921,
+            "lexical_score": 0.14212988442487617,
+            "matched_terms": [
+                "and",
+                "check",
+                "client",
+                "connection",
+                "delete",
+                "establishment",
+                "is",
+                "network",
+                "only",
+                "or",
+                "server",
+                "session",
+                "the",
+                "transport",
+                "update"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "3012",
+                "error_name": "ER_EXPLAIN_NOT_SUPPORTED",
+                "official_description": "EXPLAIN FOR CONNECTION command is supported only for SELECT/UPDATE/INSERT/DELETE/REPLACE",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "connection_and_network",
+                "cause_analysis": "The failure is typically associated with connection establishment, authentication exchange, protocol correctness, network reachability, or client/server communication stability.",
+                "solution_guidance": "Check endpoint reachability, authentication flow, connection limits, protocol compatibility, transport stability, and client connection lifecycle management.",
+                "observable_symptoms": [
+                    "connection failure",
+                    "disconnect",
+                    "handshake failure",
+                    "unreachable session"
+                ]
+            }
+        }
+    }
+]

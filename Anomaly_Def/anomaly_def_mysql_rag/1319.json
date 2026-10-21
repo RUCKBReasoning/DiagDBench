@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Transaction Log Subsystem Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Transaction Lock Contention Anomaly: Concurrent transactions contend for mutually incompatible locks on the same rows, pages, or metadata, leading to wait chains or deadlocks that stall forward progress.\nTransaction Log Subsystem Anomaly: The write-ahead logging pipeline (log buffer, log file, archiver, replication retention) cannot keep pace with redo generation, inflating commit latency and pausing writers.\nData Block and Index Integrity Anomaly: On-disk pages or index structures are physically or logically corrupt, so look-ups, scans, or modifications encounter checksum, linkage, or key-order violations.\n\nWhen these three root causes strike at once, the database experiences a multilayered slowdown and instability: lock wait times and deadlock victim errors rise while commits stall on log flushes, stretching the duration that locks are held and enlarging blocking trees. Corrupted pages or indexes trigger automatic verification retries, forced page rereads, or error-driven transaction rollbacks, further prolonging lock holds and generating bursts of redo that exacerbate log-flush congestion. Applications observe erratic response times, timeouts, and repeated failures; monitoring shows simultaneous spikes in lock waits, log-related waits, deadlock detections, and corruption or checksum error reports. Performance tuning in one layer appears ineffective because pressure simply resurfaces in another, masking the true intertwined nature of the outage.\n\nCausally, page or index corruption can provoke long-running consistency checks, table scans, or error-handling rollbacks that hold locks far longer than usual, amplifying lock contention. These extended transactions in turn generate excessive undo/redo as they are retried or rolled back, driving up log volume and stressing the log subsystem. Conversely, a saturated log device delays commit processing, lengthening the period that locks remain acquired and increasing the likelihood of deadlock cycles. Prolonged recovery or repeated crash restarts initiated by corruption can also intensify log traffic and re-acquire locks, while log backlog may postpone the writing of page images needed to repair corruption. The feedback loop among corrupted structures, lock retention, and log flush bottlenecks deepens the outage and complicates diagnosis, as symptoms from each layer propagate and obscure the original triggers.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.73156495830407,
+            "bm25_score": 39.61625327857169,
+            "lexical_score": 0.16196732471068753,
+            "matched_terms": [
+                "acquire",
+                "and",
+                "another",
+                "because",
+                "blocking",
+                "cannot",
+                "for",
+                "in",
+                "incompatible",
+                "lock",
+                "locks",
+                "longer",
+                "metadata",
+                "or",
+                "than",
+                "the",
+                "to",
+                "transaction",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 63,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

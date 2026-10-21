@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Transaction Log Subsystem Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Database Memory Allocation Anomaly: Excessive or poorly controlled growth of buffer caches, plan caches, work areas, and other engine heaps pushes total resident and swap usage beyond the safe limits of the host. \nTransaction Log Subsystem Anomaly: The generation, flushing, or archival of write-ahead log (WAL) records becomes the principal bottleneck on the write path, inflating commit latency and stalling writers. \nOperating System Resource Limit Anomaly: Kernel-enforced ceilings on file descriptors, shared-memory segments, semaphores, threads, or cgroup quotas are reached before database-level limits, preventing the engine from allocating additional OS objects that it needs to progress. \n\nWhen these three root causes co-exist, the database exhibits compound symptoms: rapidly growing process RSS, paging spikes, and NUMA or cgroup memory throttling coincide with surging log-flush waits and commit stalls. Archiver or replication lag amplifies, while the engine emits errors for exhausted file handles, shared-memory, or thread creation failures. Checkpoint storms and forced log switches appear alongside sudden process terminations or node reboots triggered by out-of-memory killers. Administrators may observe that despite sufficient raw I/O bandwidth, write performance collapses unpredictably, and new sessions, background workers, or parallel executions intermittently fail to start even though workload pressure persists. \n\nCausally, aggressive memory allocation fills buffer and work caches until the OS starts paging and tightening kernel limits; this heightens CPU queuing and elongates the path to persist log buffers, directly aggravating the Transaction Log Subsystem Anomaly. In turn, elevated commit latency encourages session buildup and longer retention of in-memory state, forcing the engine to request more memory, file descriptors, log segments, and IPC objects, which pushes it harder against OS limits. Once kernel caps are hit, log writers and archivers cannot open new files or allocate additional shared memory, freezing log progression and blocking all transactional work. The feedback loop between memory pressure, stalled log flushing, and OS resource exhaustion accelerates degradation, driving the database into cascading stalls, partial outages, or full instance failure.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.6620259570308772,
+            "bm25_score": 21.46192360437573,
+            "lexical_score": 0.13654697491392032,
+            "matched_terms": [
+                "and",
+                "before",
+                "lag",
+                "longer",
+                "or",
+                "out",
+                "preventing",
+                "progress",
+                "replication",
+                "stalled",
+                "the",
+                "this",
+                "to",
+                "triggered",
+                "waits",
+                "when"
+            ],
+            "match_count": 30,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

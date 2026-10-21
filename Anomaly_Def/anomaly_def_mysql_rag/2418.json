@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Storage Space Capacity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Critical engine-level settings (memory pools, checkpoint cadence, log sizing, worker counts, etc.) are mis-tuned for the hardware, workload, or version, creating artificial pressure on internal resources.\nStorage Space Capacity Anomaly : Physical or logical free space for data, logs, temp, or backup areas is exhausted, triggering allocation failures and blocking growth-related operations.\nOperating System Resource Limit Anomaly : Kernel-enforced ceilings on file handles, shared memory, semaphores, threads, or cgroup quotas are reached, preventing the database from creating or accessing required OS objects.\n\nWhen all three root causes strike simultaneously, the system exhibits compound symptoms: rapid log-file growth from aggressive checkpointing collides with insufficient disk space, producing log-write stalls, checkpoint storms, and frozen commit processing. Concurrently, the engine’s attempts to auto-extend files, spawn extra background or parallel workers, or allocate additional shared memory are denied by the OS, surfacing as \"cannot allocate file descriptor / shared memory / thread\" errors in both database and system logs. Sessions may hang in log-related waits while CPU usage oscillates between idle gaps (due to write throttling) and spin loops (from failed worker creation). Maintenance tasks meant to reclaim space or clean orphaned resources cannot launch, causing temp-space bloat and runaway diagnostic logs that further consume the dwindling disk. Overall, the workload experiences cascading slowdowns, sporadic transaction failures, and eventual instance-wide freeze or crash recovery cycles.\n\nCausally, mis-set configuration parameters often increase churn: undersized redo logs force frequent checkpoints; small work-memory settings inflate temp spill volume; overly high connection or parallelism caps multiply file and semaphore consumption. These behaviors accelerate space consumption and inflate the count of kernel objects, pushing the system toward its storage and OS-limit ceilings sooner than normal. Once disk fills, the database cannot archive or recycle logs, prolonging checkpoints and inflating the number of open file handles; simultaneous OS denials of new handles or shared memory prevent the engine from adapting (e.g., creating new log segments or spawning cleanup workers). Each anomaly thus amplifies the others: configuration mis-tuning drives resource churn, space exhaustion blocks I/O progress, and OS limit saturation starves the engine of critical handles and memory, jointly intensifying contention, stalling recovery mechanisms, and precipitating full service outages.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.7354222867814899,
+            "bm25_score": 25.752028565944116,
+            "lexical_score": 0.11807428927163312,
+            "matched_terms": [
+                "and",
+                "by",
+                "contention",
+                "engine",
+                "for",
+                "is",
+                "limit",
+                "operations",
+                "or",
+                "resource",
+                "the",
+                "when",
+                "with",
+                "work",
+                "workload"
+            ],
+            "match_count": 114,
+            "entry": {
+                "timeout_id": "mysql84_regular_expression_time_limit",
+                "parameter_name": "regexp_time_limit",
+                "timeout_category": "expression_evaluation_time_limit",
+                "scope": "global/session",
+                "official_definition": "The time limit for regular expression matching operations performed by the regular expression engine.",
+                "trigger_condition": "A regular expression match operation exceeds regexp_time_limit.",
+                "workload_impact": "The regular expression operation is constrained by the configured time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

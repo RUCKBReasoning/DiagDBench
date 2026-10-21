@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + MVCC Version Maintenance Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Optimizer Statistics Anomaly: Stale, incomplete, or low-quality statistics cause the optimizer to misestimate cardinalities and choose inefficient execution plans.\nMVCC Version Maintenance Anomaly: Dead rows and old row versions accumulate because background cleaners cannot keep pace, inflating table and index size and adding visibility-check work.\nStorage Space Capacity Anomaly: Data, log, or temporary areas run short of free space, leading to allocation failures, auto-extend stalls, or write errors.\n\nWhen all three root causes appear together, the system exhibits a blend of misestimated plans, rapidly growing on-disk structures, and mounting space-exhaustion warnings. Execution plans may swing from index probes to full scans against bloated tables, spilling large hash or sort operations into already constrained temp space. Vacuum/cleanup workers run continuously yet fall further behind, and their own I/O or temp needs trigger \"no space left\" errors that abort or defer maintenance. Catalog views show diverging row-count estimates from reality, while tablespaces, WAL/archive areas, and temp segments fill at an accelerating rate. Clients experience erratic response times, sudden query cancellations, and eventually write-path outages when log or data files cannot extend.\n\nCausally, MVCC bloat is the first amplifier: as dead tuples pile up, both the physical footprint and the statistical distortion of the tables increase. The larger footprint hastens storage saturation, while the distorted statistics misguide the optimizer into scan-heavy or spill-prone plans that generate even more temp files and WAL, further consuming space. Once free space dwindles, ANALYZE jobs and autovacuum struggle to allocate the scratch or WAL space they need, so statistics grow even staler and bloat removal slows further. This positive feedback loop—stale stats → bad plans → more I/O and bloat → less free space → hindered cleanup/analysis—swiftly degrades performance and pushes the database toward a full-stop space exhaustion event.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 4985,
+            "score": 0.5361929477130747,
+            "bm25_score": 56.56464890254274,
+            "lexical_score": 0.13890756302521007,
+            "matched_terms": [
+                "and",
+                "capacity",
+                "check",
+                "data",
+                "disk",
+                "failures",
+                "full",
+                "is",
+                "less",
+                "log",
+                "or",
+                "so",
+                "space",
+                "storage",
+                "the",
+                "to",
+                "when",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013102",
+                "error_name": "ER_BINLOG_ROW_VALUE_OPTION_USED_ONLY_FOR_AFTER_IMAGES",
+                "official_description": "When %.192s, the option binlog_row_value_options=%.192s will be used only for the after-image. Full values will be written in the before-image, so the saving in disk space due to binlog_row_value_options is limited to less than 50%%.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

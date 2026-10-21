@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Sessions serialize on hot buffer-cache pages, latches, or page-pin structures, causing CPU spin and stalled logical I/O rather than exhausting memory capacity.\nTransaction Log Subsystem Anomaly : The write-ahead log generation, flushing, or archiving path becomes the bottleneck, inflating commit latency and stalling write traffic.\n\nWhen both root causes strike concurrently, the database exhibits a mixed symptom set: 1) surging buffer-busy, page-latch, log-flush, and log-sync waits appearing together in wait-event views; 2) commits that intermittently freeze while foreground processes simultaneously spin on latches; 3) sharp throughput drops with CPU usage oscillating between idle (waiting for log flush) and 100 % spin (contending for latches); 4) checkpoint and archive storms that evict hot pages, forcing even more latch acquisitions; and 5) dramatic latency spikes concentrated on hot index roots or monotonically growing tables whose insert activity pours redo into an already saturated log.\n\nCausal chain: intense latch contention on hot pages heightens the volume and burstiness of redo records (each latched modification adds log entries), which in turn overloads the log subsystem; delayed log flushes prolong transaction commit times, keeping row-level and page-level latches held longer than usual and feeding back into buffer-cache contention. Frequent checkpoints triggered by log-file pressure churn the buffer pool, creating new hot pages and further latch clashes. Conversely, slow log archiving can extend checkpoints, keeping dirty pages pinned and limiting buffer recycling, thereby concentrating access on a shrinking set of resident pages. The two bottlenecks therefore reinforce each other in a positive feedback loop that magnifies latency, reduces concurrency, and risks complete write-path stalls.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.3218304246160925,
+            "bm25_score": 12.421246489344638,
+            "lexical_score": 0.12525901065226908,
+            "matched_terms": [
+                "activity",
+                "an",
+                "and",
+                "by",
+                "for",
+                "idle",
+                "latency",
+                "of",
+                "on",
+                "or",
+                "sessions",
+                "that",
+                "the",
+                "triggered",
+                "when",
+                "which"
+            ],
+            "match_count": 169,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_interval",
+                "parameter_name": "tcp_keepalives_interval",
+                "timeout_category": "network_keepalive_retry_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time after which a TCP keepalive message that has not been acknowledged by the client should be retransmitted.",
+                "trigger_condition": "A TCP keepalive probe is not acknowledged for tcp_keepalives_interval on systems supporting TCP_KEEPINTVL or an equivalent socket option.",
+                "workload_impact": "Controls retry timing for keepalive probes used to detect unresponsive client connections.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

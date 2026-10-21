@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Data Block and Index Integrity Anomaly + CPU Resource Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions compete for mutually incompatible locks, producing long blocking chains or deadlocks that stall forward progress.\nData Block and Index Integrity Anomaly : On-disk pages or index structures are physically or logically corrupted, so read or write operations encounter checksum, linkage, or key-order errors.\nCPU Resource Anomaly : Database processes consume nearly all available CPU cycles, leaving little headroom for other sessions or background tasks.\n\nWhen these three root causes coincide, the system exhibits a multi-layer crisis: 1) sessions accumulate in lock wait queues and deadlock detectors fire; 2) queries that finally obtain a lock may fail with corruption or page-verification errors, triggering repeated retries and rollbacks; 3) the surge of retries, deadlock detection sweeps, and corruption checks drives sustained CPU saturation. Observable symptoms therefore span long transaction latency, victim-abort errors, corruption messages in logs, spikes in lock-wait and CPU wait events, runaway run-queue length at the OS level, and rapidly shrinking throughput despite high thread activity.\n\nCausal chain: corrupted pages or mis-linked index nodes can force the optimizer or storage engine to abandon efficient index probes and fall back to broader scans or page-level recovery logic, greatly extending the time each transaction holds locks. Prolonged lock tenure intensifies blocking, deadlocks, and exponential retry storms. Every retry, deadlock cycle, or corruption re-read translates into additional CPU work—deadlock detection graph walks, lock hash-table manipulation, checksum recalculations, and error-handling logic—that further consumes CPU. CPU saturation in turn slows lock acquisition and flush pacing, lengthening critical sections and making it even harder for waiting transactions to progress, while the persisting corruption continually re-injects failures. The three anomalies therefore reinforce one another to create a self-amplifying degradation that can cripple an OLTP system until corruption is repaired, contention relieved, or compute resources expanded.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5621,
+            "score": 0.29469435560826673,
+            "bm25_score": 39.992810226362295,
+            "lexical_score": 0.14600136705399863,
+            "matched_terms": [
+                "and",
+                "are",
+                "data",
+                "disk",
+                "engine",
+                "error",
+                "failures",
+                "for",
+                "is",
+                "key",
+                "latency",
+                "or",
+                "re",
+                "storage",
+                "that",
+                "the",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013769",
+                "error_name": "ER_IB_MSG_REENCRYPTED_GENERAL_TABLESPACE_KEY",
+                "official_description": "Tablespace key for %s has been re-encrypted using the latest InnoDB master key. However, we recommend that you reencrypt the tablespace for better security.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

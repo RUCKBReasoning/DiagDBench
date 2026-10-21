@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Replication Synchronization Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Obsolete row versions, rollback records, and dead index entries accumulate faster than background cleanup can reclaim them, inflating the heap and version store.\nReplication Synchronization Anomaly : Standbys or downstream consumers cannot receive, persist, or apply transaction-log records at the rate the primary generates them, leading to widening replication lag and retention of extra log segments.\n\nWhen both root causes are active, the system shows a compound pattern: dead‐row ratios, table and index sizes, and version-store length rise sharply while, at the same time, replica-side receive/flush/replay positions drift further behind the primary. Autovacuum or equivalent cleaners remain busy yet ineffective because replication-held snapshots prevent pruning; primary log-segment archives grow because neither cleanup nor replica acknowledgment frees them. Application sessions may see slower reads due to bloated pages, delayed failover readiness, and inconsistent read staleness on replicas. Monitoring views report simultaneously high \"dead tuples\" and escalating \"replication lag\", with disk pressure mounting on both primary (unrecycled WAL) and replicas (backlog of unapplied redo).\n\nCausally, replication lag lengthens the global xmin or equivalent transaction-age horizon, freezing the visibility of old row versions and blocking their removal. The stalled cleanup enlarges the heap and forces the primary to emit more full-page images and update records, which in turn amplifies WAL volume and further overloads the already lagging replicas. The positive feedback loop—replica lag preventing cleanup, and unchecked version churn inflating WAL traffic—creates a self-reinforcing degradation that can exhaust storage, throttle throughput, and endanger recovery objectives.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.546838705410669,
+            "bm25_score": 18.529556200528898,
+            "lexical_score": 0.1307506053268765,
+            "matched_terms": [
+                "and",
+                "are",
+                "global",
+                "more",
+                "of",
+                "or",
+                "read",
+                "replica",
+                "replication",
+                "sessions",
+                "than",
+                "the",
+                "time",
+                "to",
+                "when"
+            ],
+            "match_count": 105,
+            "entry": {
+                "timeout_id": "mysql84_replica_network_timeout",
+                "parameter_name": "replica_net_timeout",
+                "timeout_category": "replication_network_timeout",
+                "scope": "global/replication",
+                "official_definition": "The number of seconds to wait for more data from a source/replica connection before aborting the read.",
+                "trigger_condition": "A replica waits longer than replica_net_timeout for more data from the source connection.",
+                "workload_impact": "The replication network read is aborted and the replica considers the connection interrupted.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

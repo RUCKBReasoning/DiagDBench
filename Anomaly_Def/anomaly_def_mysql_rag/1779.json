@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Transaction Log Subsystem Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Composite Definition: The database is concurrently affected by (1) sub-optimal or erroneous application SQL and transaction design, (2) saturation or mis-configuration of the write-ahead logging path, and (3) latent corruption or structural inconsistency inside persistent data and index pages. Together they create a multi-layer fault that spans the workload, the log write pipeline, and the on-disk structures themselves.\n\nCombined Observable Phenomena: End-user operations and background jobs show extreme and highly variable latency; some sessions wait on log flush or sync events while others hang on full-table or full-index scans that return incorrect or duplicated rows. Slow-query and deadlock logs grow rapidly, intermixed with engine messages about log switch storms, archive backlog, page-checksum failures, and forced plan fallbacks from indexed probes to sequential scans. Commit times spike, replication lags, checkpoints lengthen, and recovery/consistency verification utilities intermittently detect corruption, prompting automatic page repairs or instance restarts. The overlapping symptoms obscure clear attribution because each layer (application, log, storage) both masks and amplifies the others.\n\nCausal Interaction: Inefficient SQL patterns (wide scans, large batch INSERT/UPDATE, long-lived transactions) generate excessive redo, driving the transaction-log subsystem to its throughput limits. Log buffer pressure and prolonged flush cycles extend transaction lifetimes, increasing lock hold times and exposure windows for any latent data-block flaws. Simultaneously, existing page or index corruptions force the optimizer to abandon efficient access paths, inflating I/O and redo volume further and triggering still more log activity. Log bottlenecks delay checkpoints and recovery, which in turn defer detection and repair of structural corruptions, allowing them to propagate. The feedback loop between heavy, poorly scoped workload operations, stressed log infrastructure, and damaged on-disk structures culminates in cascading slowdowns, elevated risk of transaction timeouts or rollbacks, and potential data loss on crash recovery.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.6008212258705105,
+            "bm25_score": 23.612082850492065,
+            "lexical_score": 0.1231651376146789,
+            "matched_terms": [
+                "access",
+                "and",
+                "because",
+                "by",
+                "for",
+                "in",
+                "is",
+                "long",
+                "or",
+                "path",
+                "query",
+                "the",
+                "together",
+                "with",
+                "workload"
+            ],
+            "match_count": 85,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

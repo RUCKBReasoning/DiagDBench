@@ -1,0 +1,71 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Transaction Lock Contention Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Schema and Index Design Anomaly : Static mismatch between the physical data model (table layout, indexes, partitions, data types, constraints) and the workload’s access patterns, forcing inefficient access paths regardless of optimizer or statistics quality.\nTransaction Lock Contention Anomaly : Excessive or conflicting lock acquisition by concurrent transactions, producing long blocking chains or deadlocks that stall or abort OLTP statements.\nOperating System Resource Limit Anomaly : Exhaustion of kernel-enforced resources (file descriptors, shared memory, semaphores, threads, etc.) that prevents the database from opening additional objects or spawning workers even though in-engine capacity remains.\n\nWhen all three root causes coexist, the system shows a blended symptom set:  \n• Queries that should be selective devolve into full scans, inflating the number and duration of row/page locks they hold.  \n• Lock-wait time, deadlock frequency, and transaction retries climb sharply; application sessions pile up in connection pools or remain idle in transaction.  \n• As blocking lengthens, background processes and new sessions attempt to open more files, allocate shared buffers, or spawn additional lock-manager and I/O workers, quickly reaching OS limits.  \n• The engine begins emitting \"cannot open file/too many open files\", \"cannot create thread\", or \"out of shared memory\" errors, compounding the perceived outage.  \n• Performance troubleshooting is complicated because lock-wait views, execution-plan analysis, and operating-system logs all surface critical alerts simultaneously, making it hard to isolate any single culprit.\n\nCausal interaction: Poor schema and indexing enlarge the footprint and duration of each statement, increasing the volume and granularity of locks requested. The swollen lock set exacerbates contention among concurrent transactions, producing longer blocker chains and more deadlocks. Prolonged blocking encourages session buildup and retries, which inflate the number of active connections, held locks, open file handles, and background helper threads. This surge in kernel object usage pushes the database toward operating-system resource limits; once those limits are reached, the engine cannot create additional locks, files, or worker threads, further stalling lock acquisition and query execution. In turn, transactions hold locks even longer while waiting for scarce OS resources, reinforcing the lock contention and creating a feedback loop that degrades overall throughput and can precipitate a partial or full service outage.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.7705465587044534,
+            "bm25_score": 51.1620333248239,
+            "lexical_score": 0.23515519568151147,
+            "matched_terms": [
+                "active",
+                "and",
+                "any",
+                "because",
+                "blocking",
+                "cannot",
+                "conflicting",
+                "for",
+                "from",
+                "idle",
+                "is",
+                "lock",
+                "locks",
+                "long",
+                "longer",
+                "of",
+                "open",
+                "or",
+                "prevents",
+                "query",
+                "remains",
+                "schema",
+                "session",
+                "sessions",
+                "statement",
+                "that",
+                "the",
+                "this",
+                "time",
+                "transaction",
+                "transactions",
+                "waiting",
+                "when",
+                "while"
+            ],
+            "match_count": 325,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

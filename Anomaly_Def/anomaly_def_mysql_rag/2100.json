@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Storage Space Capacity Anomaly + CPU Resource Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly: Commit-path bottleneck where log generation, flush, switch, or archival throughput cannot keep pace with redo production.\nStorage Space Capacity Anomaly: Exhaustion of physical or logical free space for data, log, archive, temp, or backup areas, resulting in allocation failures rather than pure latency issues.\nCPU Resource Anomaly: Saturation of host CPUs by database processes, leaving insufficient compute headroom for normal engine and operating-system tasks.\n\nCombined phenomena: • Commit latency, LOG_FLUSH/LOG_SYNC waits, and checkpoint storms rise sharply while host CPU utilization remains pegged. • The log writer and archiver compete for scarce CPU, causing redo files to pile up and quickly consume remaining log and archive space. • Free-space alarms, auto-extend failures, and \"device full\" errors appear almost simultaneously with escalating run-queue depth and context-switch rates. • As space disappears, new log segments cannot be created or archived, forcing the database to stall user transactions; meanwhile foreground sessions spin or retry, amplifying CPU pressure. • Diagnostic logs show interleaved messages about log switch hangs, space allocation failures, and CPU-scheduler waits, making root-cause isolation difficult.\n\nCausal chain: High CPU demand—often from inefficient or highly concurrent transactional workloads—starves the log writer and archiver, slowing flush and copy operations. The slowdown prolongs the occupancy time of each log segment; un-archived segments accumulate and rapidly consume the finite log and archive destinations, triggering a storage-capacity crisis. Once space is exhausted, the archiver can no longer off-load segments, which in turn blocks further log switches and forces the log writer to stall commits—feeding back into longer foreground waits that keep database sessions active and consuming even more CPU. Thus, CPU saturation, log-subsystem contention, and space exhaustion reinforce one another, driving the database into a cascading performance and availability degradation characteristic of this composite anomaly.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5734,
+            "score": 0.4749612241851101,
+            "bm25_score": 39.882666213836856,
+            "lexical_score": 0.16010101010101008,
+            "matched_terms": [
+                "and",
+                "by",
+                "capacity",
+                "created",
+                "data",
+                "engine",
+                "failures",
+                "files",
+                "is",
+                "latency",
+                "log",
+                "or",
+                "pressure",
+                "redo",
+                "storage",
+                "the",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013891",
+                "error_name": "ER_IB_MSG_LOG_FILES_CREATED_BY_UNKNOWN_CREATOR",
+                "official_description": "Redo log files created by unknown creator %s.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

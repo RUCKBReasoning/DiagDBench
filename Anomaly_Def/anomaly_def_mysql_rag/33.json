@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Buffer Cache and Latch Contention Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Database Memory Allocation Anomaly : Engine and background components consume more physical memory and swap than the host can safely provide, causing OS-level memory pressure and database OOM or eviction events.\nBuffer Cache and Latch Contention Anomaly : Sessions serialize on hot buffer pages, latches, or I/O slots, leading to excessive buffer-busy waits, CPU spin, and stalled page access.\nNetwork and Connectivity Resource Anomaly : Client-to-server transport, listener, socket, or connection-pool resources saturate, producing slow or failed connects and prolonged client I/O waits.\n\nWhen these three root causes strike simultaneously, the database shows a convoluted mix of symptoms: resident-set size and swap continually rise while CPU usage swings between spin waits on buffer latches and idle time caused by blocked or disconnected clients. Wait-event dashboards light up with alternating memory-pressure stalls, buffer latch waits, and client read/write or connection establishment waits. Checkpoint and dirty-page flush latency grows because hot pages linger in memory under contention, further bloating memory with dirty buffers. Meanwhile, clients experience erratic query latencies, intermittent \"too many connections\" or timeout errors, and retransmissions on the network as over-subscribed back-ends struggle to send or receive data that must first be fetched from an overcommitted, latch-contended buffer pool.\n\nCausal chain: memory over-allocation inflates each backend’s footprint and shrinks effective buffer cache, forcing heavier churn and making individual pages hotter; this magnifies latch contention and CPU spin. The prolonged execution times that result keep sessions and their sockets open longer, which raises connection counts and floods listener backlogs, pushing the system toward the network/connectivity limit. Conversely, slow or reset network links leave server backends blocked in client I/O, holding buffer pins and memory allocations alive, which further tightens memory pressure and extends latch hold times. The reinforcing loop among memory exhaustion, buffer-level serialization, and stalled network endpoints amplifies resource starvation across all tiers, threatening systemic throughput collapse and potential node eviction or crash.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3098,
+            "score": 0.6199681558996761,
+            "bm25_score": 68.25384926050366,
+            "lexical_score": 0.15138224348750662,
+            "matched_terms": [
+                "allocation",
+                "and",
+                "buffer",
+                "client",
+                "engine",
+                "event",
+                "events",
+                "hold",
+                "latency",
+                "memory",
+                "of",
+                "or",
+                "pressure",
+                "the",
+                "to",
+                "too",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-011214",
+                "error_name": "ER_AUDIT_LOG_JSON_READER_BUF_TOO_SMALL",
+                "official_description": "Buffer is too small to hold JSON event. Number of events skipped: %zu.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "memory_and_buffer",
+                "cause_analysis": "The failure is typically associated with insufficient memory headroom, buffer pressure, oversized intermediate state, or memory-allocation constraints inside the engine or client library.",
+                "solution_guidance": "Check memory availability, per-session memory settings, large sorts or hashes, and whether workload concurrency is amplifying memory consumption.",
+                "observable_symptoms": [
+                    "memory pressure",
+                    "allocation failure",
+                    "spill",
+                    "unstable latency"
+                ]
+            }
+        }
+    }
+]

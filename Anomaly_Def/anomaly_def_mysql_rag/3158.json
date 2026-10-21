@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Transaction Lock Contention Anomaly + Database Memory Allocation Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Row-count and data-distribution statistics are stale, absent, or incomplete, causing the optimizer to misestimate cardinalities and choose sub-optimal access paths and join orders.\nTransaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same resources, leading to long blocking chains or deadlocks that stall or abort user work.\nDatabase Memory Allocation Anomaly : The database engine allocates more working memory than the host can safely supply, triggering paging, OOM events, and cache-turnover stalls.\n\nWhen all three root causes strike together, the system exhibits a mixed pattern of symptoms: queries generate poor plans that scan far more rows than expected, inflating their lock footprint and holding locks for longer; the resulting lock queues lengthen response-time tails, while sessions that are blocked still retain work buffers, plan cache entries, and pinned pages, accelerating memory growth. Under continued pressure, the host begins swapping, which in turn extends lock-hold durations and widens the gap between estimated and actual execution times. Administrators may observe exploding waits on both locks and memory pressure, frequent deadlock reports interleaved with out-of-memory terminations, erratic query throughput, and plan re-compilations that repeatedly pick inefficient paths because statistics remain stale.\n\nCausal interaction: stale or missing statistics push the optimizer toward full scans, broad range scans, or unordered join strategies, greatly increasing the number of rows touched and thus the number and duration of locks acquired. The enlarged lock footprint heightens the probability of contention and deadlocks in a highly concurrent OLTP workload. While sessions wait, they keep their allocated work buffers, pinned cache pages, and partially filled hash/sort areas, inflating overall memory consumption. Rising memory pressure forces the OS to page or the engine to trim caches, prolonging I/O latency, which further lengthens transaction execution and lock holding periods—a positive feedback loop that reinforces both lock contention and memory exhaustion. Because blocking prevents timely data changes from committing, statistics refresh jobs may be delayed, perpetuating the optimizer-statistics inaccuracy and deepening the cycle.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.7495348837209301,
+            "bm25_score": 34.54346317397886,
+            "lexical_score": 0.16511627906976745,
+            "matched_terms": [
+                "access",
+                "and",
+                "be",
+                "because",
+                "blocked",
+                "contention",
+                "execution",
+                "for",
+                "in",
+                "long",
+                "or",
+                "pattern",
+                "query",
+                "the",
+                "time",
+                "together",
+                "when",
+                "with",
+                "work",
+                "workload"
+            ],
+            "match_count": 148,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

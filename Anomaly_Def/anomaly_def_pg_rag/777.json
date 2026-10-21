@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Database Memory Allocation Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level SQL or transaction design forces the engine to read, join, sort, or hold more data and locks than business logic actually requires.\nDatabase Memory Allocation Anomaly : Database components (buffer/plan caches, work areas, parallel worker buffers, etc.) grow beyond the safe physical-memory envelope, driving paging or OOM events.\nOperating System Resource Limit Anomaly : Kernel-enforced ceilings on file handles, shared memory, threads, address space, or cgroup quotas are reached, blocking further allocations by the database process.\n\nWhen these three conditions coincide, the workload’s chatty or scan-heavy statements inflate per-query work buffers and keep transactions open, quickly consuming buffer cache and work memory. The swollen memory footprint pushes the host into sustained pressure, provoking paging, swap storms, or kernel OOM killers while simultaneously exhausting kernel objects such as SHM segments, semaphores, or thread slots. End-user symptoms include extreme and erratic statement latencies, bursts of slow-query log entries, session creation failures, aborted parallel workers, sporadic \"cannot allocate memory / file descriptor\" errors, and possible database or node restarts. Performance metrics may show oscillating cache hit ratios, climbing resident-set size, kernel message-log complaints, and a backlog of long-running, partially completed transactions.\n\nCausally, inefficient SQL amplifies memory demand by inflating work areas (sorts, hashes, large result sets) and prolonging transaction lifetimes; this accelerates buffer-pool growth and plan-cache bloat, triggering the Database Memory Allocation Anomaly. As the engine competes for scarce RAM, it requests additional pages, shared memory, and threads, which collide with fixed operating-system limits. Hitting these limits feeds back into the workload: failed thread or memory allocations force retries, which keep transactions open even longer, further swelling memory consumption. The resulting loop of poor SQL logic → memory overcommit → kernel limit exhaustion causes a cascading degradation that is harder to diagnose because symptoms surface alternately at the SQL layer (slow queries), the database engine (memory pressure warnings), and the OS (resource-exhaustion errors).",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 218,
+            "score": 0.20030943341740381,
+            "bm25_score": 12.426423897634216,
+            "lexical_score": 0.13869914996964175,
+            "matched_terms": [
+                "and",
+                "by",
+                "data",
+                "descriptor",
+                "engine",
+                "is",
+                "level",
+                "logic",
+                "or",
+                "pressure",
+                "resource",
+                "sql",
+                "statement",
+                "the",
+                "to",
+                "with",
+                "workload"
+            ],
+            "match_count": 10,
+            "entry": {
+                "error_code": "HV021",
+                "error_name": "fdw_inconsistent_descriptor_information",
+                "official_description": "fdw inconsistent descriptor information",
+                "error_class": "Class HV - Foreign Data Wrapper Error (SQL/MED)",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

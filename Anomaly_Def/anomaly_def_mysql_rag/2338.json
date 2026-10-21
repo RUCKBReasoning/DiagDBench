@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Transaction Log Subsystem Anomaly + CPU Resource Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions compete for mutually incompatible locks, causing blocking chains or deadlocks in the lock-manager layer.\nTransaction Log Subsystem Anomaly : Commit processing is throttled by slow redo generation, flushing, or archiving in the write-ahead log subsystem.\nCPU Resource Anomaly : Database processes saturate host CPU capacity, leaving too few cycles for other work.\n\nWhen all three root causes occur together the database experiences a compounded slowdown: commits are delayed by log-flush waits, so transactions hold locks longer, creating larger blocker–waiter trees and more frequent deadlocks. The enlarged lock queues in turn inflate session counts, context switches, and deadlock detection scans, which further consume CPU. Overall, users observe escalating commit latency, growing lock-wait and log-sync wait events, spikes in CPU run-queue length, widespread statement slow-downs, connection-pool exhaustion, and flurries of deadlock-victim or lock-timeout errors.\n\nCausally, a saturated transaction-log path extends the duration of every commit, lengthening the time locks are held and sharply raising the probability of lock contention. The ensuing blocking and deadlock resolution workload drives additional CPU demand (lock-manager bookkeeping, deadlock graph construction, rollback processing). This extra CPU load competes with the log writer and archiver threads, slowing log flushes even more and creating a feedback loop that amplifies both the log bottleneck and lock contention. The mutually reinforcing pressures can push the system into a state where throughput collapses and recovery actions (forced rollbacks, failovers, or manual session kills) become necessary.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.7601764705882352,
+            "bm25_score": 28.381638827681467,
+            "lexical_score": 0.20058823529411762,
+            "matched_terms": [
+                "and",
+                "by",
+                "contention",
+                "for",
+                "in",
+                "is",
+                "or",
+                "other",
+                "path",
+                "resource",
+                "session",
+                "statement",
+                "the",
+                "this",
+                "time",
+                "timeout",
+                "together",
+                "too",
+                "when",
+                "with",
+                "work",
+                "workload"
+            ],
+            "match_count": 110,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,46 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Transaction Log Subsystem Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Schema and Index Design Anomaly: Static mismatch between physical data model (tables, indexes, partitions, data types, constraints) and the workload’s access patterns forces inefficient access paths regardless of optimizer choices.\nTransaction Log Subsystem Anomaly: Bottleneck in generation, flushing, archiving, or retention of write-ahead log records that inflates commit latency and can stall write traffic even when general I/O bandwidth is adequate.\nData Block and Index Integrity Anomaly: Physical corruption or logical inconsistency inside on-disk pages or index structures causes missing/duplicate rows, checksum failures, and unpredictable plan changes.\n\nWhen these three root causes coincide, the system exhibits an intertwined failure pattern:  • Queries already slowed by missing or non-covering indexes degrade further because every extra random lookup or full scan produces a surge of row modifications to non-optimal indexes, inflating redo volume and saturating the transaction-log writer. • Commit latency spikes and frequent log-flush waits coexist with erratic query runtimes, unexpected full scans, and mismatched row counts. • Integrity-check utilities or background scrubbers may detect page or index corruption, and their repair activity generates additional redo, compounding log congestion. • Repeated plan fallbacks (due to corrupt indexes) increase data-page reads and undo lookups, stressing I/O channels shared with the log, while stalled commits hold locks longer, magnifying concurrency waits and user-visible timeouts.\n\nCausal chain: Poor schema and indexing force heavier I/O and larger redo generation per transaction; the swollen write-ahead log stream overwhelms inadequately sized or placed log files, causing log-flush bottlenecks. Prolonged log flush times lengthen recovery windows and extend lock hold times, heightening the probability of crashes or forced shutdowns. Any abrupt stop or incomplete recovery, in turn, raises the risk of data-block or index corruption. Conversely, pre-existing subtle corruptions invalidate indexes, driving the optimizer toward full scans and further amplifying redo volume, which stresses the log subsystem even more. The feedback loop between design inefficiencies, log saturation, and structural corruption accelerates performance collapse and data-integrity degradation, making isolation of the individual root causes difficult and requiring coordinated remediation across schema redesign, log-subsystem tuning, and physical repair.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 50,
+            "score": 0.18581646009913005,
+            "bm25_score": 10.030288161715138,
+            "lexical_score": 0.10654613935969867,
+            "matched_terms": [
+                "and",
+                "by",
+                "data",
+                "failure",
+                "general",
+                "in",
+                "is",
+                "mismatch",
+                "or",
+                "the",
+                "to",
+                "with",
+                "workload"
+            ],
+            "match_count": 9,
+            "entry": {
+                "error_code": "2200G",
+                "error_name": "most_specific_type_mismatch",
+                "official_description": "most specific type mismatch",
+                "error_class": "Class 22 - Data Exception",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

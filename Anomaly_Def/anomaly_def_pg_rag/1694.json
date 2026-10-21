@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions compete for mutually incompatible locks on the same rows, pages, ranges, or metadata, leading to prolonged waiting queues or deadlocks handled by the lock manager.\nData Block and Index Integrity Anomaly : Physical corruption or logical inconsistency inside on-disk data pages or index structures causes the storage engine to mistrust or misinterpret persisted records.\n\nWhen both root causes are active, the system exhibits a blended symptom set: long-running or repeatedly aborted transactions block others while corruption-triggered retries, error handling, or forced full-table scans further extend lock-holding times. Administrators may observe expanding lock wait graphs intertwined with sessions reporting page-checksum failures, index-key order violations, or sudden fallbacks to table scans. Throughput collapses as connection pools saturate, deadlock victim rollbacks become frequent, integrity check errors appear in logs, and application layers face a mixture of lock-wait timeouts and data-corruption exceptions that are difficult to attribute to a single source.\n\nCausally, latent page or index corruption can provoke excessive lock usage—e.g., the optimizer switches from index seeks to large table scans, escalating lock granularity from row to page/table and lengthening hold times. Corruption may also force automatic repair or consistency-check tasks that acquire restrictive metadata locks, stalling user transactions. Conversely, transactions caught in lock chains tend to hold pages dirty for longer, increasing recovery windows and the chance that a crash or I/O glitch leaves pages partially written, thus seeding further corruption. The interaction therefore forms a feedback loop where corruption inflates lock contention and lock contention, in turn, heightens exposure to additional integrity faults, jointly degrading availability and performance.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.3112715614996287,
+            "bm25_score": 14.428207558333373,
+            "lexical_score": 0.1669003051043127,
+            "matched_terms": [
+                "and",
+                "are",
+                "check",
+                "connection",
+                "for",
+                "handling",
+                "holding",
+                "inside",
+                "longer",
+                "of",
+                "or",
+                "pools",
+                "sessions",
+                "that",
+                "the",
+                "transaction",
+                "triggered",
+                "user",
+                "when",
+                "with"
+            ],
+            "match_count": 244,
+            "entry": {
+                "timeout_id": "pg16_idle_session_timeout",
+                "parameter_name": "idle_session_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle, but not within an open transaction, for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle and not inside an open transaction longer than the configured threshold.",
+                "workload_impact": "The session is terminated; the documentation warns about using this with connection pools or middleware.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

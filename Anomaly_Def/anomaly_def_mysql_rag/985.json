@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Replication Synchronization Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Composite Definition: The database simultaneously suffers from (1) stale or missing optimizer statistics that drive systematic cardinality misestimates, (2) replication channels that cannot receive or apply the primary’s change stream in real time, and (3) on-disk data or index corruption that compromises physical page and key integrity. Together these three independent root causes create a multi-layer failure in which the optimizer, the replication pipeline, and the storage layer are all impaired at once.\n\nCombined Observable Phenomena: Queries on the primary may flip unpredictably between long-running full-table scans and erroneous index probes, showing extreme plan regressions and wildly inaccurate row-count estimates. These inefficient plans inflate I/O, CPU, and transaction-log generation, which in turn floods the replication queue; standbys display rapidly widening replay lag, swollen relay / retained log segments, and intermittent apply errors or pauses. Corrupted pages or index structures can surface first on replicas during redo-apply, manifesting as replication-side checksum failures, apply-phase panics, or forced replica restarts, while the primary reports page-verification warnings and begins discarding corrupted indexes, triggering further plan shifts and emergency full scans. Application symptoms range from time-outs and stale read results on replicas to inconsistent row counts or silent data errors on the primary.\n\nCausal Interaction: Stale or incomplete statistics mislead the optimizer into choosing plans that generate excessive I/O and large batched modifications, expanding the volume and burstiness of redo traffic. The inflated and irregular log stream overstresses an already bandwidth- or CPU-constrained replica set, deepening replication lag and increasing the window during which un-recycled log segments must be retained. Simultaneously, latent data or index corruption causes additional I/O retries and error handling on the primary and may corrupt log records that must be shipped. When these damaged blocks reach the replica, apply failures force repeated retries or pauses, compounding lag. The stalled or broken replication prevents off-host integrity checks and hampers failover options, while the corruption itself can block automatic statistics refreshes, perpetuating the optimizer’s misinformation. Thus each anomaly feeds the others: bad statistics create heavy workloads, heavy workloads overload replication, and corruption both triggers and is masked by the other two issues, driving the system into a spiraling degradation of performance, consistency, and availability.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3484,
+            "score": 0.5047266061015336,
+            "bm25_score": 58.1233047772562,
+            "lexical_score": 0.16996047430830039,
+            "matched_terms": [
+                "and",
+                "apply",
+                "be",
+                "between",
+                "cannot",
+                "error",
+                "errors",
+                "failure",
+                "is",
+                "lag",
+                "log",
+                "on",
+                "or",
+                "replica",
+                "replication",
+                "stale",
+                "the",
+                "to",
+                "transaction",
+                "while"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-011600",
+                "error_name": "ER_GRP_RPL_CANNOT_EXECUTE_TRANS_IN_ERROR_STATE",
+                "official_description": "Transaction cannot be executed while Group Replication is on ERROR state. Check for errors and restart the plugin",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

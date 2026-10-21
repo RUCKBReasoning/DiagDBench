@@ -1,0 +1,47 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Transaction Log Subsystem Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Database Configuration Parameter Anomaly: Engine-level settings (memory, checkpoint cadence, log sizing, parallelism, etc.) are mis-tuned relative to hardware capacity, workload intensity, or version defaults.\nTransaction Log Subsystem Anomaly: The write-ahead logging pipeline—log buffer, files, flush/switch/archive processes—cannot keep pace with redo generation, stalling commits and checkpoints.\nOperating System Resource Limit Anomaly: Kernel-enforced ceilings on file handles, shared memory, threads, or I/O contexts throttle database processes independently of the engine’s internal resource governance.\n\nWhen these three issues strike concurrently, symptoms overlap and amplify: commit latency and log-flush waits spike even though storage and CPU appear under-utilized; checkpoints and log-file switches occur in erratic bursts, sometimes failing with \"unable to open file\" or shared-memory allocation errors; background writers, archivers, and replication senders fall behind, causing bloated log directories and prolonged recovery point objectives; new sessions or parallel workers intermittently fail to start, and the engine may enter a partial hang where active transactions linger in commit wait while resource-starved background tasks cannot progress. Performance counters show low device saturation but high wait times on log and kernel primitives, confusing first-level diagnostics.\n\nCausally, mis-sized configuration parameters (e.g., too small log buffer, aggressive checkpoint_timeout, excessive max_connections) inflate the churn on the transaction log. The surge in file creation, flush, and archive activity collides with operating-system limits on file descriptors, asynchronous I/O contexts, and shared memory, causing kernel denials that further slow or block log operations. Each blocked flush extends transaction hold times, boosting in-memory log pressure and triggering even more checkpoints, which in turn amplifies I/O and resource requests to the OS. This feedback loop escalates until both the logging subsystem and the kernel resource pools are saturated, yielding a compounded performance and availability degradation characteristic of this composite anomaly.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 246,
+            "score": 0.20090104904089823,
+            "bm25_score": 12.207692256953154,
+            "lexical_score": 0.12752397067117877,
+            "matched_terms": [
+                "and",
+                "but",
+                "configuration",
+                "engine",
+                "in",
+                "internal",
+                "level",
+                "or",
+                "pressure",
+                "resource",
+                "the",
+                "to",
+                "with",
+                "workload"
+            ],
+            "match_count": 10,
+            "entry": {
+                "error_code": "XX000",
+                "error_name": "internal_error",
+                "official_description": "internal error",
+                "error_class": "Class XX - Internal Error",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

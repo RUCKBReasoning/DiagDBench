@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Transaction Lock Contention Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level statements or transaction boundaries are written in a way that forces the engine to scan or modify far more data and to keep transactions open longer than business logic requires.\nTransaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same resources, producing long blocking chains or deadlocks that stall progress until a lock is granted or a victim is rolled back.\nStorage I/O Throughput Anomaly : The physical storage layer cannot supply the read/write bandwidth or IOPS demanded by the workload, causing rising device-level latency and queue depths.\n\nWhen all three anomalies strike together, the database shows a multilayered slowdown: slow-query logs fill with the same heavyweight statements, while lock-monitoring views reveal growing blocker–waiter trees and frequent deadlock reports. Commit latency and 99th-percentile response times soar; sessions pile up in both lock-wait and I/O-wait states; CPU utilization stays modest even as overall throughput collapses. Checkpoints, log flushes, and temp-space spills linger on disk, replica or backup lag widens, and connection pools exhaust, triggering application timeouts and retries that further inflate concurrency.\n\nThe causal chain begins with inefficient SQL that touches large row sets and performs wide updates, multiplying the volume of physical I/O. The saturated storage subsystem answers with elevated latency, lengthening statement execution and therefore the lifetime of every lock those statements hold. Extended lock hold times make it far more likely that other transactions will collide on the same rows or ranges, deepening lock queues and spawning deadlocks. Each rollback or retry triggered by lock contention restarts the expensive I/O-heavy statements, injecting still more traffic into an already bandwidth-limited storage fabric. This positive feedback loop binds workload inefficiency, I/O saturation, and lock contention into a single compound failure mode that can freeze an OLTP system.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.4065802979210163,
+            "bm25_score": 23.101838803781693,
+            "lexical_score": 0.17880036630036628,
+            "matched_terms": [
+                "and",
+                "are",
+                "connection",
+                "data",
+                "is",
+                "latency",
+                "longer",
+                "more",
+                "of",
+                "or",
+                "pools",
+                "progress",
+                "read",
+                "replica",
+                "sessions",
+                "than",
+                "the",
+                "this",
+                "to",
+                "triggered",
+                "wait",
+                "when"
+            ],
+            "match_count": 74,
+            "entry": {
+                "timeout_id": "mysql84_replica_network_timeout",
+                "parameter_name": "replica_net_timeout",
+                "timeout_category": "replication_network_timeout",
+                "scope": "global/replication",
+                "official_definition": "The number of seconds to wait for more data from a source/replica connection before aborting the read.",
+                "trigger_condition": "A replica waits longer than replica_net_timeout for more data from the source connection.",
+                "workload_impact": "The replication network read is aborted and the replica considers the connection interrupted.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

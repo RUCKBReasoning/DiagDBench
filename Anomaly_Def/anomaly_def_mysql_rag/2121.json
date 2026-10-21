@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Database Configuration Parameter Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persists or selects markedly sub-optimal execution plans even though statistics are accurate, causing excessive I/O, CPU, or row explosion.\nDatabase Configuration Parameter Anomaly : Instance-level settings for memory, parallelism, checkpoints, and worker pools are mis-aligned with hardware capacity or workload demands, so the engine behaves inefficiently even though physical resources are not exhausted.\nTransaction Log Subsystem Anomaly : The write-ahead log path—buffer, flush, file rotation, or archiving—cannot sustain the redo rate, making commits stall and triggering log-related wait events.\n\nWhen all three root causes co-exist, the workload exhibits a compound failure signature: 1) sudden plan flips to full table scans or fat hash joins inflate row touches and redo volume; 2) mis-sized shared buffers and per-session work memory force extra page reads, bloated sort/Hash spills, and more frequent checkpoints; 3) log-flush and log-write waits skyrocket, driving up commit latency, which in turn elongates lock holding times and dampens throughput; 4) CPU and I/O utilization appear paradoxically low or skewed—cores spin on latch contention while storage idles between bursty checkpoint or log-switch storms; 5) performance degradation often starts immediately after an upgrade or parameter change that invalidates cached plans and simultaneously alters memory or checkpoint defaults, making the symptoms hard to attribute to a single layer.\n\nCausally, a poor plan (1) multiplies data-modification and redo generation, pushing the transaction-log subsystem toward saturation. In parallel, sub-optimal configuration parameters (2)—for example, an undersized log buffer, aggressive checkpoint timeout, or insufficient shared pool—reduce the margin for absorbing the extra redo and amplify log flush frequency. The overloaded log path (3) then feeds back into the optimizer and configuration layers: high commit latency delays statistics refreshes and prolongs locks, which can further skew plan selection and provoke more ad-hoc compilations, while emergency checkpoints invalidate additional plans and consume memory that is already mis-configured. The intertwined feedback loops between wrong plans, ill-tuned parameters, and a choking log path produce a runaway degradation that is more severe than any single anomaly alone.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 198,
+            "score": 0.4158062350469239,
+            "bm25_score": 40.58496599772789,
+            "lexical_score": 0.1690897597977244,
+            "matched_terms": [
+                "and",
+                "are",
+                "capacity",
+                "change",
+                "configured",
+                "data",
+                "engine",
+                "failure",
+                "file",
+                "in",
+                "is",
+                "latency",
+                "log",
+                "not",
+                "or",
+                "storage",
+                "the",
+                "to",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "1200",
+                "error_name": "ER_BAD_REPLICA",
+                "official_description": "The server is not configured as replica; fix in config file or with CHANGE REPLICATION SOURCE TO",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

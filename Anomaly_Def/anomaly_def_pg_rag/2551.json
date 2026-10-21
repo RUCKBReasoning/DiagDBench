@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + CPU Resource Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Optimizer input metadata is stale, incomplete, or otherwise inaccurate, causing systematic cardinality misestimates and sub-optimal plan selection.\nCPU Resource Anomaly : Database processes consume an abnormally high and sustained share of CPU, saturating the host’s compute capacity.\n\nComposite definition: This anomaly represents the concurrent presence of stale or missing optimizer statistics that generate inefficient execution plans while, at the same time, the database host is already CPU-saturated. The workload therefore runs under both poor plan quality and a hard compute bottleneck.\n\nCombined observable phenomena: 1) Execution plans show large row-count estimate errors alongside wide or deeply nested loop joins, excessive hash-table builds, or serial plans that spill to disk; 2) Average and p-99 query latencies increase sharply, with CPU-related wait events (e.g., RUN_QUEUE, SCHEDULER_YIELD) dominating the wait profile; 3) Host metrics reveal load averages well above core count and high context-switch rates; 4) Automatic statistics refresh, recompile, or adaptive plan mechanisms may struggle to complete on time because the CPU is already saturated; 5) Performance spikes appear immediately after large data loads or partition swaps, and the entire workload—not just the affected queries—slows down due to contention for cores.\n\nCausal chain and interaction: Stale statistics mislead the optimizer into choosing CPU-intensive plans—such as full table scans, overly parallel plans, or repeated function evaluations—that inflate CPU demand. The inflated demand pushes the system into CPU saturation, which in turn prolongs query runtimes and keeps sessions active longer, further delaying automatic statistics maintenance tasks that could have corrected the estimates. The feedback loop amplifies both problems: bad statistics create high CPU pressure; high CPU pressure prevents timely statistics refresh and plan re-optimization, leading to progressive degradation of overall database performance.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.7437816832376417,
+            "bm25_score": 26.35667964457684,
+            "lexical_score": 0.1459389441254726,
+            "matched_terms": [
+                "and",
+                "because",
+                "contention",
+                "context",
+                "execution",
+                "is",
+                "longer",
+                "of",
+                "or",
+                "quality",
+                "query",
+                "resource",
+                "runs",
+                "that",
+                "the",
+                "this",
+                "time",
+                "with",
+                "workload"
+            ],
+            "match_count": 287,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

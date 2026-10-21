@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Database Configuration Parameter Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Transaction Lock Contention Anomaly: Simultaneous requests for incompatible locks create long blocker-waiter chains or deadlocks in the lock-manager layer, stalling transactional progress.\nDatabase Configuration Parameter Anomaly: Mis-tuned engine settings (memory, parallelism, checkpoint, commit, etc.) mis‐align system behavior with hardware and workload characteristics, introducing artificial bottlenecks.\nTransaction Log Subsystem Anomaly: The write-ahead log’s buffering, flushing, or archiving path becomes saturated, lengthening commit latency and stalling write traffic.\n\nWhen all three anomalies coexist, the database experiences a feedback loop of delay and congestion: mis-sized log buffers, aggressive synchronous-commit or checkpoint settings, or undersized log files throttle log throughput; each commit pause keeps locks held longer, amplifying lock queues and deadlock frequency. Growing blocking chains in turn prolong the lifespan of open transactions, preventing log truncation and pushing log files to switch or archive more often, which further taxes the already constrained log subsystem. Operators observe a mosaic of symptoms—skyrocketing lock-wait and log-flush wait events, surging deadlock alerts, dramatic drops in transaction throughput, sudden checkpoint storms, expanding log directories, and application timeouts—even though CPU and storage may appear only moderately utilized.\n\nCausally, unfortunate parameter choices (e.g., minimal log buffer, tight max log file size, over-aggressive checkpoint intervals, or enforced synchronous durability) first slow down log flushes. The resulting commit latency extends the duration for which transactions retain locks, seeding blocker chains. As locks pile up, some transactions remain active for so long that checkpoints cannot advance and reused log space is withheld, intensifying log file pressure and triggering more frequent flushes and switches. Each subsystem therefore exacerbates the others: configuration mis-tuning throttles the log path; log stalls lengthen lock hold times; expanded lock contention further blocks log-space–releasing commits, ultimately spiraling into system-wide throughput collapse and repeated deadlock victimizations.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5676,
+            "score": 0.4372943733188178,
+            "bm25_score": 44.47834869004596,
+            "lexical_score": 0.16251269035532995,
+            "matched_terms": [
+                "and",
+                "configuration",
+                "durability",
+                "engine",
+                "file",
+                "files",
+                "for",
+                "is",
+                "latency",
+                "log",
+                "only",
+                "open",
+                "or",
+                "pressure",
+                "storage",
+                "the",
+                "to",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013830",
+                "error_name": "ER_IB_MSG_TRYING_TO_OPEN_FILE_FOR_LONG_TIME",
+                "official_description": "Trying to open a file for %lld seconds. Configuration only allows for %zu open files. Consider setting innobase_open_files higher.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

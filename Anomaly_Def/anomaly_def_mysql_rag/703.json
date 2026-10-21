@@ -1,0 +1,60 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + CPU Resource Anomaly",
+            "Description": "Transaction Lock Contention Anomaly: Concurrent transactions block or deadlock on mutually incompatible locks, forcing sessions to wait or be aborted by the lock manager.\nCPU Resource Anomaly: Database processes consume an abnormally high share of CPU, driving the host to sustained compute saturation.\n\nComposite definition: This anomaly denotes a workload state in which severe lock blocking/deadlocks and host-level CPU saturation arise at the same time, each rooted in its own layer yet jointly degrading throughput and latency.\n\nCombined observable phenomena: Lock-wait queues, deadlock reports, and victim rollbacks appear together with OS run-queue inflation, near-100 % CPU utilization, and pervasive scheduler wait events. Queries and transactions stall both on locks and on CPU scheduling, causing erratic response times, sharp drops in TPS, rapid growth of connection-pool backlogs, and surges of application-side timeouts or retried statements. Deadlock victims and retry loops can inflate statement counts, while blocked sessions hold locks longer, inflating both wait chains and CPU consumption once they resume, making the overall performance picture noisy and harder to diagnose.\n\nCausal chain and interaction: Heavy lock contention lengthens transaction lifetimes; the sessions that finally obtain locks often perform their work in CPU-starved conditions, extending lock hold times and propagating blocking to more sessions. Simultaneously, deadlock victim retries, spin-loops, and repeated lock acquisition attempts add extra CPU load, feeding the saturation. The saturated CPU, in turn, slows lock-manager bookkeeping, prolongs detection of deadlocks, and delays the execution and commit phases that would release locks, thereby intensifying contention. This positive feedback loop between prolonged locking and depleted CPU cycles amplifies both anomalies, accelerating performance collapse unless one of the root causes is relieved.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.7571341119613371,
+            "bm25_score": 43.044075676128855,
+            "lexical_score": 0.19044703987112366,
+            "matched_terms": [
+                "aborted",
+                "acquisition",
+                "an",
+                "and",
+                "attempts",
+                "blocking",
+                "in",
+                "incompatible",
+                "is",
+                "lock",
+                "locks",
+                "longer",
+                "obtain",
+                "or",
+                "retry",
+                "scheduling",
+                "sessions",
+                "statement",
+                "the",
+                "this",
+                "to",
+                "transaction",
+                "while"
+            ],
+            "match_count": 34,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

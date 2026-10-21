@@ -1,0 +1,44 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Transaction Log Subsystem Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Sessions serialize on hot buffer pages, latches, or pin structures because the buffer manager cannot grant concurrent access fast enough.\nTransaction Log Subsystem Anomaly : The write-ahead log becomes the bottleneck for commit processing, log flushing, or archiving, stalling foreground writes.\nData Block and Index Integrity Anomaly : On-disk data or index pages have become physically or logically corrupt, breaking key ordering, page links, or checksums.\n\nWhen these three root causes strike together, the system shows an entangled symptom set: extreme and erratic commit latency, bursts of CPU spin on page latches, log-flush and buffer-busy wait events appearing side by side, and query results intermittently missing or duplicating rows as corrupted index pages are visited under high latch pressure. Frequent checkpoint storms and forced log switches lengthen the time buffers are held dirty, magnifying latch hold times. Integrity check utilities may hang or block behind the same latch and log waits, and recovery or failover attempts can stall because the damaged pages sit in dirty buffers that cannot be flushed while the log device is saturated.\n\nCausal chain: heavy write traffic first overdrives the log subsystem, stretching commit and checkpoint intervals. Extended checkpoints keep more dirty pages in memory, inflating buffer-pool turnover and intensifying latch contention on the hottest pages. Prolonged contention means pages stay pinned longer, so any latent corruption on popular data or index blocks surfaces more often and under higher concurrency, triggering retry loops, error logging, or full table scans that further inflate redo volume. The extra redo amplifies log saturation, while corrupted pages that cannot be flushed cleanly force additional I/O retries and keep buffers in a permanently dirty state, feeding back into both latch contention and log backlog. The three anomalies therefore reinforce one another, driving a vicious cycle of rising latency, shrinking throughput, and escalating data-integrity risk.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2214,
+            "score": 0.3917746111172653,
+            "bm25_score": 37.92274560229724,
+            "lexical_score": 0.09570724841660802,
+            "matched_terms": [
+                "access",
+                "and",
+                "can",
+                "error",
+                "grant",
+                "is",
+                "or",
+                "subsystem",
+                "the",
+                "time"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010327",
+                "error_name": "ER_AUTHCACHE_CANT_INIT_GRANT_SUBSYSTEM",
+                "official_description": "Fatal: can't initialize grant subsystem - '%s'",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "authentication_and_authorization",
+                "cause_analysis": "The failure is typically associated with user identity, privilege scope, object access checks, or credential validation at session establishment or statement execution time.",
+                "solution_guidance": "Verify account credentials, privilege grants, object ownership, role settings, and whether the execution context has sufficient access rights.",
+                "observable_symptoms": [
+                    "access denied",
+                    "authentication failure",
+                    "permission error"
+                ]
+            }
+        }
+    }
+]

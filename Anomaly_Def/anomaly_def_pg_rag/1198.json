@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Data Block and Index Integrity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Composite definition: The database concurrently suffers from on-disk data/index corruption and from host-level resource exhaustion, so that logical storage structures are damaged while the engine is also prevented from obtaining the kernel objects (file descriptors, shared-memory segments, threads, etc.) it needs to detect, isolate, or repair the corruption.\n\nData Block and Index Integrity Anomaly: Physical pages or index structures have become internally inconsistent, breaking key order, page links, checksums, or heap–index mappings and causing wrong, lost, or duplicated rows.\nOperating System Resource Limit Anomaly: Kernel-enforced ceilings on file handles, shared memory, semaphores, threads, or related objects are hit, denying the database process further allocations and impairing normal operation.\n\nCombined observable phenomena:  • Queries intermittently fail or return wrong result counts due to corrupted indexes, while other sessions receive \"unable to open file\", \"cannot allocate shared memory\", or \"failed to start worker\" errors.  • Integrity-checking or backup utilities may abort early because they cannot acquire additional descriptors, leaving corruption only partially reported.  • Recovery or checkpoint operations may stall: the engine detects damaged pages yet also cannot allocate the I/O contexts or background workers required for recovery, causing prolonged startup times, replication lag, or sudden crash-looping.  • Monitoring shows rising I/O errors, checksum failures, and a plateau of kernel resource counters (open files, semaphores) at their limits.  • Performance degrades unpredictably as the optimizer switches from corrupted indexes to full scans, which in turn spawn additional temporary files whose creation fails due to file-handle exhaustion.\n\nCausal interaction: Resource limits can precipitate or exacerbate physical corruption—for example, a shortage of file descriptors or asynchronous I/O slots can interrupt checkpoint flushing, leaving pages only partially written and vulnerable to torn-page corruption. Conversely, once corruption exists, the database engine may attempt aggressive background validation, index rebuilds, or repeated retries, each consuming extra threads, memory arenas, or kernel objects and thereby accelerating exhaustion of the already tight OS limits. This feedback loop masks the true origin of errors, producing overlapping symptoms that complicate diagnosis and prolong outage duration.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.35235572522909314,
+            "bm25_score": 12.809487858409375,
+            "lexical_score": 0.10713507625272331,
+            "matched_terms": [
+                "and",
+                "are",
+                "can",
+                "is",
+                "lost",
+                "of",
+                "on",
+                "or",
+                "sessions",
+                "system",
+                "that",
+                "the",
+                "this",
+                "to"
+            ],
+            "match_count": 218,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_count",
+                "parameter_name": "tcp_keepalives_count",
+                "timeout_category": "network_keepalive_failure_threshold",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the number of TCP keepalive messages that can be lost before the server connection to the client is considered dead.",
+                "trigger_condition": "The number of lost TCP keepalive probes reaches tcp_keepalives_count on systems supporting TCP_KEEPCNT.",
+                "workload_impact": "The server can consider the client connection dead after the configured keepalive failure threshold.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

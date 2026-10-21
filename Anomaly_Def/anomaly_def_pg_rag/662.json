@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Transaction Lock Contention Anomaly + CPU Resource Anomaly",
+            "Description": "Composite definition: The database simultaneously suffers from stale or incomplete optimizer statistics, severe transaction-level lock contention, and host-level CPU saturation. Each root cause is independently harmful, but when they occur together they create a reinforcing feedback loop that degrades throughput and response time in a highly concurrent OLTP workload.\n\nCombined anomalous phenomena: 1) Execution plans show large cardinality misestimates and select sub-optimal join orders or access paths, often choosing full scans or low-selectivity index probes. 2) Those plans increase the number of rows touched and the duration of data-modifying statements, inflating the lock footprint and prolonging lock hold times. 3) Concurrent sessions pile up in long blocker-waiter chains; deadlock reports, application timeouts, and rising lock-wait seconds are observed alongside surging CPU utilisation near 100 %. 4) The CPU run queue grows as sessions spin on latch/lock manager operations, while background statistics-update tasks and deadlock detectors compete for the same saturated cores. Symptoms become hard to attribute to a single layer because query plans, lock waits, and CPU pressure all appear as co-primary bottlenecks.\n\nCausal chain: Stale statistics → cardinality misestimation → inefficient, work-expensive plans → longer statement execution and larger lock scopes → lock contention and deadlocks → increased context switching and spin-waiting in the lock manager → CPU saturation. The saturated CPUs in turn slow automatic statistics collection and prolong rollback or deadlock-victim cleanup, keeping statistics stale and locks held even longer, thereby amplifying both the contention and the compute bottleneck in a self-reinforcing cycle.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.3874370758159625,
+            "bm25_score": 16.714248410202767,
+            "lexical_score": 0.13793613246599645,
+            "matched_terms": [
+                "and",
+                "are",
+                "for",
+                "in",
+                "is",
+                "of",
+                "or",
+                "seconds",
+                "sessions",
+                "stale",
+                "the",
+                "time",
+                "wait",
+                "waiting",
+                "when"
+            ],
+            "match_count": 138,
+            "entry": {
+                "timeout_id": "pg16_libpq_connection_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "client_connection_establishment_timeout",
+                "scope": "libpq/client connection parameter",
+                "official_definition": "Maximum wait for connection, in seconds; zero or not specified means wait indefinitely.",
+                "trigger_condition": "A libpq client connection attempt exceeds connect_timeout seconds.",
+                "workload_impact": "The client connection attempt fails instead of waiting indefinitely.",
+                "default_behavior": "Zero or absent value means wait indefinitely.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

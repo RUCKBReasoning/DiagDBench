@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Database Memory Allocation Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Engine-level runtime settings (e.g., buffer-pool size, per-session work memory, checkpoint cadence, connection limits) are mis-aligned with hardware capacity, workload mix, or version defaults.\nDatabase Memory Allocation Anomaly : Database components collectively consume more physical memory or swap than the host can safely supply, leading to paging, OOM events, or node eviction.\nNetwork and Connectivity Resource Anomaly : Transport, listener, authentication, or socket resources cannot sustain the offered connection or data-transfer rate, producing connection errors, backlog growth, or elevated client-read/write waits.\n\nWhen all three root causes appear together, symptoms overlap and amplify: connection storms and retry loops inflate backend counts that already exceed mis-tuned connection limits; every new session reserves oversized work memory, rapidly exhausting RAM and triggering operating-system paging or OOM kills. Memory pressure stalls backends, lengthening query turnaround and enlarging in-flight result sets, which in turn hold sockets open and deepen network backlog. Wait-event charts show simultaneous client-read/client-write stalls, log-write or checkpoint spikes divorced from actual I/O utilization, and CPU time lost to memory-pressure spin waits. The database may repeatedly restart, dropping TCP sessions and forcing clients into further reconnect attempts, while half-open sockets accumulate because listener backlog and keepalive timers are set too low.\n\nCausal chain: misconfigured parameters (high work_mem, high parallel-worker counts, lenient connection caps) initiate excessive per-session memory reservation. The resulting memory exhaustion slows or terminates backends, which increases latency and provokes client retries, swelling the active connection pool and socket queues. Network bottlenecks then prolong each session’s lifetime, causing even more memory to remain pinned. Conversely, dropped or timed-out connections create bursts of new logins that re-invoke the misconfiguration and allocation cycle. Thus, each root cause reinforces the others—parameter mis-tuning drives memory over-consumption, memory pressure magnifies network latency, and network congestion feeds back into connection growth—producing a cascading degradation that is more severe and harder to diagnose than any single anomaly alone.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 188,
+            "score": 0.7597260402937299,
+            "bm25_score": 69.56954125717877,
+            "lexical_score": 0.19908680097909998,
+            "matched_terms": [
+                "allocation",
+                "and",
+                "buffer",
+                "client",
+                "consumption",
+                "engine",
+                "is",
+                "latency",
+                "memory",
+                "of",
+                "or",
+                "out",
+                "oversized",
+                "per",
+                "pressure",
+                "resources",
+                "session",
+                "settings",
+                "the",
+                "with",
+                "workload"
+            ],
+            "match_count": 12,
+            "entry": {
+                "error_code": "53200",
+                "error_name": "out_of_memory",
+                "official_description": "out of memory",
+                "error_class": "Class 53 - Insufficient Resources",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "memory_and_buffer",
+                "cause_analysis": "The failure is typically associated with insufficient memory headroom, buffer pressure, oversized intermediate state, or memory-allocation constraints inside the engine or client library.",
+                "solution_guidance": "Check memory availability, per-session memory settings, large sorts or hashes, and whether workload concurrency is amplifying memory consumption.",
+                "observable_symptoms": [
+                    "memory pressure",
+                    "allocation failure",
+                    "spill",
+                    "unstable latency"
+                ]
+            }
+        }
+    }
+]

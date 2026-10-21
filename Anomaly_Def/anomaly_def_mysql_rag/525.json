@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Query Plan Selection Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Critical metadata such as row-count, histogram, and correlation statistics are stale, missing, or too coarse, causing systematic cardinality misestimation.\nQuery Plan Selection Anomaly : The optimizer’s costing logic or plan-cache reuse chooses a sub-optimal execution plan even when statistical inputs would in principle allow a better one.\nTransaction Log Subsystem Anomaly : The write-ahead log path—generation, buffering, flushing, switching, or archiving—cannot keep up with the volume of redo, becoming the primary bottleneck for commits and checkpoints.\n\nWhen all three anomalies coexist, symptoms multiply and overlap:  \n• Queries may oscillate between very different plans, often landing on an inefficient plan that amplifies row counts and random I/O because statistics are stale and the cost model mis-ranks alternatives.  \n• Poor plans drive excessive row versioning, large sort runs, and wide index or table scans, sharply increasing redo generation; meanwhile the saturated log subsystem lengthens commit latency and holds locks longer, feeding back into even larger active-row sets sampled by future statistics or plan captures.  \n• Execution plans show grossly inaccurate estimates, high actual vs. estimated rows, and unexpected operators (full scans, nested loops) together with surging LOG WRITE/LOG FLUSH waits, frequent log-file switches, and checkpoint storms.  \n• Application perspective: sporadic but severe slowdowns on both read and write statements, timeouts during peak write bursts, and dramatic variance between executions of the same SQL text.\n\nCausal chain and interaction: Stale or incomplete statistics mislead the optimizer, increasing the probability that the cost model will pick an already risky plan; the resulting plan then produces outsized data modifications, UNDO/REDO, and temp spill volume. This surge in redo overwhelms an undersized or poorly configured transaction-log subsystem, elongating commit and flush times. Extended commit latency lengthens transaction lifetimes, preventing timely auto-statistics refresh, and keeps heavily modified objects locked or pinned, which in turn skews future sampling and encourages further plan mis-selection. The feedback loop thus reinforces both the optimizer’s blindness and the log bottleneck, degrading throughput and predictability across the entire OLTP workload.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2077,
+            "score": 0.5035944929812537,
+            "bm25_score": 54.80505618067915,
+            "lexical_score": 0.11791063561988671,
+            "matched_terms": [
+                "and",
+                "as",
+                "between",
+                "in",
+                "keep",
+                "log",
+                "loops",
+                "or",
+                "same",
+                "stale",
+                "the",
+                "this",
+                "transaction",
+                "will",
+                "with",
+                "would"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010190",
+                "error_name": "ER_RPL_INFINITY_IGNORED",
+                "official_description": "using --replicate-same-server-id in conjunction with --log-replica-updates would lead to infinite loops in this server. However this will be ignored as the --log-bin option is not defined or your server is running with global transaction identiers enabled.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

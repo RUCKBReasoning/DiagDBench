@@ -1,0 +1,61 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Storage I/O Throughput Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "SQL Workload Logic Anomaly: Application-level statement or transaction design forces the database engine to read, process, or return more data than the business logic truly requires.\nStorage I/O Throughput Anomaly: Underlying disk or storage-virtualization layer cannot supply read/write throughput or latency within the budget required by the database, causing device-level saturation and elevated I/O waits.\nNetwork and Connectivity Resource Anomaly: Transport, listener, authentication, or socket resources between clients and the database server are exhausted or slow, impeding connection establishment and data transfer.\n\nWhen all three root causes manifest concurrently, the system exhibits a multi-layer slowdown: statements already inflated by poor SQL logic drive excessive physical reads and writes that hit a saturated storage layer, multiplying I/O wait times, while the resulting long-running transactions occupy connections and emit large result sets that congest network links and exhaust listener or socket queues. Observed symptoms include a surge of slow queries in engine logs, soaring disk queue depths and read/write latencies, rising client connection timeouts, increased \"too many connections\" errors, and CPU idling while sessions wait alternately on I/O and client network sends. End-users perceive erratic response times, sporadic authentication failures, and stalled pages as both data access and result delivery degrade.\n\nCausally, inefficient SQL amplifies physical I/O demand, pushing the storage subsystem past its throughput capacity; the ensuing storage latency elongates every statement’s execution window, holding locks and server processes longer. These extended transaction lifetimes keep network sockets open and flush larger or delayed result sets, which intensify network utilization. Network slowdowns and connection retries, in turn, inflate session counts and keep queries active even longer, further hammering the already saturated storage. The feedback loop between chatty, data-heavy SQL, overtaxed storage, and constrained network/connection resources cascades into systemic performance collapse, making each individual root cause harder to isolate and remediate.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.7068895799960752,
+            "bm25_score": 30.641121062219327,
+            "lexical_score": 0.1763076923076923,
+            "matched_terms": [
+                "active",
+                "and",
+                "cannot",
+                "client",
+                "holding",
+                "locks",
+                "long",
+                "longer",
+                "of",
+                "open",
+                "or",
+                "required",
+                "session",
+                "sessions",
+                "statement",
+                "than",
+                "that",
+                "the",
+                "transaction",
+                "transactions",
+                "when",
+                "while",
+                "window",
+                "within"
+            ],
+            "match_count": 305,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

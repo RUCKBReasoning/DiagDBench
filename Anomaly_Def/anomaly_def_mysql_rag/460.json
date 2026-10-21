@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Replication Synchronization Anomaly",
+            "Description": "Database Memory Allocation Anomaly: Uncontrolled growth of buffer caches, work areas, background heaps, or leaked allocations causes the DBMS processes to exhaust physical memory and swap, leading to OS-level paging and memory-pressure stalls.\nReplication Synchronization Anomaly: Standby or subscriber nodes are unable to receive, persist, or apply the primary’s transaction-log stream fast enough, so log-position gaps widen, replay lag grows, and log segments accumulate on the primary.\n\nWhen both root causes surface together, the system exhibits a compound failure pattern: memory pressure on the primary and/or replicas throttles log-sender and receiver threads, increases context-switch latency, and starves apply workers of cache, while the growing replication backlog forces the primary to retain additional in-memory log buffers and metadata. Observable symptoms therefore include rapidly rising resident-set size, sustained paging, swelling unflushed or retained WAL segments, escalating replication delay, stale read replicas, and possible node eviction or crash loops on memory-starved standbys. Administrators may see contradicting metrics—high memory usage suggesting local workload stress while replication dashboards show widening lag—making isolation difficult.\n\nCausally, excessive memory allocation on the primary can slow checkpointing and background writer activity, lengthening commit cycles and enlarging the log stream the replicas must consume. The resulting surge in outbound WAL intensifies CPU and memory demand on replica apply processes, which, under their own memory saturation, replay even more slowly, further expanding the backlog. Conversely, a replication slowdown keeps log buffers and metadata alive on the primary for longer, inflating its memory footprint and aggravating the existing allocation anomaly. This positive feedback loop amplifies both issues, risking cascading failures such as forced process termination, out-of-sync replicas, and prolonged recovery times after crash or failover.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3536,
+            "score": 0.6313935853694933,
+            "bm25_score": 67.81928008806598,
+            "lexical_score": 0.17290719696969697,
+            "matched_terms": [
+                "and",
+                "apply",
+                "failure",
+                "for",
+                "lag",
+                "log",
+                "more",
+                "node",
+                "on",
+                "or",
+                "receiver",
+                "recovery",
+                "replica",
+                "replication",
+                "sender",
+                "stale",
+                "termination",
+                "the",
+                "to"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-011652",
+                "error_name": "ER_GRP_RPL_RECOVERY_MODULE_TERMINATION_TIMED_OUT_ON_SHUTDOWN",
+                "official_description": "On shutdown there was a timeout on the Group Replication recovery module termination. Check the log for more details",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

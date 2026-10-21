@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Storage Space Capacity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Critical engine-level settings (memory pools, checkpoint cadence, log sizing, worker counts, etc.) are mis-tuned for the hardware, workload, or version, creating artificial pressure on internal resources.\nStorage Space Capacity Anomaly : Physical or logical free space for data, logs, temp, or backup areas is exhausted, triggering allocation failures and blocking growth-related operations.\nOperating System Resource Limit Anomaly : Kernel-enforced ceilings on file handles, shared memory, semaphores, threads, or cgroup quotas are reached, preventing the database from creating or accessing required OS objects.\n\nWhen all three root causes strike simultaneously, the system exhibits compound symptoms: rapid log-file growth from aggressive checkpointing collides with insufficient disk space, producing log-write stalls, checkpoint storms, and frozen commit processing. Concurrently, the engine’s attempts to auto-extend files, spawn extra background or parallel workers, or allocate additional shared memory are denied by the OS, surfacing as \"cannot allocate file descriptor / shared memory / thread\" errors in both database and system logs. Sessions may hang in log-related waits while CPU usage oscillates between idle gaps (due to write throttling) and spin loops (from failed worker creation). Maintenance tasks meant to reclaim space or clean orphaned resources cannot launch, causing temp-space bloat and runaway diagnostic logs that further consume the dwindling disk. Overall, the workload experiences cascading slowdowns, sporadic transaction failures, and eventual instance-wide freeze or crash recovery cycles.\n\nCausally, mis-set configuration parameters often increase churn: undersized redo logs force frequent checkpoints; small work-memory settings inflate temp spill volume; overly high connection or parallelism caps multiply file and semaphore consumption. These behaviors accelerate space consumption and inflate the count of kernel objects, pushing the system toward its storage and OS-limit ceilings sooner than normal. Once disk fills, the database cannot archive or recycle logs, prolonging checkpoints and inflating the number of open file handles; simultaneous OS denials of new handles or shared memory prevent the engine from adapting (e.g., creating new log segments or spawning cleanup workers). Each anomaly thus amplifies the others: configuration mis-tuning drives resource churn, space exhaustion blocks I/O progress, and OS limit saturation starves the engine of critical handles and memory, jointly intensifying contention, stalling recovery mechanisms, and precipitating full service outages.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5202,
+            "score": 0.5025496276718171,
+            "bm25_score": 54.93035327941344,
+            "lexical_score": 0.1981211686967598,
+            "matched_terms": [
+                "and",
+                "are",
+                "cannot",
+                "capacity",
+                "creation",
+                "data",
+                "disk",
+                "engine",
+                "failures",
+                "file",
+                "growth",
+                "in",
+                "is",
+                "log",
+                "number",
+                "or",
+                "pressure",
+                "set",
+                "storage",
+                "the",
+                "version",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013324",
+                "error_name": "ER_CANNOT_SET_SERVER_VERSION_IN_TABLESPACE_HEADER",
+                "official_description": "Cannot set the server version number in the dictionary tablespace header.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

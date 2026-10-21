@@ -1,0 +1,60 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Transaction Lock Contention Anomaly + Storage Space Capacity Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-layer statements or transaction patterns that obligate the engine to scan or modify more data, rows, or duration than the true business need demands.\nTransaction Lock Contention Anomaly : Concurrent transactions compete for incompatible locks on the same resources, producing long blocking chains or deadlocks.\nStorage Space Capacity Anomaly : Allocated data, log, or temporary space is exhausted or nearly exhausted, preventing further allocations and blocking space-consuming operations.\n\nWhen these three root causes coexist, the system experiences a compound failure mode: overly heavy or long-lived SQL requests inflate undo, redo, and temporary usage just as they hold locks for extended periods; meanwhile, shrinking free space slows or halts growth of data files, temp segments, and transaction logs. Observable effects include: 1) surging statement and transaction latency with frequent application timeouts, 2) expanding lock wait graphs where blockers cannot finish because they are stalled on space-allocation or log flush operations, 3) deadlocks followed by rollbacks that re-execute the same inefficient SQL, 4) rapid consumption of tablespace, log, or temp space culminating in allocation-failure errors that freeze active transactions mid-commit, and 5) escalating connection-pool saturation as sessions queue behind both locks and space shortages, making it difficult to isolate a single culprit.\n\nCausally, chatty or scan-heavy SQL inflates row-level change sets and temp work files, which in turn intensify lock footprints and prolong transaction lifetimes. The prolonged holds amplify contention, increasing the number and duration of waiting transactions. Each blocked or retried transaction further multiplies DML volume and redo generation, accelerating consumption of data and log space. As space nears exhaustion, auto-extend or log-archive operations stall, preventing commit processing and keeping locks active even longer, which deepens the contention spiral. The feedback loop between space exhaustion, prolonged lock retention, and inefficient SQL processing can rapidly degrade OLTP throughput and force widespread rollbacks or outages.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.7532677664974619,
+            "bm25_score": 34.46450827757435,
+            "lexical_score": 0.17755922165820642,
+            "matched_terms": [
+                "and",
+                "because",
+                "blocking",
+                "by",
+                "cannot",
+                "change",
+                "for",
+                "in",
+                "incompatible",
+                "is",
+                "lock",
+                "longer",
+                "of",
+                "or",
+                "row",
+                "sessions",
+                "statement",
+                "than",
+                "the",
+                "transaction",
+                "wait",
+                "waiting",
+                "when"
+            ],
+            "match_count": 77,
+            "entry": {
+                "timeout_id": "mysql84_innodb_row_lock_wait_timeout",
+                "parameter_name": "innodb_lock_wait_timeout",
+                "timeout_category": "innodb_row_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "The length of time in seconds an InnoDB transaction waits for a row lock before giving up.",
+                "trigger_condition": "An InnoDB transaction waits longer than innodb_lock_wait_timeout for a row lock.",
+                "workload_impact": "The lock wait gives up; by default only the current statement is rolled back unless innodb_rollback_on_timeout is enabled.",
+                "default_behavior": "Defined as an InnoDB system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

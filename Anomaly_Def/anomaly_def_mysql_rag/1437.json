@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Buffer Cache and Latch Contention Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Obsolete row versions, rollback records, and dead index entries accumulate faster than background cleanup can reclaim them, swelling the version store and bloating heap and index pages.\nBuffer Cache and Latch Contention Anomaly : Concurrent sessions stall while fighting for buffer-cache pages, lightweight latches, and dirty-page flush slots, causing CPU spin and prolonged page waits.\nData Block and Index Integrity Anomaly : Physical data or index pages become internally inconsistent—checksums fail, key order breaks, or page links go missing—so logical access paths can no longer be trusted.\n\nWhen these three root causes strike together, the system shows a tangled mixture of symptoms: rapidly growing tables and indexes raise the buffer-pool residency pressure; the same hot, bloated, or corrupted pages are repeatedly pinned, evicted, and reread, amplifying latch and I/O waits; index or heap corruption forces query planners to fall back to full scans that must wade through mountains of obsolete versions; integrity-verification or auto-recovery tasks repeatedly touch damaged pages, further heating contention hotspots; cleanup workers run constantly yet make little visible progress, while sessions see latency spikes, duplicate or missing rows, and intermittent corruption warnings.\n\nCausal interaction: excessive version churn expands the number of dirty and frequently accessed pages, lengthening the time each page stays in the buffer pool and widening the window for latch contention. Prolonged latch holds and buffer pressure delay vacuum or purge workers, letting even more obsolete versions accumulate. The sustained write amplification increases checkpoint volume and I/O stress, heightening the risk of torn-page events or incomplete flushes that introduce on-disk corruption. Once corruption appears, every access to the damaged pages triggers additional retries, verification reads, or full-page writes, keeping the pages perpetually hot and further intensifying latch contention and cleanup backlog. The three anomalies therefore reinforce one another in a feedback loop that degrades throughput, threatens data correctness, and complicates diagnosis.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1294,
+            "score": 0.47860146361261374,
+            "bm25_score": 47.38921062472384,
+            "lexical_score": 0.12280487804878049,
+            "matched_terms": [
+                "and",
+                "corruption",
+                "data",
+                "duplicate",
+                "for",
+                "in",
+                "index",
+                "integrity",
+                "key",
+                "logical",
+                "missing",
+                "or",
+                "the",
+                "to"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "3733",
+                "error_name": "ER_FK_NO_COLUMN_PARENT",
+                "official_description": "Failed to add the foreign key constraint. Missing column '%s' for constraint '%s' in the referenced table '%s'",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "integrity_and_constraints",
+                "cause_analysis": "The failure is typically associated with logical data inconsistency, structural corruption, uniqueness conflicts, or referential-integrity rules being violated by the workload or storage state.",
+                "solution_guidance": "Validate data consistency, inspect constraints and index integrity, and check whether data-cleaning, repair, or workload correction is required before retrying.",
+                "observable_symptoms": [
+                    "constraint failure",
+                    "duplicate data rejection",
+                    "corruption warning"
+                ]
+            }
+        }
+    }
+]

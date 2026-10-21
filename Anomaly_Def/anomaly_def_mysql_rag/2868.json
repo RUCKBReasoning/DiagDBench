@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Storage I/O Throughput Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "SQL Workload Logic Anomaly : The application issues inefficient SQL or transaction patterns that force the engine to process and move more data than business logic actually requires.\nStorage I/O Throughput Anomaly : The physical storage layer cannot deliver the sustained read/write bandwidth, IOPS, or latency demanded by the engine.\nOperating System Resource Limit Anomaly : Kernel-enforced limits on file handles, shared memory, threads, or other OS objects are exhausted by the database process.\n\nWhen these three root causes coexist, the database shows a compound symptom set: statements already slow from poor SQL logic wait even longer on saturated storage queues; overall latency and variance spike, with slow-query logs filling rapidly and application timeouts multiplying. Simultaneously, the engine begins to emit file-open, async-I/O, or thread-creation errors as OS quotas are hit, causing new sessions, parallel workers, or log writer helpers to fail intermittently. Wait-event profiles oscillate between buffer-I/O, log-write stalls, and OS-level resource-acquisition waits, making diagnosis non-trivial. Long-running transactions hold locks and pins while they repeatedly retry failed I/O or background task creation, further inflating contention and cascading delays across otherwise independent workloads.\n\nCausal chain: inefficient SQL logic amplifies data volume and row touches, inflating buffer misses and forcing heavier physical I/O. The excess I/O drives the storage subsystem past its throughput ceiling, lengthening every read/write and inflating device queue depth. Prolonged I/O completion times keep database worker threads busy for longer, increasing the concurrent demand for kernel objects—more open file descriptors, async-I/O contexts, and waiting threads—until OS-imposed limits are breached. Once those limits are hit, new I/O requests or worker threads fail or block, which in turn triggers additional retries and longer transactions inside the database engine, further increasing data volume and I/O pressure. Each anomaly therefore reinforces the others, creating a feedback loop that degrades throughput, elevates tail latency, and risks partial or total service outage.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 4978,
+            "score": 0.4150491734504873,
+            "bm25_score": 44.638904872706,
+            "lexical_score": 0.11360420979986197,
+            "matched_terms": [
+                "and",
+                "between",
+                "busy",
+                "keep",
+                "log",
+                "once",
+                "or",
+                "sql",
+                "task",
+                "the",
+                "thread",
+                "to",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013095",
+                "error_name": "ER_RPL_REPLICA_SQL_THREAD_STOP_CMD_EXEC_TIMEOUT",
+                "official_description": "STOP REPLICA command execution is incomplete: Replica SQL thread got the stop signal, thread is busy, SQL thread will stop once the current task is complete.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

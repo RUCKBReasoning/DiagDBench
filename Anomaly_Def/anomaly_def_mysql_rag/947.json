@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Replication Synchronization Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly : The write-ahead logging path on the primary instance is saturated or frequently stalled when generating, flushing, or switching log segments, causing commit latency and log growth. \nReplication Synchronization Anomaly : Downstream replicas or subscribers cannot receive or apply those same log records fast enough, leading to rising replay lag and retention of un-archived log segments.\n\nWhen both anomalies co-exist, the database experiences compounding symptoms: commits stall not only because the local log device is busy but also because retention of old segments—held for lagging replicas—forces the primary to pause for log switches or archiving. Wait-event dashboards show simultaneous spikes in LOG_FLUSH/LOG_SYNC waits and replication-send or apply waits; disk usage in the log and archive areas grows rapidly; buffer cache pressure surfaces as dirty pages accumulate, yet checkpoints cannot advance while required log positions remain active. Application sessions observe volatile response times, periodic freeze-ups during log switch attempts, and sudden throughput collapses when the primary throttles writers to keep replicas in sync.\n\nCausally, slow or undersized log files make each commit more expensive, inflating the volume of in-flight redo that must be shipped to replicas. The resulting backlog slows replica apply rates, which in turn prevents the primary from recycling old log segments, lengthening log switch and archive operations and further amplifying log-path contention. This feedback loop widens replica lag, holds critical resources (log buffer space, archive slots, checkpoint advancement), and forces the primary to serialize write traffic, thereby intensifying the overall performance degradation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.5717008835701834,
+            "bm25_score": 22.428998852603904,
+            "lexical_score": 0.1542633637548892,
+            "matched_terms": [
+                "and",
+                "attempts",
+                "because",
+                "cannot",
+                "for",
+                "in",
+                "is",
+                "not",
+                "or",
+                "required",
+                "sessions",
+                "the",
+                "this",
+                "to",
+                "transaction",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 45,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Transaction Log Subsystem Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Stale, incomplete, or missing optimizer statistics cause systematic cardinality misestimates that lead the cost-based optimizer to choose sub-optimal execution plans.\nTransaction Log Subsystem Anomaly : The write-ahead logging path—log buffer, log files, flushing, switching, or archiving—cannot keep pace with redo generation, making commit processing and write activity I/O-bound.\nOperating System Resource Limit Anomaly : Kernel-enforced ceilings on file descriptors, shared-memory segments, AIO contexts, threads, or cgroup quotas throttle database processes independently of internal engine settings.\n\nWhen these three root causes occur simultaneously, workloads—especially high-concurrency OLTP systems—exhibit extreme and erratic latency on write statements and commits, sudden pauses during peak periods, multiplication of \"log flush\" or \"commit\" wait events, inflated CPU yet low throughput, and bursts of engine errors such as \"cannot allocate shared memory\" or \"too many open files.\" Execution plans show large disparities between estimated and actual row counts, while alert logs report rapid log switches, archiver backlogs, and background-process failures to obtain operating-system resources. Automatic statistics refresh may be disabled by the prolonged log switch backlog, and new sessions or parallel workers intermittently fail to start as kernel object limits are reached.\n\nCausal interaction: poor statistics mislead the optimizer into choosing plan shapes that generate excessive redo—e.g., row-by-row updates, fragmented index maintenance, or unnecessary logging of intermediate results—dramatically increasing pressure on the transaction-log subsystem. As log files and buffers saturate, commit delays lengthen, causing sessions to stay active longer and inflate the population of open file handles, threads, and AIO requests. This accelerated consumption of kernel resources pushes the system toward operating-system limits; once those ceilings are reached, log archiving, checkpoint helpers, and statistics-collection workers fail to start or allocate resources, perpetuating stale statistics and further plan degradation. The feedback loop between misestimated plans, log saturation, and OS-level exhaustion amplifies each anomaly, producing a compounded degradation that is more severe and harder to isolate than any single issue alone.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5300,
+            "score": 0.37225241800921655,
+            "bm25_score": 37.8082643656839,
+            "lexical_score": 0.14147512864493994,
+            "matched_terms": [
+                "and",
+                "are",
+                "cannot",
+                "engine",
+                "failures",
+                "file",
+                "is",
+                "latency",
+                "log",
+                "missing",
+                "or",
+                "pressure",
+                "process",
+                "the",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013428",
+                "error_name": "ER_AUDIT_LOG_FILE_NAME_TIMESTAMP_VALUE_IS_MISSING_OR_INVALID",
+                "official_description": "Cannot process audit log file. File name timestamp value is missing or invalid: '%s'",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

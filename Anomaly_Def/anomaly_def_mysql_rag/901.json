@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Replication Synchronization Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Engine-level settings (memory pools, checkpoint cadence, parallelism, etc.) are mis-tuned relative to hardware capacity and workload characteristics.\nReplication Synchronization Anomaly : Standbys or downstream consumers cannot receive, flush, or apply WAL/redo at the rate produced by the primary, creating growing log-position gaps.\n\nComposite definition: The system simultaneously suffers from mis-calibrated runtime parameters and an over-stressed replication pipeline. Configuration flaws on the primary or replicas both distort local resource usage and prevent replicas from keeping up, producing a blend of internal wait imbalances and cross-node lag.\n\nCombined observable phenomena: 1) Rapidly growing replication lag, retained WAL segments, and mounting disk consumption on the primary even though storage and network throughput appear under-utilised; 2) Bursty checkpoint or page-flush activity triggered by an inappropriate checkpoint interval, which in turn floods replication with spikes of redo; 3) Walsender and apply-worker queues backed up while CPU cores remain partly idle because work-memory or parallelism caps throttle apply threads; 4) Stale read-only queries on replicas, increased failover RPO/RTO, and sudden performance regressions following parameter changes, version upgrades, or instance resizing events.\n\nCausal chain: Mis-tuned parameters (e.g., too small max_wal_senders, aggressive checkpoint_timeout, undersized work_mem, or poorly chosen apply-worker parallelism) raise the volume and burstiness of WAL generation and/or limit the number of threads that can ship and replay it, directly intensifying replication synchronization pressure. As replicas fall behind, the primary is forced to retain extra log files, inflating disk usage and lengthening checkpoints, which further exposes the impact of the faulty configuration (longer fsync queues, cache flush storms). Conversely, apply lag on replicas masks the true effect of the parameter mis-tuning, delaying feedback signals such as CPU or I/O saturation and making root-cause isolation harder. The two anomalies therefore reinforce each other: bad parameters magnify replication backlog, and the backlog amplifies the adverse side-effects of the misconfiguration, degrading both primary and replica performance and resilience.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2534,
+            "score": 0.6340066709236974,
+            "bm25_score": 65.305848151959,
+            "lexical_score": 0.1822873900293255,
+            "matched_terms": [
+                "and",
+                "apply",
+                "configuration",
+                "cross",
+                "database",
+                "downstream",
+                "from",
+                "is",
+                "it",
+                "lag",
+                "local",
+                "log",
+                "network",
+                "node",
+                "or",
+                "replica",
+                "replication",
+                "stale",
+                "the",
+                "to",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010647",
+                "error_name": "OBSOLETE_ER_NDB_BINLOG_SKIPPING_DROP_OF_TABLES",
+                "official_description": "NDB Binlog: Skipping drop database '%s' since it contained local tables binlog schema event '%s' from node %d.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Buffer Cache and Latch Contention Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Transaction Lock Contention Anomaly: Concurrent transactions block or deadlock each other while waiting for incompatible locks on the same rows, pages, or metadata resources.\nBuffer Cache and Latch Contention Anomaly: Sessions stall on hot buffer pages or the latches that protect them, causing CPU spin or wait time and slowing page access.\nTransaction Log Subsystem Anomaly: Commit processing and redo generation are throttled by saturated log buffers, slow log writes, or delayed archive/replication, inflating commit latency.\n\nWhen all three conditions arise together, the database experiences a compound bottleneck in which logical row-level blocking, physical buffer-page serialization, and log-flush back-pressure converge. Symptoms include extreme and erratic transaction latency, long blocker–waiter chains that do not clear after deadlock resolution, surging page-latch and log-write waits, CPU spikes from spin-locks, stalled checkpoints, and cascading application timeouts. Standard diagnostic views show simultaneous growth in ungranted locks, latch wait events, and pending log-flush queues, making it hard to attribute the slowdown to any single layer.\n\nCausally, hot rows or pages drive up lock conflicts; blocked transactions then hold buffer pages and latches longer, increasing buffer contention. Prolonged critical-section occupancy inflates redo generation bursts when blockers finally commit, which overwhelms the log buffer and stretches log-flush times. In turn, the sluggish log subsystem delays commit completion, extending lock hold times and keeping pages pinned, which feeds back into both lock and latch queues. The intertwined feedback loops between lock duration, latch residency, and log-flush latency amplify each other, creating a severe, self-reinforcing degradation of OLTP throughput.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.36958525811801585,
+            "bm25_score": 18.181551650222467,
+            "lexical_score": 0.11286203674867641,
+            "matched_terms": [
+                "and",
+                "causing",
+                "long",
+                "longer",
+                "or",
+                "replication",
+                "stalled",
+                "the",
+                "times",
+                "to",
+                "waits",
+                "when"
+            ],
+            "match_count": 31,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Replication Synchronization Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly : The write-ahead log generation, buffering, flushing, switching, or archiving path on the primary becomes the main bottleneck, inflating commit latency and preventing timely log-space reuse.\nReplication Synchronization Anomaly : Downstream replicas or change-data consumers cannot receive, store, or apply the primary’s log stream at the required rate, producing widening log-position gaps and retaining old log segments on the primary.\nOperating System Resource Limit Anomaly : Kernel-level caps on file descriptors, processes, shared memory, or other OS resources are reached, hindering the database and its background workers from allocating essential kernel objects.\n\nWhen these three root causes manifest together, the database shows a compound failure pattern: transaction commits slow or stall while replication lag expands in lock-step; alert logs fill with log-flush, log-sync, and replication-apply wait events alongside OS errors such as “too many open files” or “cannot allocate shared memory.” Log files, archive destinations, and relay logs balloon because log recycling is blocked both by replication retention and by the engine’s inability to create or close files under exhausted OS limits. Checkpoints and log switches become more frequent yet less effective, replicas fall progressively further behind, and failover readiness degrades. Administrators observe simultaneous pressure on primary I/O, soaring disk consumption, throttled network throughput to replicas, and sporadic failures to start new background or apply processes.\n\nCausal chain: slow log flush/switch operations leave less headroom in the active log area, forcing the primary to retain segments longer. The growing backlog magnifies replication workload; replicas already constrained by I/O or apply throughput fall even further behind, extending the retention window. Both effects cause the primary and archiver to open ever-more log, archive, and relay files while keeping existing ones pinned. As file handles, asynchronous-I/O contexts, and process slots accumulate, they collide with OS-level limits, triggering allocation failures that in turn further impede log writes and replication apply threads. The three anomalies reinforce each other in a feedback loop: log pressure → replication lag → handle/process accumulation → OS denials → even slower log/replication progress, eventually leading to transaction freezes, replica disconnects, and potential outage.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.459669714912742,
+            "bm25_score": 24.498297201033182,
+            "lexical_score": 0.1347985347985348,
+            "matched_terms": [
+                "and",
+                "are",
+                "data",
+                "from",
+                "is",
+                "latency",
+                "longer",
+                "more",
+                "network",
+                "or",
+                "progress",
+                "replica",
+                "replication",
+                "the",
+                "to",
+                "wait",
+                "when"
+            ],
+            "match_count": 25,
+            "entry": {
+                "timeout_id": "mysql84_replica_network_timeout",
+                "parameter_name": "replica_net_timeout",
+                "timeout_category": "replication_network_timeout",
+                "scope": "global/replication",
+                "official_definition": "The number of seconds to wait for more data from a source/replica connection before aborting the read.",
+                "trigger_condition": "A replica waits longer than replica_net_timeout for more data from the source connection.",
+                "workload_impact": "The replication network read is aborted and the replica considers the connection interrupted.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

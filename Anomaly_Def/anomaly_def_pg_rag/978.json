@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Transaction Log Subsystem Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer persistently chooses a sub-optimal execution plan despite accurate statistics, leading to excessive I/O, CPU, or row versions.\nTransaction Log Subsystem Anomaly: The write-ahead logging path—log buffer, log file, flushing, or archiving—cannot keep pace with redo generation, inflating commit latency and stalling writers.\nOperating System Resource Limit Anomaly: Kernel-enforced ceilings on file handles, I/O contexts, threads, or shared memory are reached, preventing the database from allocating the low-level resources it needs.\n\nWhen these three root causes arise together, workloads experience a perfect storm of symptoms: queries unexpectedly switch from efficient indexed access to scan-heavy or nested-loop plans that emit far more redo, causing explosive growth in transaction-log volume. The log device shows sustained 100 % utilization, with surging log flush and commit wait times. Simultaneously, the database and archiver processes begin reporting \"too many open files,\" \"cannot allocate shared memory,\" or \"AIO context limit reached,\" further throttling log writes and causing checkpoints, replication catch-up, or crash-recovery to stall. Applications observe erratic response times—some statements hang on plan compilation or commit, others fail outright with OS-level resource errors—while existing sessions linger in lock-held states, amplifying contention.\n\nCausally, a bad plan that scans or loops excessively multiplies the volume of row modifications and undo/redo records, driving the log subsystem toward saturation. As log flush latency rises, transactions take longer to commit, leading to a backlog of database processes waiting on log space or syncs. This surge in concurrent waiting sessions grows the number of open files, I/O requests, threads, and shared-memory attachments, quickly consuming the host’s kernel quotas. Once OS limits are hit, the database can no longer create additional log write contexts, archiver threads, or temporary files, which further slows or blocks both query compilation and log flushing. The feedback loop between poor plan-induced write amplification, an overtaxed log path, and hard OS ceilings escalates into widespread slowdown or partial outage, making each individual anomaly harder to diagnose and resolve in isolation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.3555930644388237,
+            "bm25_score": 13.509813471689109,
+            "lexical_score": 0.12255088195386701,
+            "matched_terms": [
+                "an",
+                "and",
+                "are",
+                "context",
+                "latency",
+                "longer",
+                "of",
+                "open",
+                "or",
+                "sessions",
+                "that",
+                "the",
+                "this",
+                "transaction",
+                "when",
+                "with"
+            ],
+            "match_count": 209,
+            "entry": {
+                "timeout_id": "pg16_idle_session_timeout",
+                "parameter_name": "idle_session_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle, but not within an open transaction, for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle and not inside an open transaction longer than the configured threshold.",
+                "workload_impact": "The session is terminated; the documentation warns about using this with connection pools or middleware.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

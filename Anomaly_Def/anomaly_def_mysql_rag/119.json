@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Database Configuration Parameter Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Composite Definition: The database concurrently suffers from runaway MVCC version-store bloat, mis-tuned engine parameters that distort internal housekeeping cadence, and hard ceilings imposed by operating-system resource limits. The result is a compound failure mode where version cleanup cannot catch up, engine subsystems are configured in ways that mask or worsen the backlog, and the kernel refuses additional resources just when the database tries to recover.\n\nCombined Observable Phenomena: Administrators observe steep growth of obsolete row versions and rollback records while autovacuum/cleanup workers stay permanently busy yet ineffective. Checkpoint, log-flush, or background-worker waits spike despite storage and CPU still showing spare capacity; at the same time, new parallel workers, back-end processes, or I/O contexts intermittently fail to start with kernel-level \"too many open files\", \"cannot allocate shared memory\", or \"resource temporarily unavailable\" errors. Page and index sizes expand quickly, sequential scans slow down, and the planner misestimates row counts, all while wait-event samples oscillate between engine-level maintenance waits and kernel-level allocation failures. After manual restarts or configuration tweaks, short periods of relief are followed by even faster deterioration because workers launched to catch up immediately collide with OS quotas.\n\nCausal Chain and Interaction: Heavy update/delete churn produces large numbers of dead versions (MVCC anomaly). Misaligned configuration parameters—such as an undersized buffer pool, too-low autovacuum cost limits, or overly aggressive parallel-worker settings—delay cleanup and inflate the number of background workers the engine tries to spawn (configuration anomaly). These extra workers demand more file descriptors, shared memory segments, and threads; when host-level limits are set conservatively or have been exhausted by lingering handles from earlier crashes, the kernel denies the requests (OS-limit anomaly). Each denial prevents cleanup or checkpoint activity from scaling, causing further version buildup, larger tables, longer checkpoints, and yet more worker spawn attempts, forming a positive feedback loop that rapidly degrades transactional throughput and risks complete stall.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.5394971929988956,
+            "bm25_score": 21.598322835739484,
+            "lexical_score": 0.1365151515151515,
+            "matched_terms": [
+                "activity",
+                "additional",
+                "and",
+                "are",
+                "from",
+                "is",
+                "longer",
+                "more",
+                "number",
+                "of",
+                "or",
+                "the",
+                "time",
+                "to",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 7,
+            "entry": {
+                "timeout_id": "mysql84_network_read_timeout",
+                "parameter_name": "net_read_timeout",
+                "timeout_category": "network_read_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for more data from a connection before aborting the read.",
+                "trigger_condition": "The server waits for additional data from a connection longer than net_read_timeout.",
+                "workload_impact": "The network read is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

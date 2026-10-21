@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Pages in the buffer pool become hot bottlenecks; sessions spend excessive time spinning or waiting on latches, buffer-busy events, or page-pin contention rather than doing useful work.\nData Block and Index Integrity Anomaly : Physical data-file or index structures are corrupted—checksums fail, page links are broken, or key ordering is incorrect—so the storage layer can no longer be trusted.\n\nComposite anomaly definition:\nBoth anomalies are present simultaneously: the system must serialize access to a small set of buffer-cache pages while some of those very pages (or others they reference) are physically or logically corrupted. The engine therefore contends for buffers that may be unreadable, fail verification, or require rebuild/repair logic, coupling heavy latch pressure with integrity faults.\n\nCombined observable phenomena:\n• Extremely high buffer-busy, page-latch, and pin waits mixed with bursts of physical I/O retries, checksum failures, or corruption error messages.\n• Queries alternately hang (due to latch spin or waits) and abort (due to corruption detection), causing erratic latency and throughput collapse.\n• Repeated automatic page rereads, forced checkpoints, or background verification tasks intensify buffer churn, while failing index lookups trigger fall-back full scans that further stress the buffer pool.\n• Recovery or consistency-checker utilities run longer than usual, holding latches while rereading or rebuilding corrupted pages, which starves foreground workloads.\n\nCausal interaction and amplification:\nCorrupted pages often force extra I/O, checksum validation, or reconstruction work, keeping the corresponding buffer frames pinned and latches held far longer than normal; this multiplies latch wait times and propagates hot-page contention across sessions. Conversely, severe latch contention slows dirty-page flushing and recovery operations, increasing the window during which corrupted or partially written pages remain in play, raising the likelihood of additional integrity errors. The intertwined feedback loop of prolonged latch holds and recurring corruption checks can eventually exhaust worker pools, trigger automatic fail-safe shutdowns, or lead to cascading query failures, making rapid identification and coordinated remediation essential.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 237,
+            "score": 0.6303520557019378,
+            "bm25_score": 58.78143070623559,
+            "lexical_score": 0.14645409565695436,
+            "matched_terms": [
+                "and",
+                "consistency",
+                "corruption",
+                "data",
+                "definition",
+                "for",
+                "incorrect",
+                "index",
+                "integrity",
+                "is",
+                "key",
+                "or",
+                "repair",
+                "storage",
+                "the",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "1239",
+                "error_name": "ER_WRONG_FK_DEF",
+                "official_description": "Incorrect foreign key definition for '%-.192s': %s",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "integrity_and_constraints",
+                "cause_analysis": "The failure is typically associated with logical data inconsistency, structural corruption, uniqueness conflicts, or referential-integrity rules being violated by the workload or storage state.",
+                "solution_guidance": "Validate data consistency, inspect constraints and index integrity, and check whether data-cleaning, repair, or workload correction is required before retrying.",
+                "observable_symptoms": [
+                    "constraint failure",
+                    "duplicate data rejection",
+                    "corruption warning"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Replication Synchronization Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer persistently chooses a sub-optimal execution plan despite having reasonably accurate statistics, leading to excessive CPU, I/O, or memory consumption per statement.\nReplication Synchronization Anomaly: Standby or subscriber nodes cannot receive or apply WAL / redo as fast as the primary produces it, causing growing log-position gaps and replay lag.\nOperating System Resource Limit Anomaly: Kernel-enforced limits on file descriptors, shared memory, semaphores, threads, or similar resources prevent the database from opening new objects or spawning background workers.\n\nWhen all three root causes manifest concurrently, the system exhibits a blend of symptoms that blur subsystem boundaries:  \n• Queries that used to be fast suddenly slow down or fluctuate because the optimizer has switched to scan-heavy or single-threaded plans; parallel workers may be missing due to OS thread limits.  \n• The inefficient plans inflate transaction duration and generate excessive redo, which in turn causes replication send and apply queues to balloon; monitoring shows rapidly widening WAL/LSN gaps and replicas falling minutes or hours behind.  \n• At the same time, OS resource ceilings are hit—log-sender or apply processes fail to open additional files, allocate shm segments, or start extra apply threads—leading to error messages in both database logs and kernel logs, further throttling replication and occasionally aborting query executions.  \n• The primary’s pg_wal or redo area grows uncontrollably because old segments cannot be recycled while replicas lag, risking full disks and cascading slowdowns.  \nOverall, users observe erratic response times, timeouts, stale read traffic on replicas, and declining fail-over readiness, yet the individual symptoms overlap enough to obscure the multi-layered root cause.\n\nCausal interaction: A poor plan elevates I/O and CPU load, inflating the volume and rate of transaction log generation. This heavier WAL stream must traverse the replication channel, but replicas already struggle because OS-level limits cap the number of receiver/apply workers and restrict kernel objects (file handles, AIO contexts). The constrained replication workers fall further behind, which prevents log recycling on the primary, amplifying storage pressure and increasing contention for file descriptors—tightening the OS resource squeeze. Simultaneously, the exhausted kernel quotas prevent the optimizer from spawning parallel execution or maintaining plan cache structures, encouraging more plan switches and further entrenching sub-optimal plans. The feedback loop between wasteful plans, replication backlog, and kernel-level throttling drives the database into a degraded, unstable state.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 1556,
+            "score": 0.420289709925134,
+            "bm25_score": 58.27993052437789,
+            "lexical_score": 0.16802168021680217,
+            "matched_terms": [
+                "and",
+                "apply",
+                "be",
+                "between",
+                "cannot",
+                "channel",
+                "for",
+                "lag",
+                "log",
+                "or",
+                "receiver",
+                "replication",
+                "sender",
+                "stale",
+                "start",
+                "state",
+                "the",
+                "to",
+                "used",
+                "when"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "4016",
+                "error_name": "ER_CANT_SET_SQL_AFTER_OR_BEFORE_GTIDS_WITH_ANONYMOUS_TO_GTID",
+                "official_description": "The SQL_AFTER_GTIDS or SQL_BEFORE_GTIDS clauses for START REPLICA cannot be used when the replication channel is configured with ASSIGN_GTIDS_TO_ANONYMOUS_TRANSACTIONS = LOCAL|<UUID>.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

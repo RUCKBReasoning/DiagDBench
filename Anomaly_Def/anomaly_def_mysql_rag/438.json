@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + MVCC Version Maintenance Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "SQL Workload Logic Anomaly: Application‐level statements or transaction demarcations are written in a way that forces the engine to process or modify far more data than business logic really requires.\nMVCC Version Maintenance Anomaly: Obsolete row versions and rollback information accumulate faster than background cleaners can reclaim them, inflating the version store and slowing visibility checks.\nBuffer Cache and Latch Contention Anomaly: Sessions repeatedly collide on the same buffer pages or associated latches, stalling while waiting for page pins, latch ownership, or dirty-page flush slots.\n\nWhen these three root causes strike together, the database exhibits extreme and wide-ranging distress: statements already slow because of inefficient logic become progressively slower as table and index pages bloat with dead versions, inflating I/O and degrading optimizer estimates; meanwhile every logical read or write must acquire latches on an ever-growing set of hot or dirty pages, producing sharp spikes in buffer busy waits, CPU spin, and overall latency. Autovacuum or purge workers fight a losing battle, staying permanently active yet failing to shrink the version store, while user transactions experience timeouts, long checkpoint stalls, and erratic throughput. Monitoring views show simultaneous surges in slow-query counts, obsolete-row ratios, and latch wait events, making the individual symptoms hard to disentangle.\n\nCausally, inefficient SQL logic generates high volumes of UPDATE and DELETE traffic plus oversized scans, which inflate the MVCC version store. The swollen heap and index structures increase the number of buffer pages that must be touched per statement, driving up buffer pool churn. Each additional page access multiplies the probability of latch collisions, especially on hot root and free-space pages already stressed by the heavy modification workload. In turn, latch contention slows the background cleaners that must traverse these pages to reclaim space, allowing dead versions to persist even longer and further enlarging the working-set footprint. The reinforcing loop—bad SQL creating churn, churn expanding MVCC debris, debris inflating buffer pressure, and buffer pressure amplifying latch waits—pushes the system into a vicious cycle of escalating latency and diminished throughput under transactional load.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.7437256637168141,
+            "bm25_score": 31.606337785436388,
+            "lexical_score": 0.14575221238938052,
+            "matched_terms": [
+                "access",
+                "and",
+                "be",
+                "because",
+                "by",
+                "contention",
+                "for",
+                "in",
+                "long",
+                "or",
+                "query",
+                "statement",
+                "statements",
+                "the",
+                "together",
+                "when",
+                "with",
+                "workload"
+            ],
+            "match_count": 22,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

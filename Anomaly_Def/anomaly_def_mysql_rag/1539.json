@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Replication Synchronization Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Critical engine settings (memory, logging, parallelism, checkpoint cadence, etc.) are mis-tuned relative to hardware capacity and workload needs.\nReplication Synchronization Anomaly : Standbys or downstream consumers cannot receive or apply WAL/redo at the rate the primary produces it, causing ever-growing replication lag.\nOperating System Resource Limit Anomaly : Kernel-enforced quotas on file descriptors, shared memory, processes, or other OS objects throttle the database independently of its own internal resource management.\n\nWhen all three faults coexist, the system exhibits a blended failure signature: replication slots stall and retain large volumes of primary WAL, checkpoint frequency spikes yet log recycling is blocked, background workers or apply processes fail to start due to exhausted OS handles, and wait-event statistics show both idle hardware and intense spin or log-write waits. End-users observe increasing replica staleness, sudden session or worker creation errors, erratic latency on the primary, and rapid disk-space consumption from unrecycled logs. Troubleshooting is complicated because each layer (engine parameters, replication, kernel) shows partial symptoms that mask or mimic the others.\n\nCausally, an undersized checkpoint or work-memory setting can inflate WAL generation and stall autovacuum, pushing more redo toward replicas. If OS limits simultaneously cap network sockets, async-I/O contexts, or background threads, the apply side or even the primary’s replication sender processes cannot keep pace, amplifying lag. The growing log backlog prevents log truncation, which in turn triggers aggressive checkpoints per the misconfigured parameters, intensifying I/O surges and memory pressure. Each layer’s throttling therefore compounds the next: mis-tuned engine parameters accelerate load, OS limits restrict the threads and kernel objects needed to digest that load, and replication becomes the visible bottleneck while the primary itself edges toward resource exhaustion. Together they create a self-reinforcing loop that degrades throughput, threatens availability, and obscures root-cause isolation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.7361722488038277,
+            "bm25_score": 26.54197464069448,
+            "lexical_score": 0.12057416267942583,
+            "matched_terms": [
+                "and",
+                "apply",
+                "causing",
+                "downstream",
+                "is",
+                "lag",
+                "or",
+                "replica",
+                "replication",
+                "sender",
+                "the",
+                "to",
+                "waits",
+                "when"
+            ],
+            "match_count": 74,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

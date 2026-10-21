@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Replication Synchronization Anomaly + CPU Resource Anomaly",
+            "Description": "Optimizer Statistics Anomaly: Costing metadata is stale, incomplete, or missing, so the optimizer systematically mis-estimates cardinalities and chooses sub-optimal execution plans.\nReplication Synchronization Anomaly: Standby or subscriber nodes fall behind because they cannot receive or apply primary redo fast enough, causing widening log-position gaps and retention of log segments on the primary.\nCPU Resource Anomaly: Database or replica processes drive host CPU usage to sustained saturation, starving other work and inflating run-queue and scheduler waits.\n\nWhen all three anomalies coexist, the database exhibits a compound failure pattern: poorly estimated queries on the primary choose CPU-intensive plans (e.g., full table scans or over-parallelized joins) that generate excess I/O and larger-than-normal redo streams. The primary’s CPU saturation slows foreground transactions, while the ballooning write-ahead log cannot be recycled because replicas are lagging. On the replicas, limited CPU capacity and inefficient apply paths struggle with the higher-volume, more complex redo, further lengthening replication lag. Monitoring shows simultaneous spikes in CPU wait events, soaring statement latencies, dramatic discrepancies between estimated and actual row counts, and ever-increasing replica delay and retained log volume. Failover readiness degrades, and storage pressure mounts on both primary (due to unrecycled logs) and replicas (due to growing relay logs).\n\nCausally, stale or missing statistics trigger mis-estimated plans that inflate CPU consumption and redo generation. The resulting CPU Resource Anomaly on the primary slows transaction processing and log shipping threads, while the same or separate CPU pressure on replicas limits their apply throughput. Increased redo volume coupled with diminished processing capacity intensifies the Replication Synchronization Anomaly, which in turn prevents log truncation, forcing the primary to handle more log I/O and background cleanup work—further taxing CPU. This feedback loop between poor statistics, CPU saturation, and replication backlog amplifies each symptom, driving the entire database environment into a degraded and self-reinforcing state.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.6288869092175203,
+            "bm25_score": 24.083548673258957,
+            "lexical_score": 0.13307107976125881,
+            "matched_terms": [
+                "and",
+                "apply",
+                "be",
+                "causing",
+                "is",
+                "lag",
+                "or",
+                "replica",
+                "replication",
+                "than",
+                "the",
+                "this",
+                "to",
+                "waits",
+                "when"
+            ],
+            "match_count": 9,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

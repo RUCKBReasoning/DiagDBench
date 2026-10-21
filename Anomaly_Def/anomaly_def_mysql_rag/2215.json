@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Data Block and Index Integrity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level statement or transaction design forces the engine to process far more data or hold resources much longer than business logic requires.\nData Block and Index Integrity Anomaly : Physical corruption or logical inconsistency inside on-disk pages or index structures makes stored data and access paths unreliable.\nOperating System Resource Limit Anomaly : Kernel-enforced ceilings on file handles, shared memory, semaphores, threads, or similar objects prevent the database from obtaining required OS resources.\n\nWhen all three root causes occur concurrently, the system experiences a multi-layer failure mode in which excessive or inefficient SQL drives high I/O, memory, and worker-thread demand; corrupted pages or indexes introduce unpredictable access-path fallbacks, retries, or error storms; and exhausted kernel resources prevent new file opens, buffer allocations, or background-worker spawns needed for recovery or normal execution. Observable symptoms converge and amplify: the same slow or timing-out statements repeatedly hit corrupted pages, triggering checksum or logical-consistency errors; automatic plan fallbacks to full table scans magnify the already bloated workload, pushing file-handle and shared-memory usage to hard OS limits; connection spikes caused by application retries encounter \"too many open files,\" \"cannot map shared memory,\" or \"failed to start worker\" errors, while index versus heap row counts diverge and integrity-check utilities cannot allocate the resources required to repair. Admins may see alternating patterns of statement-level timeouts, corruption warnings in engine logs, and kernel messages denying resource allocations, making root-cause isolation difficult.\n\nCausal chain: Inefficient SQL amplifies resource consumption, bringing the process close to OS quotas. Near the saturation point, any additional overhead—such as the engine switching from index seeks to full scans because of corrupted structures—rapidly exhausts remaining kernel objects and memory. Simultaneously, resource denials can interrupt checkpointing, index rebuilds, or page flushes, causing partial writes or failed recovery steps that deepen on-disk corruption. Each anomaly therefore reinforces the others: logic-level overwork accelerates resource exhaustion; resource exhaustion hinders I/O and recovery, increasing corruption risk; corruption forces heavier access patterns, which in turn magnify both workload inefficiency and OS-level pressure, culminating in cascading performance degradation and potential service outage.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.5499146720506727,
+            "bm25_score": 25.772258237497503,
+            "lexical_score": 0.13443359876701771,
+            "matched_terms": [
+                "and",
+                "because",
+                "block",
+                "cannot",
+                "connection",
+                "for",
+                "longer",
+                "of",
+                "or",
+                "required",
+                "statement",
+                "than",
+                "the",
+                "timing",
+                "to",
+                "transaction",
+                "when",
+                "while"
+            ],
+            "match_count": 104,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

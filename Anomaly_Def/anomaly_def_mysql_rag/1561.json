@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + MVCC Version Maintenance Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Optimizer Statistics Anomaly: Optimizer inputs (row counts, histograms, correlation data) are stale or incomplete, leading the planner to choose systematically mis-costed execution plans.\nMVCC Version Maintenance Anomaly: Obsolete row versions and rollback records accumulate because background cleanup is throttled or blocked, inflating on-disk objects and visibility-check overhead.\nTransaction Log Subsystem Anomaly: The write-ahead log path (generation, flush, switch, archive, retention) becomes a bottleneck, stretching commit latency and stalling writers.\n\nWhen these three root causes coincide, the system exhibits a multi-layer performance collapse:  \n• Queries adopt inefficient plans—e.g., index probes where true cardinalities demand scans, or vice-versa—because statistics reflect the pre-bloat data shape rather than the current, heavily versioned heap.  \n• Table and index bloat from unreclaimed versions drastically lengthens I/O paths; the mischosen plans amplify I/O and CPU consumption, further stressing the buffer pool and cache hierarchy.  \n• Concurrently, surging redo from update/delete churn and from the faulty plans’ extra work overwhelms the log buffer and log device, inflating commit latency, causing frequent log-flush waits, and delaying checkpoints and archival.  \n• Long-running transactions that keep version snapshots open also prevent log segment recycling, so log directories and version stores grow together, consuming space and triggering emergency autovacuum or checkpoint storms.  \n• Background statistics jobs, vacuum/cleanup workers, and log archivers all contend for I/O and CPU, falling further behind and creating a feedback loop where stale statistics, bloat, and log pressure reinforce each other.  \n\nCausally, excessive MVCC bloat inflates table sizes and redo generation, which in turn magnifies transaction-log throughput requirements. Log subsystem saturation slows commits and prolongs active snapshots, blocking vacuum from pruning dead tuples and perpetuating version accumulation. The expanding heap and skewed dead/live row ratios render existing statistics obsolete; suppressed or delayed statistics refreshes (due to long transactions or choking maintenance workers) lock the optimizer into poor plans that intensify CPU and I/O demand, generating even more undo/redo. This vicious cycle can escalate to severe space exhaustion, widespread query slowdowns, and potential outage if log or transaction-ID horizons are reached.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5909,
+            "score": 0.48543653630984623,
+            "bm25_score": 46.770664322312555,
+            "lexical_score": 0.14932574799831438,
+            "matched_terms": [
+                "and",
+                "are",
+                "check",
+                "data",
+                "disk",
+                "for",
+                "id",
+                "is",
+                "latency",
+                "log",
+                "or",
+                "paths",
+                "pressure",
+                "table",
+                "the",
+                "to",
+                "update",
+                "when",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-014073",
+                "error_name": "OBSOLETE_ER_DD_UPDATE_DATADIR_FLAG_FAIL",
+                "official_description": "Failed to update data directory flag for dd table with tablespace id '%llu' when ibd file for '%s' is moved to new location '%s' during server shutdown",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

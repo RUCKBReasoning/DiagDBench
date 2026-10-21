@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Row-count and data-distribution metadata are stale or incomplete, causing systematic cardinality misestimation and poor plan choices.\nTransaction Log Subsystem Anomaly : The write-ahead logging path (log buffer, log files, archiver/replicator) is saturated or mis-configured, driving up commit latency and stalling write activity.\n\nWhen these two root causes strike together, the database exhibits a mixture of optimizer-related and log-related symptoms that reinforce each other:  • Execution plans show grossly inaccurate estimates, leading to plan shapes that inflate redo generation (e.g., unnecessary row-by-row updates, wide nested loops, or missing batch merge operations).  • Concurrently, sessions accumulate high LOG* and COMMIT wait events, throughput collapses, and checkpoint or archival backlogs appear.  • Autovacuum/auto-stats or plan recompiles fire more often but finish later because they themselves suffer from log-flush delays.  • Spikes in buffer dirtiness, memory pressure from bloated hash/ sort operations, and lock contention extend transaction lifetimes, further multiplying log volume and commit queuing.  • Administrators may find it difficult to attribute slowdown to either the optimizer or the log subsystem alone because symptoms of one manifest as effects in the other.\n\nCausal interaction: Stale or incomplete statistics mislead the optimizer into choosing row-oriented, non-batch, or overly parallel plans that touch many more rows than necessary, dramatically increasing redo generation and frequency of commits, thereby amplifying pressure on an already constrained log subsystem. The resulting log-write stalls prolong transaction duration and lock retention, preventing automatic statistics jobs from keeping pace with data changes and allowing statistics staleness to deepen. The feedback loop between inaccurate statistics (producing write-heavy, long-running plans) and log bottlenecks (delaying stats refreshes and transactional completion) spirals into severe throughput degradation and unpredictable query latency.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.33513457264004964,
+            "bm25_score": 14.788350990688404,
+            "lexical_score": 0.1448827292110874,
+            "matched_terms": [
+                "activity",
+                "an",
+                "and",
+                "are",
+                "but",
+                "configured",
+                "is",
+                "latency",
+                "of",
+                "or",
+                "sessions",
+                "stale",
+                "than",
+                "that",
+                "the",
+                "transaction",
+                "when",
+                "with"
+            ],
+            "match_count": 289,
+            "entry": {
+                "timeout_id": "pg16_idle_session_timeout",
+                "parameter_name": "idle_session_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle, but not within an open transaction, for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle and not inside an open transaction longer than the configured threshold.",
+                "workload_impact": "The session is terminated; the documentation warns about using this with connection pools or middleware.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

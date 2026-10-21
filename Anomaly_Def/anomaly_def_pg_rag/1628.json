@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Replication Synchronization Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Critical optimizer metadata (row counts, histograms, correlation data) is stale or incomplete, producing systematic cardinality errors and sub-optimal execution plans.\nReplication Synchronization Anomaly : The replication channel cannot ship, write, or apply change-stream records as fast as the primary generates them, causing widening log gaps and replay lag.\nNetwork and Connectivity Resource Anomaly : Transport paths, listeners, sockets, or authentication slots are saturated or unstable, throttling client traffic and any database communication that relies on the same network.\n\nWhen all three root causes strike together, the database exhibits a blended symptom set:  • Queries on the primary and on read replicas show severe plan drift, long runtimes, and explosive I/O because misestimated cardinalities choose inefficient join orders or missing indexes. • These bloated queries emit outsized result sets and hold transactions open longer, enlarging write-ahead logs. • Replication views show rapidly increasing send/receive/replay lag, while primary log segments accumulate and disk usage grows because they cannot be recycled. • Concurrently, client sessions and replication transport report connection stalls, timeouts, retransmissions, or \"too many connections\" errors as the network and listener queues saturate. • On read replicas, both stale data (because of lag) and stale statistics (never refreshed due to catch-up backlog) yield even poorer plans, making troubleshooting signals hard to attribute to any single layer.\n\nCausal interaction: Inaccurate statistics produce heavyweight queries that inflate log volume and prolong transaction lifetimes; the surge in redo must traverse the replication channel, stressing apply workers. Network congestion and exhausted connection resources throttle that channel, amplifying replication lag. The growing lag forces the primary to retain more log files, increasing storage pressure and further slowing I/O for already inefficient queries. On replicas, delayed replay postpones statistics refresh jobs, perpetuating optimizer inaccuracy and compounding bad plan generation. The feedback loop between poor plans (from stale statistics), network-induced replication slowdown, and replication-induced resource retention drives a cascading degradation that impacts both OLTP and analytical workloads across the cluster.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 189,
+            "score": 0.4851025975610271,
+            "bm25_score": 26.40835407660171,
+            "lexical_score": 0.1348516439454691,
+            "matched_terms": [
+                "and",
+                "be",
+                "connections",
+                "execution",
+                "in",
+                "is",
+                "many",
+                "must",
+                "or",
+                "pressure",
+                "resource",
+                "resources",
+                "the",
+                "to",
+                "together",
+                "too"
+            ],
+            "match_count": 12,
+            "entry": {
+                "error_code": "53300",
+                "error_name": "too_many_connections",
+                "official_description": "too many connections",
+                "error_class": "Class 53 - Insufficient Resources",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

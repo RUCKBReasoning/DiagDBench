@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Buffer Cache and Latch Contention Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Schema and Index Design Anomaly : The static physical data model and index layout do not fit workload access patterns, forcing queries into sub-optimal, scan-heavy plans and inflating maintenance work on every modification.\nBuffer Cache and Latch Contention Anomaly : Concurrent sessions serialize on hot buffer pages and latches, producing buffer-busy waits, spin-loop CPU burn, and checkpoint-related stalls even though total memory may be sufficient.\nData Block and Index Integrity Anomaly : On-disk data pages or index structures are physically or logically corrupted, so page checksums fail, index keys are out of order, and the optimizer reluctantly falls back to full scans or throws corruption errors.\n\nWhen all three conditions co-exist, the database shows a compound failure signature: queries that already favor full-table or non-covering index scans (because of poor schema and index design) pour traffic onto a small set of hot pages, amplifying latch and buffer-pin waits. The same pages may intermittently raise checksum or key-order errors, causing query retries, plan fallbacks to even broader scans, and emergency page repairs. Observable symptoms include oscillating CPU spikes from latch spin followed by I/O bursts from corruption-triggered page rereads, sudden drops in plan stability, mismatch between index and heap row counts, and erratic latency that improves only after both index redesign and corruption repair.\n\nCausally, inefficient schema design drives high page churn and repeated access to specific root or leaf pages, which intensifies buffer contention. Prolonged contention keeps pages locked or dirty longer, stretching checkpoint windows and increasing the chance that an unexpected shutdown or storage glitch leaves those frequently written pages in an inconsistent state—thus seeding or aggravating block and index corruption. In turn, corruption forces the optimizer to abandon damaged indexes, magnifying the original design flaw by routing even more traffic through full scans, which further heats the buffer cache and latches. The feedback loop among design mismatch, hot-page contention, and structural corruption rapidly degrades throughput and threatens data integrity unless all three layers are addressed together.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.4347494481466766,
+            "bm25_score": 15.729371954402032,
+            "lexical_score": 0.13012987012987012,
+            "matched_terms": [
+                "after",
+                "an",
+                "and",
+                "are",
+                "be",
+                "by",
+                "latency",
+                "not",
+                "of",
+                "on",
+                "or",
+                "sessions",
+                "that",
+                "the",
+                "to",
+                "triggered",
+                "when",
+                "which"
+            ],
+            "match_count": 281,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_interval",
+                "parameter_name": "tcp_keepalives_interval",
+                "timeout_category": "network_keepalive_retry_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time after which a TCP keepalive message that has not been acknowledged by the client should be retransmitted.",
+                "trigger_condition": "A TCP keepalive probe is not acknowledged for tcp_keepalives_interval on systems supporting TCP_KEEPINTVL or an equivalent socket option.",
+                "workload_impact": "Controls retry timing for keepalive probes used to detect unresponsive client connections.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Replication Synchronization Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Excessive accumulation of obsolete row versions and rollback data because background cleanup cannot keep pace with update-/delete-driven churn.\nReplication Synchronization Anomaly : Standby or subscriber nodes fall behind because they cannot receive, write, or apply the primary’s WAL/redo stream at its production rate.\nStorage I/O Throughput Anomaly : The physical storage layer is saturated, driving up read/write latency and queue depth for data, log, and temporary files.\n\nWhen all three faults are active, the system exhibits a compound symptom set: version stores, rollback segments, and table bloat expand rapidly while replica lag grows and primary log segments pile up, inflating disk-space usage. Autovacuum or purge workers and replica apply threads contend for the same over-burdened I/O subsystem, so both visibility-map scans and redo replays slow sharply. Checkpoints, sequential scans, and large deletes stretch far longer; replica read freshness degrades from seconds to minutes or hours; failovers risk data loss because the replica’s recovery point trails the primary’s transaction-ID horizon; meanwhile the primary warns of imminent wraparound yet cannot recycle WAL because lagging replicas still need it. Global performance shows high I/O wait, moderate CPU, swollen disk queues, and an accelerating feedback loop of bloat → more I/O → deeper lag.\n\nCausally, heavy update/delete activity inflates the version store, forcing more page writes and generating extra WAL. The surge in log volume must traverse the replication channel, but limited network, CPU, or single-threaded apply logic on the replica slows consumption, so WAL accumulates on the primary. Retention of these log segments and the growing on-disk tables/indexes both expand the storage footprint, pushing the underlying disk array to its throughput limit. Elevated I/O latency then throttles autovacuum/purge and replica apply even further, allowing yet more dead tuples and WAL to gather. This positive feedback loop ties together MVCC cleanup debt, replication backlog, and storage saturation, creating a self-reinforcing degradation that can culminate in transaction-ID exhaustion, replica desynchronization, and service-level breaches.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.510845403986548,
+            "bm25_score": 15.106893956196927,
+            "lexical_score": 0.11863833896668276,
+            "matched_terms": [
+                "activity",
+                "and",
+                "are",
+                "for",
+                "in",
+                "is",
+                "latency",
+                "of",
+                "or",
+                "seconds",
+                "the",
+                "this",
+                "wait",
+                "when"
+            ],
+            "match_count": 207,
+            "entry": {
+                "timeout_id": "pg16_libpq_connection_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "client_connection_establishment_timeout",
+                "scope": "libpq/client connection parameter",
+                "official_definition": "Maximum wait for connection, in seconds; zero or not specified means wait indefinitely.",
+                "trigger_condition": "A libpq client connection attempt exceeds connect_timeout seconds.",
+                "workload_impact": "The client connection attempt fails instead of waiting indefinitely.",
+                "default_behavior": "Zero or absent value means wait indefinitely.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Storage Space Capacity Anomaly + CPU Resource Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Storage Space Capacity Anomaly: Persistent exhaustion or near-exhaustion of physical or logical free space assigned to data files, logs, temp areas, backups, or diagnostics, causing allocation failures and space-related errors.\nCPU Resource Anomaly: Sustained saturation of host CPU by database processes, driving run-queue growth and broad response-time inflation across the workload.\nOperating System Resource Limit Anomaly: Exhaustion of kernel-enforced quotas such as file descriptors, shared-memory segments, semaphores, threads, or cgroup limits, preventing the database from acquiring required OS resources.\n\nWhen all three conditions occur together, the database exhibits compound symptoms: rapid space depletion accompanies soaring CPU utilisation and a surge of kernel-level allocation failures. Checkpoints, log switches, and temp operations repeatedly fail or stall, while foreground sessions and background workers spin or retry, inflating CPU load and run-queue depth. Simultaneously, the mounting number of retries, orphaned handles, and emergency maintenance threads consume additional file descriptors and process slots, triggering \"too many open files\", \"cannot create thread\", or shared-memory errors. Application traffic sees erratic latency, timeouts, and abrupt disconnections as the engine alternates between CPU starvation, space allocation failures, and OS denials, making the root cause appear multi-faceted and intermittent.\n\nCausally, shrinking free space forces the engine to perform frequent auto-extension checks, logging, and aggressive space-management work (e.g., checkpoints, archive generations, purges), each of which elevates CPU demand and opens additional files, pushing both CPU utilisation and OS resource consumption upward. The resulting CPU saturation slows background cleaners and log archivers, delaying space reclamation and accelerating space pressure. In parallel, the expanded number of active sessions or retry loops inflates file-handle and thread usage until kernel limits are hit; once those limits are breached, the engine cannot create new files, extend tablespaces, or spawn workers, further preventing space recovery and amplifying CPU spin and wait events. The feedback loop among space exhaustion, CPU overload, and OS limit exhaustion drives the system into cascading stalls or outages far more severe than any single anomaly would cause alone.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 1401,
+            "score": 0.6094764417294913,
+            "bm25_score": 58.80293904767302,
+            "lexical_score": 0.17205669916937522,
+            "matched_terms": [
+                "and",
+                "archive",
+                "are",
+                "cannot",
+                "capacity",
+                "create",
+                "data",
+                "engine",
+                "failures",
+                "file",
+                "growth",
+                "latency",
+                "log",
+                "management",
+                "or",
+                "os",
+                "pressure",
+                "storage",
+                "the"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "3845",
+                "error_name": "ER_INNODB_REDO_LOG_ARCHIVE_FILE_CREATE",
+                "official_description": "Cannot create redo log archive file '%.512s' (OS errno: %d - %.128s)",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

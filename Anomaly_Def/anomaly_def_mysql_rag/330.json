@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Replication Synchronization Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Obsolete row versions, rollback records, and deleted index entries pile up faster than background cleanup workers can reclaim them, causing version-store growth and heavier visibility checks.\nReplication Synchronization Anomaly : Standbys or downstream consumers fall behind the primary, accumulating un-replayed log records and widening receive, flush, and replay lags.\nOperating System Resource Limit Anomaly : Database processes exhaust kernel-enforced quotas such as file descriptors, shared-memory segments, or process slots, preventing new workers or I/O contexts from being created.\n\nWhen all three conditions co-exist, the system exhibits an intertwined symptom set: the heap and index bloat lengthen scans and expand the volume of write-ahead logging; the swollen WAL stream cannot be shipped or applied fast enough, so replica lag and retained log segments grow sharply; the primary keeps thousands of unrecycled log files open while vacuum and replication workers proliferate, collectively hitting per-process file-handle, shared-memory, or thread limits. Operators may see persistent autovacuum backlogs, replication slot disk usage exploding, replica replay delay climbing into hours, and sudden failures to spawn additional vacuum, apply, or client workers despite plenty of CPU and RAM.\n\nCausally, heavy update/delete churn first inflates MVCC garbage, forcing aggressive cleanup activity that emits large volumes of WAL. The surge in log traffic overwhelms replication channels, extending log-retention windows because segments cannot be recycled until replicas catch up. The ever-growing set of retained segments and extra background workers raises the count of open files, shared-memory requests, and threads until kernel limits are hit. Once OS limits are breached, new vacuum workers and replication sender/receiver processes fail to start, further delaying garbage removal and replica catch-up. This feedback loop amplifies each anomaly, accelerating storage consumption, degrading query performance, and eroding high-availability guarantees.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.7437615365427787,
+            "bm25_score": 33.037667611973944,
+            "lexical_score": 0.14587178847592913,
+            "matched_terms": [
+                "and",
+                "apply",
+                "be",
+                "causing",
+                "downstream",
+                "lag",
+                "or",
+                "preventing",
+                "receiver",
+                "replica",
+                "replication",
+                "sender",
+                "than",
+                "the",
+                "this",
+                "to",
+                "when"
+            ],
+            "match_count": 15,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Engine-level runtime settings are mis-tuned for the hardware, workload, or version, so internal components (buffer pools, work memory, checkpoint cadence, parallel-worker counts, etc.) operate outside safe or efficient envelopes.\nOperating System Resource Limit Anomaly : The host kernel or container enforces restrictive quotas on file handles, shared memory, processes, address space, or other kernel objects, causing database requests for those resources to fail or stall.\n\nComposite anomaly definition: The database simultaneously suffers from mis-configured engine parameters that intensify demand on certain kernel-managed resources and from operating-system limits that are too low to satisfy this inflated demand. The intersection of the two issues produces failures and performance regressions that neither anomaly alone would fully explain.\n\nCombined observable phenomena: • Sudden surges of checkpoint, logging, or parallel-worker waits accompanied by kernel errors about ENOMEM, EMFILE, or semaphore exhaustion. • Intermittent inability to create new sessions or background workers even though database-level slots appear free. • Dramatic swings in CPU and I/O utilization—periods of headroom followed by stalls as the engine repeatedly retries failed kernel calls. • Spurious deadlock or timeout reports, aborted transactions, and recovery cycles triggered by processes that crashed after hitting OS quotas. • Post-upgrade or post-tuning performance dives where increasing buffer pools or work-memory sizes correlates with out-of-memory kills or shared-memory allocation failures logged by the kernel.\n\nCausal chain and interaction: Aggressive or ill-aligned configuration parameters (large shared buffers, high max_connections, many parallel workers, small checkpoint intervals) inflate the number of open files, shared-memory pages, threads, and I/O contexts the engine requests. If the underlying operating system or container retains default or overly restrictive limits, these surging requests breach kernel quotas. Each failed allocation feeds back into the engine, causing retries, throttling, or process termination, which in turn triggers further reactive activity such as accelerated checkpoints or background-worker restarts—amplifying both CPU spin and kernel contention. Conversely, the OS denials mask the real culprit, making DBAs likely to misinterpret the issue as pure resource shortage and apply even more aggressive tuning, thereby deepening the spiral of instability, performance degradation, and partial outages.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 228,
+            "score": 0.5397259663332316,
+            "bm25_score": 41.46275751671641,
+            "lexical_score": 0.11178743961352655,
+            "matched_terms": [
+                "allocation",
+                "amplifying",
+                "and",
+                "buffer",
+                "engine",
+                "headroom",
+                "large",
+                "memory",
+                "or",
+                "settings",
+                "the",
+                "with",
+                "workload"
+            ],
+            "match_count": 16,
+            "entry": {
+                "error_code": "HV090",
+                "error_name": "fdw_invalid_string_length_or_buffer_length",
+                "official_description": "fdw invalid string length or buffer length",
+                "error_class": "Class HV - Foreign Data Wrapper Error (SQL/MED)",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "memory_and_buffer",
+                "cause_analysis": "The failure is typically associated with insufficient memory headroom, buffer pressure, oversized intermediate state, or memory-allocation constraints inside the engine or client library.",
+                "solution_guidance": "Check memory availability, per-session memory settings, large sorts or hashes, and whether workload concurrency is amplifying memory consumption.",
+                "observable_symptoms": [
+                    "memory pressure",
+                    "allocation failure",
+                    "spill",
+                    "unstable latency"
+                ]
+            }
+        }
+    }
+]

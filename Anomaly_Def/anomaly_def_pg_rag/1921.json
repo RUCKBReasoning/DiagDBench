@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Replication Synchronization Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions contend for mutually incompatible locks, forming long blocking chains or deadlocks that stall commit progress.\nReplication Synchronization Anomaly : Standby or downstream replicas fall behind because they cannot receive, write, or apply the primary’s log stream at the production rate, widening replay lag.\nStorage Space Capacity Anomaly : Free space in data, log, archive, or temp areas approaches exhaustion, threatening further allocations and log recycling.\n\nWhen these three root causes strike together, the database exhibits an intertwined symptom set: transactions on the primary block each other and remain open longer, inflating commit latency and enlarging transaction-log records. The swollen log must be shipped and applied downstream, but replicas already lag, so unsent or unapplied segments accumulate. Because log truncation or recycling is now gated by both open transactions and replica confirmation, primary-side log volumes balloon, quickly consuming the remaining storage budget. Operators observe sharp rises in lock-wait time, deadlock reports, client timeouts, replication delay metrics, runaway disk usage in log or archive areas, and eventual \"out of space\" or \"cannot extend\" errors that can halt new transactions and stall recovery replay on replicas.\n\nCausally, severe lock contention lengthens transaction lifetimes, delaying commit acknowledgments that replication relies on, thereby increasing replica lag. The growing lag prevents the primary from reclaiming old log segments, so every additional blocked or retried transaction produces more unreleased log data. The expanding log footprint accelerates storage exhaustion; once space becomes scarce, auto-extension failures or forced checkpoints slow down data-file and log writes, which further degrades throughput and raises lock-hold times—feeding back into even worse contention and replication backlog. This positive feedback loop can cascade into a full outage affecting both primary OLTP processing and downstream read scalability or disaster-recovery objectives.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 213,
+            "score": 0.6085277272073796,
+            "bm25_score": 47.83047928131686,
+            "lexical_score": 0.13663282571912014,
+            "matched_terms": [
+                "and",
+                "blocking",
+                "by",
+                "chains",
+                "concurrent",
+                "file",
+                "for",
+                "incompatible",
+                "is",
+                "lock",
+                "or",
+                "the",
+                "transaction",
+                "transactions",
+                "write"
+            ],
+            "match_count": 13,
+            "entry": {
+                "error_code": "F0001",
+                "error_name": "lock_file_exists",
+                "official_description": "lock file exists",
+                "error_class": "Class F0 - Configuration File Error",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "concurrency_and_transaction",
+                "cause_analysis": "The failure is typically associated with concurrent transactions contending for the same logical resources, incompatible lock acquisition order, or transaction-state conflicts surfaced by the engine.",
+                "solution_guidance": "Inspect blocking chains, reduce conflicting write overlap, shorten transaction lifetime, review lock acquisition order, and verify whether transaction scheduling or retry logic needs adjustment.",
+                "observable_symptoms": [
+                    "blocking",
+                    "rollback",
+                    "retry",
+                    "stalled transaction"
+                ]
+            }
+        }
+    }
+]

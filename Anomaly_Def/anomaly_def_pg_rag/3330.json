@@ -1,0 +1,59 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer chooses a markedly sub-optimal execution plan despite usable statistics, often because of flawed cost comparisons, plan reuse pathologies, or version/configuration changes.\nOperating System Resource Limit Anomaly : The database hits kernel-enforced ceilings on objects such as file descriptors, shared-memory segments, threads, or async-I/O contexts, causing failures outside the engine’s own resource governance.\n\nWhen both root causes are present, workloads exhibit erratic and hard-to-explain behaviour: the same statement may alternate between fast and extremely slow executions; some runs error out with OS-level \"cannot create thread/file/shm\" messages, while others limp through with degraded performance. Parallel queries may start but stall after only a subset of workers appear, leading to skewed execution, temp-spill explosions, or repeated plan abort/retry cycles. System-wide, operators observe sudden surges in CPU and I/O from full scans or massive hash builds selected by the optimizer, coinciding with spikes in kernel resource-exhaustion logs. Session creation, background autovacuum or checkpoint processes, and I/O completion threads intermittently fail, producing partial outages that disappear once load subsides.\n\nCausal chain: a poor plan often allocates far more resources than a well-tuned one—opening many table/index files, spawning numerous workers, or spilling to large temporary files. This accelerates consumption of kernel-limited objects, pushing the system over OS quotas. Once limits are reached, the database cannot create additional workers, files, or I/O contexts, causing in-flight queries to abort or replan. The optimizer, unaware of the external constraint, may repeatedly choose the same high-resource plan, triggering a feedback loop of retries, plan cache pollution, and further resource churn. Conversely, OS denials can invalidate or refuse parallel plans, forcing the optimizer to fall back to less efficient serial scans, which lengthen execution time and keep resources busy even longer. The mutual reinforcement of bad plan choices and kernel resource exhaustion amplifies latency variance, throughput collapse, and operational instability across both transactional and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.7490646760297415,
+            "bm25_score": 36.954216108218205,
+            "lexical_score": 0.1635489200991384,
+            "matched_terms": [
+                "and",
+                "because",
+                "completion",
+                "error",
+                "execution",
+                "from",
+                "longer",
+                "more",
+                "of",
+                "or",
+                "out",
+                "query",
+                "resource",
+                "runs",
+                "session",
+                "statement",
+                "than",
+                "that",
+                "the",
+                "this",
+                "time",
+                "when",
+                "with"
+            ],
+            "match_count": 325,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

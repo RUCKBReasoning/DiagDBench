@@ -1,0 +1,63 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Excessive or poorly-written application statements and transaction demarcations that drive the engine to touch more rows, return larger result sets, or keep transactions open longer than the true business need.\nOperating System Resource Limit Anomaly : Exhaustion of kernel-enforced objects such as file handles, shared-memory segments, semaphores, threads, or cgroup quotas, preventing the database process from acquiring the operating-system resources it requests.\n\nWhen these two root causes strike simultaneously, users observe an extreme long-tail of statement latencies, frequent timeouts, and sporadic \"cannot allocate resource\" or \"too many open files\" errors. Queries that already scan or lock large data ranges because of sub-optimal SQL now stall mid-execution when the engine cannot obtain additional file descriptors, worker threads, or shared memory. Connection storms triggered by application-level retries further deplete process or thread quotas, leading to partial outages where existing sessions hang in uninterruptible I/O or lock-wait states while new sessions are refused. Monitoring shows CPU and I/O utilisation well below capacity, yet wait-time histograms are dominated by OS-level resource acquisition waits and user-level lock/latch contention amplified by the prolonged transactions.\n\nCausally, poorly tuned SQL inflates the demand for kernel resources—longer scans keep file handles, buffers, locks, and threads alive, while batched or Cartesian operations require more temporary files and memory mappings. This pushes the database process toward the fixed OS limits faster than anticipated. Once limits are hit, the kernel denies new allocations, which in turn causes the database to pause or retry internal operations, lengthening execution time and holding application locks even longer. The extended lock holds and session backlogs feed a positive feedback loop, aggravating both the workload-logic inefficiency and the OS resource scarcity, eventually cascading into widespread performance degradation and intermittent service outages.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.7633,
+            "bm25_score": 36.9110319414937,
+            "lexical_score": 0.211,
+            "matched_terms": [
+                "acquisition",
+                "an",
+                "and",
+                "because",
+                "cannot",
+                "for",
+                "holding",
+                "in",
+                "lock",
+                "locks",
+                "longer",
+                "obtain",
+                "or",
+                "retry",
+                "session",
+                "sessions",
+                "statement",
+                "than",
+                "the",
+                "this",
+                "to",
+                "transaction",
+                "triggered",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 103,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

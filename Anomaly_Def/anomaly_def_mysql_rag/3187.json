@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Replication Synchronization Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently selects a markedly sub-optimal execution plan even though statistics are adequate, causing excessive CPU, I/O, or memory consumption per statement execution.\nReplication Synchronization Anomaly : Stand-by or downstream replicas cannot receive, persist, or apply transaction-log records at the pace the primary generates them, leading to widening replay lag and log-retention growth.\nStorage Space Capacity Anomaly : Physical or logical free space for data, log, or temporary areas falls to, or reaches, hard limits, triggering allocation failures and stalled database components.\n\nWhen these three root causes strike at the same time, the system exhibits a blended symptom set: query executions swing unpredictably between fast and extremely slow; the primary’s transaction-log directory, archive area, or replica relay logs grow rapidly but cannot be recycled; replication delay spikes and failover readiness drops; data-file and temp-space auto-extend attempts fail, surfacing \"no-space\" errors to users; monitoring shows both runaway disk consumption and increasing replica lag, while execution-plan history shows frequent plan flips or a single bloated plan reused across skewed parameter sets.\n\nCausal chain and interaction: The sub-optimal plan inflates row reads, sort volumes, and log generation per transaction. This surge in redo volume overwhelms the replication channel, lengthening log-retention windows because old segments cannot be discarded until replicas catch up. The retained segments, together with the oversized temp objects and data bloat created by the bad plan, consume disk rapidly, pushing the system into a storage-capacity anomaly. As free space shrinks, auto-extension or logging failures slow query execution further and can force the optimizer to re-optimize under degraded statistics, making poor plan choices even more likely. Meanwhile, replicas fall further behind because they must replay the same inefficient work but may also run into their own space shortages, halting apply threads and preventing log recycling on the primary. The three anomalies therefore reinforce one another: bad plans create excess data and log volume, replication lag blocks space reclamation, and space exhaustion degrades execution and replication performance, forming a self-amplifying feedback loop that rapidly threatens overall database availability.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.5347541131217031,
+            "bm25_score": 25.57785381031849,
+            "lexical_score": 0.12340367597004766,
+            "matched_terms": [
+                "and",
+                "another",
+                "attempts",
+                "because",
+                "cannot",
+                "delay",
+                "for",
+                "in",
+                "or",
+                "statement",
+                "the",
+                "this",
+                "to",
+                "transaction",
+                "when",
+                "while"
+            ],
+            "match_count": 149,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Transaction Lock Contention Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Schema and Index Design Anomaly : Table structure, partitioning, and indexing do not match workload access patterns, forcing inefficient scans and lookups independent of statistics freshness.\nTransaction Lock Contention Anomaly : Concurrent transactions compete for mutually incompatible locks, causing blocking chains or deadlocks that throttle throughput.\nStorage Space Capacity Anomaly : Free space in data, log, temp, or backup areas approaches exhaustion, leading to allocation failures and stalled writes.\n\nWhen all three conditions coexist, the database exhibits a compound failure mode: poorly indexed statements fan out to many rows or pages, inflating the lock footprint of every transaction; the resulting long-lived locks generate extensive blocker–waiter chains that back up connection pools. At the same time, bloated table and index structures plus un-ended transactions prevent space reuse, pushing data files, transaction logs, and temp areas toward their capacity limits. Operators may observe a mixture of symptoms—escalating lock-wait time, sudden spikes in full-table scan I/O, deadlock victim errors, autogrow failures, and \"out of space\" messages—all intertwined and therefore difficult to attribute to a single root cause.\n\nCausally, the design flaw is the first domino: missing or non-covering indexes make each query touch more rows, holding more locks for longer. The enlarged lock scope amplifies contention; blocked or rolled-back transactions remain open, keeping undo and redo segments active and preventing space reclamation. As log files cannot be truncated and tablespaces swell with untouched but still-locked pages, the storage subsystem fills up. Near-full disks slow auto-extension, which in turn lengthens commit processing and prolongs lock duration, further intensifying contention. Thus, deficient physical design, lock manager stress, and dwindling free space form a self-reinforcing loop that rapidly degrades transactional performance and risks outright service interruption.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 136,
+            "score": 0.6386316385762962,
+            "bm25_score": 47.03185092184793,
+            "lexical_score": 0.1501062801932367,
+            "matched_terms": [
+                "and",
+                "blocking",
+                "chains",
+                "concurrent",
+                "failure",
+                "for",
+                "incompatible",
+                "is",
+                "lock",
+                "or",
+                "same",
+                "stalled",
+                "the",
+                "transaction",
+                "transactions",
+                "with"
+            ],
+            "match_count": 14,
+            "entry": {
+                "error_code": "40000",
+                "error_name": "transaction_rollback",
+                "official_description": "transaction rollback",
+                "error_class": "Class 40 - Transaction Rollback",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "concurrency_and_transaction",
+                "cause_analysis": "The failure is typically associated with concurrent transactions contending for the same logical resources, incompatible lock acquisition order, or transaction-state conflicts surfaced by the engine.",
+                "solution_guidance": "Inspect blocking chains, reduce conflicting write overlap, shorten transaction lifetime, review lock acquisition order, and verify whether transaction scheduling or retry logic needs adjustment.",
+                "observable_symptoms": [
+                    "blocking",
+                    "rollback",
+                    "retry",
+                    "stalled transaction"
+                ]
+            }
+        }
+    }
+]

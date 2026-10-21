@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Database Memory Allocation Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer selects a substantially sub-optimal execution plan even though statistics are adequate, leading to inefficient access paths, wrong join methods, or inappropriate parallelism.\nDatabase Memory Allocation Anomaly : The database engine allocates or retains more memory than the host can safely supply, causing OS-level pressure, paging, or out-of-memory events.\nStorage I/O Throughput Anomaly : The underlying storage subsystem cannot sustain the read/write demand, so device queues, latencies, and I/O waits grow until the database becomes I/O-bound.\n\nWhen all three root causes strike simultaneously, symptoms overlap and reinforce each other: poorly chosen plans trigger large table scans, hash builds, and wide parallel fan-out that demand excessive work memory and flood buffer caches. The inflated memory footprint collides with existing cache, sort, and hash allocations, pushing the host into swap and forcing the database to evict hot pages while still waiting on I/O. As caches churn and spill operations erupt, physical reads and writes spike, driving the already-stressed storage subsystem beyond its throughput ceiling. The resulting latency amplifies statement runtimes, leaving memory-hungry queries active longer, pinning even more memory, and generating further I/O. Observed metrics show oscillating or steadily worsening plan changes, memory pressure alarms, swap- or OOM-killer events, soaring I/O wait time with moderate CPU utilization, erratic query latencies, and sudden node or instance restarts that obscure a single clear culprit.\n\nCausally, a sub-optimal plan is the spark: choosing full scans or large hash joins magnifies per-query memory needs and multiplies physical I/O. The bloated memory allocations exceed host limits, triggering eviction and spilling that redirect what should be in-memory operations to disk, thereby aggravating storage load. Conversely, storage saturation delays page and temp-space requests, prolonging query execution so that memory remains allocated longer and more concurrent sessions accumulate, escalating memory pressure. This vicious cycle between bad plans, runaway memory usage, and saturated storage quickly degrades overall throughput, masks the origin of the slowdown, and may culminate in service interruption if not disentangled promptly.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.6324539151101848,
+            "bm25_score": 24.44215234860232,
+            "lexical_score": 0.14910485933503836,
+            "matched_terms": [
+                "and",
+                "be",
+                "cannot",
+                "is",
+                "longer",
+                "of",
+                "or",
+                "overlap",
+                "sessions",
+                "statement",
+                "than",
+                "the",
+                "this",
+                "to",
+                "wait",
+                "waiting",
+                "waits",
+                "when",
+                "while",
+                "write"
+            ],
+            "match_count": 109,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

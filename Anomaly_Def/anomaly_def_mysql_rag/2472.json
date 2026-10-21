@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Replication Synchronization Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Critical metadata about data distribution is stale or incomplete, causing the optimizer to systematically misestimate cardinalities and choose sub-optimal execution plans.\nReplication Synchronization Anomaly : Standby or subscriber nodes fall behind because they cannot receive, write, or apply the primary’s change stream at production speed, enlarging log-position and apply lags.\nStorage I/O Throughput Anomaly : The physical volumes hosting data, log, or temp spaces are saturated for bandwidth, IOPS, or latency, driving up I/O wait times across the engine.\n\nWhen all three conditions coexist, the database exhibits a multilayered performance collapse: the optimizer generates plans that unexpectedly scan or sort far more (or fewer) rows than anticipated, inflating I/O demand on already saturated storage. The excess physical reads and writes amplify device queue depths and latency, which in turn slows both local transaction processing and the replica’s redo apply. As the replica struggles to fetch and replay bloated redo streams, replication lag widens, primary log segments accumulate, and long-running queries or batch jobs on the primary experience escalating wait events for I/O, buffer access, and log-space reclamation. Monitoring tools simultaneously report severe cardinality-estimation errors, soaring physical-I/O waits, and rapidly growing replication delay, making root-cause isolation difficult.\n\nCausally, stale or poor-quality statistics mislead the optimizer into favoring plans with large table scans, excessive hashing, or inappropriate join orders, dramatically increasing physical I/O. The inflated I/O volume saturates the storage subsystem, elevating latency for both data access and log flushes. Higher log-flush latency reduces the rate at which the primary can recycle or ship WAL/redo, forcing replicas to ingest bigger batches less frequently and fall further behind. The growing replication backlog, in turn, prolongs retention of old log segments on the primary, compounding storage pressure and perpetuating the I/O bottleneck. Together, the three anomalies create a feedback loop where bad plans generate surplus I/O, storage saturation throttles both query execution and log shipping, and replication lag increases disk usage and operational risk, severely degrading overall system performance and availability.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 721,
+            "score": 0.4512568574784944,
+            "bm25_score": 48.820749104078224,
+            "lexical_score": 0.1539628180039139,
+            "matched_terms": [
+                "and",
+                "apply",
+                "database",
+                "in",
+                "is",
+                "lag",
+                "log",
+                "metadata",
+                "of",
+                "or",
+                "replica",
+                "replication",
+                "retention",
+                "shipping",
+                "stale",
+                "the",
+                "to",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "1747",
+                "error_name": "ER_MTA_UPDATED_DBS_GREATER_MAX",
+                "official_description": "The number of modified databases exceeds the maximum %d; the database names will not be included in the replication event metadata.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

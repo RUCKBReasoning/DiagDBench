@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Engine-level knobs such as log-buffer size, checkpoint cadence, and background-writer limits are mis-tuned relative to hardware capacity and workload characteristics.\nTransaction Log Subsystem Anomaly : The write-ahead logging path itself—log buffer, files, flush/sync operations, archiver, and retention pipeline—becomes the primary bottleneck on commit-intensive activity.\n\nWhen both root causes are present, the instance shows a compound failure pattern: commit latency, LOG_WRITE/LOG_SYNC waits, and checkpoint storms spike at the same time that CPU, IOPS, or memory remain oddly under-utilised. Log segments switch or fill far faster than they can be flushed or archived, causing cascading stalls that propagate to foreground sessions. Monitoring dashboards report contradictory signals—threads spinning on log mutexes while disks appear idle, or sudden surges in dirty-page flushes that evict useful cache. Application symptoms include intermittent but severe slowdowns, dead-letter queues growing on synchronous replication links, and runaway log-directory growth that forces emergency space-reclaim operations.\n\nThe causal chain is self-reinforcing: undersized log buffers, too-frequent checkpoints, or minimal log-file sizes (configuration anomaly) drive an excessive rate of flushes and file switches, exposing any latent throughput limits in the transaction-log subsystem. Each forced flush stalls user commits, which in turn increases concurrency and amplifies redo generation, further saturating the log path and triggering even more aggressive checkpoint activity. Conversely, once the log subsystem begins to lag—due to device placement, limited log groups, or slow archiving—the engine’s adaptive algorithms may shorten checkpoint intervals or throttle background writers, making the earlier mis-tuned parameters even more harmful. The interaction locks the system into a feedback loop where neither adjusting workload pace nor adding raw hardware helps until both the misconfiguration and the log bottleneck are addressed together.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.7342041248016922,
+            "bm25_score": 21.33348921386893,
+            "lexical_score": 0.1140137493389741,
+            "matched_terms": [
+                "and",
+                "be",
+                "engine",
+                "is",
+                "operations",
+                "or",
+                "path",
+                "pattern",
+                "the",
+                "time",
+                "together",
+                "too",
+                "when",
+                "workload"
+            ],
+            "match_count": 130,
+            "entry": {
+                "timeout_id": "mysql84_regular_expression_time_limit",
+                "parameter_name": "regexp_time_limit",
+                "timeout_category": "expression_evaluation_time_limit",
+                "scope": "global/session",
+                "official_definition": "The time limit for regular expression matching operations performed by the regular expression engine.",
+                "trigger_condition": "A regular expression match operation exceeds regexp_time_limit.",
+                "workload_impact": "The regular expression operation is constrained by the configured time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + MVCC Version Maintenance Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Composite definition: The database simultaneously suffers from (1) a physical data-model and indexing layout that does not fit the workload, (2) an over-accumulation of obsolete MVCC row versions that background cleaners cannot reclaim in time, and (3) saturation of the underlying storage subsystem’s throughput or IOPS budget. Together these three root causes create a self-reinforcing performance collapse that affects all foreground operations.\n\nCombined observable phenomena: Queries that should be selective are forced into full scans because of missing or non-covering indexes; those scans traverse bloated tables and indexes swollen by unreclaimed row versions, causing many more pages to be read. Update- and delete-heavy transactions generate large amounts of new versions while every write waits on busy storage queues, inflating commit latency. Autovacuum / purge workers run continuously yet make little progress because their own I/O is throttled; monitoring shows high I/O wait time, deep device queues, rising table and index sizes, misestimated row counts, escalating buffer churn, and sudden spikes in response-time variance. Application sessions may experience both read latency (from scan expansion and I/O stalls) and write latency (from version logging and log-flush bottlenecks), with dead-tuple ratios and storage-level alerts increasing in parallel.\n\nCausal interaction: Poor schema and index design forces the engine to touch far more pages per statement, multiplying physical reads and writes. The extra I/O load accelerates MVCC version churn, because non-covering updates and unnecessary full-row rewrites generate additional row versions and index entries. As obsolete versions pile up, cleanup workers must process larger heaps and indexes; however, their work is throttled by the same saturated storage layer, allowing bloat to grow unchecked. The expanding data footprint further degrades cache efficiency and amplifies I/O demand, pushing the storage subsystem deeper into saturation. This vicious cycle—design inefficiencies → excess version generation → storage bloat → I/O overload → slower cleanup → further bloat—causes a compounded degradation in throughput and latency that is far more severe than any single anomaly would produce in isolation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.7356668511713194,
+            "bm25_score": 28.09525993170694,
+            "lexical_score": 0.14477459016393443,
+            "matched_terms": [
+                "and",
+                "be",
+                "because",
+                "budget",
+                "by",
+                "engine",
+                "is",
+                "operations",
+                "or",
+                "should",
+                "statement",
+                "the",
+                "this",
+                "time",
+                "together",
+                "with",
+                "work",
+                "workload"
+            ],
+            "match_count": 88,
+            "entry": {
+                "timeout_id": "mysql84_regular_expression_time_limit",
+                "parameter_name": "regexp_time_limit",
+                "timeout_category": "expression_evaluation_time_limit",
+                "scope": "global/session",
+                "official_definition": "The time limit for regular expression matching operations performed by the regular expression engine.",
+                "trigger_condition": "A regular expression match operation exceeds regexp_time_limit.",
+                "workload_impact": "The regular expression operation is constrained by the configured time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

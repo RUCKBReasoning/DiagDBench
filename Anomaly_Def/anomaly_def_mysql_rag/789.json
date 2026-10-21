@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Buffer Cache and Latch Contention Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Critical metadata about data distribution is stale, incomplete, or missing, causing the optimizer to misestimate cardinalities and choose sub-optimal execution plans.\nBuffer Cache and Latch Contention Anomaly : Heavy concurrent access to a small set of hot pages or an undersized buffer pool forces sessions to serialize on buffer latches and page pins, inflating wait times and CPU spin.\nOperating System Resource Limit Anomaly : Kernel-enforced ceilings on file descriptors, shared memory, semaphores, threads, or cgroup quotas are reached, preventing the database from allocating additional low-level resources.\n\nComposite definition: The database concurrently suffers from incorrect optimizer statistics, severe buffer-cache/latch contention, and exhaustion of critical OS-level resources. Poor plan choices amplify page hot spots, while latch storms and multiplied background activity consume kernel objects until hard limits are hit, jointly throttling throughput and raising latency.\n\nCombined anomalous phenomena: 1) Execution plans with grossly inaccurate row-count estimates repeatedly choose nested loops or index range scans that hammer the same root, inner-table, or index pages. 2) Buffer-busy and page-latch wait events surge; CPU utilization shows high spin without corresponding work completion. 3) As sessions accumulate in latch waits, new connections, parallel workers, or I/O requests start failing with \"too many open files,\" \"cannot allocate shared memory,\" or \"unable to create thread\" errors logged by both the engine and the OS. 4) Automatic statistics refresh jobs abort due to unavailable OS handles, keeping statistics stale and locking the system in a degradation loop. Diagnosis becomes difficult because symptoms oscillate between optimizer misestimates, latch waits, and sporadic OS allocation errors.\n\nCausal chain: Stale or low-quality statistics lead the optimizer to route a large fraction of queries through plans that over-concentrate activity on a narrow set of pages (e.g., small hash tables, root index pages, or hot partitions). The resulting hot-page pattern drives intense latch contention in the buffer manager. Prolonged latch waits inflate session counts, background I/O, and retry loops, which in turn consume additional file handles, semaphores, and thread slots. Once OS resource limits are breached, new workers and auto-statistics jobs fail, preventing corrective statistics collection and reinforcing misestimation. Simultaneously, limited OS resources slow checkpoint and flush operations, keeping hot pages resident and further intensifying latch storms—forming a self-reinforcing feedback loop that degrades both transactional and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5390,
+            "score": 0.44311353275735427,
+            "bm25_score": 54.10367274121111,
+            "lexical_score": 0.12584615384615383,
+            "matched_terms": [
+                "access",
+                "and",
+                "are",
+                "automatic",
+                "data",
+                "engine",
+                "fail",
+                "file",
+                "is",
+                "latency",
+                "metadata",
+                "new",
+                "or",
+                "that",
+                "the",
+                "through",
+                "to",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013528",
+                "error_name": "ER_RPL_RELAY_LOG_RECOVERY_INFO_AFTER_CLONE",
+                "official_description": "Applier metadata information for channel '%s' was found after a clone operation. Relay log recovery will be executed to adjust positions and file information for this new server. Should that automatic procedure fail please adjust the positions through 'CHANGE REPLICATION SOURCE TO'",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

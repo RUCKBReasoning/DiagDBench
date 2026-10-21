@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Transaction Log Subsystem Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Excessive accumulation of obsolete row versions and rollback records outpaces background cleanup, inflating the version store and enlarging physical data structures.\nTransaction Log Subsystem Anomaly : The write-ahead log path—generation, flushing, switching, or archiving—cannot keep up with the redo rate, driving up commit latency and stalling writers.\nData Block and Index Integrity Anomaly : On-disk pages, index structures, or heap–index mappings become internally inconsistent, causing logical corruption and unreliable access paths.\n\nWhen all three root causes manifest together, the system exhibits a mix of space bloat, rising commit and checkpoint delays, and intermittent data-integrity errors. Bloated tables and indexes lengthen scans and enlarge checkpoint footprints just as the log subsystem is already saturated, so checkpoints and log switches occur more often and take longer. Corrupted pages or mis-linked index nodes encountered during cleanup, vacuum, or recovery processes surface as checksum failures, failed autovacuum passes, or crash-recovery loops. Applications observe sporadic timeouts on writes, escalating snapshot-too-old or serialization failures, incorrect query results from damaged indexes, and sudden crash-restores that replay very large, backlog-laden logs.\n\nCausally, heavy update/delete churn first drives MVCC bloat, inflating both the data files and the volume of redo that must be logged. The swollen log stream stresses the transaction-log subsystem; when log flushing or archiving lags, checkpoints are delayed, holding dirty pages longer and extending the window during which an unexpected crash can leave partially written, corrupt pages. Simultaneously, overfilled version stores force longer vacuum cycles that touch more pages; if those pages reside on hardware already strained by sustained log I/O, the probability of torn-page or write-ordering violations rises, seeding data-block and index corruption. Once corruption appears, cleanup and recovery processes generate even more redo and may repeatedly visit the same damaged pages, amplifying both the MVCC maintenance backlog and log-write pressure. The feedback loop among unchecked version buildup, log saturation, and physical corruption rapidly degrades performance and reliability until all three layers—visibility management, durability path, and on-disk structures—need immediate remediation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2045,
+            "score": 0.5334936263677476,
+            "bm25_score": 54.77134273170826,
+            "lexical_score": 0.16041095890410956,
+            "matched_terms": [
+                "access",
+                "an",
+                "and",
+                "are",
+                "data",
+                "disk",
+                "durability",
+                "failures",
+                "is",
+                "latency",
+                "log",
+                "management",
+                "on",
+                "or",
+                "paths",
+                "pressure",
+                "switching",
+                "system",
+                "the",
+                "which",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010158",
+                "error_name": "ER_LOWER_CASE_TABLE_NAMES_CS_DD_ON_CI_FS_UNSUPPORTED",
+                "official_description": "The server option 'lower_case_table_names' is configured to use case sensitive table names but the data directory is on a case-insensitive file system which is an unsupported combination. Please consider either using a case sensitive file system for your data directory or switching to a case-insensitive table name mode.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

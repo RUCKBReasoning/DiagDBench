@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + CPU Resource Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Database Memory Allocation Anomaly : Excessive growth of buffer caches, work areas, plan caches, or other in-process heaps pushes the database process and host into sustained memory pressure, paging, or OOM risk.\nCPU Resource Anomaly : Database-related processes drive host CPU utilization to saturation, producing long run queues and broad latency elevation independent of any single query plan.\nNetwork and Connectivity Resource Anomaly : Insufficient network bandwidth, socket capacity, or listener/connection-handling resources prevents timely establishment and servicing of client sessions and data transfer.\n\nWhen these three root causes coincide, the system exhibits intertwined symptoms: (1) memory pressure provokes paging and frequent garbage or cache churn, inflating CPU cycles spent on memory management; (2) the resulting CPU saturation lengthens every critical code path, including connection authentication, encryption handshakes, and packet serialization; (3) slower connection setup and data streaming cause sessions to remain open longer, inflating the count of backend processes/threads, each holding its own memory allocations and keeping network sockets half-open; (4) clients observe rising connect and query latency, sporadic timeouts, connection refusals, and erratic throughput, while administrators see escalating resident-set size, load average, run-queue waits, TCP retransmits, and listener backlog overflows.\n\nCausally, any of the three factors can ignite the chain: a burst of memory-hungry queries may trigger swapping, which increases CPU demand and slows packet processing; or a network slowdown can stall result delivery, causing backends to accumulate and retain their work areas, swelling memory use and spawning more worker threads that contend for CPU. Likewise, CPU saturation—whether from inefficient plans or swap storms—degrades network I/O and prolongs connection life, which in turn hoards memory buffers. The mutual reinforcement among memory exhaustion, compute starvation, and network congestion amplifies each symptom, rapidly degrading overall database availability and making it difficult to attribute blame to a single layer.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.5534582093009534,
+            "bm25_score": 15.507253875512713,
+            "lexical_score": 0.16698179271708685,
+            "matched_terms": [
+                "and",
+                "authentication",
+                "client",
+                "connection",
+                "establishment",
+                "for",
+                "handling",
+                "holding",
+                "it",
+                "latency",
+                "longer",
+                "of",
+                "on",
+                "or",
+                "sessions",
+                "the",
+                "waits",
+                "when",
+                "whether"
+            ],
+            "match_count": 12,
+            "entry": {
+                "timeout_id": "mysql84_idle_noninteractive_session_timeout",
+                "parameter_name": "wait_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds the server waits for activity on a noninteractive connection before closing it.",
+                "trigger_condition": "A noninteractive session remains idle longer than wait_timeout.",
+                "workload_impact": "The server closes the idle connection.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + MVCC Version Maintenance Anomaly + Replication Synchronization Anomaly",
+            "Description": "SQL Workload Logic Anomaly: Application-level statements or transaction patterns that retrieve, scan, or update far more data than business logic requires, prolonging statement and transaction execution times.\nMVCC Version Maintenance Anomaly: Accumulation of obsolete row versions and rollback records because background cleaners cannot reclaim space as fast as new versions are created, inflating table/index size and visibility-check cost.\nReplication Synchronization Anomaly: Downstream replicas or subscribers fall behind because they cannot receive, write, or apply primary-generated log records at production speed, causing log-position gaps and retention of old segments.\n\nWhen all three root causes coexist, the database exhibits an amplified mix of symptoms:  \n• Individual queries and batches run long, appear repeatedly in slow-query logs, and generate outsized undo/redo volume.  \n• Heap and index bloat rise rapidly, dragging down cache efficiency and lengthening sequential scans and visibility checks; autovacuum or purge workers stay saturated yet never catch up.  \n• Primary-side transaction logs grow quickly while replica replay lag widens; checkpoints stall waiting for log recycling, and disk-space alarms fire on both primary and standby.  \n• Replica read consistency degrades because larger version stores must be traversed during snapshot creation; long-running replica queries further delay vacuum on the primary, increasing bloat.  \n• End-users see highly variable latency, timeouts, and stale read results, and failover readiness deteriorates as replicas fall ever further behind.\n\nCausally, chatty or poorly filtered application workloads (SQL Workload Logic Anomaly) drive excessive updates, deletes, and wide scans, inflating the volume of row versions produced per transaction. This surge overwhelms MVCC cleanup processes, leading to persistent version bloat that slows both foreground queries and background maintenance. The same write amplification balloons the transaction log, which must be shipped and replayed on replicas; their apply threads struggle with the heavier redo stream and the expanded tables they must update, creating Replication Synchronization Anomaly. Replica lag prevents the primary from recycling log segments, prolongs the global transaction-id horizon, and holds back vacuum from pruning old versions—thereby worsening MVCC bloat. In turn, the bloated storage multiplies the cost of the already inefficient application queries, further escalating change volume and log generation. The feedback loop among chatty workload, version accumulation, and replication lag compounds resource exhaustion and performance instability in OLTP environments.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.7146744002817789,
+            "bm25_score": 33.888523062190814,
+            "lexical_score": 0.14849585062240664,
+            "matched_terms": [
+                "an",
+                "and",
+                "back",
+                "because",
+                "cannot",
+                "change",
+                "delay",
+                "for",
+                "global",
+                "in",
+                "of",
+                "or",
+                "row",
+                "statement",
+                "than",
+                "the",
+                "this",
+                "transaction",
+                "up",
+                "waiting",
+                "when"
+            ],
+            "match_count": 38,
+            "entry": {
+                "timeout_id": "mysql84_innodb_row_lock_wait_timeout",
+                "parameter_name": "innodb_lock_wait_timeout",
+                "timeout_category": "innodb_row_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "The length of time in seconds an InnoDB transaction waits for a row lock before giving up.",
+                "trigger_condition": "An InnoDB transaction waits longer than innodb_lock_wait_timeout for a row lock.",
+                "workload_impact": "The lock wait gives up; by default only the current statement is rolled back unless innodb_rollback_on_timeout is enabled.",
+                "default_behavior": "Defined as an InnoDB system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

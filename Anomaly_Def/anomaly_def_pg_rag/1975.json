@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Buffer Cache and Latch Contention Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Excessive accumulation of obsolete row versions and index entries that outpaces background cleanup, inflating on-disk and in-memory data footprints and enlarging visibility-check work. \nBuffer Cache and Latch Contention Anomaly : Sessions serialize on hot buffer pages, latches, and I/O slots, producing CPU spin and wait time instead of useful work. \nNetwork and Connectivity Resource Anomaly : Client/server communication and connection-handling resources saturate, causing slow or failed connection attempts and stalled socket I/O.\n\nWhen all three conditions coexist, the database exhibits a multilayer slowdown: queries spend extra CPU cycles scanning bloated heaps, then block on latch and buffer-busy waits while seeking or modifying the same hot pages already inflated by version bloat. Prolonged statement execution holds network sockets, authentication slots, and result streams open, so new client sessions pile up behind an overworked listener, and existing backends linger in client-write or client-read waits. System views show simultaneously rising dead-tuple ratios, surging buffer/latch wait counters, growing dirty-page queues, and spikes in connection-queue depth, with application timeouts and sporadic throughput collapses that are hard to attribute to any single layer.\n\nCausally, long-running or stalled client sessions (due to network congestion or throttled consumers) keep transactions open, advancing the vacuum horizon slowly and preventing removal of obsolete versions; the ensuing table and index bloat multiplies the number of buffer pages that must be touched and pinned, amplifying latch contention. In parallel, the enlarged working set strains an already pressured buffer pool, increasing page churn and dirty-page flushes that further extend latch hold times. These longer critical sections propagate up the stack as slower queries, which in turn prolong connection lifetimes and raise the likelihood of hitting socket, process, or authentication limits—feeding back into the network/connectivity bottleneck. The intertwined feedback loops between version bloat, buffer contention, and connection saturation thus reinforce each other, degrading OLTP responsiveness and risking cascading outages.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.6754576053612943,
+            "bm25_score": 30.04757804225435,
+            "lexical_score": 0.14559721011333915,
+            "matched_terms": [
+                "and",
+                "any",
+                "be",
+                "behind",
+                "contention",
+                "execution",
+                "long",
+                "longer",
+                "of",
+                "or",
+                "other",
+                "resource",
+                "running",
+                "statement",
+                "that",
+                "the",
+                "time",
+                "when",
+                "with",
+                "work"
+            ],
+            "match_count": 259,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

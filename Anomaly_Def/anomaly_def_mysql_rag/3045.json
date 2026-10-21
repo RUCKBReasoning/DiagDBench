@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + MVCC Version Maintenance Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-layer statements and transaction scopes are written so inefficiently that the database engine must scan or modify far more rows and keep transactions open far longer than the business task requires.\nMVCC Version Maintenance Anomaly : Obsolete row versions, undo segments, and dead index entries accumulate faster than background cleaners can reclaim them, inflating on-disk and in-memory storage and adding visibility-check overhead.\nNetwork and Connectivity Resource Anomaly : The transport, listener, authentication, or socket layer cannot provide enough bandwidth, round-trip performance, or connection slots to satisfy the client request rate, leading to connection stalls, retries, or drops.\n\nWhen these three root causes strike together, the workload exhibits an extreme long-tail of statement latencies, high counts of slow or timed-out transactions, ballooning table and index sizes, surging connection attempts, and back-end processes stuck in client-read/client-write or vacuum/clean-up states. Bulk or chatty queries created by sub-optimal SQL logic send oversized result sets over a saturated network, prolonging transaction lifetimes. The prolonged transactions, in turn, hold old MVCC snapshots that prevent version cleanup, so each retry or leaked connection leaves more dead tuples behind. As tables bloat, the optimizer underestimates row counts, causing even heavier scans and further swelling result sets, which exacerbates network congestion and connection pool exhaustion. Meanwhile, overworked vacuum or purge workers compete for I/O with the now larger user queries, deepening latency spikes and amplifying retry storms.\n\nCausal chain: Inefficient application SQL multiplies the amount of data touched and the duration of each transaction, creating large intermediate and final result sets. These long-lived, update-heavy transactions generate and retain many obsolete versions, pushing MVCC maintenance into perpetual backlog. The enlarged on-disk structures slow subsequent scans, inflating response times and producing even bigger network transfers. The heightened latency causes clients to hold or reopen more connections, which overloads listeners and exhausts socket and process pools, introducing additional waits and failures. Each layer’s slowdown feeds the others: network stalls prolong transactions, stalled transactions impede version cleanup, version bloat slows queries, and inefficient SQL sustains the pressure, leading to a self-reinforcing degradation spiral across application, storage, and connectivity tiers.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 4796,
+            "score": 0.3421129881078003,
+            "bm25_score": 37.67764732990296,
+            "lexical_score": 0.14482110835966183,
+            "matched_terms": [
+                "and",
+                "are",
+                "check",
+                "created",
+                "data",
+                "disk",
+                "engine",
+                "failures",
+                "latency",
+                "or",
+                "pressure",
+                "storage",
+                "the",
+                "undo",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-012913",
+                "error_name": "ER_IB_MSG_1089",
+                "official_description": "Error %d - %s - opening newly created undo tablespace '%s'.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

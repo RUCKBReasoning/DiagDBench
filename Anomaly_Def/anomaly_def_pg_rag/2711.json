@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Database Memory Allocation Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Composite Anomaly Definition: The database concurrently suffers from stale or insufficient optimizer statistics, runaway internal memory consumption, and exhaustion of critical operating-system resource limits. Together these three root causes create a feedback loop in which poor cardinality estimates drive memory-hungry plan choices that in turn collide with both engine-level memory ceilings and kernel-enforced quotas, provoking severe instability and performance collapse.\n\nOptimizer Statistics Anomaly: Row-count and distribution statistics no longer reflect actual data, forcing the optimizer to misestimate cardinalities and select sub-optimal execution plans.\nDatabase Memory Allocation Anomaly: Buffer caches, work areas, and other engine heaps grow beyond the host’s safe memory envelope, triggering paging, swapping, or OOM terminations.\nOperating System Resource Limit Anomaly: Database processes hit kernel limits on virtual memory, shared memory, file descriptors, or thread counts, leading to failed allocations and partial outages even while the database remains nominally online.\n\nCombined Phenomena: Queries may oscillate between unexpectedly large hash joins and nested loops, each consuming excessive work memory; sudden surges in parallel workers or spilled sorts drive resident-set size upward until the kernel begins to swap or deny new allocations. Execution plans show huge gaps between estimated and actual rows, while system logs simultaneously record memory-pressure stalls and \"cannot allocate shared memory / cannot fork\" errors. Automatic statistics jobs or plan recompilations may fail due to missing resources, making statistics staleness persistent. Application sessions encounter intermittent timeouts, plan regressions after data loads, and sporadic crashes as the database alternates between memory thrashing and kernel-level denials.\n\nCausal Chain and Interaction: Stale statistics underestimate result set sizes, causing the optimizer to prefer in-memory hash joins, large sorts, or wide parallelism that request generous work buffers. These inflated allocations accelerate the Database Memory Allocation Anomaly, pushing the engine toward or beyond physical memory and swap limits. As memory pressure intensifies, the operating system enforces hard ceilings on shared memory, address space, or thread creation, which prevents new backends or parallel workers from starting and may abort ongoing queries. Failed allocations interrupt statistics maintenance and query execution, leaving statistics even more outdated and prompting further misestimation. The three anomalies thus reinforce one another—misestimation fuels memory over-commitment, over-commitment exhausts kernel resources, and kernel denials impede the corrective mechanisms—culminating in cascading slowdowns, aborted queries, and potential instance restarts.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.5094689447830084,
+            "bm25_score": 20.077027277488362,
+            "lexical_score": 0.10311491685281707,
+            "matched_terms": [
+                "aborted",
+                "after",
+                "and",
+                "between",
+                "kernel",
+                "or",
+                "queries",
+                "query",
+                "sessions",
+                "stale",
+                "system",
+                "that",
+                "the",
+                "while"
+            ],
+            "match_count": 295,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

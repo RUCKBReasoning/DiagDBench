@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Database Configuration Parameter Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Transaction Lock Contention Anomaly: Concurrent transactions request incompatible locks on the same resource, causing blocking chains or deadlocks managed by the lock manager.\nDatabase Configuration Parameter Anomaly: Engine-level settings for memory, checkpointing, logging, and parallelism are mis-tuned for the hardware or workload, creating artificial bottlenecks unrelated to true resource exhaustion.\nData Block and Index Integrity Anomaly: On-disk pages or index structures are physically or logically corrupted, breaking key order, page links, or heap-index mappings and making the storage layer unreliable.\n\nWhen these three root causes strike at once, the system can exhibit an intertwined symptom set: lock wait times and deadlock-victim rollbacks surge, yet host CPU, I/O, or memory metrics appear only partially utilized because mis-set parameters throttle useful work while allowing idle hardware cycles. Queries that do complete may return inconsistent row counts, fail with page-verification errors, or fall back to table scans, further enlarging the lock footprint and lengthening blocking chains. Checkpoint or flush storms triggered by mis-tuned settings increase I/O pressure exactly when corrupted pages require rereads or retries, amplifying latency spikes. Application threads pile up in both connection-pool wait queues and retry loops as they encounter alternating lock-timeout, deadlock, or corruption exceptions, making the overall performance degradation hard to attribute to a single layer.\n\nCausally, poor configuration can be the catalyst that magnifies both locking and corruption effects: undersized buffer pools or overly aggressive checkpoints force frequent disk access, raising the probability that transactions touch damaged pages. When a corrupted index forces the optimizer to abandon an efficient access path, the resulting full scans acquire many more row, page, or table locks, intensifying contention. Long I/O stalls on bad blocks keep locks held longer, widening wait chains; deadlock detection may fire more often, causing rollbacks that re-enter execution and re-encounter the same corrupted structures. Simultaneously, mis-aligned log or memory parameters slow recovery from these aborts, allowing blockage to propagate through the workload. Thus, each anomaly reinforces the others: corruption inflates lock scope and duration, mis-configuration prevents timely progress or recovery, and the compounded lock contention spreads the performance collapse across the whole OLTP system.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.6582392411827563,
+            "bm25_score": 34.74802779591788,
+            "lexical_score": 0.15239352921756355,
+            "matched_terms": [
+                "acquire",
+                "an",
+                "and",
+                "because",
+                "blocking",
+                "for",
+                "in",
+                "incompatible",
+                "lock",
+                "locks",
+                "longer",
+                "or",
+                "retry",
+                "the",
+                "timeout",
+                "to",
+                "transaction",
+                "triggered",
+                "when",
+                "while"
+            ],
+            "match_count": 6,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

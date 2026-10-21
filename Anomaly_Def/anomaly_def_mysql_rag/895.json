@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Buffer Cache and Latch Contention Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Database Configuration Parameter Anomaly: Critical engine parameters (memory, checkpoint cadence, parallelism, durability, etc.) are mis-tuned relative to hardware and workload, so bottlenecks arise from the settings themselves rather than from true resource exhaustion.\nBuffer Cache and Latch Contention Anomaly: Concurrent sessions serialize on buffer-cache pages, latches, or I/O slots, producing elevated buffer-busy and page-latch waits, CPU spinning, and stalled throughput.\nData Block and Index Integrity Anomaly: On-disk data or index structures become physically or logically corrupt, causing checksum failures, mismatched row counts, or engine-reported corruption errors.\n\nWhen all three root causes are present simultaneously, the system exhibits a confusing blend of symptoms: bursts of log-write or checkpoint waits coexist with idle hardware, latch waits skyrocket on a small set of pages, and queries intermittently return wrong or missing rows. Integrity-check utilities report corruption while ordinary workload execution shows latency spikes and throughput collapse. Checkpoint or background-writer storms triggered by mis-tuned parameters keep dirty pages in memory longer, amplifying latch contention, while corruption on hot pages forces repeated latch retries, buffer invalidations, or emergency page reads, further inflating wait events. Operators may observe oscillating CPU usage—periods of spin-loop contention followed by long I/O stalls during corruption-induced page rereads—and error logs filled with both configuration warnings and corruption messages.\n\nCausal chain: Misconfigured parameters (e.g., undersized buffer pool, overly aggressive checkpoint cadence, disabled or weakened page-verification settings) increase page churn and expand the window during which pages remain dirty, raising the probability that any latent storage fault or power loss will leave unfinished writes and introduce data corruption. The resulting corrupt pages tend to be hot root or index pages that are already under heavy access, so each access attempt collides on the same latches, multiplying contention. In turn, the elevated latch waits and stalled I/Os mislead adaptive tuning components, which may further adjust memory or background-worker settings in harmful directions, reinforcing the misconfiguration. The three anomalies therefore feed into one another: bad parameters create stress that promotes corruption, corruption localizes workload on a few damaged pages that intensify latch contention, and the intensified contention drives further reactive parameter changes or workload shifts that deepen the misconfiguration loop.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.7200545069271654,
+            "bm25_score": 27.127467116749713,
+            "lexical_score": 0.12955752212389382,
+            "matched_terms": [
+                "access",
+                "and",
+                "be",
+                "by",
+                "contention",
+                "error",
+                "execution",
+                "in",
+                "long",
+                "or",
+                "resource",
+                "the",
+                "triggered",
+                "when",
+                "with",
+                "workload"
+            ],
+            "match_count": 43,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

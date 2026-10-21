@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Database Memory Allocation Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level SQL or transaction design forces the engine to read, join, sort, or hold more data and locks than business logic actually requires.\nDatabase Memory Allocation Anomaly : Database components (buffer/plan caches, work areas, parallel worker buffers, etc.) grow beyond the safe physical-memory envelope, driving paging or OOM events.\nOperating System Resource Limit Anomaly : Kernel-enforced ceilings on file handles, shared memory, threads, address space, or cgroup quotas are reached, blocking further allocations by the database process.\n\nWhen these three conditions coincide, the workload’s chatty or scan-heavy statements inflate per-query work buffers and keep transactions open, quickly consuming buffer cache and work memory. The swollen memory footprint pushes the host into sustained pressure, provoking paging, swap storms, or kernel OOM killers while simultaneously exhausting kernel objects such as SHM segments, semaphores, or thread slots. End-user symptoms include extreme and erratic statement latencies, bursts of slow-query log entries, session creation failures, aborted parallel workers, sporadic \"cannot allocate memory / file descriptor\" errors, and possible database or node restarts. Performance metrics may show oscillating cache hit ratios, climbing resident-set size, kernel message-log complaints, and a backlog of long-running, partially completed transactions.\n\nCausally, inefficient SQL amplifies memory demand by inflating work areas (sorts, hashes, large result sets) and prolonging transaction lifetimes; this accelerates buffer-pool growth and plan-cache bloat, triggering the Database Memory Allocation Anomaly. As the engine competes for scarce RAM, it requests additional pages, shared memory, and threads, which collide with fixed operating-system limits. Hitting these limits feeds back into the workload: failed thread or memory allocations force retries, which keep transactions open even longer, further swelling memory consumption. The resulting loop of poor SQL logic → memory overcommit → kernel limit exhaustion causes a cascading degradation that is harder to diagnose because symptoms surface alternately at the SQL layer (slow queries), the database engine (memory pressure warnings), and the OS (resource-exhaustion errors).",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2130,
+            "score": 0.5575567585426792,
+            "bm25_score": 57.468391333751825,
+            "lexical_score": 0.18726379440665153,
+            "matched_terms": [
+                "allocate",
+                "allocation",
+                "and",
+                "buffer",
+                "consumption",
+                "engine",
+                "for",
+                "hashes",
+                "is",
+                "large",
+                "memory",
+                "or",
+                "per",
+                "pressure",
+                "session",
+                "sorts",
+                "the",
+                "to",
+                "with",
+                "workload"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010243",
+                "error_name": "ER_HANDLERTON_OOM",
+                "official_description": "Unable to allocate memory for plugin '%s' handlerton.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "memory_and_buffer",
+                "cause_analysis": "The failure is typically associated with insufficient memory headroom, buffer pressure, oversized intermediate state, or memory-allocation constraints inside the engine or client library.",
+                "solution_guidance": "Check memory availability, per-session memory settings, large sorts or hashes, and whether workload concurrency is amplifying memory consumption.",
+                "observable_symptoms": [
+                    "memory pressure",
+                    "allocation failure",
+                    "spill",
+                    "unstable latency"
+                ]
+            }
+        }
+    }
+]

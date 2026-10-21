@@ -1,0 +1,45 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Buffer Cache and Latch Contention Anomaly + Replication Synchronization Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly: Obsolete row versions and logically deleted index entries pile up faster than background cleanup can reclaim them, inflating the version store and bloating table and index pages.\nBuffer Cache and Latch Contention Anomaly: Concurrent sessions fight for access to hot buffer-cache pages and their associated latches, causing buffer-busy waits, CPU spin, and stalled I/O.\nReplication Synchronization Anomaly: Downstream replicas cannot receive or apply the primary’s redo stream at the rate it is produced, resulting in widening log gaps and retention of old log segments on the primary.\n\nWhen all three root causes strike together, the database shows a compound failure signature: 1) rapidly expanding on-disk heaps and indexes, 2) soaring buffer-busy and page-latch wait times concentrated on hot, bloated pages, 3) continuously rising replication receive/write/replay lag, 4) primary-side WAL segments and replica relay logs accumulating well beyond normal retention windows, and 5) cleanup and checkpoint workers running constantly yet failing to shrink either the version store or the WAL backlog. End users observe erratic response times, pronounced latency spikes, and increasingly stale reads on replicas, while administrators see warnings about transaction-ID or log-cycle exhaustion alongside replication-lag alarms.\n\nCausal chain: Heavy OLTP update/delete traffic first inflates the MVCC version store. The extra dead tuples enlarge every data block, so more pages must be fetched and dirtied, intensifying buffer-pool turnover and putting hot root and free-space-map pages under severe latch pressure. Prolonged latch waits slow foreground commit throughput but still generate WAL at a steady pace; the larger, more fragmented pages also produce more WAL per transaction. Replicas already running near capacity fall further behind, and their delayed replay keeps old snapshot horizons open, preventing the primary’s vacuum from reclaiming obsolete versions. This feedback loop—version bloat → latch contention → replication lag → vacuum inhibition—locks the system into a self-reinforcing degradation spiral that exhausts I/O, memory, and disk space while eroding both primary and replica performance.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 159,
+            "score": 0.21806326198006623,
+            "bm25_score": 9.66002121121446,
+            "lexical_score": 0.1064238151194673,
+            "matched_terms": [
+                "access",
+                "and",
+                "associated",
+                "cannot",
+                "failure",
+                "is",
+                "or",
+                "that",
+                "the",
+                "under",
+                "version"
+            ],
+            "match_count": 14,
+            "entry": {
+                "error_code": "42883",
+                "error_name": "undefined_function",
+                "official_description": "undefined function",
+                "error_class": "Class 42 - Syntax Error or Access Rule Violation",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "sql_and_parser",
+                "cause_analysis": "The failure is typically associated with unsupported syntax, invalid statement structure, or feature usage that the target engine version cannot execute as written.",
+                "solution_guidance": "Validate SQL syntax, target-engine compatibility, statement shape, and whether the feature is supported under the current engine version or execution context.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "syntax error",
+                    "feature rejection"
+                ]
+            }
+        }
+    }
+]

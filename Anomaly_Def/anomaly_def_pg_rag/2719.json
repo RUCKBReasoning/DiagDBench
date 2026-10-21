@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer repeatedly chooses a sub-optimal execution plan despite accurate statistics, yielding excessive logical work, wrong join methods, or missing index usage.\nTransaction Log Subsystem Anomaly: The write-ahead logging path—generation, buffering, flushing, or archiving—becomes the primary bottleneck, inflating commit latency and stalling writers even though general storage I/O may appear adequate.\n\nWhen both root causes manifest concurrently, statements may oscillate between poor plans that create unusually large modification workloads and a log layer unable to absorb the resulting redo volume. Symptoms include: 1) sharp, unpredictable spikes in transaction latency where CPU time, logical I/O, and log-flush waits all surge in the same timeframe; 2) frequent plan changes from efficient index probes to wide table or hash scans that multiply row touches and redo generation, exhausting log buffer space; 3) bursts of log-related wait events (LOG_FLUSH, LOG_WRITE, commit waits) coinciding with dramatic increases in physical I/O and buffer churn driven by the bad plans; 4) checkpoint storms, rapid log-file switches, and archiver backlog triggered immediately after plan regressions; 5) erratic throughput where some executions sail through on good plans while others stall behind saturated log flushes, complicating performance diagnosis.\n\nCausally, a sub-optimal plan that amplifies row updates or causes large sort/insert loops escalates redo generation, directly stressing an already constrained log subsystem. The swollen write volume fills the log buffer faster than it can be flushed or archived, extending commit latency and forcing user sessions to wait. The prolonged transaction durations increase row and log contention, which in turn can influence the optimizer’s adaptive decisions, fostering further plan instability—a feedback loop that compounds both anomalies. Conversely, elevated commit latency from log saturation can delay statistics updates and cause plan cache invalidations, provoking additional plan recompilations and increasing the likelihood of selecting poor plans. The intertwined effects magnify resource contention, leading to severe and erratic slowdowns in high-write OLTP workloads.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.7454325955734405,
+            "bm25_score": 28.84217803534864,
+            "lexical_score": 0.15144198524480212,
+            "matched_terms": [
+                "an",
+                "and",
+                "delay",
+                "index",
+                "of",
+                "or",
+                "row",
+                "sessions",
+                "table",
+                "than",
+                "that",
+                "the",
+                "time",
+                "to",
+                "transaction",
+                "triggered",
+                "user",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 296,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Replication Synchronization Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Composite Definition: The database simultaneously suffers from (1) stale or missing optimizer statistics that drive systematic cardinality misestimates, (2) replication channels that cannot receive or apply the primary’s change stream in real time, and (3) on-disk data or index corruption that compromises physical page and key integrity. Together these three independent root causes create a multi-layer failure in which the optimizer, the replication pipeline, and the storage layer are all impaired at once.\n\nCombined Observable Phenomena: Queries on the primary may flip unpredictably between long-running full-table scans and erroneous index probes, showing extreme plan regressions and wildly inaccurate row-count estimates. These inefficient plans inflate I/O, CPU, and transaction-log generation, which in turn floods the replication queue; standbys display rapidly widening replay lag, swollen relay / retained log segments, and intermittent apply errors or pauses. Corrupted pages or index structures can surface first on replicas during redo-apply, manifesting as replication-side checksum failures, apply-phase panics, or forced replica restarts, while the primary reports page-verification warnings and begins discarding corrupted indexes, triggering further plan shifts and emergency full scans. Application symptoms range from time-outs and stale read results on replicas to inconsistent row counts or silent data errors on the primary.\n\nCausal Interaction: Stale or incomplete statistics mislead the optimizer into choosing plans that generate excessive I/O and large batched modifications, expanding the volume and burstiness of redo traffic. The inflated and irregular log stream overstresses an already bandwidth- or CPU-constrained replica set, deepening replication lag and increasing the window during which un-recycled log segments must be retained. Simultaneously, latent data or index corruption causes additional I/O retries and error handling on the primary and may corrupt log records that must be shipped. When these damaged blocks reach the replica, apply failures force repeated retries or pauses, compounding lag. The stalled or broken replication prevents off-host integrity checks and hampers failover options, while the corruption itself can block automatic statistics refreshes, perpetuating the optimizer’s misinformation. Thus each anomaly feeds the others: bad statistics create heavy workloads, heavy workloads overload replication, and corruption both triggers and is masked by the other two issues, driving the system into a spiraling degradation of performance, consistency, and availability.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.5903455824708788,
+            "bm25_score": 21.404044722218863,
+            "lexical_score": 0.11146115466856736,
+            "matched_terms": [
+                "and",
+                "be",
+                "by",
+                "constrained",
+                "error",
+                "is",
+                "long",
+                "or",
+                "other",
+                "running",
+                "the",
+                "time",
+                "together",
+                "when"
+            ],
+            "match_count": 47,
+            "entry": {
+                "timeout_id": "mysql84_regular_expression_time_limit",
+                "parameter_name": "regexp_time_limit",
+                "timeout_category": "expression_evaluation_time_limit",
+                "scope": "global/session",
+                "official_definition": "The time limit for regular expression matching operations performed by the regular expression engine.",
+                "trigger_condition": "A regular expression match operation exceeds regexp_time_limit.",
+                "workload_impact": "The regular expression operation is constrained by the configured time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

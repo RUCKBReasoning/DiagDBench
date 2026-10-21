@@ -1,0 +1,44 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Replication Synchronization Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly : The primary instance’s local write-ahead logging path cannot generate, flush, switch, or archive log segments at the rate demanded by the workload.\nReplication Synchronization Anomaly : Downstream replicas or change-data consumers cannot receive, persist, or apply the primary’s log stream fast enough, causing growing replication lag and retention of old log segments.\n\nComposite definition: Both bottlenecks are present at the same time— the primary’s log subsystem is saturated while the replication pipeline is simultaneously stalled—creating a feedback loop in which neither side can progress at the required throughput.\n\nCombined observable phenomena: Commit latency, log-flush and log-sync waits rise sharply; checkpoints and log-file switches occur more frequently yet still leave log directories expanding. Replication monitoring shows widening send, receive, and replay lags; relay logs or retained primary segments mushroom, and replicas deliver increasingly stale reads or fall out of failover eligibility. The primary may throttle or stall new writes when log space cannot be recycled, while replicas may exhibit backpressure, single-threaded apply saturation, or network congestion. Because both paths are impaired, administrators see mixed symptoms—storage alerts on the primary, network or apply lag warnings on replicas, and cascading slowdowns of foreground user transactions.\n\nCausal interaction: A slow local log subsystem inflates commit durations and extends the time each transaction’s log records occupy active segments, reducing the headroom available for replication retention; concurrently, replication lag prevents those segments from being recycled, further lengthening the primary’s log queue and intensifying the local I/O hotspot. Conversely, replication backpressure keeps log segments pinned, forcing the primary to switch to new segments more rapidly and increasing the write-amplification on an already over-stressed log device. The two anomalies therefore reinforce each other—local log saturation starves the replication feed, and replication lag starves log-space reuse—leading to a vicious cycle that can culminate in full disks, suspended commits, and replica divergence.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 79,
+            "score": 0.16048209975401379,
+            "bm25_score": 8.548847964995574,
+            "lexical_score": 0.0952179176755448,
+            "matched_terms": [
+                "and",
+                "be",
+                "by",
+                "data",
+                "in",
+                "is",
+                "or",
+                "required",
+                "the",
+                "to",
+                "workload"
+            ],
+            "match_count": 10,
+            "entry": {
+                "error_code": "22038",
+                "error_name": "singleton_sql_json_item_required",
+                "official_description": "singleton sql json item required",
+                "error_class": "Class 22 - Data Exception",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

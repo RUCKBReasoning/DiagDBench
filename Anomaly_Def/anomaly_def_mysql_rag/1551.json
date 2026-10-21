@@ -1,0 +1,64 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Transaction Lock Contention Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level statements or transaction boundaries are written in a way that forces the engine to scan or modify far more data and to keep transactions open longer than business logic requires.\nTransaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same resources, producing long blocking chains or deadlocks that stall progress until a lock is granted or a victim is rolled back.\nStorage I/O Throughput Anomaly : The physical storage layer cannot supply the read/write bandwidth or IOPS demanded by the workload, causing rising device-level latency and queue depths.\n\nWhen all three anomalies strike together, the database shows a multilayered slowdown: slow-query logs fill with the same heavyweight statements, while lock-monitoring views reveal growing blocker–waiter trees and frequent deadlock reports. Commit latency and 99th-percentile response times soar; sessions pile up in both lock-wait and I/O-wait states; CPU utilization stays modest even as overall throughput collapses. Checkpoints, log flushes, and temp-space spills linger on disk, replica or backup lag widens, and connection pools exhaust, triggering application timeouts and retries that further inflate concurrency.\n\nThe causal chain begins with inefficient SQL that touches large row sets and performs wide updates, multiplying the volume of physical I/O. The saturated storage subsystem answers with elevated latency, lengthening statement execution and therefore the lifetime of every lock those statements hold. Extended lock hold times make it far more likely that other transactions will collide on the same rows or ranges, deepening lock queues and spawning deadlocks. Each rollback or retry triggered by lock contention restarts the expensive I/O-heavy statements, injecting still more traffic into an already bandwidth-limited storage fabric. This positive feedback loop binds workload inefficiency, I/O saturation, and lock contention into a single compound failure mode that can freeze an OLTP system.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.7610096153846153,
+            "bm25_score": 45.81877527993805,
+            "lexical_score": 0.20336538461538461,
+            "matched_terms": [
+                "an",
+                "and",
+                "back",
+                "blocking",
+                "by",
+                "cannot",
+                "in",
+                "incompatible",
+                "is",
+                "lifetime",
+                "lock",
+                "longer",
+                "of",
+                "or",
+                "retry",
+                "rolled",
+                "row",
+                "sessions",
+                "statement",
+                "than",
+                "the",
+                "this",
+                "transaction",
+                "triggered",
+                "up",
+                "wait",
+                "when"
+            ],
+            "match_count": 75,
+            "entry": {
+                "timeout_id": "mysql84_innodb_row_lock_wait_timeout",
+                "parameter_name": "innodb_lock_wait_timeout",
+                "timeout_category": "innodb_row_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "The length of time in seconds an InnoDB transaction waits for a row lock before giving up.",
+                "trigger_condition": "An InnoDB transaction waits longer than innodb_lock_wait_timeout for a row lock.",
+                "workload_impact": "The lock wait gives up; by default only the current statement is rolled back unless innodb_rollback_on_timeout is enabled.",
+                "default_behavior": "Defined as an InnoDB system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,60 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Optimizer Statistics Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "This composite anomaly represents the concurrent existence of three independent but mutually reinforcing root causes: application-layer SQL design flaws, stale or incomplete optimizer statistics, and saturation or instability in the client-to-server network/connection tier.\n\nCombined observable phenomena:\n• Statements written with non-sargable predicates, Cartesian joins, or oversized result sets already exhibit long runtimes; inaccurate statistics further mislead the optimizer into choosing sub-optimal access paths (e.g., full table scans, wrong join order), magnifying execution time and resource usage.\n• Misestimated cardinalities inflate memory and spool requirements, causing back-pressure that lengthens transaction duration; these longer-running queries hold server processes open, increasing their exposure to network latency, retransmissions, and socket-queue limits.\n• Clients experience a mix of symptoms—slow statement completion, sporadic timeouts during execution, and failed or delayed connection attempts. Slow data retrieval caused by poor plans produces larger, prolonged result transfers that collide with limited network throughput, raising client-read wait events and swelling slow-query and connection-error logs simultaneously.\n• Operational metrics show divergent indicators: high logical/physical I/O and CPU from misplanned scans, extreme estimated/actual row-count gaps, growing counts of half-open sockets, listener backlog saturation, and application-level retries that further increase workload pressure.\n\nCausal interaction and amplification chain:\n1. Faulty SQL patterns drive inherently heavy scans or large result sets.\n2. Because optimizer statistics are stale or insufficient, the cost model underestimates the work, selecting plans that exacerbate data access volume and execution time.\n3. Extended runtimes keep database backends and network sockets busy longer, inflating concurrent connection counts.\n4. Network congestion or connection-handling bottlenecks slow data delivery and session establishment; this, in turn, stretches transaction lifetimes, aggravating lock holds and delaying statistics refresh windows.\n5. The protracted, oversized workload hinders automatic statistics maintenance (due to ongoing long-running transactions) and triggers client retry storms, feeding an escalating loop that degrades both query performance and connectivity reliability.\n\nThe three anomalies thus reinforce one another: poor SQL logic inflates workload, bad statistics select worse plans for that workload, and network constraints prevent timely completion, together driving severe end-to-end latency, resource exhaustion, and operational instability.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.7568264462809917,
+            "bm25_score": 48.75910098716456,
+            "lexical_score": 0.1894214876033058,
+            "matched_terms": [
+                "access",
+                "and",
+                "because",
+                "by",
+                "error",
+                "execution",
+                "for",
+                "in",
+                "long",
+                "or",
+                "query",
+                "resource",
+                "running",
+                "select",
+                "session",
+                "statement",
+                "statements",
+                "the",
+                "this",
+                "time",
+                "together",
+                "with",
+                "work",
+                "workload"
+            ],
+            "match_count": 55,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

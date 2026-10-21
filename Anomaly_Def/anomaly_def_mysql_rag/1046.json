@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Database Configuration Parameter Anomaly + Replication Synchronization Anomaly",
+            "Description": "Schema and Index Design Anomaly : Physical data-model structures, indexing, partitioning, or column definitions do not align with workload access paths, forcing inefficient scans and extra look-ups.\nDatabase Configuration Parameter Anomaly : Engine-level runtime settings for memory, logging, parallelism, and background workers are mis-tuned relative to hardware and workload, introducing artificial bottlenecks or bursts of maintenance activity.\nReplication Synchronization Anomaly : Downstream replicas cannot receive, persist, or apply primary transaction-log traffic at source speed, causing growing apply lag and retention of log segments.\n\nWhen all three root causes are present simultaneously, the system exhibits a blended symptom set: primary queries show high latency and erratic plan shapes (full scans, excessive random I/O); checkpoint, log-write, and work-memory waits spike even though raw CPU and I/O remain under-utilised; at the same time replica lag widens rapidly, retention of log segments inflates primary disk usage, and read-only workloads on replicas see increasingly stale data. Performance troubleshooting becomes harder because any point-in-time metric may show multiple saturated subsystems (buffer cache churn, background writer thrashing, replication apply backlog), yet none individually explains the full degradation.\n\nCausal interaction: poorly designed schemas generate larger row sets and bloated indexes, inflating the volume of dirty pages and redo that the primary must handle. Mis-configured memory and checkpoint parameters then accelerate flush storms, fragment the buffer cache, or throttle worker memory, amplifying query cost and redo generation even further. The swollen and bursty log stream must be shipped to replicas, but their apply threads—already contending with the same inefficient schema structure—fall behind, creating replication lag. As log segments cannot be recycled until all replicas acknowledge them, disk pressure on the primary rises, triggering additional checkpoints and background cleanup that again interact with the mis-tuned parameters. The three root causes therefore reinforce each other in a feedback loop that degrades primary throughput, replica freshness, and overall system stability far more severely than any single anomaly alone.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.7401964912280701,
+            "bm25_score": 28.91318259009364,
+            "lexical_score": 0.13398830409356724,
+            "matched_terms": [
+                "and",
+                "apply",
+                "be",
+                "causing",
+                "configured",
+                "data",
+                "downstream",
+                "lag",
+                "or",
+                "replica",
+                "replication",
+                "than",
+                "the",
+                "to",
+                "waits",
+                "when"
+            ],
+            "match_count": 50,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

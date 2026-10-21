@@ -1,0 +1,59 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Replication Synchronization Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions contend for mutually incompatible locks, forming long blocking chains or deadlocks that stall commit progress.\nReplication Synchronization Anomaly : Standby or downstream replicas fall behind because they cannot receive, write, or apply the primary’s log stream at the production rate, widening replay lag.\nStorage Space Capacity Anomaly : Free space in data, log, archive, or temp areas approaches exhaustion, threatening further allocations and log recycling.\n\nWhen these three root causes strike together, the database exhibits an intertwined symptom set: transactions on the primary block each other and remain open longer, inflating commit latency and enlarging transaction-log records. The swollen log must be shipped and applied downstream, but replicas already lag, so unsent or unapplied segments accumulate. Because log truncation or recycling is now gated by both open transactions and replica confirmation, primary-side log volumes balloon, quickly consuming the remaining storage budget. Operators observe sharp rises in lock-wait time, deadlock reports, client timeouts, replication delay metrics, runaway disk usage in log or archive areas, and eventual \"out of space\" or \"cannot extend\" errors that can halt new transactions and stall recovery replay on replicas.\n\nCausally, severe lock contention lengthens transaction lifetimes, delaying commit acknowledgments that replication relies on, thereby increasing replica lag. The growing lag prevents the primary from reclaiming old log segments, so every additional blocked or retried transaction produces more unreleased log data. The expanding log footprint accelerates storage exhaustion; once space becomes scarce, auto-extension failures or forced checkpoints slow down data-file and log writes, which further degrades throughput and raises lock-hold times—feeding back into even worse contention and replication backlog. This positive feedback loop can cascade into a full outage affecting both primary OLTP processing and downstream read scalability or disaster-recovery objectives.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.7525694237085697,
+            "bm25_score": 32.49977588159689,
+            "lexical_score": 0.17523141236189907,
+            "matched_terms": [
+                "an",
+                "and",
+                "be",
+                "because",
+                "block",
+                "blocking",
+                "cannot",
+                "client",
+                "delay",
+                "for",
+                "incompatible",
+                "is",
+                "lock",
+                "longer",
+                "of",
+                "or",
+                "the",
+                "this",
+                "transaction",
+                "wait",
+                "when",
+                "write"
+            ],
+            "match_count": 91,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

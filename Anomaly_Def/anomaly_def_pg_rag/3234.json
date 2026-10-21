@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Database Configuration Parameter Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Schema and Index Design Anomaly: The physical data model and indexing strategy do not match the workload's access patterns, forcing inefficient full-table scans, excessive row lookups, and write hot-spots.\nDatabase Configuration Parameter Anomaly: Engine-level memory, checkpoint, log, parallelism, or background-worker settings are mis-tuned for the hardware and workload, causing avoidable waits and resource churn.\nStorage Space Capacity Anomaly: Data files, logs, or temporary areas reach or approach hard space limits, leading to allocation failures and cascading stalls.\n\nComposite definition: The database is simultaneously hampered by a poor schema/index design, misaligned engine parameters, and shrinking free space. Each of the three root causes is independently sufficient to degrade performance, but their coexistence produces a more severe, multi-layer failure mode that blends logical inefficiency, runtime misallocation, and physical space exhaustion.\n\nCombined anomalous phenomena: • Queries that should be index-seek driven spill to large hash or sort operations because covering indexes are missing, filling up TEMP segments and triggering “no space left” errors. • Full-table scans driven by design flaws flood the buffer cache; at the same time an undersized buffer pool or overly aggressive work-memory setting forces frequent evictions, checkpoint storms, and log switches. • Checkpoints and log flushes stall because the log or archive destination is nearly full, yet CPU and I/O remain under-utilised due to throttling waits (e.g., LOG_FILE_SYNC, CHECKPOINT_QUEUE) caused by conservative parameter limits. • Administrators observe erratic latency spikes, mixed wait events (buffer-busy, temp-space, log-file-sync), and a rapid drop in free space that monitoring alarms cannot attribute to a single layer.\n\nCausal chain: Inefficient access paths from the schema/index design generate excess I/O, temporary spill files, and enlarged redo logs. Misconfigured memory, work-area, and checkpoint parameters amplify this footprint by pushing data to disk more often and limiting in-memory reuse. The inflated I/O and log volume consume storage faster, accelerating the approach to space boundaries. As free space declines, checkpoints slow and temp allocations fail, which in turn make optimizer feedback and maintenance (e.g., index creation to fix the original design issue) harder or impossible. The three anomalies therefore reinforce one another: design inefficiency → higher resource consumption; bad parameters → higher churn and lower tolerance; space exhaustion → new errors and blocked remediation, producing a vicious performance and stability spiral.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.3298506166909751,
+            "bm25_score": 13.198816607864696,
+            "lexical_score": 0.11384814495254529,
+            "matched_terms": [
+                "and",
+                "are",
+                "for",
+                "in",
+                "is",
+                "latency",
+                "not",
+                "of",
+                "or",
+                "parameter",
+                "the",
+                "this",
+                "time",
+                "wait"
+            ],
+            "match_count": 215,
+            "entry": {
+                "timeout_id": "pg16_libpq_connection_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "client_connection_establishment_timeout",
+                "scope": "libpq/client connection parameter",
+                "official_definition": "Maximum wait for connection, in seconds; zero or not specified means wait indefinitely.",
+                "trigger_condition": "A libpq client connection attempt exceeds connect_timeout seconds.",
+                "workload_impact": "The client connection attempt fails instead of waiting indefinitely.",
+                "default_behavior": "Zero or absent value means wait indefinitely.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Transaction Log Subsystem Anomaly + Storage Space Capacity Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly: Excessive accumulation of obsolete row versions, rollback records, and dead index entries outpaces background cleanup, inflating data structures and visibility-check cost.\nTransaction Log Subsystem Anomaly: The write-ahead log generation, flushing, switching, or archiving path becomes saturated, lengthening commit latency and stalling write activity.\nStorage Space Capacity Anomaly: Physical or logical free space for data, log, archive, temp, or backup areas is exhausted, leading to allocation failures and cascading stalls.\n\nWhen these three root causes strike concurrently, the system exhibits a compound failure pattern: data files and indexes bloat with dead tuples while log directories balloon with unarchived segments, rapidly depleting overall storage. Commit operations slow first due to log-flush and switch waits; long-running queries encounter escalating visibility checks over swollen version stores; autovacuum or purge workers run continuously yet fall further behind; checkpoints and archive processes thrash the same saturated devices; eventually tablespace and log destinations hit hard size limits, triggering allocation errors, frozen transaction horizons, forced read-only mode, or total outage. Symptoms appear interleaved—space-related errors may surface as log sync stalls, while query slowdowns may be misattributed to normal load rather than hidden storage exhaustion.\n\nCausally, heavy update/delete churn produces both abundant MVCC debris and a surge in redo generation. The inflated version store expands heap and index footprints, directly accelerating space consumption and increasing the bytes that must be logged. The swollen log stream, in turn, overwhelms log files and archive pipelines; as archives lag, old segments cannot be recycled, locking down yet more disk space. Dwindling free space then throttles or halts autovacuum/purge activity, preventing dead-row reclamation and further inflating tables and logs—a positive feedback loop that rapidly degrades performance and risks database unavailability.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2698,
+            "score": 0.7552115384615384,
+            "bm25_score": 77.27063950852629,
+            "lexical_score": 0.18403846153846154,
+            "matched_terms": [
+                "and",
+                "archiving",
+                "capacity",
+                "check",
+                "data",
+                "disk",
+                "exhausted",
+                "failure",
+                "failures",
+                "files",
+                "index",
+                "is",
+                "latency",
+                "log",
+                "logs",
+                "old",
+                "or",
+                "storage",
+                "tablespace",
+                "the",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010813",
+                "error_name": "ER_BINLOG_FILE_EXTENSION_NUMBER_EXHAUSTED",
+                "official_description": "Log filename extension number exhausted: %06lu. Please fix this by archiving old logs and updating the index files.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

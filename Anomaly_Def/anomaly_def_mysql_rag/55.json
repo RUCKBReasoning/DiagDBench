@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Data Block and Index Integrity Anomaly + CPU Resource Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer repeatedly chooses a markedly sub-optimal execution plan despite reasonably accurate statistics, often because of flawed cost comparisons, plan reuse issues, or version/configuration changes.\nData Block and Index Integrity Anomaly : The on-disk heap or index pages have become physically or logically inconsistent, causing look-ups or scans to return incorrect or unpredictable results.\nCPU Resource Anomaly : Database processes monopolise host CPU, driving sustained saturation and system-wide latency inflation.\n\nWhen all three root causes surface together, the engine must execute poor plans against corrupted or internally inconsistent structures while the server is already starved for CPU. Observable effects include:  • Frequent plan flips between index and full scans as the optimizer struggles to evaluate damaged indexes, leading to erratic and ever-changing plan caches.  • Corruption-induced logical I/O retries, checksum validations, or forced page reads magnifying CPU usage so that run-queue lengths spike and scheduler waits dominate wait-class statistics.  • Queries that should return quickly instead loop through large row sets or perform repeated look-ups that either miss rows (due to bad indexes) or re-read the same pages, producing both correctness anomalies (missing/duplicated rows) and severe latency variability.  • Emergency fail-over, corruption-check jobs, or auto-rebuild operations launching under CPU pressure, causing further contention and making it difficult to pin blame on a single layer.  • Error logs may show alternating entries of \"corrupt page detected\" and \"plan removed from cache due to recompile\", coinciding with CPU spikes and throughput collapse.\n\nCausally, damaged data or index pages can mislead the optimizer: page-level inconsistencies prompt the engine to distrust indexes, leading to sudden plan changes that favour full table scans. These broader scans, in turn, inflate CPU consumption. The resulting CPU saturation slows background validation and recovery threads, delaying page-repair tasks and allowing corruption to persist longer. High CPU pressure also accelerates plan cache churn, increasing the likelihood that the optimizer will pick different—and often worse—plans on each execution. The vicious circle of corrupt structures provoking bad plans, which then explode CPU usage, which in turn hinders corruption remediation and plan stability, amplifies both performance degradation and data-integrity risk.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.4146905538456289,
+            "bm25_score": 15.551755056333842,
+            "lexical_score": 0.1095163594313312,
+            "matched_terms": [
+                "and",
+                "bad",
+                "check",
+                "for",
+                "is",
+                "latency",
+                "of",
+                "or",
+                "server",
+                "that",
+                "the",
+                "waits",
+                "when",
+                "with"
+            ],
+            "match_count": 2,
+            "entry": {
+                "timeout_id": "mysql84_connection_handshake_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "connection_handshake_timeout",
+                "scope": "global",
+                "official_definition": "The number of seconds that the mysqld server waits for a connect packet before responding with Bad handshake.",
+                "trigger_condition": "A client does not complete the initial connection packet exchange within connect_timeout.",
+                "workload_impact": "The connection attempt fails during handshake.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

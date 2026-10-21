@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Transaction Log Subsystem Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Optimizer Statistics Anomaly : The optimizer is fed with stale, incomplete, or misleading statistics, leading to systematic cardinality misestimates and sub-optimal execution plan choices.\nTransaction Log Subsystem Anomaly : The write-ahead log generation, flushing, or archiving path becomes the critical bottleneck, inflating commit latency and stalling write workloads.\nData Block and Index Integrity Anomaly : Physical pages or index structures on disk are corrupted or internally inconsistent, causing incorrect or failed row retrieval and forcing fallback access methods.\n\nWhen all three conditions coexist, the database may exhibit an erratic mix of severe symptoms:  • Queries oscillate between long-running full scans (chosen because of bad statistics or disabled indexes) and repeatedly aborted index scans (failing integrity checks).  • Commit operations intermittently freeze behind log-flush waits, causing application time-outs and holding locks that magnify contention.  • Emergency index rebuilds triggered by detected corruption generate bursts of redo that saturate the already constrained log subsystem, further delaying recovery operations and increasing checkpoint frequency.  • Repeated recompilations show wildly divergent cost estimates, and execution plans flip-flop after every statistics refresh or corruption-induced index disablement.  • Integrity-check utilities and alert logs report page verification errors alongside \"log file switch/archive required\" warnings, making it difficult to distinguish performance from correctness issues.\n\nCausal interaction: (1) Stale or skewed statistics drive the optimizer to prefer damaged indexes or overly aggressive join orders, which in turn surface latent corruption through run-time errors. (2) Detection of corruption prompts index rebuilds or table rewrites that emit large volumes of redo, rapidly filling and switching log files. (3) The already throttled transaction-log subsystem becomes saturated, extending checkpoint and commit times; these elongated transactions prevent timely automatic statistics refresh and keep locks active, producing more contention and blocking DML. (4) Elevated redo pressure increases the risk of incomplete flushes during failures, potentially widening the corruption footprint and perpetuating the statistics/plan instability cycle. Collectively, the intertwined failures in metadata accuracy, physical data integrity, and log throughput degrade both performance and reliability, making diagnosis and recovery substantially harder.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.663730989901562,
+            "bm25_score": 28.6314965411173,
+            "lexical_score": 0.15307860262008732,
+            "matched_terms": [
+                "aborted",
+                "access",
+                "and",
+                "because",
+                "behind",
+                "by",
+                "contention",
+                "execution",
+                "in",
+                "is",
+                "long",
+                "or",
+                "path",
+                "running",
+                "the",
+                "time",
+                "triggered",
+                "when",
+                "with"
+            ],
+            "match_count": 141,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

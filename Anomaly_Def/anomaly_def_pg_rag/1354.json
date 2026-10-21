@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Database Configuration Parameter Anomaly: Engine-level settings such as buffer-pool size, work-memory, checkpoint cadence, log-buffer length, and parallelism are mis-tuned for the hardware or workload, creating artificial pressure that is not rooted in the underlying resources themselves.\nTransaction Log Subsystem Anomaly: The write-ahead logging path—log buffer, physical log files, flushing, switching, and archiving—cannot keep up with redo generation, causing commit stalls, checkpoint storms, or backlog in replication/archiving pipelines.\n\nWhen both conditions arise concurrently, the database exhibits compounding symptoms: sharp spikes in commit latency, bursts of log-flush and log-write waits while I/O devices appear under-utilised, repeated emergency checkpoints that evict hot pages from an undersized buffer pool, rapid growth of log and archive directories, and oscillations between CPU spin and I/O idle time. Sessions may pile up on \"log sync\" or \"flush\" waits, while background cleaners and recovery workers lag, leading to autovacuum/compaction debt, bloated tables, and unpredictable throughput. Monitoring may show paradoxical metrics—high wait times alongside low physical device utilisation—making diagnosis harder.\n\nCausally, mis-set configuration parameters often amplify inherent weaknesses in the log subsystem: a too-small log buffer or overly aggressive synchronous commit policy forces every transaction to flush, driving the already constrained log files and archiver into saturation. Conversely, when the log subsystem stalls, mis-configured checkpoint intervals shrink recovery windows, triggering emergency checkpoints that flood the log further and thrash the buffer pool. Oversized per-session work memory and excessive parallel workers increase concurrent redo generation, while inadequate connection or background-worker limits delay log archival, causing retention pressure. The feedback loop between mis-tuned parameters and a bottlenecked log path escalates latency, jeopardises durability guarantees, and can ultimately halt write processing.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.46236880563392974,
+            "bm25_score": 14.414873638205634,
+            "lexical_score": 0.1607054284926977,
+            "matched_terms": [
+                "and",
+                "are",
+                "connection",
+                "for",
+                "idle",
+                "in",
+                "is",
+                "latency",
+                "not",
+                "of",
+                "or",
+                "parameter",
+                "session",
+                "sessions",
+                "the",
+                "time",
+                "wait",
+                "when"
+            ],
+            "match_count": 161,
+            "entry": {
+                "timeout_id": "pg16_libpq_connection_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "client_connection_establishment_timeout",
+                "scope": "libpq/client connection parameter",
+                "official_definition": "Maximum wait for connection, in seconds; zero or not specified means wait indefinitely.",
+                "trigger_condition": "A libpq client connection attempt exceeds connect_timeout seconds.",
+                "workload_impact": "The client connection attempt fails instead of waiting indefinitely.",
+                "default_behavior": "Zero or absent value means wait indefinitely.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + MVCC Version Maintenance Anomaly + Database Configuration Parameter Anomaly",
+            "Description": "Schema and Index Design Anomaly: The physical table, index, datatype, or partition design mismatches workload access patterns, forcing inefficient scans and excessive index maintenance work.\nMVCC Version Maintenance Anomaly: Obsolete row versions, rollback records, and dead index entries accumulate faster than background cleanup processes can purge them, inflating storage and visibility-check cost.\nDatabase Configuration Parameter Anomaly: Memory, background-worker, checkpoint, and parallelism settings are mis-tuned for the hardware and workload, so internal subsystems receive too few or too many resources at the wrong moments.\n\nWhen these three root causes coexist, the database experiences a feedback loop of bloat, latency spikes, and erratic resource utilisation. Poorly chosen or missing indexes drive large table and index scans that touch every page, but those pages are swollen with dead tuples because vacuum/garbage-collection cannot keep up. Each scan therefore reads more data than expected, further extending execution times and holding snapshots open longer, which in turn slows or blocks version reclamation. Misconfigured memory and worker-pool parameters exacerbate the situation: undersized buffer pools cause constant cache churn of the bloated objects, while too-small or too-aggressive maintenance-worker, checkpoint, or autovacuum settings alternately starve or overload I/O, producing bursts of write amplification and log-write waits even when the underlying disks are not fully utilised. Statistics become stale quickly, so the optimizer keeps choosing full scans over non-covering or missing indexes, reinforcing the cycle.\n\nCausally, the deficient schema design raises the baseline I/O and write-amplification costs, generating more dead tuples per transaction (e.g., non-covering indexes force extra lookups and updates). The surging update/delete churn feeds the MVCC version store; if configuration parameters throttle cleanup workers or limit maintenance memory, reclamation lags behind growth. The swelling heap and indexes then consume buffer cache and elongate checkpoints, which, when ill-tuned, intensify I/O storms that pre-empt regular queries. Longer-running queries hold old snapshots, delaying version reuse and causing still more bloat. Thus, each anomaly magnifies the others, pushing the system into a degrading spiral of increasing storage, CPU, and latency costs under transactional workloads.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.425777698808124,
+            "bm25_score": 18.021931268523815,
+            "lexical_score": 0.11886409736308316,
+            "matched_terms": [
+                "and",
+                "because",
+                "cannot",
+                "for",
+                "holding",
+                "longer",
+                "of",
+                "or",
+                "schema",
+                "than",
+                "the",
+                "transaction",
+                "waits",
+                "when",
+                "while",
+                "write"
+            ],
+            "match_count": 132,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

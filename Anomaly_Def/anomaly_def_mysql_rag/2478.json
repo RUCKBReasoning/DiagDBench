@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Data Block and Index Integrity Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Transaction Lock Contention Anomaly: Concurrent transactions request incompatible locks on the same resources, creating long blocker-waiter chains or deadlocks that the lock manager must resolve.\nData Block and Index Integrity Anomaly: Physical pages or index structures on disk become corrupted or internally inconsistent, making access paths unreliable and forcing error handling or full-scan fall-backs.\nStorage I/O Throughput Anomaly: The underlying storage subsystem becomes bandwidth, IOPS, or latency bound, stretching read/write times and inflating I/O wait events for data, temp, and log files.\n\nWhen all three anomalies coexist, the database exhibits a multilayer failure pattern: transactions pile up behind locks that are held far longer than normal because each locked operation spends excessive time waiting for slow I/O and for corruption-handling retries. Queries that fall back from index access to full table scans (due to detected index/heap inconsistencies) further inflate I/O volume, deepening storage saturation. The prolonged execution time of these scans or repair attempts extends transaction lifetimes, lengthens lock hold periods, and increases the probability of deadlocks and lock-wait cascades. Users observe severe throughput collapse, erratic response times, deadlock victim errors, repeated statement restarts, spikes in lock-wait and I/O wait metrics, integrity-check failures, and potentially an accelerating incidence of corruption messages as stress on the storage path grows.\n\nCausally, underlying storage throughput exhaustion slows every physical page read and write. This delay widens the window during which locks remain active, amplifying lock contention. Simultaneously, strained I/O paths heighten the risk of incomplete writes or torn pages, seeding new data and index corruptions. Once corruption appears, the optimizer may discard damaged indexes or force index rebuilds, generating large sequential and random I/O that further overloads the already saturated storage system. The resulting feedback loop—slow I/O → longer locks → more blocking/deadlocks → more rollbacks/retries → higher I/O pressure—drives an escalating spiral that can bring transactional workloads to a standstill and jeopardize data integrity.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.445572117918427,
+            "bm25_score": 22.119699112556223,
+            "lexical_score": 0.1660377358490566,
+            "matched_terms": [
+                "and",
+                "are",
+                "check",
+                "data",
+                "for",
+                "from",
+                "handling",
+                "latency",
+                "longer",
+                "more",
+                "of",
+                "or",
+                "read",
+                "than",
+                "the",
+                "this",
+                "time",
+                "to",
+                "wait",
+                "when"
+            ],
+            "match_count": 116,
+            "entry": {
+                "timeout_id": "mysql84_network_read_timeout",
+                "parameter_name": "net_read_timeout",
+                "timeout_category": "network_read_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for more data from a connection before aborting the read.",
+                "trigger_condition": "The server waits for additional data from a connection longer than net_read_timeout.",
+                "workload_impact": "The network read is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

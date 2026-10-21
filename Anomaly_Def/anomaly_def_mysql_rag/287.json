@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Transaction Log Subsystem Anomaly + Replication Synchronization Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Engine-level settings such as log-buffer size, checkpoint cadence, synchronous-commit flags, parallel apply threads, and memory limits are mis-tuned with respect to hardware capacity and workload intensity.\nTransaction Log Subsystem Anomaly : The primary’s write-ahead log buffer, files, or archive pipeline cannot generate, flush, or recycle log records quickly enough, turning the log path into the dominant bottleneck on commits.\nReplication Synchronization Anomaly : Standbys or downstream consumers cannot receive, flush, or apply the shipped log stream at the rate the primary produces it, leading to growing positional lag and retained log segments.\n\nWhen all three root causes coexist, symptoms overlap and amplify: commit latency and log-flush wait events surge even though storage and CPU utilization appear modest; massive log backlogs accumulate because slow replication prevents log recycling; checkpoints and log-switch storms fire more often yet fail to relieve space pressure; replica replay lag widens, causing stale reads, delayed failover readiness, and possible cascading stalls on synchronous replicas; primary-side disk consumption grows unpredictably, while monitoring shows erratic spikes in background-worker CPU, network retransmissions, and I/O bursts that do not correlate cleanly with foreground workload volume.\n\nCausally, mis-configured parameters (small log buffers, undersized log files, aggressive synchronous-commit or archiving settings, insufficient apply-worker threads) throttle the transaction-log subsystem, inflating commit and flush latency. The slowed log path, in turn, reduces the throughput margin available for replication shipping. As replicas fall behind, the primary must retain additional log segments, further expanding the already stressed log file set and forcing more frequent checkpoints and file switches—each of which revisits the poorly tuned parameters that caused the initial slowdown. The feedback loop between configuration mis-tuning, log-path saturation, and replication lag therefore compounds pressure on memory, disk, and network, degrading OLTP performance and increasing the risk of outage.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.7313611615245008,
+            "bm25_score": 23.48073301266985,
+            "lexical_score": 0.10453720508166967,
+            "matched_terms": [
+                "and",
+                "apply",
+                "causing",
+                "configured",
+                "downstream",
+                "lag",
+                "or",
+                "replica",
+                "replication",
+                "the",
+                "to",
+                "when"
+            ],
+            "match_count": 14,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

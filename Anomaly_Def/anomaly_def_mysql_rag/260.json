@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Sessions stall while competing for hot buffer-cache pages, page pins, or latches, leading to spin or sleep delays during page access.\nOperating System Resource Limit Anomaly : The database engine or its worker processes hit kernel-enforced ceilings for objects such as file descriptors, shared-memory segments, semaphores, threads, or I/O contexts, preventing further resource acquisition.\n\nWhen both root causes manifest together, the system shows a mixture of intense page-level contention and sporadic kernel allocation failures. Symptom patterns include surging buffer-busy and page-latch waits intertwined with error messages about exhausted file handles, semaphore limits, or thread creation failures. Throughput oscillates as some sessions spin on latch acquisition while others are aborted or blocked by the OS, leading to sharp latency spikes, uneven CPU utilisation (alternating between spin storms and idle time), partial loss of parallel workers, and a rapid drop in cache hit ratios as pages are evicted or cannot be pinned. Monitoring views may show rising I/O due to reduced cache residency, yet background writers and checkpoint threads fail intermittently, amplifying dirty-page backlogs and prolonging flush-related holds.\n\nCausally, OS-level resource exhaustion reduces the number of buffer-pool frames, background processes, or I/O contexts available, forcing more aggressive page replacement and enlarging the set of hot pages contended by surviving sessions—thereby aggravating latch contention. Conversely, severe latch spin or sleep loops inflate thread counts and open-file usage as sessions retry I/O and spawn additional workers, accelerating consumption of kernel objects until limits are breached. The two anomalies thus form a feedback loop: OS limits constrict the buffer manager’s operating headroom, heightening page-level serialization, while the resulting contention multiplies kernel object requests, hastening limit exhaustion and driving the database into cascading stalls or partial outages.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 4393,
+            "score": 0.6151691415919995,
+            "bm25_score": 60.947336003997414,
+            "lexical_score": 0.15525925925925926,
+            "matched_terms": [
+                "allocation",
+                "amplifying",
+                "and",
+                "buffer",
+                "consumption",
+                "engine",
+                "for",
+                "headroom",
+                "latency",
+                "memory",
+                "or",
+                "os",
+                "page",
+                "the",
+                "to",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-012510",
+                "error_name": "OBSOLETE_ER_IB_MSG_686",
+                "official_description": "Waiting for %lu buffer page I/Os to complete",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "memory_and_buffer",
+                "cause_analysis": "The failure is typically associated with insufficient memory headroom, buffer pressure, oversized intermediate state, or memory-allocation constraints inside the engine or client library.",
+                "solution_guidance": "Check memory availability, per-session memory settings, large sorts or hashes, and whether workload concurrency is amplifying memory consumption.",
+                "observable_symptoms": [
+                    "memory pressure",
+                    "allocation failure",
+                    "spill",
+                    "unstable latency"
+                ]
+            }
+        }
+    }
+]

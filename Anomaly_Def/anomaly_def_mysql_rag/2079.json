@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Query Plan Selection Anomaly + Transaction Lock Contention Anomaly",
+            "Description": "Composite Definition: The database simultaneously suffers from a static mismatch between the physical data model and workload access patterns (Schema and Index Design Anomaly), the optimizer is selecting sub-optimal execution plans despite reasonable statistics (Query Plan Selection Anomaly), and the lock manager is experiencing intense blocking or deadlocks among concurrent transactions (Transaction Lock Contention Anomaly). Together, these three root causes form a reinforcing performance pathology that degrades OLTP throughput and increases response-time variance.\n\nCombined Observable Phenomena: • Queries that should be index-seek driven instead perform full scans, hold locks on large page or table ranges, and run much longer than expected. • The same statement text may alternate between inefficient scan-heavy plans and marginally better plans, creating unpredictable spikes in CPU, I/O, and lock-wait time. • Transaction throughput drops sharply; connection pools back up while lock-wait queues and deadlock reports grow. • Lock escalation from row to page/table level becomes frequent because long-running, scan-oriented plans read large portions of hot tables lacking proper indexing or partitioning. • Performance improves dramatically only when missing or better-aligned indexes are added AND plan stability mechanisms are introduced, confirming the multi-layer nature of the issue.\n\nCausal Chain and Interaction: Poor schema and index design expands the data footprint each statement must touch; the optimizer, already prone to misestimation or plan-reuse mistakes, often chooses or reuses plans that amplify the footprint even further (e.g., full table scans instead of selective seeks). These bloated plans acquire and hold many more locks for longer durations. The inflated lock scope raises the probability of conflicting requests from other concurrent transactions, triggering blocking chains, lock escalation, and deadlocks. Conversely, the elevated lock contention lengthens query runtimes, causing feedback loops in which the optimizer’s adaptive mechanisms capture skewed runtime statistics and cement the bad plans. The combined effect is a vicious cycle where design shortcomings and plan mis-selection magnify lock contention, and the resulting waits further degrade optimizer choices and throughput.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.6814951369579368,
+            "bm25_score": 36.208430004968214,
+            "lexical_score": 0.16626269956458636,
+            "matched_terms": [
+                "acquire",
+                "and",
+                "because",
+                "blocking",
+                "conflicting",
+                "for",
+                "in",
+                "is",
+                "lock",
+                "locks",
+                "longer",
+                "or",
+                "schema",
+                "statement",
+                "than",
+                "the",
+                "to",
+                "transaction",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 98,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

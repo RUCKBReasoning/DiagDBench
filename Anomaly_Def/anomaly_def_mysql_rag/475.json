@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Transaction Lock Contention Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Stale, missing, or insufficient statistics distort the optimizer’s cardinality estimates and costing inputs, driving systematically poor plan choices.\nTransaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same resources, producing long blocking chains or deadlocks that stall throughput.\nOperating System Resource Limit Anomaly : Database processes hit kernel-enforced ceilings for handles, memory segments, semaphores, threads, or similar OS objects, preventing new allocations and halting growth of work.\n\nCombined phenomena: When all three root causes coexist, the system exhibits severe and erratic slowdowns. Misestimated row counts lead the optimizer to pick plans that scan or update far more data than necessary, inflating lock footprints, extending lock hold times, and triggering cascades of blocking and deadlocks. Sessions that become stuck waiting on locks or deadlock retries remain logged in, consuming connections, file descriptors, shared-memory slots, or semaphore entries until global OS quotas are exhausted. Once kernel limits are reached, new client logins, background workers, or parallel query processes fail to start, causing partial outages and amplifying application time-outs. Monitoring may show exploding lock-wait queues, skyrocketing wait-on-OS resource allocation failures, drastic drops in throughput, and sudden bursts of deadlock victim errors, all while execution plans display grossly inaccurate cardinality estimates.\n\nCausal chain: (1) Stale or missing statistics mislead the optimizer into choosing high-cost, bulk-locking execution plans (e.g., full table scans without useful indexes), thereby lengthening transaction duration and widening the scope of acquired locks; (2) the prolonged and enlarged lock holding intensifies lock contention, inducing blocker-waiter trees and frequent deadlocks; (3) each blocked or orphaned backend continues to hold kernel objects—file handles, semaphores, threads—pushing the database toward OS resource limits; (4) once those limits are hit, new sessions and maintenance workers (including auto-statistics refresh jobs) cannot start, preventing correction of the stale statistics and forcing more sessions into lock waits. This feedback loop compounds latency, throughput collapse, and availability degradation in OLTP workloads.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.4313870377285965,
+            "bm25_score": 16.41445660507209,
+            "lexical_score": 0.1686915887850467,
+            "matched_terms": [
+                "and",
+                "are",
+                "client",
+                "data",
+                "for",
+                "global",
+                "holding",
+                "latency",
+                "more",
+                "of",
+                "or",
+                "sessions",
+                "stale",
+                "than",
+                "the",
+                "this",
+                "time",
+                "to",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 23,
+            "entry": {
+                "timeout_id": "mysql84_replica_network_timeout",
+                "parameter_name": "replica_net_timeout",
+                "timeout_category": "replication_network_timeout",
+                "scope": "global/replication",
+                "official_definition": "The number of seconds to wait for more data from a source/replica connection before aborting the read.",
+                "trigger_condition": "A replica waits longer than replica_net_timeout for more data from the source connection.",
+                "workload_impact": "The replication network read is aborted and the replica considers the connection interrupted.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

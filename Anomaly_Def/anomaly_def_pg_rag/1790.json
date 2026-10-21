@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Buffer Cache and Latch Contention Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Costing metadata is stale or incomplete, causing systematic cardinality misestimation and sub-optimal plan choices.\nBuffer Cache and Latch Contention Anomaly : Hot pages or undersized cache force heavy latch and pin competition, stalling sessions at the buffer-manager layer.\nStorage Space Capacity Anomaly : Data, log, or temp areas run out of free space, leading to allocation failures, forced checkpoints, and I/O back-pressure.\n\nWhen all three root causes strike together, the workload exhibits a confusing mix of symptoms: execution plans flip unpredictably after every load or purge, yet even \"good\" plans run slowly because they spin on buffer latches; wait-event dashboards show a tug-of-war between PAGE-LATCH and space-allocation waits; sudden space-full errors, long-running auto-extend operations, or emergency checkpoints magnify latency spikes; CPU usage oscillates between idle (sessions sleeping on space waits) and near-100 % (sessions spinning on latches), while query elapsed times balloon and throughput collapses.\n\nCausal chain: stale or missing statistics mislead the optimizer into choosing access paths that hammer a small subset of pages (e.g., full table scans on narrow but very hot tables or nested-loop joins against skewed predicates). These hot pages saturate the buffer cache and amplify latch contention. The extra physical reads and dirty-page churn accelerate growth of data files, temp segments, and redo logs. Because free space is already low—or grows low due to the inflated I/O volume—auto-extends, checkpoints, or archive operations pause foreground work, further stretching execution times. The prolonged runtimes, in turn, keep the same hot pages busy longer, intensifying latch pressure and generating even more redo, which consumes the remaining space faster. The three anomalies therefore form a reinforcing feedback loop that degrades performance, exhausts storage, and obscures root-cause diagnosis.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.745644121278639,
+            "bm25_score": 33.62505700732065,
+            "lexical_score": 0.1521470709287968,
+            "matched_terms": [
+                "access",
+                "and",
+                "because",
+                "contention",
+                "execution",
+                "is",
+                "long",
+                "longer",
+                "more",
+                "of",
+                "or",
+                "out",
+                "query",
+                "running",
+                "that",
+                "the",
+                "together",
+                "when",
+                "work",
+                "workload"
+            ],
+            "match_count": 250,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

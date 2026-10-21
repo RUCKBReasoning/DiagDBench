@@ -1,0 +1,46 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Database Memory Allocation Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Transaction Lock Contention Anomaly: Concurrent sessions hold or request mutually incompatible locks on the same resources, leading to long blocking chains or deadlocks that stall forward progress. \nDatabase Memory Allocation Anomaly: Database components (buffer/cache, work areas, background heaps) collectively grow beyond safe physical limits, provoking host-level memory pressure and paging. \nOperating System Resource Limit Anomaly: The database process exhausts kernel-enforced quotas for objects such as file descriptors, shared-memory segments, semaphores, or process IDs, preventing new allocations.\n\nWhen these three root causes coincide, symptoms overlap and magnify: lock-wait time and deadlock frequency surge while overall throughput and connection acceptance plunge; meanwhile the database’s resident-set size climbs until the kernel begins paging or refuses further memory, leading to sporadic \"cannot allocate memory\" or \"too many open files\" errors. Stalled or killed transactions repeatedly reconnect and retry, inflating connection bursts that generate more processes/threads and file handles, which in turn collide with OS limits. Administrators observe alternating lock-wait spikes, sudden session failures, escalating swap usage, growing wait queues in the connection pool, and flurries of engine and kernel log messages about lock timeouts, out-of-memory kills, and resource-limit denials—all without a single clear chokepoint.\n\nCausally, intensive lock contention lengthens transaction lifetimes, inflating the number of concurrent sessions that stay resident and each one’s memory/work-area footprint. The bloated memory demand brings the host to the brink of physical exhaustion; once paging starts, transaction execution slows further, prolonging locks and amplifying contention—a feedback loop. Simultaneously, the surge in waiting sessions and frequent reconnection attempts multiply process/thread and file-descriptor usage, quickly breaching OS quotas. Hitting those limits causes some sessions or background workers to crash, which roll back their locks and force other transactions to restart, re-enter queues, and allocate fresh memory, perpetuating the instability. Thus, the interplay of lock contention, runaway memory growth, and kernel resource exhaustion creates a self-reinforcing spiral that can culminate in partial or total service outage.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 191,
+            "score": 0.131068185727515,
+            "bm25_score": 9.67454925079808,
+            "lexical_score": 0.1113859764089122,
+            "matched_terms": [
+                "and",
+                "engine",
+                "execution",
+                "in",
+                "instability",
+                "level",
+                "limit",
+                "or",
+                "pressure",
+                "resource",
+                "the",
+                "to",
+                "with"
+            ],
+            "match_count": 11,
+            "entry": {
+                "error_code": "54000",
+                "error_name": "program_limit_exceeded",
+                "official_description": "program limit exceeded",
+                "error_class": "Class 54 - Program Limit Exceeded",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

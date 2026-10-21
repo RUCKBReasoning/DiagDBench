@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + MVCC Version Maintenance Anomaly + CPU Resource Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently chooses sub-optimal execution plans despite reasonably accurate statistics, leading to excessive I/O, row visits, or parallelism misuse.\nMVCC Version Maintenance Anomaly : Obsolete row versions and rollback records accumulate faster than background cleanup can reclaim them, inflating tables/indexes and adding visibility-check overhead.\nCPU Resource Anomaly : Database back-end and maintenance processes drive host CPU utilization to saturation, creating run-queue waits and pervasive latency spikes.\n\nWhen all three conditions coexist, the database exhibits a blended failure pattern: queries flip to or remain on inefficient plans that scan or join far more rows than necessary; the scanned pages are bloated with dead tuples, so every logical row access requires extra visibility checks and additional buffer churn; the surplus work manifests as sustained CPU saturation, causing system-wide slowdowns. Autovacuum or garbage-collection workers run constantly yet make little progress because they compete for the same exhausted CPU, while critical user queries also stall on CPU run-queue waits. Statistics drift as table bloat grows, amplifying plan instability and fostering new mis-plans. Symptoms include erratic plan changes, explosive growth of table and index size, skyrocketing CPU wait events, and workload latency that degrades non-linearly with concurrency.\n\nCausally, poor plan choices initiate oversized scans and high row lookups, inflating CPU consumption and prolonging transaction lifetimes; the longer execution times delay cleanup horizon advancement, letting MVCC garbage pile up. The ensuing table bloat further skews cardinality estimates, nudging the optimizer toward even worse plans—especially when plan reuse locks in bad strategies—creating a vicious feedback loop. Meanwhile, the compounded read-amplification from dead rows and the CPU-intensive mis-plans jointly saturate the processor, throttling both foreground queries and background vacuuming. The throttled cleanup then falls further behind, intensifying version accumulation and perpetuating the cycle until the system experiences severe throughput collapse or reaches transaction-ID wraparound danger.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.7376922100181745,
+            "bm25_score": 27.611795427251323,
+            "lexical_score": 0.12955752212389382,
+            "matched_terms": [
+                "access",
+                "and",
+                "because",
+                "behind",
+                "execution",
+                "for",
+                "in",
+                "or",
+                "pattern",
+                "query",
+                "resource",
+                "the",
+                "when",
+                "with",
+                "work",
+                "workload"
+            ],
+            "match_count": 50,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

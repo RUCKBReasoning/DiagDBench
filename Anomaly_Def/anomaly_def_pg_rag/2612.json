@@ -1,0 +1,45 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + MVCC Version Maintenance Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently chooses a sub-optimal execution plan despite having reasonably accurate statistics, leading to inefficient access paths, poor parallelism choices, or pathological join orders.\nMVCC Version Maintenance Anomaly : Obsolete row versions and rollback records accumulate faster than background cleaners can reclaim them, inflating table and index size and lengthening visibility checks.\nBuffer Cache and Latch Contention Anomaly : Concurrent sessions compete for hot buffer pages and their latches, causing wait events, spinning, and throughput collapse.\n\nWhen all three faults coexist, the workload exhibits cascading performance degradation: execution plans flip between selective index probes and full scans over bloated base tables; scans and joins touch far more pages because of MVCC bloat, which in turn overpopulates the buffer cache and keeps hot root and visibility-map pages under heavy latch pressure. Operators that the optimizer mistakenly favored (e.g., nested loops on underestimated row counts) encounter massive I/O and latch waits, producing sharp latency spikes, CPU spin, and stall chains that are hard to attribute to any single layer. Autovacuum or cleanup workers may run continuously yet fail to catch up, while query plans churn in the cache as statistics drift due to the bloated heap, further destabilizing performance.\n\nThe causal loop is self-reinforcing: sub-optimal plans increase I/O volume and prolong statement execution, which delays transaction completion and lengthens the lifespan of old snapshots, thereby slowing MVCC cleanup and enlarging the version store. The growing heap and index bloat enlarge the working-set footprint, forcing more pages through a limited buffer pool and creating hot-page hotspots where many sessions contend for latches. Elevated latch waits extend query runtimes, giving the optimizer more chances to mis-select plans based on stale or skewed runtime feedback, and stretching transactions even further. This spiraling interaction among poor plan choice, MVCC bloat, and buffer contention can push an OLTP system into a persistent low-throughput, high-latency state until all three issues are addressed in concert.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 197,
+            "score": 0.2603458980658094,
+            "bm25_score": 11.471726087322086,
+            "lexical_score": 0.09818181818181818,
+            "matched_terms": [
+                "and",
+                "execution",
+                "in",
+                "is",
+                "or",
+                "pressure",
+                "runtime",
+                "state",
+                "statement",
+                "the",
+                "to",
+                "workload"
+            ],
+            "match_count": 14,
+            "entry": {
+                "error_code": "55P02",
+                "error_name": "cant_change_runtime_param",
+                "official_description": "cant change runtime param",
+                "error_class": "Class 55 - Object Not In Prerequisite State",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

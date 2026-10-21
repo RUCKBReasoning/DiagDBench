@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Replication Synchronization Anomaly + CPU Resource Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly: Obsolete row versions and logically deleted index entries pile up faster than background cleanup can reclaim them, bloating the heap and indexes.\nReplication Synchronization Anomaly: Stand-by or subscriber nodes fall behind because they cannot ingest or replay the primary’s WAL stream at the rate it is produced.\nCPU Resource Anomaly: Database-related processes saturate host CPU, starving both foreground queries and essential background workers of compute cycles.\n\nWhen all three root causes strike together, the system shows a compound symptom set: sustained near-100 % CPU, long run queues, and pervasive latency spikes; rapidly growing table and index sizes with falling live-row density; sequential scans and UPDATE/DELETEs slowing as visibility checks touch ever-larger version chains; replication views displaying widening receive, flush, and replay lags together with a swelling stock of retained WAL segments; VACUUM or equivalent cleanup workers reported as backlogged while still consuming high CPU; replica read traffic returning increasingly stale data; and disk usage rising on both primary (due to unrecycled WAL) and replicas (due to redo backlog).\n\nCausal chain: excessive update/delete churn or long-running snapshots start the version buildup. The bloated pages force foreground scans and background VACUUM to do more work per row, driving CPU demand upward. CPU saturation slows both cleanup workers and the single-threaded or poorly parallelized replication apply processes, letting more dead versions and unreplayed WAL accumulate. In turn, replication lag prevents the primary from advancing its \"oldest xmin\" horizon, blocking further removal of dead tuples and accelerating heap bloat. The feedback loop—MVCC bloat → higher CPU → slower replication → frozen xmin → even more MVCC bloat—can quickly spiral, degrading throughput, enlarging storage footprints, and eroding failover safety.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.6693612735051444,
+            "bm25_score": 22.10720213435031,
+            "lexical_score": 0.11347055758207399,
+            "matched_terms": [
+                "and",
+                "apply",
+                "data",
+                "is",
+                "lag",
+                "long",
+                "or",
+                "replica",
+                "replication",
+                "than",
+                "the",
+                "to",
+                "when"
+            ],
+            "match_count": 18,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

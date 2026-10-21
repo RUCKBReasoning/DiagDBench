@@ -1,0 +1,45 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Data Block and Index Integrity Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Transaction Lock Contention Anomaly: Concurrent transactions request incompatible locks on the same resources, creating long blocker-waiter chains or deadlocks that the lock manager must resolve.\nData Block and Index Integrity Anomaly: Physical pages or index structures on disk become corrupted or internally inconsistent, making access paths unreliable and forcing error handling or full-scan fall-backs.\nStorage I/O Throughput Anomaly: The underlying storage subsystem becomes bandwidth, IOPS, or latency bound, stretching read/write times and inflating I/O wait events for data, temp, and log files.\n\nWhen all three anomalies coexist, the database exhibits a multilayer failure pattern: transactions pile up behind locks that are held far longer than normal because each locked operation spends excessive time waiting for slow I/O and for corruption-handling retries. Queries that fall back from index access to full table scans (due to detected index/heap inconsistencies) further inflate I/O volume, deepening storage saturation. The prolonged execution time of these scans or repair attempts extends transaction lifetimes, lengthens lock hold periods, and increases the probability of deadlocks and lock-wait cascades. Users observe severe throughput collapse, erratic response times, deadlock victim errors, repeated statement restarts, spikes in lock-wait and I/O wait metrics, integrity-check failures, and potentially an accelerating incidence of corruption messages as stress on the storage path grows.\n\nCausally, underlying storage throughput exhaustion slows every physical page read and write. This delay widens the window during which locks remain active, amplifying lock contention. Simultaneously, strained I/O paths heighten the risk of incomplete writes or torn pages, seeding new data and index corruptions. Once corruption appears, the optimizer may discard damaged indexes or force index rebuilds, generating large sequential and random I/O that further overloads the already saturated storage system. The resulting feedback loop—slow I/O → longer locks → more blocking/deadlocks → more rollbacks/retries → higher I/O pressure—drives an escalating spiral that can bring transactional workloads to a standstill and jeopardize data integrity.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 94,
+            "score": 0.3114251054760792,
+            "bm25_score": 26.23561563629374,
+            "lexical_score": 0.10366769349249133,
+            "matched_terms": [
+                "and",
+                "check",
+                "corruption",
+                "data",
+                "failure",
+                "index",
+                "integrity",
+                "or",
+                "repair",
+                "storage",
+                "the"
+            ],
+            "match_count": 14,
+            "entry": {
+                "error_code": "23P01",
+                "error_name": "exclusion_violation",
+                "official_description": "exclusion violation",
+                "error_class": "Class 23 - Integrity Constraint Violation",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "integrity_and_constraints",
+                "cause_analysis": "The failure is typically associated with logical data inconsistency, structural corruption, uniqueness conflicts, or referential-integrity rules being violated by the workload or storage state.",
+                "solution_guidance": "Validate data consistency, inspect constraints and index integrity, and check whether data-cleaning, repair, or workload correction is required before retrying.",
+                "observable_symptoms": [
+                    "constraint failure",
+                    "duplicate data rejection",
+                    "corruption warning"
+                ]
+            }
+        }
+    }
+]

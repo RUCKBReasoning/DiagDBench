@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Transaction Lock Contention Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer selects or reuses a substantially sub-optimal execution plan even though statistics are accurate, inflating execution cost and runtime footprint.\nTransaction Lock Contention Anomaly : Concurrent transactions contend for incompatible locks, generating long blocking chains or deadlocks that stall throughput.\nOperating System Resource Limit Anomaly : The database process hits kernel-enforced limits on objects such as file handles, processes/threads, or shared-memory segments, preventing further resource allocation.\n\nWhen all three root causes coexist, the workload may exhibit extreme and erratic slowdowns: a sudden plan switch to a full-table scan or wide nested loop holds many row or page locks for far longer than usual, magnifying lock-wait times, deadlock frequency, and application time-outs. Sessions that pile up behind the blockers spawn additional server processes or threads until the operating-system quota for PIDs, file descriptors, or semaphore sets is reached, after which new connections, background workers, or parallel query helpers fail to start. Operators may observe a mixture of symptoms—escalating lock-wait graphs, deadlock-victim errors, optimizer plan regressions in execution-plan caches, and kernel log messages about \"too many open files\" or \"cannot allocate memory\"—making root-cause isolation difficult.\n\nCausal chain: a poor plan (1) dramatically lengthens critical sections, enlarging the time windows in which locks are held; (2) the prolonged locks throttle other transactions, causing them to queue and accumulate; (3) each waiting or retrying session consumes additional database back-end processes, file descriptors, and shared-memory objects; (4) once kernel limits are saturated, even diagnostic queries or deadlock-detector threads may fail to start, further delaying lock resolution and forcing the engine into partial outage. The three anomalies therefore reinforce one another—sub-optimal planning triggers lock storms, which in turn drive the system to exhaust OS resources, amplifying the performance collapse and complicating recovery.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.2945932242908726,
+            "bm25_score": 13.733621708543396,
+            "lexical_score": 0.13388639327633675,
+            "matched_terms": [
+                "about",
+                "and",
+                "are",
+                "for",
+                "is",
+                "longer",
+                "of",
+                "open",
+                "or",
+                "session",
+                "sessions",
+                "than",
+                "that",
+                "the",
+                "time",
+                "transaction",
+                "when"
+            ],
+            "match_count": 172,
+            "entry": {
+                "timeout_id": "pg16_idle_session_timeout",
+                "parameter_name": "idle_session_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle, but not within an open transaction, for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle and not inside an open transaction longer than the configured threshold.",
+                "workload_impact": "The session is terminated; the documentation warns about using this with connection pools or middleware.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

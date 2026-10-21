@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Transaction Lock Contention Anomaly + MVCC Version Maintenance Anomaly",
+            "Description": "Schema and Index Design Anomaly : The physical layout of tables, partitions, and indexes does not align with the workload’s access patterns, forcing statements into wide or non-covering scans and inflating the amount of data touched per operation.\nTransaction Lock Contention Anomaly : Concurrent transactions compete for mutually incompatible locks on the same rows, pages, or metadata, causing wait chains or deadlocks that throttle throughput.\nMVCC Version Maintenance Anomaly : Old row versions and rollback records accumulate faster than background cleaners can reclaim them, expanding the physical data set and raising visibility-check overhead.\n\nWhen all three conditions coexist, the database shows a blend of severe symptoms: queries that should be selective instead trigger large table or index scans, which hold locks on many more rows or pages than necessary. The enlarged lock footprints increase the likelihood and length of blocking chains and deadlocks; blocked transactions that sit idle prolong the lifetime of their snapshots, preventing garbage collection of obsolete versions. Meanwhile, the unchecked version buildup fattens tables and indexes, making subsequent scans even longer and further extending lock durations. Administrators observe skyrocketing lock-wait and deadlock rates, rapidly growing table and index sizes, deteriorating cache efficiency, longer checkpoint and vacuum/cleanup cycles, increasing I/O and CPU usage for both query execution and background maintenance, and application timeouts even on moderately complex requests.\n\nCausally, poor schema and index design initiates wide scans and non-covering lookups, which touch and therefore lock far more data than necessary. The inflated lock scope intensifies contention; transactions wait longer and remain open, prolonging MVCC snapshots. These long-lived snapshots keep obsolete versions alive, causing version bloat. The growing heap and index size then slow future scans, further extending lock hold times and amplifying contention. Simultaneously, the overworked cleanup workers struggle to reclaim space because blocking transactions retain old versions, leading to a feedback loop where version bloat, lock contention, and inefficient access paths reinforce each other and collectively degrade OLTP performance.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.4073000826939883,
+            "bm25_score": 18.165103138005165,
+            "lexical_score": 0.12244042943178843,
+            "matched_terms": [
+                "and",
+                "be",
+                "causing",
+                "data",
+                "long",
+                "longer",
+                "operation",
+                "or",
+                "preventing",
+                "than",
+                "the",
+                "times",
+                "to",
+                "when"
+            ],
+            "match_count": 35,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

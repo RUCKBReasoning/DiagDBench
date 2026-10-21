@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Transaction Log Subsystem Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Database Configuration Parameter Anomaly: Engine-level settings (memory, checkpoint cadence, log sizing, parallelism, etc.) are mis-tuned relative to hardware capacity, workload intensity, or version defaults.\nTransaction Log Subsystem Anomaly: The write-ahead logging pipeline—log buffer, files, flush/switch/archive processes—cannot keep pace with redo generation, stalling commits and checkpoints.\nOperating System Resource Limit Anomaly: Kernel-enforced ceilings on file handles, shared memory, threads, or I/O contexts throttle database processes independently of the engine’s internal resource governance.\n\nWhen these three issues strike concurrently, symptoms overlap and amplify: commit latency and log-flush waits spike even though storage and CPU appear under-utilized; checkpoints and log-file switches occur in erratic bursts, sometimes failing with \"unable to open file\" or shared-memory allocation errors; background writers, archivers, and replication senders fall behind, causing bloated log directories and prolonged recovery point objectives; new sessions or parallel workers intermittently fail to start, and the engine may enter a partial hang where active transactions linger in commit wait while resource-starved background tasks cannot progress. Performance counters show low device saturation but high wait times on log and kernel primitives, confusing first-level diagnostics.\n\nCausally, mis-sized configuration parameters (e.g., too small log buffer, aggressive checkpoint_timeout, excessive max_connections) inflate the churn on the transaction log. The surge in file creation, flush, and archive activity collides with operating-system limits on file descriptors, asynchronous I/O contexts, and shared memory, causing kernel denials that further slow or block log operations. Each blocked flush extends transaction hold times, boosting in-memory log pressure and triggering even more checkpoints, which in turn amplifies I/O and resource requests to the OS. This feedback loop escalates until both the logging subsystem and the kernel resource pools are saturated, yielding a compounded performance and availability degradation characteristic of this composite anomaly.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.7084587607083378,
+            "bm25_score": 24.361898068442216,
+            "lexical_score": 0.12744102717229022,
+            "matched_terms": [
+                "and",
+                "block",
+                "cannot",
+                "of",
+                "or",
+                "overlap",
+                "sessions",
+                "the",
+                "this",
+                "to",
+                "transaction",
+                "wait",
+                "waits",
+                "when",
+                "while",
+                "write"
+            ],
+            "match_count": 50,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

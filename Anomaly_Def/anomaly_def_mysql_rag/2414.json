@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + MVCC Version Maintenance Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same rows, pages, or metadata, producing long blocker-waiter chains or deadlocks and throttling throughput.\nMVCC Version Maintenance Anomaly : Obsolete row versions, undo records, and deleted index entries pile up faster than background cleaners can reclaim them, inflating storage and visibility-check overhead.\nData Block and Index Integrity Anomaly : On-disk pages, index structures, or page links become physically or logically inconsistent, making access paths unreliable and raising corruption errors.\n\nWhen all three conditions co-exist, the database experiences an intertwined failure mode: corruption in data or index pages forces the optimizer to abandon efficient index probes in favor of wide scans over bloated heaps swollen by unreclaimed MVCC debris. These scans hold locks far longer than normal, intensifying lock queues, deadlock frequency, and application time-outs. Simultaneously, pervasive blocking stalls vacuum/cleanup workers exactly when the version store is already expanding, while the corrupted pages they must touch repeatedly abort or skip their passes, letting dead versions accumulate still further. The runaway bloat amplifies I/O and buffer-cache pressure, prolonging lock hold times and increasing the chance that recovery or page-verification reads will surface additional integrity faults. Corruption in index or heap pages can also cause spurious lock retention by orphaned transactions, exacerbating contention.\n\nCausally, each root cause reinforces the others: (1) integrity faults trigger plan shifts and retries that lengthen transactions and widen their lock footprint; (2) the resulting lock contention delays snapshot-advancing commits and blocks autovacuum or purge tasks, accelerating version buildup; (3) excessive version chains enlarge tables and indexes, driving more page splits and writes that raise the probability of further physical corruption on stressed storage; and (4) repeated corruption-induced rollbacks inject yet more undo records, feeding the MVCC store. The feedback loop degrades concurrency, inflates storage, and threatens data correctness, making recovery increasingly difficult without coordinated intervention.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.6796786679624887,
+            "bm25_score": 30.111007167218165,
+            "lexical_score": 0.13355413105413105,
+            "matched_terms": [
+                "an",
+                "and",
+                "blocking",
+                "in",
+                "incompatible",
+                "is",
+                "lock",
+                "locks",
+                "longer",
+                "metadata",
+                "or",
+                "than",
+                "the",
+                "to",
+                "transaction",
+                "when",
+                "while"
+            ],
+            "match_count": 113,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

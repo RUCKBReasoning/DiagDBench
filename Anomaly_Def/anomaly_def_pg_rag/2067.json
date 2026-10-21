@@ -1,0 +1,59 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Storage Space Capacity Anomaly + CPU Resource Anomaly",
+            "Description": "Schema and Index Design Anomaly: Physical data-model or index structures do not match workload access patterns, forcing inefficient full scans, row look-ups, or unbalanced partitions regardless of optimizer statistics.\nStorage Space Capacity Anomaly: Allocated data, log, or temporary space approaches or reaches exhaustion, triggering allocation failures, auto-extend stops, or log archival back-pressure.\nCPU Resource Anomaly: Database processes continuously saturate host CPU cores, driving high run-queue depth and broad latency increases across statements.\n\nWhen all three root causes manifest together, the database exhibits a compound failure pattern: workloads fall back to full-table scans and non-covering index probes that read and write far more blocks than necessary, rapidly inflating table, index, and temp objects until datafiles, logs, or temp areas hit hard space limits. Simultaneously, the scan-heavy plans and frantic space-management tasks (auto-extend attempts, freelist searches, segment splits, log switches, retry storms) consume large amounts of CPU. End-users observe steep, system-wide latency spikes, intermittent \"out of space\" or \"cannot allocate extent\" errors, statement cancellations during sorts or index builds, and CPU clock-time waits mixed with space-related engine wait events. Diagnostic views show both rising CPU usage and dwindling free space, while execution plans remain dominated by non-selective scans.\n\nCausal interaction: poor schema and indexing forces larger physical I/O footprints and temp usage per query. The inflated data movement accelerates growth of tables, indexes, and logs, pushing the storage subsystem toward capacity limits. As free space diminishes, the engine performs more frequent space checks, extent allocations, and garbage-collection sweeps, each adding CPU overhead. Space exhaustion then causes DML retries, failed sorts, and stalled checkpoint or archive operations, which in turn keep sessions active longer and elevate CPU load even further. The mutually reinforcing loop—inefficient access → higher CPU and data growth → space pressure → additional CPU-intensive space-management work—rapidly degrades throughput and can culminate in a complete halt of write activity and pervasive timeout failures across the workload.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.7492505060126204,
+            "bm25_score": 37.89176443898319,
+            "lexical_score": 0.1641683533754018,
+            "matched_terms": [
+                "access",
+                "and",
+                "execution",
+                "longer",
+                "more",
+                "of",
+                "or",
+                "out",
+                "pattern",
+                "query",
+                "resource",
+                "statement",
+                "than",
+                "that",
+                "the",
+                "time",
+                "timeout",
+                "together",
+                "until",
+                "when",
+                "with",
+                "work",
+                "workload"
+            ],
+            "match_count": 264,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,46 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Transaction Log Subsystem Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Transaction Lock Contention Anomaly: Concurrent transactions contend for mutually incompatible locks on the same rows, pages, or metadata, leading to wait chains or deadlocks that stall forward progress.\nTransaction Log Subsystem Anomaly: The write-ahead logging pipeline (log buffer, log file, archiver, replication retention) cannot keep pace with redo generation, inflating commit latency and pausing writers.\nData Block and Index Integrity Anomaly: On-disk pages or index structures are physically or logically corrupt, so look-ups, scans, or modifications encounter checksum, linkage, or key-order violations.\n\nWhen these three root causes strike at once, the database experiences a multilayered slowdown and instability: lock wait times and deadlock victim errors rise while commits stall on log flushes, stretching the duration that locks are held and enlarging blocking trees. Corrupted pages or indexes trigger automatic verification retries, forced page rereads, or error-driven transaction rollbacks, further prolonging lock holds and generating bursts of redo that exacerbate log-flush congestion. Applications observe erratic response times, timeouts, and repeated failures; monitoring shows simultaneous spikes in lock waits, log-related waits, deadlock detections, and corruption or checksum error reports. Performance tuning in one layer appears ineffective because pressure simply resurfaces in another, masking the true intertwined nature of the outage.\n\nCausally, page or index corruption can provoke long-running consistency checks, table scans, or error-handling rollbacks that hold locks far longer than usual, amplifying lock contention. These extended transactions in turn generate excessive undo/redo as they are retried or rolled back, driving up log volume and stressing the log subsystem. Conversely, a saturated log device delays commit processing, lengthening the period that locks remain acquired and increasing the likelihood of deadlock cycles. Prolonged recovery or repeated crash restarts initiated by corruption can also intensify log traffic and re-acquire locks, while log backlog may postpone the writing of page images needed to repair corruption. The feedback loop among corrupted structures, lock retention, and log flush bottlenecks deepens the outage and complicates diagnosis, as symptoms from each layer propagate and obscure the original triggers.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 248,
+            "score": 0.22492815460234225,
+            "bm25_score": 16.196078474031424,
+            "lexical_score": 0.10990834386852086,
+            "matched_terms": [
+                "and",
+                "by",
+                "corrupted",
+                "error",
+                "in",
+                "index",
+                "instability",
+                "or",
+                "pressure",
+                "the",
+                "to",
+                "trigger",
+                "with"
+            ],
+            "match_count": 11,
+            "entry": {
+                "error_code": "XX002",
+                "error_name": "index_corrupted",
+                "official_description": "index corrupted",
+                "error_class": "Class XX - Internal Error",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

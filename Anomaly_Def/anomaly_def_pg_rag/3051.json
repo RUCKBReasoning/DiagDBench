@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Data Block and Index Integrity Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Composite definition: The database is simultaneously affected by runaway accumulation of obsolete MVCC versions, on-disk data-block or index corruption, and imminent exhaustion of allocated storage space. This convergence means the version store cannot be cleaned up, the physical structures that should be reclaimed are partly corrupted or inconsistent, and the shrinking free space prevents corrective maintenance and normal DML from completing.\n\nExpected manifestations: Administrators may observe rocketing counts of dead tuples, rollback records, and logically deleted index entries while VACUUM/clean-up workers remain busy yet ineffective. In parallel, queries that rely on indexes begin to miss or double-count rows, checksum or page-verification errors appear in logs, and integrity-check utilities flag key-ordering or linkage violations. At the same time, tablespaces, WAL/redo logs, or temp areas report critically low free bytes, leading to auto-extend failures, rejected allocations for new versions or undo segments, stalled checkpoint or log-archiving processes, and sudden transaction aborts. Planner misestimates, long-running sequential scans, repeated statement retries, and emergency shutdowns triggered by corruption or out-of-space situations may all appear together, making symptom attribution difficult.\n\nCausal interaction: Excess MVCC bloat inflates table and index sizes, directly accelerating consumption of limited disk space; as free space disappears, background cleaners lose the ability to allocate new pages for version rewriting, further slowing or halting garbage collection and causing an even faster rise in obsolete versions. Simultaneously, latent or newly introduced page or index corruptions can prevent space-reclaim operations such as vacuum, defragmentation, or index rebuilds from completing, leaving corrupted pages locked and their space unrecoverable. Space pressure constrains crash-safe writes and check-pointing, increasing the risk of torn-page or incomplete-redo corruption, which in turn exacerbates integrity anomalies. The feedback loop among bloated version stores, structural corruption, and dwindling capacity drives the system toward a state where both user workloads and recovery/repair utilities fail, threatening data availability and consistency.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.7458461538461538,
+            "bm25_score": 29.993935184087096,
+            "lexical_score": 0.15282051282051282,
+            "matched_terms": [
+                "aborts",
+                "an",
+                "and",
+                "cannot",
+                "database",
+                "for",
+                "index",
+                "is",
+                "of",
+                "or",
+                "statement",
+                "table",
+                "that",
+                "the",
+                "this",
+                "time",
+                "to",
+                "transaction",
+                "triggered",
+                "user",
+                "while"
+            ],
+            "match_count": 312,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Database Memory Allocation Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently picks a sub-optimal execution plan even though statistics are adequate, often because of cost-model issues, plan reuse pathologies, or version/configuration changes.\nDatabase Memory Allocation Anomaly : The database engine allocates or leaks memory beyond safe host limits, producing OS pressure, swapping, and cache churn due to unbounded work areas, plan-cache bloat, or excessive parallelism.\n\nComposite anomaly definition: Both a poor plan choice and runaway memory consumption coexist, so the workload executes under an execution plan that is already inefficient while the engine is simultaneously stressed by memory over-allocation.\n\nCombined observable phenomena: SQLs that abruptly switch from efficient indexed access to broad scans or high-fan-out nested loops also show exploding memory footprints for hash joins, sorts, or parallel worker buffers. Operators that the optimizer mistakenly deems cheap reserve large work areas, causing rapid growth of process resident-set size, frequent eviction of buffer pages, degraded cache hit ratios, increased I/O, CPU stalls due to paging, and even out-of-memory kills. Performance instability becomes pronounced: the same statement may be lightning-fast at one moment and then timeout or crash the instance minutes later. Monitoring dashboards reveal correlated spikes in hard-parse counts, plan cache entries, work-memory grants, and OS swap activity.\n\nCausal interaction: A sub-optimal plan often drives heavier operator memory grants (e.g., full hash aggregates instead of indexed lookups) which accelerates memory pressure; conversely, memory pressure can trigger plan cache evictions, forcing re-optimization that re-selects or pins the bad plan, perpetuating the cycle. Excessive parallelism chosen by the flawed plan multiplies per-worker buffers, exhausting memory faster and amplifying pressure. As the OS begins swapping, the already inefficient plan lengthens execution time, keeping its large allocations alive longer, further aggravating memory exhaustion. The intertwined feedback loop of poor plan selection and escalating memory allocation degrades overall throughput and can culminate in instance instability or crash.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.7259562773267858,
+            "bm25_score": 26.18219425911526,
+            "lexical_score": 0.14166666666666666,
+            "matched_terms": [
+                "access",
+                "and",
+                "be",
+                "because",
+                "by",
+                "execution",
+                "for",
+                "in",
+                "is",
+                "or",
+                "query",
+                "statement",
+                "the",
+                "time",
+                "timeout",
+                "work",
+                "workload"
+            ],
+            "match_count": 14,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

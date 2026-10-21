@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions request conflicting locks on the same rows, pages, or metadata, producing long blocker-waiter chains or deadlocks that suspend or abort work until locks are released.\nStorage I/O Throughput Anomaly : The physical storage layer cannot supply the needed read/write bandwidth or IOPS, driving up I/O latency and queue depths for data, log, and temp files.\n\nComposite anomaly definition: The database simultaneously suffers from severe lock-manager contention while the underlying storage subsystem is saturated, so that blocking waits and deadlock retries are compounded by prolonged physical I/O delays, creating a feedback loop that cripples transactional throughput.\n\nCombined observable phenomena: Lock-wait and deadlock graphs lengthen and recur more frequently; sessions stay in lock-wait states far longer than usual because the holders of critical locks are themselves stalled on slow disk reads or log flushes. Overall response times and commit latency spike, CPU usage remains modest, and connection pools back up as both lock and I/O wait classes dominate performance monitors. Deadlock victims may rise, yet retries often re-encounter the same blocked resources because the underlying I/O bottleneck prevents rapid forward progress. Batch windows stretch, and application timeouts increase even for read-only workloads due to lock queues behind long-running write transactions.\n\nCausal chain interaction: Storage saturation lengthens the execution and commit duration of transactions, extending the lifetime of their locks and increasing the probability that other sessions will conflict with them. Those blocked sessions accumulate, enlarge lock queues, and may form deadlock cycles that force rollbacks and retries, which in turn generate additional I/O and further stress the already constrained storage subsystem. Conversely, the surge of retried or piled-up transactions multiplies random I/O requests, exacerbating device queue depths and widening latency, creating a vicious circle where lock contention and I/O bottlenecks reinforce each other and jointly deteriorate overall OLTP system performance.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.6798158662826762,
+            "bm25_score": 34.36388984316041,
+            "lexical_score": 0.1693368700265252,
+            "matched_terms": [
+                "and",
+                "because",
+                "blocking",
+                "cannot",
+                "conflicting",
+                "for",
+                "in",
+                "is",
+                "lifetime",
+                "lock",
+                "locks",
+                "longer",
+                "metadata",
+                "or",
+                "sessions",
+                "than",
+                "the",
+                "to",
+                "transaction",
+                "waits",
+                "while"
+            ],
+            "match_count": 3,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

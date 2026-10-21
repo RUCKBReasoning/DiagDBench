@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Storage I/O Throughput Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Concurrent sessions serialize on hot buffer pages or latches, causing page-level stalls despite adequate overall memory size.\nStorage I/O Throughput Anomaly : Underlying disks or storage fabric reach their throughput/IOPS ceiling, stretching read- and write-service times well beyond the engine’s expectations.\nOperating System Resource Limit Anomaly : Kernel-enforced quotas on file descriptors, shared memory, async-I/O contexts, or threads are exhausted, blocking further resource acquisition by the database process.\n\nWhen all three conditions arise together, the wait profile is dominated by a chaotic mix of buffer-busy/latch waits, abnormally long I/O latencies, and intermittent \"cannot allocate <kernel object>\" errors. Checkpoint, buffer flush, and log-flush events stay in flight far longer than usual, keeping dirty pages pinned and intensifying latch contention. CPU usage oscillates between spin-waiting on latches and idle periods while sessions sleep on I/O or kernel resource waits. Connection spikes, bulk loads, or index maintenance can suddenly tip the system into a state where new back-end or parallel workers fail to start, even as existing sessions hang on buffer pins.\n\nCausal chain: Saturated storage slows every page read and dirty-page write, lengthening the window during which pages remain pinned and latches are held. Extended latch hold times magnify buffer-cache contention, increasing the number of concurrent sessions stalled in spin loops or waiting queues. To compensate, the engine issues more outstanding I/O and spawns additional background workers, pushing file handles, async-I/O rings, and thread counts toward their OS limits. Once those limits are hit, further I/O submission or worker creation is denied by the kernel, creating a feedback loop where buffers cannot be flushed or read, latches remain locked, and the transaction and query workload deteriorates rapidly.\n",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.3423018646315705,
+            "bm25_score": 14.616134963142535,
+            "lexical_score": 0.1363667232597623,
+            "matched_terms": [
+                "and",
+                "are",
+                "by",
+                "connection",
+                "idle",
+                "is",
+                "long",
+                "longer",
+                "on",
+                "or",
+                "remain",
+                "sessions",
+                "system",
+                "than",
+                "the",
+                "when"
+            ],
+            "match_count": 315,
+            "entry": {
+                "timeout_id": "pg16_tcp_user_timeout",
+                "parameter_name": "tcp_user_timeout",
+                "timeout_category": "network_unacknowledged_data_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies how long transmitted data may remain unacknowledged before the TCP connection is forcibly closed.",
+                "trigger_condition": "TCP data sent by PostgreSQL remains unacknowledged longer than tcp_user_timeout on systems supporting TCP_USER_TIMEOUT.",
+                "workload_impact": "The TCP connection is forcibly closed.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

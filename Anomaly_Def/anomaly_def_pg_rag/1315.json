@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Database Memory Allocation Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Critical runtime settings (buffer-pool size, work-memory, checkpoint cadence, parallelism, etc.) are mis-tuned relative to hardware capacity and workload characteristics.\nDatabase Memory Allocation Anomaly : The database engine allocates and grows memory regions until they exceed the safe physical or virtual memory envelope, provoking OS pressure, swapping, or OOM events.\nBuffer Cache and Latch Contention Anomaly : Hot buffer pages and their internal latches are contended by concurrent sessions, causing frequent buffer-busy waits, spin-loops, and I/O stalls.\n\nWhen all three faults co-exist, the system exhibits an amplified and often confusing symptom mix:  • Rapid swings between CPU spin and deep OS sleep as sessions alternate between latch spin-loops and swap-induced stalls.  • Severe and uneven throughput collapse as hot pages thrash out of an undersized or fragmented buffer pool, inflating latch waits while disk reads balloon.  • Frequent checkpoint storms or background flush bursts triggered by aggressive configuration parameters, lengthening dirty-page hold times and magnifying latch contention on clean/dirty queues.  • Resident-set growth punctuated by OS paging, followed by cache hit-ratio plunges and repeated plan or page reloading.  • Spurious deadlock or lock-timeout reports rooted not in row locks but in stalled page-pin acquisition.\n\nCausal chain: Mis-calibrated configuration parameters (small shared buffers, oversized per-query work_mem, excessive parallel workers, aggressive checkpoint targets) drive memory consumption beyond host limits while simultaneously starving the buffer cache of stable residency. Memory pressure forces frequent page evictions; the same hot pages are re-read and re-latched by high concurrency, escalating buffer latch contention. Prolonged latch holds slow foreground work, extending transaction lifetimes and inflating memory reserved per session, which in turn intensifies overall memory pressure. The feedback loop between bad parameters, runaway memory allocation, and latch contention pushes the engine into a state where neither memory nor concurrency control can stabilize, resulting in pervasive, workload-wide degradation that is difficult to attribute to a single layer.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.41746433352731793,
+            "bm25_score": 13.18022890400292,
+            "lexical_score": 0.1361755067362544,
+            "matched_terms": [
+                "an",
+                "and",
+                "are",
+                "by",
+                "is",
+                "not",
+                "of",
+                "on",
+                "or",
+                "session",
+                "sessions",
+                "system",
+                "that",
+                "the",
+                "timeout",
+                "to",
+                "triggered",
+                "when",
+                "which"
+            ],
+            "match_count": 226,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_interval",
+                "parameter_name": "tcp_keepalives_interval",
+                "timeout_category": "network_keepalive_retry_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time after which a TCP keepalive message that has not been acknowledged by the client should be retransmitted.",
+                "trigger_condition": "A TCP keepalive probe is not acknowledged for tcp_keepalives_interval on systems supporting TCP_KEEPINTVL or an equivalent socket option.",
+                "workload_impact": "Controls retry timing for keepalive probes used to detect unresponsive client connections.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

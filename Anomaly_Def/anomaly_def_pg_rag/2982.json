@@ -1,0 +1,61 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Replication Synchronization Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions block or deadlock each other by requesting incompatible locks on the same rows, pages, or metadata, stalling foreground work on the primary. \nReplication Synchronization Anomaly : Stand-by or subscriber nodes fall behind because they cannot receive, write, or apply the primary’s change stream at the pace it is generated. \nData Block and Index Integrity Anomaly : On-disk table or index pages become corrupt or internally inconsistent, breaking the logical mapping between physical storage and relational contents.\n\nWhen all three anomalies co-exist, the database exhibits a compound symptom set: long-running or hung foreground transactions accumulate lock-wait time, while replication lag grows uncontrollably; replicas may repeatedly stop applying or go into error due to checksum or key-order failures encountered in the corrupted pages they read from the primary’s log stream. On the primary, blocked or victim-aborted transactions exaggerate log generation bursts (due to rollbacks and retries) that widen the replica’s delay. Application observers see timeouts, duplicate or missing rows across read replicas, and sudden failover incapability because secondaries are both far behind and possibly carrying physical corruption. Administrators find bloated transaction logs retained for replay, deadlock reports, extended lock-wait graphs, and integrity-check failures on both primary and replicas, making it hard to attribute errors to a single layer.\n\nCausally, page or index corruption can initiate lock contention by forcing query plans to devolve into full scans or by causing index rebuilds that hold long-lived locks; these long locks block other writers, inflating lock chains and deadlock probability. The resulting transactional back-pressure amplifies write-volume spikes (commits, rollbacks, and retries), which pushes more redo into the replication pipeline just as replicas are already struggling to apply corrupted pages, compounding replay lag. Conversely, a heavily backlogged replica may request missing segments or restart apply loops, increasing I/O load on the primary’s storage layer and lengthening the time locks are held during crash-safe page rewrites, thereby feeding further contention. Thus, corruption, lock contention, and replication lag form a reinforcing feedback loop that degrades both data integrity and availability in an OLTP environment.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.7542990033222591,
+            "bm25_score": 41.430938434090045,
+            "lexical_score": 0.18099667774086378,
+            "matched_terms": [
+                "aborted",
+                "an",
+                "and",
+                "because",
+                "cannot",
+                "change",
+                "database",
+                "delay",
+                "for",
+                "incompatible",
+                "index",
+                "is",
+                "lock",
+                "metadata",
+                "or",
+                "other",
+                "table",
+                "that",
+                "the",
+                "time",
+                "to",
+                "transaction",
+                "when",
+                "while"
+            ],
+            "match_count": 309,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

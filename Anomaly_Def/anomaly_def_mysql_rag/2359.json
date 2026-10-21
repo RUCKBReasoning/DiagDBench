@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Replication Synchronization Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer repeatedly chooses a sub-optimal execution plan even though statistics are adequate, resulting in excessive CPU, I/O, and elapsed time per statement.\nReplication Synchronization Anomaly : Standby or downstream replicas cannot receive and/or apply WAL / redo at the rate the primary generates it, creating ever-growing replication lag.\n\nComposite definition: The database simultaneously suffers from inefficient query plans on the primary and an overloaded replication pipeline. The primary produces an abnormally large volume of work per transaction, while the replicas are already behind and unable to keep pace, so both latency-sensitive query processing and replication consistency degrade in tandem.\n\nCombined observable phenomena: 1) Sudden plan changes or plan instability on the primary coincide with steep spikes in WAL generation, I/O, and CPU utilisation. 2) Replication monitoring shows log-position gaps widening much faster than normal, relay / retained log files accumulating, and replica read-only sessions returning increasingly stale data. 3) Failover RPO/RTO metrics deteriorate, yet the primary’s plan cache, CPU run queues, and I/O queues are also saturated, making it difficult to attribute slowdown solely to either optimisation or replication. 4) Lock contention and long-running transactions caused by bad plans further delay log recycling, amplifying disk pressure on both primary and replicas.\n\nCausal chain and interaction: A poor plan (e.g., full table scan instead of index probe or a nested-loop with underestimated outer cardinality) inflates row touches, generates more undo/redo, extends transaction duration, and locks data longer. This escalates WAL volume and commit latency, pushing more data into the replication stream just as each transaction finishes. The replication subsystem, already limited by network, disk, or single-threaded apply, falls further behind, causing additional log retention on the primary. Retained logs consume disk and may trigger aggressive checkpointing or Autovacuum/auto-purge activity that invalidates plans, leading to even more plan recompilations and potential selection of yet another sub-optimal plan. Thus, each anomaly feeds the other: bad plans bloat the workload the replicas must process, while replication lag prolongs log retention and resource pressure on the primary, increasing the likelihood of plan cache eviction and unstable plan selection. The feedback loop magnifies overall throughput loss, latency spikes, and disaster-recovery risk.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.6138180206303998,
+            "bm25_score": 30.793373824191704,
+            "lexical_score": 0.13907692307692307,
+            "matched_terms": [
+                "an",
+                "and",
+                "another",
+                "cannot",
+                "delay",
+                "in",
+                "lock",
+                "locks",
+                "longer",
+                "or",
+                "sessions",
+                "statement",
+                "than",
+                "the",
+                "this",
+                "to",
+                "transaction",
+                "while"
+            ],
+            "match_count": 111,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

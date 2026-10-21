@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Buffer Cache and Latch Contention Anomaly + Replication Synchronization Anomaly",
+            "Description": "Schema and Index Design Anomaly : The physical data model does not align with workload access patterns, forcing queries into inefficient full-scan or non-covering-index paths and creating write hot-spots.\nBuffer Cache and Latch Contention Anomaly : Concurrent sessions serialize on hot buffer pages, latches, or I/O slots, causing CPU spin and wait spikes even when total memory is sufficient.\nReplication Synchronization Anomaly : Downstream replicas cannot ingest or apply primary-side log traffic fast enough, leading to widening log-position gaps and retention of un-recycled log segments.\n\nWhen these three root causes strike simultaneously, the system exhibits compounded symptoms: 1) queries and DML repeatedly hammer a small set of ill-designed tables or index root pages, inflating buffer-busy and page-latch waits; 2) the resulting stall and retry behaviour increases transaction duration and the volume of generated redo, so the primary’s log grows faster while flush cycles are lengthened by buffer contention; 3) replicas fall further behind because they must replay the same inefficient access patterns and also compete for their own buffer latches, showing escalating replay lag and ballooning relay-log or retained WAL storage. End-user latency oscillates with both local latch storms and downstream back-pressure, and administrative alarms may simultaneously report buffer-cache hotspots, high WAL retention, and replication lag, making the root cause hard to pinpoint.\n\nCausally, the sub-optimal schema design creates concentrated page accesses that become latch hot-spots; this latch contention slows foreground DML and prolongs checkpoints, generating bursts of dirty pages and large transaction logs. The enlarged and sustained log volume overloads the replication pipeline, whose own apply threads are further hampered by the same poor index layout, re-creating latch contention on the replica side and reducing catch-up throughput. As replicas lag, the primary is forced to retain additional log segments, keeping more pages dirty and resident, which intensifies buffer churn and latch pressure—forming a reinforcing loop that degrades both primary performance and replica freshness.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.4605094493764135,
+            "bm25_score": 15.638741609327434,
+            "lexical_score": 0.1320535011801731,
+            "matched_terms": [
+                "and",
+                "are",
+                "by",
+                "data",
+                "does",
+                "is",
+                "latency",
+                "may",
+                "not",
+                "on",
+                "or",
+                "sessions",
+                "system",
+                "the",
+                "this",
+                "when"
+            ],
+            "match_count": 211,
+            "entry": {
+                "timeout_id": "pg16_tcp_user_timeout",
+                "parameter_name": "tcp_user_timeout",
+                "timeout_category": "network_unacknowledged_data_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies how long transmitted data may remain unacknowledged before the TCP connection is forcibly closed.",
+                "trigger_condition": "TCP data sent by PostgreSQL remains unacknowledged longer than tcp_user_timeout on systems supporting TCP_USER_TIMEOUT.",
+                "workload_impact": "The TCP connection is forcibly closed.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

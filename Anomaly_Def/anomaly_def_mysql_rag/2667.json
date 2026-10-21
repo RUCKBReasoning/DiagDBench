@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions request mutually incompatible locks on the same resource and therefore wait, block, or deadlock.\nStorage Space Capacity Anomaly : The database exhausts free space in data, log, temp, or archive areas so that further page, extent, or segment allocations fail.\n\nWhen both root causes strike at once, sessions already queued on locks find their waits prolonged by space-allocation stalls, while space-related errors trigger rollbacks that propagate new lock requests and deadlocks. Observable effects include rapidly rising lock-wait time, deadlock and victim reports interleaved with \"no space left\" or \"cannot allocate extent\" errors, frozen or hung DML/DDL statements, exploding connection-pool wait lists, log file growth that plateaus at the capacity ceiling, checkpoint or log-switch delays, and application retries that add more concurrent lock contenders.\n\nCausally, long-running or blocked transactions hold locks and referenced undo/redolog segments open, preventing log recycling and freeing of extents; this accelerates space exhaustion in log and data areas. Conversely, once the storage boundary is hit, INSERT/UPDATE/DELETE operations pause on space-allocation paths, lengthening their lock tenure and enlarging blocking chains. Rollback operations triggered by allocation failures can further inflate undo and redo volumes, immediately reclaiming no space and deepening the capacity crisis. The mutual reinforcement between lock persistence and space starvation can drive the system into a feedback loop of mounting contention, cascading rollbacks, and service-level degradation unless both dimensions are relieved simultaneously.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.7491832034018426,
+            "bm25_score": 25.94030593835709,
+            "lexical_score": 0.16394401133947553,
+            "matched_terms": [
+                "and",
+                "block",
+                "blocking",
+                "cannot",
+                "connection",
+                "incompatible",
+                "is",
+                "lock",
+                "of",
+                "or",
+                "sessions",
+                "the",
+                "this",
+                "transaction",
+                "triggered",
+                "wait",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 127,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

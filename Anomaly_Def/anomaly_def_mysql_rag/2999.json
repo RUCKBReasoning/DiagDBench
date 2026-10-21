@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Database Memory Allocation Anomaly: Excessive or unbounded allocation of buffer caches, work areas, plan caches, temporary structures, and background heaps drives the database process beyond the host’s safe memory envelope.\nStorage Space Capacity Anomaly: Physical or logical free space for data files, logs, temporary areas, backups, or diagnostics is exhausted, preventing further allocations, extensions, or writes.\n\nWhen these two root causes occur together, the system experiences simultaneous memory pressure and space exhaustion. Observable effects include: rapid growth of process RSS alongside increasing swap activity; sorts, hashes, and parallel operations that first overrun work memory then attempt to spill to temp areas that are already near full; checkpoints and log flushes that stall because archive or data spaces cannot accept more blocks, leaving dirty buffers pinned in memory; cascading \"out of memory\" and \"no space left\" errors, session terminations, and node eviction events; and monitoring dashboards that oscillate between memory and storage alerts, obscuring the primary trigger.\n\nCausally, each anomaly reinforces the other. Runaway in-memory structures and high concurrency inflate RAM demand; once memory thresholds are crossed, the engine spills intermediate data to disk, rapidly consuming remaining temp or datafile space. Conversely, as free space diminishes, writers are throttled and checkpoints back up, forcing more dirty pages to linger in buffer cache and expanding memory usage. Archive-log saturation blocks log reuse, further prolonging cache retention and increasing memory footprints. This feedback loop accelerates exhaustion of both resources, narrows the recovery window, and heightens the risk of sudden, hard-to-diagnose outages.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.6953405069222026,
+            "bm25_score": 15.593651658074313,
+            "lexical_score": 0.12426470588235294,
+            "matched_terms": [
+                "and",
+                "back",
+                "because",
+                "cannot",
+                "for",
+                "in",
+                "is",
+                "of",
+                "or",
+                "session",
+                "the",
+                "this",
+                "up",
+                "when",
+                "window"
+            ],
+            "match_count": 141,
+            "entry": {
+                "timeout_id": "mysql84_innodb_row_lock_wait_timeout",
+                "parameter_name": "innodb_lock_wait_timeout",
+                "timeout_category": "innodb_row_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "The length of time in seconds an InnoDB transaction waits for a row lock before giving up.",
+                "trigger_condition": "An InnoDB transaction waits longer than innodb_lock_wait_timeout for a row lock.",
+                "workload_impact": "The lock wait gives up; by default only the current statement is rolled back unless innodb_rollback_on_timeout is enabled.",
+                "default_behavior": "Defined as an InnoDB system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,45 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Optimizer Statistics Anomaly",
+            "Description": "Schema and Index Design Anomaly : Physical data-model structures (tables, partitions, indexes, constraints, data types) are mis-aligned with workload access patterns, forcing the optimizer to consider inherently inefficient access paths even when good statistics are available.\nOptimizer Statistics Anomaly : Row-count, histogram, and correlation metadata are stale or incomplete, leading the optimizer to misestimate cardinalities and choose sub-optimal plans even when adequate physical structures exist.\n\nComposite definition: The database simultaneously suffers from poor physical schema/index design and inaccurate optimizer statistics, so both the set of access paths considered and the cost estimates for those paths are systematically wrong. The optimizer is therefore trapped between a limited set of inefficient structures and misleading metadata about those structures, resulting in chronically bad execution plans.\n\nCombined anomalous phenomena:  • Queries show extreme and unstable latency, with some executions scanning huge volumes of data while others spill to disk due to underestimated memory needs.  • Execution plans contain full table scans, unselective index range scans, repeated key lookups, or partition elimination failures, and the estimated versus actual row counts differ by several orders of magnitude.  • Plan performance oscillates after data loads or index rebuilds but never stabilizes, and automatic statistics refreshes or index hints give only temporary relief.  • DML operations experience high blocking and log growth because oversized or redundant indexes are maintained unnecessarily, yet the optimizer still ignores them due to bad statistics.  • Monitoring tools show both high physical I/O from design issues and excessive re-compilations or plan cache churn from statistics issues, making the root cause appear ambiguous.\n\nCausal chain: The absence of well-targeted or covering indexes forces the optimizer to rely on broad scans; stale statistics then exaggerate or underplay the cost of those scans, causing it to pick even worse plans such as nested loops against massive row sets or hash joins spilling to temp space. Conversely, redundant or poorly chosen indexes inflate maintenance cost, but because statistics on them are outdated, the optimizer cannot recognize when they would actually be beneficial, leaving them unused yet still expensive to maintain. Stale global statistics on mis-partitioned tables hide hot partitions that suffer from skew, amplifying latch contention and I/O hotspots already introduced by the flawed schema design. Thus, each anomaly masks and reinforces the other, degrading both read and write performance across OLTP and OLAP workloads while complicating diagnosis.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 173,
+            "score": 0.2214786908534952,
+            "bm25_score": 14.552370936833869,
+            "lexical_score": 0.10342637323313653,
+            "matched_terms": [
+                "access",
+                "ambiguous",
+                "and",
+                "as",
+                "cannot",
+                "execution",
+                "is",
+                "or",
+                "that",
+                "the",
+                "with"
+            ],
+            "match_count": 15,
+            "entry": {
+                "error_code": "42725",
+                "error_name": "ambiguous_function",
+                "official_description": "ambiguous function",
+                "error_class": "Class 42 - Syntax Error or Access Rule Violation",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "sql_and_parser",
+                "cause_analysis": "The failure is typically associated with unsupported syntax, invalid statement structure, or feature usage that the target engine version cannot execute as written.",
+                "solution_guidance": "Validate SQL syntax, target-engine compatibility, statement shape, and whether the feature is supported under the current engine version or execution context.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "syntax error",
+                    "feature rejection"
+                ]
+            }
+        }
+    }
+]

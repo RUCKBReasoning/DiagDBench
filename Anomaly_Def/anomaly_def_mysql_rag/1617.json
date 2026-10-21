@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Storage I/O Throughput Anomaly + CPU Resource Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly: Sessions serialize on hot buffer pages, latches, or page-pin slots inside the buffer manager, stalling logical access to data despite available rows and indexes.\nStorage I/O Throughput Anomaly: The physical volumes that hold data, temp, or log files are saturated for bandwidth, IOPS, or latency, throttling every read and write the database issues.\nCPU Resource Anomaly: Database and background processes drive host CPU usage to sustained saturation, exhausting runnable-queue capacity and elongating scheduling latency.\n\nWhen all three root causes strike together the system exhibits an extreme \"triple choke\" pattern: 1) Page-level latch waits and buffer-busy waits climb, often accompanied by high spin counts that burn CPU while real work stalls. 2) Physical read/write latency from the storage subsystem stretches far beyond normal, filling I/O queues and inflating data-file, log-write, and buffer-I/O wait events. 3) Overall CPU utilisation sits at or near 100 %, with elevated context switches and scheduler delays, yet throughput and commit rates fall, giving the appearance of a CPU bottleneck that does not improve even when additional cores are provisioned. Application sessions may pile up in a mixture of latch, buffer I/O, and CPU run-queue waits, making the dominant symptom oscillate from CPU saturation to I/O wait spikes, complicating troubleshooting efforts.\n\nCausal chain: Storage saturation slows every buffer read, write, and checkpoint flush, forcing pages to stay pinned and latches to remain held longer; this inflates latch-contention windows and drives more sessions into spin-waits, which in turn consume extra CPU. The extra CPU burn crowds the scheduler, delaying the submission and completion of asynchronous I/Os, which further deepens the storage backlog. Meanwhile, prolonged dirty-page residency and frequent eviction caused by the constrained buffer pool amplify the need for physical I/O, feeding additional load into an already saturated storage layer. The feedback loop between slow I/O, extended latch holds, and runaway CPU consumption can cascade rapidly, crippling both transactional and analytical workloads until one or more resources are relieved.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3237,
+            "score": 0.4465450926329137,
+            "bm25_score": 47.69880667527803,
+            "lexical_score": 0.1411320754716981,
+            "matched_terms": [
+                "access",
+                "and",
+                "are",
+                "capacity",
+                "data",
+                "file",
+                "latency",
+                "log",
+                "not",
+                "or",
+                "stay",
+                "storage",
+                "the",
+                "to",
+                "until",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-011353",
+                "error_name": "OBSOLETE_ER_KEYRING_FAILED_TO_CREATE_KEYRING_DIR",
+                "official_description": "Could not create keyring directory. The keyring_file will stay unusable until correct path to the keyring directory gets provided",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

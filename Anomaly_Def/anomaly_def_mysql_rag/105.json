@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Database Configuration Parameter Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Transaction Lock Contention Anomaly: Concurrent transactions request incompatible locks on the same resource, causing blocking chains or deadlocks managed by the lock manager.\nDatabase Configuration Parameter Anomaly: Engine-level settings for memory, checkpointing, logging, and parallelism are mis-tuned for the hardware or workload, creating artificial bottlenecks unrelated to true resource exhaustion.\nData Block and Index Integrity Anomaly: On-disk pages or index structures are physically or logically corrupted, breaking key order, page links, or heap-index mappings and making the storage layer unreliable.\n\nWhen these three root causes strike at once, the system can exhibit an intertwined symptom set: lock wait times and deadlock-victim rollbacks surge, yet host CPU, I/O, or memory metrics appear only partially utilized because mis-set parameters throttle useful work while allowing idle hardware cycles. Queries that do complete may return inconsistent row counts, fail with page-verification errors, or fall back to table scans, further enlarging the lock footprint and lengthening blocking chains. Checkpoint or flush storms triggered by mis-tuned settings increase I/O pressure exactly when corrupted pages require rereads or retries, amplifying latency spikes. Application threads pile up in both connection-pool wait queues and retry loops as they encounter alternating lock-timeout, deadlock, or corruption exceptions, making the overall performance degradation hard to attribute to a single layer.\n\nCausally, poor configuration can be the catalyst that magnifies both locking and corruption effects: undersized buffer pools or overly aggressive checkpoints force frequent disk access, raising the probability that transactions touch damaged pages. When a corrupted index forces the optimizer to abandon an efficient access path, the resulting full scans acquire many more row, page, or table locks, intensifying contention. Long I/O stalls on bad blocks keep locks held longer, widening wait chains; deadlock detection may fire more often, causing rollbacks that re-enter execution and re-encounter the same corrupted structures. Simultaneously, mis-aligned log or memory parameters slow recovery from these aborts, allowing blockage to propagate through the workload. Thus, each anomaly reinforces the others: corruption inflates lock scope and duration, mis-configuration prevents timely progress or recovery, and the compounded lock contention spreads the performance collapse across the whole OLTP system.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1423,
+            "score": 0.5524238529993238,
+            "bm25_score": 83.37766222468616,
+            "lexical_score": 0.1691767460007803,
+            "matched_terms": [
+                "and",
+                "blocking",
+                "by",
+                "chains",
+                "complete",
+                "concurrent",
+                "engine",
+                "for",
+                "in",
+                "incompatible",
+                "lock",
+                "or",
+                "order",
+                "progress",
+                "retry",
+                "same",
+                "the",
+                "transaction",
+                "transactions",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "3872",
+                "error_name": "ER_CLONE_IN_PROGRESS",
+                "official_description": "Concurrent clone in progress. Please try after clone is complete.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "concurrency_and_transaction",
+                "cause_analysis": "The failure is typically associated with concurrent transactions contending for the same logical resources, incompatible lock acquisition order, or transaction-state conflicts surfaced by the engine.",
+                "solution_guidance": "Inspect blocking chains, reduce conflicting write overlap, shorten transaction lifetime, review lock acquisition order, and verify whether transaction scheduling or retry logic needs adjustment.",
+                "observable_symptoms": [
+                    "blocking",
+                    "rollback",
+                    "retry",
+                    "stalled transaction"
+                ]
+            }
+        }
+    }
+]

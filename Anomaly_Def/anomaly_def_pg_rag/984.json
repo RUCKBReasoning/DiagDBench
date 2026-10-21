@@ -1,0 +1,44 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Replication Synchronization Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Composite Definition: The database simultaneously suffers from (1) stale or missing optimizer statistics that drive systematic cardinality misestimates, (2) replication channels that cannot receive or apply the primary’s change stream in real time, and (3) on-disk data or index corruption that compromises physical page and key integrity. Together these three independent root causes create a multi-layer failure in which the optimizer, the replication pipeline, and the storage layer are all impaired at once.\n\nCombined Observable Phenomena: Queries on the primary may flip unpredictably between long-running full-table scans and erroneous index probes, showing extreme plan regressions and wildly inaccurate row-count estimates. These inefficient plans inflate I/O, CPU, and transaction-log generation, which in turn floods the replication queue; standbys display rapidly widening replay lag, swollen relay / retained log segments, and intermittent apply errors or pauses. Corrupted pages or index structures can surface first on replicas during redo-apply, manifesting as replication-side checksum failures, apply-phase panics, or forced replica restarts, while the primary reports page-verification warnings and begins discarding corrupted indexes, triggering further plan shifts and emergency full scans. Application symptoms range from time-outs and stale read results on replicas to inconsistent row counts or silent data errors on the primary.\n\nCausal Interaction: Stale or incomplete statistics mislead the optimizer into choosing plans that generate excessive I/O and large batched modifications, expanding the volume and burstiness of redo traffic. The inflated and irregular log stream overstresses an already bandwidth- or CPU-constrained replica set, deepening replication lag and increasing the window during which un-recycled log segments must be retained. Simultaneously, latent data or index corruption causes additional I/O retries and error handling on the primary and may corrupt log records that must be shipped. When these damaged blocks reach the replica, apply failures force repeated retries or pauses, compounding lag. The stalled or broken replication prevents off-host integrity checks and hampers failover options, while the corruption itself can block automatic statistics refreshes, perpetuating the optimizer’s misinformation. Thus each anomaly feeds the others: bad statistics create heavy workloads, heavy workloads overload replication, and corruption both triggers and is masked by the other two issues, driving the system into a spiraling degradation of performance, consistency, and availability.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 148,
+            "score": 0.2673875779343153,
+            "bm25_score": 13.34463258748178,
+            "lexical_score": 0.09565217391304348,
+            "matched_terms": [
+                "and",
+                "as",
+                "cannot",
+                "error",
+                "failure",
+                "is",
+                "key",
+                "or",
+                "that",
+                "the"
+            ],
+            "match_count": 10,
+            "entry": {
+                "error_code": "42830",
+                "error_name": "invalid_foreign_key",
+                "official_description": "invalid foreign key",
+                "error_class": "Class 42 - Syntax Error or Access Rule Violation",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "sql_and_parser",
+                "cause_analysis": "The failure is typically associated with unsupported syntax, invalid statement structure, or feature usage that the target engine version cannot execute as written.",
+                "solution_guidance": "Validate SQL syntax, target-engine compatibility, statement shape, and whether the feature is supported under the current engine version or execution context.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "syntax error",
+                    "feature rejection"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + MVCC Version Maintenance Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same objects, producing long waiter chains or deadlocks that stall statement execution.\nMVCC Version Maintenance Anomaly : Obsolete row versions and undo records accumulate faster than background cleaners can reclaim them, inflating storage, scan cost, and snapshot–visibility work.\nTransaction Log Subsystem Anomaly : Generation, flush, or archival of write-ahead log records becomes a bottleneck, stretching commit latency and stalling writers.\n\nWhen these three root causes co-exist, the database exhibits a compound slowdown: transactions block each other at the lock manager, pile up in connection pools, and hold snapshots that prevent vacuum/garbage-collection from advancing. The unreclaimed version bloat enlarges tables and indexes, lengthening lock hold times for range or page locks and further stressing the lock manager. Meanwhile every stalled or rolled-back transaction generates additional redo; the growing version store and frequent deadlock retries inflate log volume, overwhelming the already saturated log buffer, checkpoint, and archiver paths. Observable symptoms include soaring lock-wait and deadlock counts, rapidly expanding table and index sizes, constantly active yet ineffective cleanup workers, exploding write-ahead log directories, prolonged commit and rollback times, and eventually global throughput collapse accompanied by application-level timeouts and storage-space alerts.\n\nCausally, intense lock contention causes sessions to stay open longer, freezing their MVCC snapshots and stopping version pruning; this fuels version-store growth. The bloated heap increases I/O per statement, extending transaction durations and the lifespan of locks, which in turn deepens contention. Both phenomena raise redo generation (due to repeated updates, rollbacks, and cleanup activity) just as prolonged commit waits tie up locks even longer, forming a feedback loop that strains the transaction-log subsystem. A saturated log path then delays commit acknowledgement and rollback processing, prolonging lock holds and snapshot lifetimes, amplifying version bloat, and perpetuating the cycle—ultimately producing a severe, intertwined availability and performance crisis.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2159,
+            "score": 0.5885137660223031,
+            "bm25_score": 69.66043612987818,
+            "lexical_score": 0.1445662768031189,
+            "matched_terms": [
+                "and",
+                "by",
+                "chains",
+                "concurrent",
+                "for",
+                "incompatible",
+                "lock",
+                "or",
+                "retries",
+                "rollback",
+                "same",
+                "stalled",
+                "the",
+                "to",
+                "transaction",
+                "transactions",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010272",
+                "error_name": "ER_CONN_UNIX_LOCK_FILE_GIVING_UP",
+                "official_description": "Unable to create unix socket lock file %s after retries.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "concurrency_and_transaction",
+                "cause_analysis": "The failure is typically associated with concurrent transactions contending for the same logical resources, incompatible lock acquisition order, or transaction-state conflicts surfaced by the engine.",
+                "solution_guidance": "Inspect blocking chains, reduce conflicting write overlap, shorten transaction lifetime, review lock acquisition order, and verify whether transaction scheduling or retry logic needs adjustment.",
+                "observable_symptoms": [
+                    "blocking",
+                    "rollback",
+                    "retry",
+                    "stalled transaction"
+                ]
+            }
+        }
+    }
+]

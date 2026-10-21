@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Replication Synchronization Anomaly + Storage Space Capacity Anomaly",
+            "Description": "SQL Workload Logic Anomaly: Application-level statement or transaction design forces the engine to process or retain far more data and rows than business logic requires.\nReplication Synchronization Anomaly: Downstream replicas or subscribers fall behind because they cannot receive or apply primary-generated log records at the production rate.\nStorage Space Capacity Anomaly: Allocated physical or logical storage for data, logs, or temporary areas reaches exhaustion, impeding normal allocation and recycling.\n\nWhen all three exist concurrently, the system exhibits extreme and widening replica lag, growing on-disk log backlogs, and escalating disk-space consumption on both primary and replicas. Long-running or chatty transactions produced by inefficient SQL inflate the volume of redo, generate oversized result sets that spill to temp space, and keep locks open longer. Replicas struggling to apply these bloated change batches accumulate ever larger relay or archive logs; the primary cannot purge its own logs, and free space plummets. Users observe increasing statement latency, frequent timeouts, stalled or cancelled writes when log destinations fill, stale read-only traffic on replicas, and emergency auto-extend or out-of-space errors in data, temp, or log areas.\n\nCausally, sub-optimal workload logic produces excessive data modifications and prolonged transactions, which directly amplifies the replication stream. The overwhelmed replication path slows, causing unapplied logs to pile up. Because those retained logs occupy the same filesystems or object stores as data, they accelerate space consumption and can eventually exhaust capacity. Imminent space exhaustion further degrades replica apply throughput (due to I/O contention and pause-on-error behavior) and can halt primary DML when log writes or temp allocations fail. Thus, each anomaly reinforces the others in a feedback loop: inefficient SQL inflates log volume, replication delay prevents log recycling, accumulated logs and temporary spill exceed storage limits, and storage pressure in turn magnifies both latency and replication backlog, culminating in a compound performance and availability crisis.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.5708019405728837,
+            "bm25_score": 30.223632696155118,
+            "lexical_score": 0.14727483571704675,
+            "matched_terms": [
+                "and",
+                "because",
+                "cannot",
+                "change",
+                "delay",
+                "for",
+                "locks",
+                "long",
+                "longer",
+                "of",
+                "open",
+                "or",
+                "prevents",
+                "statement",
+                "than",
+                "that",
+                "the",
+                "transaction",
+                "transactions",
+                "when"
+            ],
+            "match_count": 167,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

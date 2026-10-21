@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + CPU Resource Anomaly",
+            "Description": "Transaction Lock Contention Anomaly: Concurrent transactions block or deadlock on mutually incompatible locks, forcing sessions to wait or be aborted by the lock manager.\nCPU Resource Anomaly: Database processes consume an abnormally high share of CPU, driving the host to sustained compute saturation.\n\nComposite definition: This anomaly denotes a workload state in which severe lock blocking/deadlocks and host-level CPU saturation arise at the same time, each rooted in its own layer yet jointly degrading throughput and latency.\n\nCombined observable phenomena: Lock-wait queues, deadlock reports, and victim rollbacks appear together with OS run-queue inflation, near-100 % CPU utilization, and pervasive scheduler wait events. Queries and transactions stall both on locks and on CPU scheduling, causing erratic response times, sharp drops in TPS, rapid growth of connection-pool backlogs, and surges of application-side timeouts or retried statements. Deadlock victims and retry loops can inflate statement counts, while blocked sessions hold locks longer, inflating both wait chains and CPU consumption once they resume, making the overall performance picture noisy and harder to diagnose.\n\nCausal chain and interaction: Heavy lock contention lengthens transaction lifetimes; the sessions that finally obtain locks often perform their work in CPU-starved conditions, extending lock hold times and propagating blocking to more sessions. Simultaneously, deadlock victim retries, spin-loops, and repeated lock acquisition attempts add extra CPU load, feeding the saturation. The saturated CPU, in turn, slows lock-manager bookkeeping, prolongs detection of deadlocks, and delays the execution and commit phases that would release locks, thereby intensifying contention. This positive feedback loop between prolonged locking and depleted CPU cycles amplifies both anomalies, accelerating performance collapse unless one of the root causes is relieved.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.2553484090349864,
+            "bm25_score": 13.304079047701668,
+            "lexical_score": 0.12997382198952878,
+            "matched_terms": [
+                "aborted",
+                "and",
+                "connection",
+                "is",
+                "latency",
+                "longer",
+                "more",
+                "of",
+                "or",
+                "sessions",
+                "the",
+                "this",
+                "time",
+                "to",
+                "wait"
+            ],
+            "match_count": 33,
+            "entry": {
+                "timeout_id": "mysql84_network_read_timeout",
+                "parameter_name": "net_read_timeout",
+                "timeout_category": "network_read_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for more data from a connection before aborting the read.",
+                "trigger_condition": "The server waits for additional data from a connection longer than net_read_timeout.",
+                "workload_impact": "The network read is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

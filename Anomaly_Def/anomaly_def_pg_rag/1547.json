@@ -1,0 +1,61 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "SQL Workload Logic Anomaly: Application-level statement or transaction design forces the engine to process and persist more data, rows, or transactional state than the business logic truly requires.\nTransaction Log Subsystem Anomaly: The write-ahead logging path (log buffer, log files, flush/sync, archival or replication retention) becomes the primary bottleneck, stretching commit latency and stalling write activity.\n\nWhen both conditions coexist, the database experiences a surge of needless redo generation from chatty, over-fetching, or long-running transactions while the log subsystem is simultaneously unable to flush or recycle log segments fast enough. Observable effects include extreme and highly variable commit times, bloated and rapidly growing log file directories, prolonged transaction lifetimes that hold locks and latches, chain reactions of lock waits, checkpoint storms, back-pressure on application threads, and a flood of slow-query and deadlock events. End-users may see timeouts, duplicate retries, or lost work, while administrators observe that alleviating CPU or buffer pressure alone brings little relief because log I/O waits dominate.\n\nCausally, inefficient SQL patterns inflate the volume and frequency of redo records—bulk row scans turning into mass updates, ORM loops issuing thousands of single-row modifications, or transactions kept open across user think-time—driving the log writer to its limits. As the saturated log subsystem delays fsyncs, commit latency climbs, prolonging transaction hold times and amplifying lock contention already caused by the bloated workload. The longer transactions further increase redo generation (undo retention, row versioning, index maintenance), which in turn feeds more data into the already overwhelmed log pipeline. This feedback loop magnifies resource congestion, making the overall performance degradation more severe and masking the individual contribution of each root cause during diagnosis.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.756787314953144,
+            "bm25_score": 38.56356247458487,
+            "lexical_score": 0.18929104984381365,
+            "matched_terms": [
+                "and",
+                "because",
+                "contention",
+                "from",
+                "is",
+                "long",
+                "longer",
+                "more",
+                "of",
+                "or",
+                "path",
+                "query",
+                "resource",
+                "running",
+                "sql",
+                "statement",
+                "than",
+                "that",
+                "the",
+                "this",
+                "time",
+                "user",
+                "when",
+                "work",
+                "workload"
+            ],
+            "match_count": 238,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

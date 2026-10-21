@@ -1,0 +1,61 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Operating System Resource Limit Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Engine-level runtime parameters are mis-tuned relative to hardware capacity, workload profile, or version defaults, causing artificial pressure on memory, logging, background workers, parallelism, and checkpoints.\nOperating System Resource Limit Anomaly : Kernel-enforced ceilings on file handles, shared memory, processes/threads, or other OS objects are reached, preventing the database from allocating the resources it requests.\nNetwork and Connectivity Resource Anomaly : The transport, listener, socket, or authentication layers cannot sustain the incoming connection or data-transfer rate, leading to backlog growth, refusals, and stalled client I/O.\n\nWhen these three root causes coincide, the database exhibits a mosaic of symptoms: connection attempts time out or are rejected even when the instance appears up; established sessions suffer erratic latency with alternating client-read/client-write waits, punctuated by spikes of log-write or checkpoint waits that do not correlate with disk utilization; background workers and parallel executors intermittently fail to start, producing engine errors about thread creation, file-descriptor exhaustion, or shared-memory allocation; monitoring shows low CPU or I/O utilization despite severe throughput collapse, while OS socket queues and semaphore tables are saturated and network retransmission rates climb. Administrators may observe sudden surges of aborted connections after configuration changes, followed by partial outages where only pre-existing sessions continue processing slowly.\n\nCausally, aggressive or ill-suited database parameter settings (e.g., too many max connections, oversized work-memory, or excessive parallel-worker limits) drive the engine to request more kernel objects and network sockets than the host’s hard limits allow. Once OS quotas are hit, new backends, files, or AIO contexts cannot be created, which in turn starves internal executors and amplifies the mis-tuned engine behaviors—checkpoints bunch up, log buffers fill, and memory pressure grows. Simultaneously, the throttled listener and congested network stack delay or drop connection attempts, prompting client retries that further inflate connection counts and resource requests, accelerating exhaustion of both OS and engine quotas. The interlocking feedback loops between misconfiguration, kernel denials, and network contention thus reinforce each other, yielding a compound degradation that is harder to diagnose than any single anomaly alone.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.6571305788931594,
+            "bm25_score": 28.134693343495496,
+            "lexical_score": 0.16821808510638298,
+            "matched_terms": [
+                "after",
+                "and",
+                "are",
+                "authentication",
+                "client",
+                "connection",
+                "is",
+                "latency",
+                "network",
+                "not",
+                "of",
+                "on",
+                "operating",
+                "or",
+                "sessions",
+                "settings",
+                "socket",
+                "system",
+                "than",
+                "the",
+                "time",
+                "to",
+                "when",
+                "which",
+                "with"
+            ],
+            "match_count": 208,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_idle",
+                "parameter_name": "tcp_keepalives_idle",
+                "timeout_category": "network_idle_keepalive_probe_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time with no network activity after which the operating system should send a TCP keepalive message to the client.",
+                "trigger_condition": "A TCP client connection has no network activity longer than tcp_keepalives_idle on systems supporting TCP_KEEPIDLE or an equivalent socket option.",
+                "workload_impact": "Starts TCP keepalive probing for an otherwise idle client connection; together with interval and count settings this can lead to dead connection detection.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

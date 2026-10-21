@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Optimizer-input metadata (row counts, histograms, correlations) is stale or incomplete, systematically misguiding the cost model and causing persistent cardinality errors.\nStorage Space Capacity Anomaly : Physical or logical free space in data, log, or temporary areas is exhausted, hitting hard limits and causing allocation failures.\n\nComposite Definition:\nBoth anomalies manifest at the same time—query plans are produced from faulty statistics while the database is simultaneously running out of critical storage space. The engine therefore makes poor plan choices exactly when it has the least margin to absorb the resulting space demand.\n\nCombined Phenomena:\n• Severe plan regressions (e.g., table scans, over-sized hash joins, or massive sort/merge operations) immediately translate into runaway growth of temporary segments, undo, redo, and spill files, pushing remaining space to zero.\n• Auto-extend and auto-stats jobs fail in close succession; executions show wildly inaccurate row-count estimates alongside \"no space left\" or \"cannot allocate extent\" errors.\n• Rapid oscillation between plan recompiles and space errors: each recompile generates a new bad plan, repeated statement retries inflate log volume, and aborted DML/DDL leaves orphaned temporary or rollback segments that further deplete space.\n• Monitoring dashboards show both extreme cardinality-estimation deviation and precipitous free-space depletion, making it hard to attribute performance drops to a single root cause.\n\nCausal Chain Analysis:\n1. Stale/missing statistics drive the optimizer toward space-hungry strategies (full scans, large intermediate result sets, spill-prone joins), accelerating consumption of data, temp, and log space.\n2. As free space vanishes, background statistics-gathering, index-rebuild, and partition-maintenance jobs abort, preventing statistics refresh and keeping the optimizer in a permanently misinformed state.\n3. Space failures trigger rollbacks that generate additional undo/redo, amplifying both anomalies. The mutually reinforcing loop quickly degrades throughput, raises error rates, and can culminate in complete service outage unless both statistics and space issues are remediated together.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 45,
+            "score": 0.44293776390522605,
+            "bm25_score": 27.286547893668796,
+            "lexical_score": 0.1307815478459779,
+            "matched_terms": [
+                "and",
+                "count",
+                "data",
+                "engine",
+                "error",
+                "in",
+                "is",
+                "or",
+                "result",
+                "row",
+                "state",
+                "statement",
+                "the",
+                "to",
+                "together",
+                "trigger"
+            ],
+            "match_count": 15,
+            "entry": {
+                "error_code": "2201X",
+                "error_name": "invalid_row_count_in_result_offset_clause",
+                "official_description": "invalid row count in result offset clause",
+                "error_class": "Class 22 - Data Exception",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

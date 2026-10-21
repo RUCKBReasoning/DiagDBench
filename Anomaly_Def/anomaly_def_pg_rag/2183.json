@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Database Configuration Parameter Anomaly + CPU Resource Anomaly",
+            "Description": "Optimizer Statistics Anomaly: Costing metadata (row counts, histograms, correlation stats) is stale, missing, or inaccurate, causing systematic cardinality misestimation and sub-optimal plan choices.\nDatabase Configuration Parameter Anomaly: Critical engine parameters for memory, parallelism, checkpoints, and background workers are mis-tuned relative to hardware, workload, or version defaults, leading to resource imbalance and atypical wait profiles.\nCPU Resource Anomaly: Host CPUs become saturated by database processes, driving high run-queue pressure, context switching, and widespread latency inflation.\n\nWhen all three root causes coexist, workloads exhibit extreme and volatile performance degradation: queries abruptly switch to grossly inefficient plans that explode CPU seconds consumed per execution; parallel workers proliferate or starve depending on mis-set parallel-degree limits; system-wide CPU utilisation hovers near or at 100 %, yet individual statements still show large estimated-vs-actual row disparities. Checkpoint or log-flush storms may intermittently pre-empt CPU, amplifying latency spikes. Wait-event views report a confusing mix of CPU-related waits (RUNNABLE, SOS_SCHEDULER_YIELD, CPU_QC) alongside configuration-induced stalls (CHECKPOINT_QUEUE, LOG_BUFFER) and frequent plan recompilations triggered by statistics updates. Performance may nosedive immediately after bulk loads, parameter changes, or version upgrades, and recovers only briefly after manual intervention before regressing again under load.\n\nCausal chain: stale or absent statistics push the optimizer toward plans with underestimated costs that choose small hash tables, serial scans, or overly aggressive parallelism; mis-configured memory/parallelism parameters then fail to supply sufficient work memory or spawn excessive worker threads, inflating CPU demand through spills, rescans, and context switches. The resultant CPU saturation feeds back negatively: throttled background workers delay automatic statistics refresh and checkpoint processing, further aging statistics and triggering emergency checkpoints that hold critical latches on hot CPUs. Together, these feedback loops entrench poor plan quality, resource thrashing, and sustained compute exhaustion, creating a self-reinforcing composite anomaly that is far more severe than each issue in isolation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.739872813990461,
+            "bm25_score": 25.888304763539264,
+            "lexical_score": 0.13290937996820348,
+            "matched_terms": [
+                "and",
+                "configured",
+                "context",
+                "execution",
+                "is",
+                "more",
+                "of",
+                "or",
+                "quality",
+                "resource",
+                "than",
+                "that",
+                "the",
+                "together",
+                "triggered",
+                "when",
+                "with",
+                "work",
+                "workload"
+            ],
+            "match_count": 269,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

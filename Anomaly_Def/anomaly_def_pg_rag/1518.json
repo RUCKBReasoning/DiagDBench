@@ -1,0 +1,46 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Database Memory Allocation Anomaly + Replication Synchronization Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer persistently picks sub-optimal execution plans despite reasonably accurate statistics, causing excessive I/O, CPU, or wrong join and access strategies.\nDatabase Memory Allocation Anomaly: Database memory regions (buffer/cache, work areas, plan cache, etc.) grow beyond safe limits, triggering OS memory pressure, paging, or OOM events.\nReplication Synchronization Anomaly: Standby or downstream replicas cannot ingest or apply log records as fast as the primary produces them, leading to widening replay lag and retention of un-recycled logs.\n\nWhen all three root causes strike concurrently, their symptoms overlap and intensify: 1) Erratic plan flips or bad plans inflate logical and physical I/O, create huge hash/sort structures, and spawn excess parallel workers; 2) the inflated work memory and bloated plan cache accelerate overall memory exhaustion, provoking paging, swap-thrashing, or forced background process restarts; 3) sustained resource contention on the primary—extra CPU, I/O waits, and memory pressure—slows transaction processing and write-ahead logging, while swollen log files cannot be recycled because replicas are falling behind. Replication delay in turn removes read-scaling capacity, pushing more analytic and read traffic back onto the overloaded primary and compounding the plan churn and memory stress. Visibility becomes blurred: administrators may see cache-hit drops, rising commit latency, growing replication lags, and OS-level swapping all at once, making it difficult to isolate a single trigger.\n\nCausally, sub-optimal plans generate large intermediate results and parallel workers that demand extraordinary memory; the resulting Database Memory Allocation Anomaly introduces OS paging and CPU stalls, elongating statement runtimes and increasing the volume and duration of redo generation. The primary’s slower log flush and the surge of larger transactions then overwhelm the replication pipeline, producing Replication Synchronization Anomaly. Conversely, the growing backlog of unapplied logs prevents log truncation, enlarging in-memory log buffers and further pressuring memory. The diminished replica capacity pushes additional read queries back to the primary, causing the optimizer to re-optimize with different parameter sniffing contexts, perpetuating plan instability and creating a feedback loop that amplifies all three anomalies.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.1886613095184034,
+            "bm25_score": 7.052170967448728,
+            "lexical_score": 0.08124999999999999,
+            "matched_terms": [
+                "and",
+                "are",
+                "be",
+                "in",
+                "latency",
+                "of",
+                "or",
+                "the",
+                "to",
+                "when"
+            ],
+            "match_count": 97,
+            "entry": {
+                "timeout_id": "pg16_authentication_timeout",
+                "parameter_name": "authentication_timeout",
+                "timeout_category": "connection_authentication_timeout",
+                "scope": "server",
+                "official_definition": "Maximum amount of time allowed to complete client authentication; if not completed in time, the server closes the connection.",
+                "trigger_condition": "A would-be client does not complete the authentication protocol within authentication_timeout.",
+                "workload_impact": "The server closes the connection attempt, preventing hung clients from occupying a connection indefinitely.",
+                "default_behavior": "Default value is one minute.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Database Configuration Parameter Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent sessions compete for incompatible locks on the same data or metadata resources, causing waits, blocking chains, and potential deadlocks.\nDatabase Configuration Parameter Anomaly : Engine-level settings for memory, logging, checkpointing, parallelism, or worker limits are mis-tuned relative to hardware capacity and workload demands, leading to secondary bottlenecks despite apparently idle resources.\nStorage Space Capacity Anomaly : Data files, log segments, temp areas, or archive destinations run out of free space, producing allocation failures and halting write activity.\n\nWhen all three root causes surface simultaneously, the system exhibits intertwined symptoms: lock wait time and deadlock frequency rise sharply while transaction commit latency unpredictably spikes; background checkpoints or log flushes thrash yet disks show uneven utilization; sudden \"out of space\" or \"cannot extend\" errors abort long-held transactions, leaving other sessions blocked behind locks that cannot be released; connection pools back up as new requests wait both for locks and for space-related retries; monitoring shows memory pools oscillating because mis-sized buffers amplify checkpoint storms that collide with lock-held pages, and automatic retry storms enlarge temp and log usage until capacity thresholds are breached.\n\nCausally, misconfigured parameters can lengthen transaction lifetimes (e.g., too-slow checkpoints or oversized work_mem prompting large spills), thereby keeping locks active longer and intensifying contention. Prolonged blocking inflates undo and redo growth, accelerating consumption of data-file, log, and temp space. As free space dwindles, allocation failures trigger rollbacks or force log-flush pauses, which in turn hold critical locks even longer and push more sessions into the wait queues, feeding back into lock contention. Each anomaly thus magnifies the others: poor configuration creates the conditions for lock buildup; lock buildup drives explosive space usage; space exhaustion stalls writes and rollbacks, freezing locks in place and deepening the overall performance crisis.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.4175449957445019,
+            "bm25_score": 18.618629853384792,
+            "lexical_score": 0.1673076923076923,
+            "matched_terms": [
+                "activity",
+                "and",
+                "are",
+                "connection",
+                "data",
+                "for",
+                "idle",
+                "latency",
+                "longer",
+                "more",
+                "of",
+                "or",
+                "pools",
+                "sessions",
+                "the",
+                "time",
+                "to",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 5,
+            "entry": {
+                "timeout_id": "mysql84_network_read_timeout",
+                "parameter_name": "net_read_timeout",
+                "timeout_category": "network_read_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for more data from a connection before aborting the read.",
+                "trigger_condition": "The server waits for additional data from a connection longer than net_read_timeout.",
+                "workload_impact": "The network read is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

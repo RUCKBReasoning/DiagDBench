@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + MVCC Version Maintenance Anomaly + Database Configuration Parameter Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Simultaneous transactions acquire mutually incompatible locks on shared rows, pages, or metadata, creating long blocker–waiter chains or deadlocks that stall commit progress.\nMVCC Version Maintenance Anomaly : Obsolete row versions and undo records pile up faster than background cleaners can reclaim them, bloating storage and slowing visibility checks.\nDatabase Configuration Parameter Anomaly : Mis-tuned engine parameters (memory, checkpointing, worker limits, etc.) leave critical subsystems over- or under-provisioned relative to the workload and hardware.\n\nWhen all three conditions coexist, workloads suffer a compounded failure mode: lock wait times and deadlock frequency escalate while the heap and indexes swell with unreclaimed versions, and configuration mis-settings prevent the buffer pool, cleanup workers, and lock-manager from recovering. Symptoms include: 1) exploding lock-wait and deadlock logs paired with rising application timeouts; 2) rapidly growing table and version-store size that degrades cache hit ratios and forces more physical I/O; 3) nonstop or thrashing background processes (autovacuum, purge, checkpoint, lock-deadlock detectors) consuming CPU yet failing to make headway; 4) paradoxical hardware metrics—disks idle during log-write stalls or CPUs under-utilised while sessions spin on locks—because memory, worker, or checkpoint parameters throttle true resource use; and 5) planner misestimates from bloat and outdated stats, leading to scans that further extend lock hold times and version churn.\n\nCausally, sub-optimal configuration settings (e.g., undersized buffer pool, too few cleanup workers, aggressive checkpoint timeout) slow version reclamation and increase physical I/O, lengthening transaction runtimes and the duration locks are held. The resulting longer lock lifetimes raise the probability of collisions and deadlocks, which in turn cause rollbacks that create yet more undo records and garbage. Meanwhile, the same mis-configurations may starve both the lock manager (e.g., limited lock table memory) and MVCC cleaners of resources, so neither contention nor bloat can self-resolve. The feedback loop—bloat inflating I/O and lock duration, contention spawning additional deadlocks, and ill-sized parameters limiting recovery throughput—drives a severe throughput collapse and instability in OLTP workloads.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2985,
+            "score": 0.47103634255637894,
+            "bm25_score": 62.32035741037176,
+            "lexical_score": 0.14229578471064538,
+            "matched_terms": [
+                "and",
+                "can",
+                "chains",
+                "deadlock",
+                "engine",
+                "failure",
+                "in",
+                "incompatible",
+                "lock",
+                "make",
+                "or",
+                "pool",
+                "resources",
+                "same",
+                "the",
+                "to",
+                "transaction",
+                "transactions",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-011101",
+                "error_name": "ER_THREAD_POOL_INVALID_STALL_LIMIT",
+                "official_description": "thread_pool_stall_limit can be %d at minimum and %d at maximum, smaller values would render the thread pool fairly useless and higher values could make it possible to have undetected deadlock issues in the MySQL Server.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "concurrency_and_transaction",
+                "cause_analysis": "The failure is typically associated with concurrent transactions contending for the same logical resources, incompatible lock acquisition order, or transaction-state conflicts surfaced by the engine.",
+                "solution_guidance": "Inspect blocking chains, reduce conflicting write overlap, shorten transaction lifetime, review lock acquisition order, and verify whether transaction scheduling or retry logic needs adjustment.",
+                "observable_symptoms": [
+                    "blocking",
+                    "rollback",
+                    "retry",
+                    "stalled transaction"
+                ]
+            }
+        }
+    }
+]

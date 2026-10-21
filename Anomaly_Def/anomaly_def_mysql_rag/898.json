@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Query Plan Selection Anomaly + Database Memory Allocation Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level SQL or transaction design forces the engine to touch more data, rows, or time than business logic actually requires.\nQuery Plan Selection Anomaly : The optimizer chooses a substantially sub-optimal execution plan even though statistics are reasonably accurate.\nDatabase Memory Allocation Anomaly : The engine allocates or holds more memory than the host can safely provide, leading to OS-level pressure or paging.\n\nWhen these three root causes coexist, the workload issues compound. Verbose or poorly-scoped SQL drives voluminous data access; the optimizer then occasionally locks in plans that further magnify I/O and CPU demand (e.g., full scans, hash joins, or blown-out nested loops); the resulting surges in buffers, work areas, and plan cache cause memory footprints to balloon beyond physical limits. Observable symptoms include: extreme and highly variable statement latency, repeated slow-query log entries, frequent plan flips between bad alternatives, sudden spikes in buffer-cache churn and work-memory usage, sustained OS paging or swap-ins, query cancellations or out-of-memory terminations, and cluster node eviction or database instance restarts. Session traces may reveal wide scans combined with excessive hash or sort space, while memory monitors show resident-set size climbing in step with each batch or ad-hoc burst.\n\nCausally, the inefficiencies introduced at the SQL layer inflate row counts and intermediate result sizes; this expands the search space the optimizer must cost, increasing the likelihood it will misjudge the best plan or reuse an ill-suited cached plan. Once a poor plan is chosen—such as a full table scan or an unbounded hash aggregate—it requests large work buffers and floods the buffer cache with pages that have little re-use value. The inflated memory demand erodes headroom for all sessions, causing global memory pressure. Under pressure the engine may evict hot pages prematurely or swap, which slows subsequent parts of the same long-running statements, creating feedback that further prolongs transaction duration and keeps memory allocated even longer. Thus, inefficient SQL, sub-optimal plan selection, and runaway memory consumption reinforce one another, amplifying latency variability and risking stability across both transactional and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.5419536382037443,
+            "bm25_score": 23.62065793246453,
+            "lexical_score": 0.15064102564102563,
+            "matched_terms": [
+                "an",
+                "and",
+                "another",
+                "for",
+                "global",
+                "in",
+                "is",
+                "locks",
+                "longer",
+                "or",
+                "session",
+                "sessions",
+                "statement",
+                "than",
+                "the",
+                "this",
+                "to",
+                "transaction",
+                "when",
+                "while"
+            ],
+            "match_count": 43,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

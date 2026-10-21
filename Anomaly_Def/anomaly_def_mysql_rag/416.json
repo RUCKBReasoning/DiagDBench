@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Transaction Log Subsystem Anomaly + CPU Resource Anomaly",
+            "Description": "Schema and Index Design Anomaly : Physical data-model structures, indexes, partitions, and data types do not match workload access patterns, forcing inefficient access paths.\nTransaction Log Subsystem Anomaly : The write-ahead logging pipeline—generation, buffering, flushing, archiving—cannot keep pace with redo volume, causing commit stalls and log-related waits.\nCPU Resource Anomaly : Database processes consume sustained, near-saturation CPU, leaving insufficient cycles for other work and inflating run-queue latency.\n\nWhen all three root causes co-exist, the database exhibits a blended symptom set: queries that already scan whole tables or fetch many rows because of missing or non-covering indexes amplify redo generation, which in turn overwhelms the log buffer and I/O band­width. As commits wait for log flushes, user sessions pile up, yet they remain CPU-hungry while looping on retries or scanning data, driving host utilization to saturation. Observers see mixed wait profiles—log-flush and CPU scheduler waits spike together—alongside escalating query latencies, checkpoint storms, and sharp drops in TPS. Monitoring dashboards may misleadingly attribute the slowdown to any one layer, while in reality lock contention, log stalls, and CPU thrashing are interleaved.\n\nCausally, inefficient schema and index design multiplies the amount of data each DML or SELECT touches, inflating both CPU cycles and redo bytes per transaction. The surplus redo intensifies pressure on the transaction-log subsystem; once log-flush latency lengthens, foreground sessions hold locks longer and re-execute scans, compounding CPU load. Elevated CPU utilization then slows background log writer and archive processes, further delaying flushes and creating a feedback loop. The synergy of these root causes therefore magnifies performance degradation far beyond what each would inflict in isolation, pushing an OLTP system into a cascading slowdown that is difficult to diagnose without recognizing their mutual reinforcement.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5716,
+            "score": 0.465702966109674,
+            "bm25_score": 54.84623016826497,
+            "lexical_score": 0.15621890547263678,
+            "matched_terms": [
+                "access",
+                "an",
+                "and",
+                "are",
+                "as",
+                "because",
+                "cannot",
+                "data",
+                "is",
+                "latency",
+                "log",
+                "of",
+                "or",
+                "paths",
+                "pressure",
+                "redo",
+                "the",
+                "they",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013873",
+                "error_name": "ER_IB_MSG_LOG_UPGRADE_UNINITIALIZED_FILES",
+                "official_description": "Cannot upgrade format (v%lu) of redo log files because they are marked as uninitialized. Please use an older version of MySQL - recover and shutdown (with innodb-fast-shutdown < 2).",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

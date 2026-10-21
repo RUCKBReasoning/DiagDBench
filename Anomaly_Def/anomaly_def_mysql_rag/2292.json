@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Schema and Index Design Anomaly: Static mismatch between physical data model (tables, indexes, partitions, data types, constraints) and the workload’s access patterns, forcing the optimizer into inefficient scans, excessive look-ups, and costly maintenance work.\nOperating System Resource Limit Anomaly: Exhaustion of kernel-enforced resources (file descriptors, shared memory, semaphores, thread or process quotas, async-I/O contexts, cgroup limits) that prevents the database engine from creating or using required OS objects.\n\nWhen these two root causes exist simultaneously, the workload experiences compounded symptoms: queries already slowed by missing or poorly chosen indexes trigger many extra random I/O operations, file opens, and context switches, pushing the engine to allocate more file handles, buffer pages, and background workers. At the same time, restrictive OS limits throttle those very kernel objects, so the database starts emitting \"too many open files\", \"cannot allocate shared memory\", or \"failed to start worker\" errors in the middle of long-running scans. Execution plans show full-table scans combined with sudden plan fallbacks to serial execution because parallel workers cannot be spawned. End-users observe erratic latencies—some statements hang or error out while others complete slowly—and maintenance tasks such as index rebuilds or autovacuum may stall, causing further bloat and performance decay.\n\nCausally, poor schema and index design inflates the number and duration of low-level operations (file accesses, temporary spill files, sort runs, row fetches) that rely on OS resources. This raised demand accelerates the exhaustion of file descriptors, shared-memory segments, or thread quotas governed by the operating system. Conversely, once OS limits are hit, the optimizer’s ability to use whatever indexes do exist is undermined—parallel scans are disabled, temporary file creation fails, and statistics refresh jobs cannot complete—masking or exacerbating the original design flaw. The feedback loop between inefficient access paths (driving resource hunger) and OS-level throttling (starving the database of those resources) amplifies performance degradation, increases error rates, and makes root-cause isolation difficult because symptoms fluctuate between slow queries and outright resource allocation failures.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 719,
+            "score": 0.5051189107986811,
+            "bm25_score": 47.75710490972418,
+            "lexical_score": 0.17550990886735135,
+            "matched_terms": [
+                "and",
+                "be",
+                "by",
+                "context",
+                "engine",
+                "error",
+                "execution",
+                "in",
+                "is",
+                "level",
+                "operations",
+                "or",
+                "resource",
+                "some",
+                "tables",
+                "temporary",
+                "the",
+                "these",
+                "to",
+                "trigger",
+                "with",
+                "workload"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "1745",
+                "error_name": "ER_WARNING_NOT_COMPLETE_ROLLBACK_WITH_DROPPED_TEMP_TABLE",
+                "official_description": "Some temporary tables were dropped, but these operations could not be rolled back.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

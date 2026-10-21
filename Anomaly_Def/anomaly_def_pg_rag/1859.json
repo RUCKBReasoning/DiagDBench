@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + MVCC Version Maintenance Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Composite definition: The database simultaneously suffers from (1) a physical data-model and indexing layout that does not fit the workload, (2) an over-accumulation of obsolete MVCC row versions that background cleaners cannot reclaim in time, and (3) saturation of the underlying storage subsystem’s throughput or IOPS budget. Together these three root causes create a self-reinforcing performance collapse that affects all foreground operations.\n\nCombined observable phenomena: Queries that should be selective are forced into full scans because of missing or non-covering indexes; those scans traverse bloated tables and indexes swollen by unreclaimed row versions, causing many more pages to be read. Update- and delete-heavy transactions generate large amounts of new versions while every write waits on busy storage queues, inflating commit latency. Autovacuum / purge workers run continuously yet make little progress because their own I/O is throttled; monitoring shows high I/O wait time, deep device queues, rising table and index sizes, misestimated row counts, escalating buffer churn, and sudden spikes in response-time variance. Application sessions may experience both read latency (from scan expansion and I/O stalls) and write latency (from version logging and log-flush bottlenecks), with dead-tuple ratios and storage-level alerts increasing in parallel.\n\nCausal interaction: Poor schema and index design forces the engine to touch far more pages per statement, multiplying physical reads and writes. The extra I/O load accelerates MVCC version churn, because non-covering updates and unnecessary full-row rewrites generate additional row versions and index entries. As obsolete versions pile up, cleanup workers must process larger heaps and indexes; however, their work is throttled by the same saturated storage layer, allowing bloat to grow unchecked. The expanding data footprint further degrades cache efficiency and amplifies I/O demand, pushing the storage subsystem deeper into saturation. This vicious cycle—design inefficiencies → excess version generation → storage bloat → I/O overload → slower cleanup → further bloat—causes a compounded degradation in throughput and latency that is far more severe than any single anomaly would produce in isolation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.35395956138117113,
+            "bm25_score": 16.09169761185471,
+            "lexical_score": 0.14334677419354838,
+            "matched_terms": [
+                "and",
+                "are",
+                "budget",
+                "by",
+                "data",
+                "does",
+                "is",
+                "latency",
+                "may",
+                "not",
+                "on",
+                "or",
+                "progress",
+                "sessions",
+                "than",
+                "the",
+                "this",
+                "time"
+            ],
+            "match_count": 253,
+            "entry": {
+                "timeout_id": "pg16_tcp_user_timeout",
+                "parameter_name": "tcp_user_timeout",
+                "timeout_category": "network_unacknowledged_data_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies how long transmitted data may remain unacknowledged before the TCP connection is forcibly closed.",
+                "trigger_condition": "TCP data sent by PostgreSQL remains unacknowledged longer than tcp_user_timeout on systems supporting TCP_USER_TIMEOUT.",
+                "workload_impact": "The TCP connection is forcibly closed.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

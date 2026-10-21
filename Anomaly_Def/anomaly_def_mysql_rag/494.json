@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Storage Space Capacity Anomaly + CPU Resource Anomaly",
+            "Description": "SQL Workload Logic Anomaly: Application-layer statement or transaction design forces the engine to scan, join, or retain more data than the business requirement really needs.\nStorage Space Capacity Anomaly: Physical or logical free space for data, logs, or temporary areas is exhausted or approaching hard limits.\nCPU Resource Anomaly: Database-related processes saturate host CPU, leaving too few cycles for the rest of the workload.\n\nWhen these three root causes strike concurrently, the database experiences a compound failure mode in which user-written queries chew through excessive rows, fan out large intermediate result sets, and keep transactions open longer. Those bloated operations quickly consume CPU time, while the inflated intermediate and persistent objects (work tables, spill files, growing tables, and never-committed LOBs) burn through remaining disk and log space. Observable symptoms therefore overlap and amplify: statement latency grows non-linearly, slow-query logs and OS run-queue metrics spike together, \"out of space\" or \"cannot extend\" errors interleave with CPU-bound wait events, checkpoints or log archival stall because the log destination is full, and emergency space-reclaim tasks fail to run because the server is already CPU-saturated.\n\nCausally, inefficient workload logic is the primary generator of both CPU demand and ballooning data footprints. The ensuing CPU saturation slows DML, causing redo and undo segments to remain active longer and accumulate more bytes, which in turn drives faster space consumption in datafiles and logs. Once space becomes scarce, allocation failures trigger retries and error handling paths in the application, spawning even more short-lived sessions and compiler activity that fight for already limited CPU. The feedback loop—poor query logic → high CPU → slow I/O recycling → accelerated space exhaustion → error-driven resubmissions → even higher CPU—can push the system into runaway degradation or outright outages unless all three contributing layers are addressed together.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.40070598057293194,
+            "bm25_score": 16.270240511673528,
+            "lexical_score": 0.15321203953279422,
+            "matched_terms": [
+                "activity",
+                "and",
+                "are",
+                "data",
+                "for",
+                "handling",
+                "is",
+                "latency",
+                "longer",
+                "more",
+                "of",
+                "or",
+                "sessions",
+                "than",
+                "the",
+                "time",
+                "to",
+                "wait",
+                "when"
+            ],
+            "match_count": 24,
+            "entry": {
+                "timeout_id": "mysql84_replica_network_timeout",
+                "parameter_name": "replica_net_timeout",
+                "timeout_category": "replication_network_timeout",
+                "scope": "global/replication",
+                "official_definition": "The number of seconds to wait for more data from a source/replica connection before aborting the read.",
+                "trigger_condition": "A replica waits longer than replica_net_timeout for more data from the source connection.",
+                "workload_impact": "The replication network read is aborted and the replica considers the connection interrupted.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

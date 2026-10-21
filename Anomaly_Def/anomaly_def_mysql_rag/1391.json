@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Transaction Log Subsystem Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Optimizer Statistics Anomaly: Row-count and data-distribution metadata are stale or incomplete, causing systematic cardinality misestimates and sub-optimal plan choices.\nTransaction Log Subsystem Anomaly: The generation, flushing, or archival pipeline of the write-ahead log is saturated, so commit processing becomes a bottleneck.\nStorage Space Capacity Anomaly: One or more database storage areas—data files, log files, archive locations, temp or backup areas—approach or reach space exhaustion.\n\nWhen all three root causes strike simultaneously, the system exhibits a mixture of misestimated execution plans, escalating log-related waits, and sudden space-related allocation failures. Bad statistics may produce plans that generate excessive redo (e.g., full-table updates instead of targeted index lookups), amplifying log-flush latency. Long commit waits elongate transaction duration, keeping undo, temp, and log segments active, so free space shrinks faster. As space dwindles, automatic growth, log switching, or statistics refreshes can fail, causing a feedback loop of plan invalidations, repeated recompilations, and further log pressure. Symptoms therefore include wildly inaccurate cardinality estimates on plan output, spikes in LOG_WRITE or LOG_SYNC waits, checkpoints that cannot complete because the next log file is full, auto-extend errors on both data and log files, aborted statistics-gather jobs due to lack of temp space, and application time-outs triggered by cascaded stalls.\n\nCausal chain: Stale or missing statistics drive execution plans that touch far more rows than expected, inflating redo volume and filling log files quickly. The log subsystem, already undersized or placed on the same device, struggles to flush and archive those larger log streams; commit latency rises and transactions stay open longer. Extended transaction lifetimes pin space in undo/rollback and temp segments, accelerating overall space consumption. As free space approaches zero, log files cannot switch or extend, preventing commits and blocking the statistics-refresh operations required to correct the original misestimates. Each anomaly therefore reinforces the others, producing a compounded degradation that is more severe and harder to diagnose than any single issue alone.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.637208388926069,
+            "bm25_score": 23.780109914946827,
+            "lexical_score": 0.14745989304812834,
+            "matched_terms": [
+                "aborted",
+                "and",
+                "because",
+                "blocking",
+                "cannot",
+                "is",
+                "longer",
+                "metadata",
+                "of",
+                "or",
+                "required",
+                "than",
+                "the",
+                "to",
+                "transaction",
+                "triggered",
+                "waits",
+                "when",
+                "write"
+            ],
+            "match_count": 66,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

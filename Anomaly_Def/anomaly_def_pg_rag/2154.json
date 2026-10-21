@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Transaction Log Subsystem Anomaly + Replication Synchronization Anomaly",
+            "Description": "Database Memory Allocation Anomaly : Excessive or uncontrolled growth of buffer caches, work areas, plan caches, and other in-process memory regions pushes the database host beyond its physical RAM and swap limits, provoking paging, OOM kills, and cache-churn inefficiencies.\nTransaction Log Subsystem Anomaly : The generation, buffering, flushing, or archiving of write-ahead log (WAL) records cannot keep pace with commit throughput, making the log file group, log buffer, or archiver the primary bottleneck on the write path.\nReplication Synchronization Anomaly : Downstream standbys or subscribers are unable to receive, persist, or apply WAL data at the rate produced by the primary, causing growing log-position lag and preventing log-segment recycling.\n\nWhen these three root causes occur together, the system exhibits compounded symptoms: commit latency and user-visible stalls rise sharply as log buffers back up behind a saturated log device while memory pressure simultaneously forces buffer eviction, swap storms, and CPU stalls. The primary accumulates large, unrecycled log segments because replicas lag, inflating on-disk log space; meanwhile, over-allocated in-memory caches and work areas bloat the resident set, further constraining I/O cache effectiveness. Administrators may observe oscillating throughput, frequent checkpoint storms, and emergency restarts triggered by out-of-memory or full-log conditions, along with widening replication delay and inconsistent read freshness on replicas. The overlapping waits (log flush, log sync, memory latch, page-in I/O) make it difficult to isolate any single culprit.\n\nCausally, aggressive memory allocation reduces effective filesystem cache and amplifies paging, slowing physical log writes and elevating commit latency. Prolonged log flush times expand the log tail that replicas must ship and apply; replica lag in turn prevents log recycling, causing the primary to retain ever-growing log files that consume additional disk and may prompt larger in-memory directory and metadata caches—exacerbating memory pressure. Conversely, as replicas fall behind, the primary must hold more WAL in memory and on disk, inflating both log buffer residency and archive queues, which collide with already scarce memory resources. The feedback loop between memory exhaustion, log-subsystem saturation, and replication backlog thus intensifies each anomaly, pushing the OLTP system toward throughput collapse or forced failover.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.3703581878885546,
+            "bm25_score": 14.699601877821394,
+            "lexical_score": 0.09624633431085043,
+            "matched_terms": [
+                "and",
+                "are",
+                "by",
+                "data",
+                "latency",
+                "may",
+                "on",
+                "or",
+                "system",
+                "the",
+                "triggered",
+                "when"
+            ],
+            "match_count": 267,
+            "entry": {
+                "timeout_id": "pg16_tcp_user_timeout",
+                "parameter_name": "tcp_user_timeout",
+                "timeout_category": "network_unacknowledged_data_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies how long transmitted data may remain unacknowledged before the TCP connection is forcibly closed.",
+                "trigger_condition": "TCP data sent by PostgreSQL remains unacknowledged longer than tcp_user_timeout on systems supporting TCP_USER_TIMEOUT.",
+                "workload_impact": "The TCP connection is forcibly closed.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Database Memory Allocation Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Composite Definition: The database concurrently suffers from (1) stale or inaccurate optimizer statistics that drive systematic cardinality misestimation, (2) runaway memory consumption that pushes the instance and host beyond safe memory limits, and (3) saturation of the transaction-log generation / flush path. Together, these three orthogonal yet interacting root causes form a compound failure state that degrades both query processing and commit throughput under OLTP workloads.\n\nCombined Observable Phenomena: Execution plans show severe row-estimate errors, often selecting hash or sort strategies that demand excessive work memory. The inflated work areas, plus bloated buffer and plan caches, exhaust physical RAM, leading to paging, memory pressure waits, or OOM terminations. At the same time, commit latency, LOG FLUSH/WRITE waits, and log-buffer stall events spike because log flushing competes with paging I/O, frequent checkpoints, and large redo bursts produced by mis-planned bulk or spill operations. Users see alternating patterns of slow queries, aborted transactions, and periods where the entire instance freezes or is force-restarted by the cluster manager.\n\nCausal Interaction: Stale statistics first mislead the optimizer into choosing memory-intensive plans (e.g., multi-GB hash joins, over-parallelized sorts). These plans inflate per-session work areas and swell the buffer cache with mispredicted read-ahead, pushing the engine into memory overcommit. The resulting OS paging and cache churn slow down datafile and log-file I/O alike, lengthening log flush times. Prolonged commits keep log buffers full, forcing back-pressure on application threads and increasing transaction duration; the longer transactions retain log segments, causing more frequent log switches and checkpoints, which in turn intensify both memory usage (dirty-page queues) and disk traffic. Memory pressure also impedes the archiver and replication workers, keeping log files active longer and exacerbating log-space shortages. Thus, cardinality misestimation fuels memory exhaustion, which magnifies log contention, and the stalled log subsystem further propagates memory retention—creating a feedback loop that drives the database into severe throughput collapse.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.28980036663429903,
+            "bm25_score": 10.356001764179396,
+            "lexical_score": 0.09909090909090909,
+            "matched_terms": [
+                "and",
+                "by",
+                "is",
+                "latency",
+                "of",
+                "on",
+                "or",
+                "session",
+                "stale",
+                "that",
+                "the",
+                "time",
+                "to",
+                "which"
+            ],
+            "match_count": 262,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_interval",
+                "parameter_name": "tcp_keepalives_interval",
+                "timeout_category": "network_keepalive_retry_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time after which a TCP keepalive message that has not been acknowledged by the client should be retransmitted.",
+                "trigger_condition": "A TCP keepalive probe is not acknowledged for tcp_keepalives_interval on systems supporting TCP_KEEPINTVL or an equivalent socket option.",
+                "workload_impact": "Controls retry timing for keepalive probes used to detect unresponsive client connections.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

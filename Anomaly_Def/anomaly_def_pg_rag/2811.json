@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Replication Synchronization Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Composite definition: The database system simultaneously suffers from delayed or stalled replication apply pipelines (Replication Synchronization Anomaly) while also hitting host-level kernel or container resource ceilings that prevent the database processes from obtaining additional file descriptors, shared-memory segments, threads, or other kernel objects (Operating System Resource Limit Anomaly).\n\nCombined anomalous phenomena: Replica lag metrics rise sharply and remain stuck; relay logs, retained WAL/redo segments, or primary-side pg_wal/* archives accumulate faster than they can be recycled.  At the same time, error logs show \"could not open file\", \"too many open files\", \"failed to allocate shared memory\", or \"cannot fork thread\" messages.  New replication workers, logical decoding slots, or parallel apply processes fail to start, and primary sessions that try to commit large transactions may block waiting for replication-confirmation feedback that never arrives.  Existing sessions continue to run but VACUUM, CHECKPOINT, or background writer processes intermittently abort, making disk usage and replica delay grow in lockstep.  Monitoring may show CPU and I/O under-utilized even though throughput collapses, because the bottleneck is hidden in the kernel limit layer.\n\nCausal chain and interaction: Replication lag forces the engine to keep more WAL segments open, more file descriptors in use, and more background apply workers alive on both the primary and replicas.  This surge in kernel-object demand pushes the database up against fixed per-process or cgroup limits; once those limits are reached, new apply workers or WAL sender processes cannot be spawned, causing replication to fall even further behind.  Conversely, the resource-limit anomaly can independently block the creation of parallel replay or logical decoding workers, immediately throttling the replica’s ability to catch up.  Each condition therefore amplifies the other: replication delay increases kernel object pressure, while kernel denials exacerbate replication delay, eventually leading to a feedback loop that endangers failover readiness, increases primary disk consumption, and risks service outage if the primary runs out of space or the replicas time out.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.3608542846553426,
+            "bm25_score": 14.06719094761938,
+            "lexical_score": 0.1342039800995025,
+            "matched_terms": [
+                "and",
+                "are",
+                "be",
+                "can",
+                "is",
+                "messages",
+                "not",
+                "of",
+                "on",
+                "or",
+                "sessions",
+                "system",
+                "that",
+                "the",
+                "this",
+                "time",
+                "to"
+            ],
+            "match_count": 295,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_count",
+                "parameter_name": "tcp_keepalives_count",
+                "timeout_category": "network_keepalive_failure_threshold",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the number of TCP keepalive messages that can be lost before the server connection to the client is considered dead.",
+                "trigger_condition": "The number of lost TCP keepalive probes reaches tcp_keepalives_count on systems supporting TCP_KEEPCNT.",
+                "workload_impact": "The server can consider the client connection dead after the configured keepalive failure threshold.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

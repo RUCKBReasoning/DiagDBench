@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Replication Synchronization Anomaly + Storage Space Capacity Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly: Obsolete row versions, rollback records, and dead index entries pile up faster than background cleanup workers can reclaim them.\nReplication Synchronization Anomaly: Stand-by or downstream replicas cannot receive or apply the primary’s WAL/redo stream at the rate it is generated.\nStorage Space Capacity Anomaly: Physical or logical free space for data files, transaction logs, temp areas, or archives is exhausted or about to hit a hard boundary.\n\nWhen all three conditions co-exist, the system shows a compound failure pattern: version stores, heap and index files, and retained WAL segments grow rapidly; replicas fall ever further behind, reporting escalating receive, flush, and replay lags; primary-side log directories, tablespaces, and temp areas approach 100 % usage; autovacuum or purge workers run continuously yet remain ineffective; long-running queries on replicas see increasingly stale data; and once space is fully consumed, new transactions, temp operations, or log writes error out, potentially bringing both primary and replicas to a halt. Monitoring may report contradictory signals—high bloat on primary tables, massive log backlogs, and space exhaustion alarms—making root-cause isolation difficult.\n\nCausal chain: heavy update/delete churn inflates MVCC bloat, which in turn drives up WAL volume. The surging WAL stream overwhelms replicas, forcing the primary to retain additional log segments until they have been replayed. Those unrecycled segments, along with the enlarged tables, consume disk rapidly, pushing the system toward space exhaustion. As free space shrinks, checkpoints, autovacuum, and replica apply processes compete for I/O and fail more often, slowing cleanup and replay still further. The positive feedback loop—bloat ➝ more WAL ➝ replication lag ➝ retained logs ➝ space pressure ➝ slower cleanup/apply ➝ more bloat—amplifies each constituent anomaly and jeopardizes both data freshness and service availability.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.7397556390977443,
+            "bm25_score": 26.927579640784572,
+            "lexical_score": 0.1325187969924812,
+            "matched_terms": [
+                "and",
+                "apply",
+                "data",
+                "downstream",
+                "is",
+                "lag",
+                "long",
+                "or",
+                "out",
+                "replica",
+                "replication",
+                "than",
+                "the",
+                "to",
+                "when"
+            ],
+            "match_count": 91,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

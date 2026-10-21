@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Pages in the buffer pool become hot bottlenecks; sessions spend excessive time spinning or waiting on latches, buffer-busy events, or page-pin contention rather than doing useful work.\nData Block and Index Integrity Anomaly : Physical data-file or index structures are corrupted—checksums fail, page links are broken, or key ordering is incorrect—so the storage layer can no longer be trusted.\n\nComposite anomaly definition:\nBoth anomalies are present simultaneously: the system must serialize access to a small set of buffer-cache pages while some of those very pages (or others they reference) are physically or logically corrupted. The engine therefore contends for buffers that may be unreadable, fail verification, or require rebuild/repair logic, coupling heavy latch pressure with integrity faults.\n\nCombined observable phenomena:\n• Extremely high buffer-busy, page-latch, and pin waits mixed with bursts of physical I/O retries, checksum failures, or corruption error messages.\n• Queries alternately hang (due to latch spin or waits) and abort (due to corruption detection), causing erratic latency and throughput collapse.\n• Repeated automatic page rereads, forced checkpoints, or background verification tasks intensify buffer churn, while failing index lookups trigger fall-back full scans that further stress the buffer pool.\n• Recovery or consistency-checker utilities run longer than usual, holding latches while rereading or rebuilding corrupted pages, which starves foreground workloads.\n\nCausal interaction and amplification:\nCorrupted pages often force extra I/O, checksum validation, or reconstruction work, keeping the corresponding buffer frames pinned and latches held far longer than normal; this multiplies latch wait times and propagates hot-page contention across sessions. Conversely, severe latch contention slows dirty-page flushing and recovery operations, increasing the window during which corrupted or partially written pages remain in play, raising the likelihood of additional integrity errors. The intertwined feedback loop of prolonged latch holds and recurring corruption checks can eventually exhaust worker pools, trigger automatic fail-safe shutdowns, or lead to cascading query failures, making rapid identification and coordinated remediation essential.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2211,
+            "score": 0.5566749055791445,
+            "bm25_score": 51.64164408185315,
+            "lexical_score": 0.13829026937877953,
+            "matched_terms": [
+                "access",
+                "and",
+                "be",
+                "checks",
+                "error",
+                "forced",
+                "in",
+                "is",
+                "mixed",
+                "or",
+                "set",
+                "that",
+                "the",
+                "this",
+                "time",
+                "to",
+                "validation",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010324",
+                "error_name": "ER_AUTHCACHE_DB_ENTRY_LOWERCASED_REVOKE_WILL_FAIL",
+                "official_description": "'db' entry '%s %s@%s' had database in mixed case that has been forced to lowercase because lower_case_table_names is set. It will not be possible to remove this privilege using REVOKE.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "authentication_and_authorization",
+                "cause_analysis": "The failure is typically associated with user identity, privilege scope, object access checks, or credential validation at session establishment or statement execution time.",
+                "solution_guidance": "Verify account credentials, privilege grants, object ownership, role settings, and whether the execution context has sufficient access rights.",
+                "observable_symptoms": [
+                    "access denied",
+                    "authentication failure",
+                    "permission error"
+                ]
+            }
+        }
+    }
+]

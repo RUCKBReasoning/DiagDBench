@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Database Memory Allocation Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Schema and Index Design Anomaly : Physical data-model, indexing, or partitioning choices do not align with workload access patterns, forcing inefficient scans, lookups, or data rewrites.\nDatabase Memory Allocation Anomaly : Aggregate buffer caches, work areas, plan caches, and background heaps outgrow available physical memory, provoking paging, allocation churn, and OOM events.\nStorage I/O Throughput Anomaly : Underlying disks or storage fabric are unable to sustain the read/write volume demanded, driving up queue depths and latency.\n\nWhen all three root causes coexist, the workload experiences a cascade of symptoms: poorly indexed queries generate excessive logical reads that overflow the buffer cache, evicting hot pages and inflating physical I/O. The inflated I/O stream collides with already saturated storage, so read and write latencies spike, amplifying wait events such as buffer busy, read-IO, log flush, and temp I/O stalls. Concurrently, memory pressure causes frequent buffer recycling, hash/sort spills to disk, plan-cache flushing, and even OS-level swapping, further multiplying physical I/O and prolonging CPU stalls. End users observe erratic but persistently high response times, batch jobs overrun maintenance windows, and nodes may terminate due to out-of-memory or I/O timeout conditions, making it difficult to attribute slowness to any single layer.\n\nCausally, a deficient schema/index design is the first trigger: full scans, non-covering probes, and unpruned partitions enlarge the working-set size and inflate per-query work memory. This heightened demand pushes the engine to allocate more buffers and work areas, breaching memory limits and inducing cache churn or swapping—hallmarks of the Database Memory Allocation Anomaly. As hot buffers are prematurely evicted and large hash/sort regions spill to disk, the volume of physical reads and temp writes surges, directly pressuring the storage subsystem. Because the Storage I/O Throughput Anomaly is already present, the storage layer cannot absorb the compounded load, so latency balloons, which in turn prolongs query lifetimes. Longer-running sessions hold onto memory and latches even longer, feeding back into memory exhaustion and perpetuating the vicious cycle of cache misses and I/O saturation. The intertwined anomalies therefore reinforce each other, leading to severe and escalating deterioration of overall database performance and stability.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.30578400285464524,
+            "bm25_score": 11.489788863139859,
+            "lexical_score": 0.11023411371237457,
+            "matched_terms": [
+                "and",
+                "any",
+                "because",
+                "cannot",
+                "is",
+                "longer",
+                "of",
+                "or",
+                "query",
+                "schema",
+                "sessions",
+                "that",
+                "the",
+                "this",
+                "timeout",
+                "when"
+            ],
+            "match_count": 174,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

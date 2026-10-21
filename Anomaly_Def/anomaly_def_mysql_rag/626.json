@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Storage Space Capacity Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Accumulation of obsolete row versions and rollback records outpaces background cleanup, causing version-store growth and visibility-check overhead.\nStorage Space Capacity Anomaly : Physical or logical free space for data files, logs, or temp areas is exhausted, producing allocation failures and write stalls.\n\nWhen these two root causes strike simultaneously, the database shows an explosive rise in disk usage, steep declines in live-row density, and a shrinking pool of free blocks. Autovacuum or purge workers run constantly yet make no headway; at the same time their I/O requests contend with data-file auto-extension and log archiving that are repeatedly failing due to lack of space. Transactions may begin to receive no-space-left or cannot-extend errors, large scans slow dramatically because they wade through bloated heaps, and the planner misestimates both row counts and cost. Checkpoint, archive, or temp-space operations start to stall, and engine alerts escalate from version-store wraparound warnings to imminent tablespace exhaustion.\n\nCausal interaction: heavy update/delete churn creates surging MVCC garbage, inflating tables and indexes until they consume the remaining free extents; the resulting space pressure prevents cleanup workers from allocating new pages they need for rewriting pages or writing index-cleanup batches, so version reclamation slows further. Meanwhile out-of-space conditions can pause WAL recycling and force longer retention of old segments, which in turn widens the snapshot horizon and keeps old row versions alive. This feedback loop makes each anomaly reinforce the other, quickly degrading performance and threatening database availability.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.47288397080717604,
+            "bm25_score": 9.932862252825387,
+            "lexical_score": 0.12472587719298245,
+            "matched_terms": [
+                "and",
+                "are",
+                "cannot",
+                "check",
+                "for",
+                "is",
+                "of",
+                "or",
+                "out",
+                "that",
+                "the",
+                "this",
+                "time",
+                "when"
+            ],
+            "match_count": 2,
+            "entry": {
+                "timeout_id": "mysql84_client_connection_timeout_option",
+                "parameter_name": "--connect-timeout",
+                "timeout_category": "client_connection_establishment_timeout",
+                "scope": "client option",
+                "official_definition": "The number of seconds before connection timeout for MySQL client programs that support this option.",
+                "trigger_condition": "A MySQL client program cannot establish a connection before the configured connect timeout.",
+                "workload_impact": "The client connection attempt times out.",
+                "default_behavior": "Defined as a MySQL client connection option.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

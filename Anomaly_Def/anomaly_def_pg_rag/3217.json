@@ -1,0 +1,44 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Transaction Log Subsystem Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Optimizer Statistics Anomaly: Row-count, histogram, and correlation metadata are stale or incomplete, causing systematic cardinality misestimation and sub-optimal plan selection.\nTransaction Log Subsystem Anomaly: Commit processing is slowed by saturated log buffers, undersized or poorly placed log files, or sluggish archiving/replication, making the log path the dominant bottleneck for writes.\nStorage I/O Throughput Anomaly: Physical devices or storage fabric cannot deliver the required read/write bandwidth or IOPS, so data-file, temp, or log I/O requests queue up and incur excessive latency.\n\nWhen these three root causes strike simultaneously, the database exhibits a mixture of severe plan inefficiencies, persistent log-related stalls, and generalized I/O saturation. Queries may choose nested-loop or hash joins that spill to disk because of cardinality errors, multiplying read and temp I/O. The extra I/O load collides with an already throttled storage layer, inflating data-file and temp-space latency, while every write must still traverse the overloaded transaction-log path, driving up commit times and causing \"log write\", \"log flush\", and device wait events to dominate. Checkpoints and log-archive operations extend their duration, leading to frequent log-full conditions, blocked DML, and application timeouts. Performance counters oscillate between CPU under-utilization (waiting on I/O) and sudden CPU spikes when I/O briefly clears, making diagnosis difficult as symptoms appear to migrate across layers.\n\nCausally, stale or missing statistics can cause the optimizer to choose plans that amplify page reads, temp spills, and row-by-row processing, inflating both data I/O and redo generation. The inflated redo rate accelerates log growth, forcing more frequent log flushes, switches, and archives exactly when the shared storage subsystem is already throughput-bound. In turn, the saturated log device holds commit processing hostage, prolonging transaction duration and keeping locks active, which causes additional contention and may prevent automatic statistics refresh, perpetuating the statistics staleness. The competition for limited I/O bandwidth between data reads/writes and log flushes forms a positive feedback loop, driving systemic slowdown and making each individual anomaly harder to isolate without considering their mutual reinforcement.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 79,
+            "score": 0.12828410258445738,
+            "bm25_score": 7.920067472350286,
+            "lexical_score": 0.09208243813161454,
+            "matched_terms": [
+                "and",
+                "by",
+                "data",
+                "in",
+                "is",
+                "must",
+                "or",
+                "required",
+                "the",
+                "to",
+                "with"
+            ],
+            "match_count": 15,
+            "entry": {
+                "error_code": "22038",
+                "error_name": "singleton_sql_json_item_required",
+                "official_description": "singleton sql json item required",
+                "error_class": "Class 22 - Data Exception",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

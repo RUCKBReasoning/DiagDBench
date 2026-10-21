@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Optimizer Statistics Anomaly + MVCC Version Maintenance Anomaly",
+            "Description": "Schema and Index Design Anomaly : Physical data-model structures and index layout do not match workload access patterns, forcing otherwise well-written SQL to take inherently inefficient access paths.\nOptimizer Statistics Anomaly : Catalog statistics describing row counts, distribution, and correlation are stale or incomplete, causing the optimizer to misestimate cardinalities and choose sub-optimal plans.\nMVCC Version Maintenance Anomaly : Obsolete row versions and rollback records accumulate faster than background cleaners can reclaim them, inflating on-disk structures and adding visibility-check overhead.\n\nWhen all three anomalies appear together, the system exhibits blended and mutually reinforcing symptoms: queries gravitate toward full-table or full-index scans not only because useful indexes are missing but also because bloated heaps and skewed statistics hide the selectivity of remaining indexes; estimated-vs-actual row counts diverge by orders of magnitude, leading to plan oscillation, excessive memory grants, and spill events; table and index sizes grow rapidly, lengthening I/O for any scan and delaying auto-vacuum or purge tasks, while DML latency rises due to both index-maintenance overhead and version-store pressure. Administrators may observe constantly busy cleanup workers, escalating table bloat and checkpoint sizes, rising write-amplification, and query plans that improve only temporarily after manual statistics refreshes or ad-hoc index creation.\n\nCausally, poor schema and index design increases the amount of data each statement must touch; that extra I/O bandwidth is further amplified by MVCC bloat, which multiplies physical page counts. The inflated structures corrupt the accuracy of existing statistics more quickly, while stale or low-quality statistics, in turn, mask the usefulness of any remaining selective indexes and stop the optimizer from preferring them, making the design flaw appear worse. Because inefficient plans prolong statement execution, long-running transactions hold old snapshots open, slowing version reclamation and deepening MVCC bloat. The version bloat then enlarges sample space for statistics collection, making automatic refreshes slower and less frequent, perpetuating the stale-statistics condition. The three root causes therefore reinforce one another in a feedback loop that degrades throughput and predictability on write-intensive workloads.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.403742966240054,
+            "bm25_score": 16.530061149903226,
+            "lexical_score": 0.13269151138716356,
+            "matched_terms": [
+                "and",
+                "are",
+                "check",
+                "data",
+                "for",
+                "from",
+                "is",
+                "latency",
+                "more",
+                "not",
+                "of",
+                "or",
+                "stale",
+                "than",
+                "the",
+                "to",
+                "when"
+            ],
+            "match_count": 140,
+            "entry": {
+                "timeout_id": "mysql84_replica_network_timeout",
+                "parameter_name": "replica_net_timeout",
+                "timeout_category": "replication_network_timeout",
+                "scope": "global/replication",
+                "official_definition": "The number of seconds to wait for more data from a source/replica connection before aborting the read.",
+                "trigger_condition": "A replica waits longer than replica_net_timeout for more data from the source connection.",
+                "workload_impact": "The replication network read is aborted and the replica considers the connection interrupted.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

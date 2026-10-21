@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + CPU Resource Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : The engine is started with sub-optimal runtime parameters (memory pools, parallelism, checkpoint cadence, etc.), so the database behaves inefficiently even though the underlying hardware may still have headroom. \nCPU Resource Anomaly : Database processes drive the host CPU to sustained saturation, producing long run-queues, high context-switching, and broad latency inflation across statements. \nOperating System Resource Limit Anomaly : The database reaches kernel-enforced ceilings such as file-handle, thread, or shared-memory limits, causing allocation failures or the inability to spawn new workers.\n\nWhen all three anomalies coincide the system shows a confused and rapidly degrading performance pattern: CPU utilization hovers at or near 100 %, yet some cores sit idle because mis-tuned parallelism, work-memory, or background-worker settings keep useful tasks from being dispatched while kernel limits silently block new threads. Wait-event histograms simultaneously report CPU-bound waits, configuration-specific waits (e.g., excessive checkpoint or log-write stalls), and sporadic \"cannot allocate resource\" errors from the OS. Throughput becomes erratic: bursts of work briefly clear, then stall again when the engine hits a kernel object limit or triggers a heavy checkpoint, causing run-queue spikes. Monitoring tools may mislead—showing CPU exhaustion that persists even after cancelling the top SQL—because background flushers and orphaned worker threads are spinning but unable to acquire the kernel resources they need.\n\nCausal chain: a mis-set configuration (e.g., overly aggressive parallelism and tiny checkpoint segments) first inflates CPU demand and spawns many workers; the surge pushes total runnable threads toward the host’s logical-CPU count, creating a CPU Resource Anomaly. As more workers are launched, they collectively exhaust kernel limits on threads, file descriptors, or AIO contexts, triggering an Operating System Resource Limit Anomaly. The OS denials then force the engine to retry or spin, which consumes yet more CPU, while configuration parameters such as short checkpoint intervals amplify I/O and flush activity, further increasing thread creation and handle usage. Each anomaly therefore feeds the next: bad parameters create excess work, excess work saturates CPU, CPU saturation and worker proliferation hit OS ceilings, and the resulting allocation failures loop back to make the configuration’s side effects (checkpoint storms, parallelism thrashing) even harder to resolve, deepening the overall performance collapse.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.7355354449472096,
+            "bm25_score": 24.54385315945113,
+            "lexical_score": 0.1184514831573655,
+            "matched_terms": [
+                "an",
+                "and",
+                "because",
+                "block",
+                "cannot",
+                "is",
+                "of",
+                "or",
+                "retry",
+                "the",
+                "to",
+                "wait",
+                "waits",
+                "when",
+                "while",
+                "write"
+            ],
+            "match_count": 39,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

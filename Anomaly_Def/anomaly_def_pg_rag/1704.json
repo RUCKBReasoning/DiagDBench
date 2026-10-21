@@ -1,0 +1,47 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Optimizer Statistics Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Schema and Index Design Anomaly : Physical data-model structures (tables, partitions, indexes, constraints, data types) are misaligned with workload access patterns, forcing inefficient access paths regardless of query logic.\nOptimizer Statistics Anomaly : Optimizer metadata (row counts, histograms, correlation statistics) is stale or incomplete, causing systematic cardinality misestimation and poor plan choices.\nBuffer Cache and Latch Contention Anomaly : Sessions contend for buffer-cache pages and internal latches, leading to page-level serialization, CPU spin, and wait events that slow down all concurrent work.\n\nWhen these three root causes co-exist, the database exhibits a blended symptom set: 1) execution plans show full scans or deeply nested loops on non-covering indexes with grossly wrong row-count estimates, 2) the bad plans funnel many sessions toward the same small set of hot pages (index roots, sequence pages, or narrowly partitioned tables), 3) buffer busy, latch, and page I/O wait events skyrocket, masking their origin behind apparent \"contention\" rather than plan inefficiency, and 4) performance may oscillate after statistics refreshes or index rebuilds, yet never stabilize because each fix only partially alleviates the intertwined problems.\n\nCausal chain: a mismatched schema or missing/oversized indexes inflate the logical I/O footprint of otherwise selective queries. Stale or low-quality statistics hide this inflation from the optimizer, leading it to choose plans that touch even more pages or drive high fan-out join orders. The inflated demand converges on a subset of pages—root blocks of remaining indexes, small dimension tables, or last pages of monotonically inserted heaps—creating hotspots. As more sessions queue on latches for those pages, overall throughput drops, I/O stalls lengthen dirty-page retention, and latch contention further delays plan operations, which in turn keeps pages pinned longer and intensifies buffer pressure. Thus each anomaly amplifies the others, forming a reinforcing feedback loop that degrades both transactional and analytical workloads until the underlying schema, statistics, and cache contention issues are jointly resolved.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 38,
+            "score": 0.29865893633287105,
+            "bm25_score": 11.114768584773696,
+            "lexical_score": 0.11799518845228549,
+            "matched_terms": [
+                "and",
+                "data",
+                "execution",
+                "in",
+                "is",
+                "level",
+                "logic",
+                "or",
+                "pressure",
+                "sequence",
+                "the",
+                "to",
+                "with",
+                "workload"
+            ],
+            "match_count": 10,
+            "entry": {
+                "error_code": "22025",
+                "error_name": "invalid_escape_sequence",
+                "official_description": "invalid escape sequence",
+                "error_class": "Class 22 - Data Exception",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

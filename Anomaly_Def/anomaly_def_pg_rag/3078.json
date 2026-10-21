@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Buffer Cache and Latch Contention Anomaly + Replication Synchronization Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same rows, pages, or tables, producing blocking chains or deadlocks managed by the lock-manager subsystem.\nBuffer Cache and Latch Contention Anomaly : Sessions stall while contending for buffer-cache pages, latches, or I/O slots inside the buffer manager, leading to long page-latch waits and CPU spin.\nReplication Synchronization Anomaly : Downstream replicas cannot receive, write, or replay primary log records fast enough, causing growing log-position lag and retention of un-recycled WAL segments.\n\nWhen these three root causes strike together, the database exhibits a blended symptom set: soaring lock-wait and deadlock counts, surges in buffer-busy and page-latch events, elevated CPU usage with little useful work, rising transaction latencies, and sharp drops in throughput. Simultaneously, replication monitoring shows widening replay delay, swelling retained log files, and replicas that serve increasingly stale reads or fall out of sync, jeopardizing recovery point objectives. From the application side, users encounter time-outs, slowed commit acknowledgments, and unpredictable replica freshness, making troubleshooting difficult because waits oscillate between lock, latch, I/O, and replication states.\n\nCausally, hot rows or pages first induce lock contention; transactions blocked on locks keep buffer pages pinned and their latches held longer, amplifying latch contention for other sessions that need the same pages. Prolonged latch waits lengthen transaction execution times, extending lock hold durations and enlarging commit batches, which in turn inflate the volume and burstiness of generated log records. The heavier and more uneven log stream overwhelms replication apply threads already slowed by their own lock and latch conflicts while replaying changes, deepening replication lag. As replicas fall behind, the primary is forced to retain additional log segments, limiting checkpoint progress; this inflates dirty-page residency, increases buffer-flush pressure, and extends latch hold times during I/O. The positive feedback loop between lock waits, latch contention, and replication backlog drives the system into a compounded degradation state where each anomaly reinforces the others and accelerates overall performance collapse.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.28575756601996233,
+            "bm25_score": 12.819219306733764,
+            "lexical_score": 0.12873452129266083,
+            "matched_terms": [
+                "and",
+                "by",
+                "for",
+                "is",
+                "of",
+                "on",
+                "or",
+                "progress",
+                "sessions",
+                "stale",
+                "system",
+                "that",
+                "the",
+                "this",
+                "time",
+                "to",
+                "when",
+                "which"
+            ],
+            "match_count": 312,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_interval",
+                "parameter_name": "tcp_keepalives_interval",
+                "timeout_category": "network_keepalive_retry_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time after which a TCP keepalive message that has not been acknowledged by the client should be retransmitted.",
+                "trigger_condition": "A TCP keepalive probe is not acknowledged for tcp_keepalives_interval on systems supporting TCP_KEEPINTVL or an equivalent socket option.",
+                "workload_impact": "Controls retry timing for keepalive probes used to detect unresponsive client connections.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

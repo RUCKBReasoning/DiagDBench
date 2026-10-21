@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Engine-level knobs such as log-buffer size, checkpoint cadence, and background-writer limits are mis-tuned relative to hardware capacity and workload characteristics.\nTransaction Log Subsystem Anomaly : The write-ahead logging path itself—log buffer, files, flush/sync operations, archiver, and retention pipeline—becomes the primary bottleneck on commit-intensive activity.\n\nWhen both root causes are present, the instance shows a compound failure pattern: commit latency, LOG_WRITE/LOG_SYNC waits, and checkpoint storms spike at the same time that CPU, IOPS, or memory remain oddly under-utilised. Log segments switch or fill far faster than they can be flushed or archived, causing cascading stalls that propagate to foreground sessions. Monitoring dashboards report contradictory signals—threads spinning on log mutexes while disks appear idle, or sudden surges in dirty-page flushes that evict useful cache. Application symptoms include intermittent but severe slowdowns, dead-letter queues growing on synchronous replication links, and runaway log-directory growth that forces emergency space-reclaim operations.\n\nThe causal chain is self-reinforcing: undersized log buffers, too-frequent checkpoints, or minimal log-file sizes (configuration anomaly) drive an excessive rate of flushes and file switches, exposing any latent throughput limits in the transaction-log subsystem. Each forced flush stalls user commits, which in turn increases concurrency and amplifies redo generation, further saturating the log path and triggering even more aggressive checkpoint activity. Conversely, once the log subsystem begins to lag—due to device placement, limited log groups, or slow archiving—the engine’s adaptive algorithms may shorten checkpoint intervals or throttle background writers, making the earlier mis-tuned parameters even more harmful. The interaction locks the system into a feedback loop where neither adjusting workload pace nor adding raw hardware helps until both the misconfiguration and the log bottleneck are addressed together.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.709890375735925,
+            "bm25_score": 20.55954118722739,
+            "lexical_score": 0.11761786600496278,
+            "matched_terms": [
+                "an",
+                "and",
+                "in",
+                "is",
+                "locks",
+                "or",
+                "sessions",
+                "shorten",
+                "than",
+                "the",
+                "to",
+                "transaction",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 130,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

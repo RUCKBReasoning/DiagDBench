@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Storage I/O Throughput Anomaly + Storage Space Capacity Anomaly + CPU Resource Anomaly",
+            "Description": "Storage I/O Throughput Anomaly : Physical read/write bandwidth, IOPS, or latency limits of the underlying volumes are reached, throttling every engine component that issues I/O.\nStorage Space Capacity Anomaly : Free space on data, log, temp, or backup volumes is exhausted or approaches hard limits, leading to allocation failures and stalled write activity.\nCPU Resource Anomaly : Host compute cores are saturated by database processes, driving run-queue contention and global latency increases.\n\nWhen all three conditions appear simultaneously, the database experiences a multi-dimensional resource collapse. End-users see sharp and widespread response-time spikes, batch jobs overrun their windows, checkpoints, log flushes, and sort/hash work accumulate in ever-lengthening wait queues, and critical statements fail with both \"out of space\" and \"too busy\"-style errors. I/O statistics show disks pegged at maximum service time while queue depths lengthen; meanwhile CPU load averages hover at or above core count, yet the additional work done per second diminishes because threads are blocked on both I/O latency and space-allocation retries. Monitoring surfaces a cacophony of device-level I/O waits, space-allocation errors, and scheduler waits, making it difficult to isolate any single bottleneck.\n\nCausal interaction: Space exhaustion forces aggressive auto-extension, log switching, and frequent allocation checks; these operations themselves generate extra synchronous writes and metadata updates, inflating I/O demand on volumes that are already throughput-bound. The longer latency holds back foreground tasks, the more connected sessions remain active, amplifying CPU consumption through context switches and spin waits. Conversely, CPU saturation slows the purge, compression, and cleanup jobs that would reclaim space, accelerating capacity depletion. As operations struggle to complete, they re-issue reads, writes, and retries, further driving both I/O bandwidth and CPU cycles while the shrinking free space leaves less room for write coalescing or spill-to-temp optimizations. The feedback loop among limited throughput, vanishing space, and maxed-out CPU intensifies until the system reaches a stall or fails with multiple simultaneous resource errors.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.7435844040762073,
+            "bm25_score": 26.09941452395213,
+            "lexical_score": 0.14528134692069117,
+            "matched_terms": [
+                "and",
+                "because",
+                "blocked",
+                "by",
+                "contention",
+                "engine",
+                "for",
+                "global",
+                "is",
+                "operations",
+                "or",
+                "resource",
+                "the",
+                "time",
+                "too",
+                "when",
+                "with",
+                "work"
+            ],
+            "match_count": 125,
+            "entry": {
+                "timeout_id": "mysql84_regular_expression_time_limit",
+                "parameter_name": "regexp_time_limit",
+                "timeout_category": "expression_evaluation_time_limit",
+                "scope": "global/session",
+                "official_definition": "The time limit for regular expression matching operations performed by the regular expression engine.",
+                "trigger_condition": "A regular expression match operation exceeds regexp_time_limit.",
+                "workload_impact": "The regular expression operation is constrained by the configured time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

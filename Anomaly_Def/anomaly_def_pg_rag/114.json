@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + MVCC Version Maintenance Anomaly",
+            "Description": "Composite Definition: The database simultaneously suffers from heavy lock-manager blocking/deadlocks and from excessive accumulation of obsolete MVCC versions, so each transaction is at risk of both waiting on incompatible locks and wading through bloated heaps and indexes whose cleanup is lagging behind.\n\nCombined Observable Phenomena: Administrators will see long lock wait queues, deadlock victim rollbacks, and rising application time-outs together with rapidly growing table and index sizes, a persistently busy or backlogged vacuum/cleanup process, and planner misestimates caused by low live-row density. Throughput and latency variability become extreme: sessions that finally acquire their locks still run slowly because scans must traverse many dead versions, while lengthy scans keep locks held for longer, enlarging blocking chains. I/O and CPU usage rise concurrently—disk reads driven by bloat, and CPU cycles consumed by lock management and version visibility checks—yet business transactions per second keep falling.\n\nCausal Interaction: Lock contention prolongs the lifetime of update and delete transactions, keeping their snapshots and row versions alive and preventing background cleaners from advancing the version horizon; this accelerates version-store growth. The resulting table and index bloat lengthens read and write execution times, so transactions hold locks for longer and are more likely to collide, escalating row locks to page or table level and deepening contention. Cleanup workers may also be throttled by locks that protect hot pages, causing them to yield and fall further behind. Thus each anomaly amplifies the other in a positive feedback loop that degrades both concurrency control and storage health until manual intervention or a workload drop breaks the cycle.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.22340464357646247,
+            "bm25_score": 12.183164172950935,
+            "lexical_score": 0.12446141259885463,
+            "matched_terms": [
+                "and",
+                "are",
+                "for",
+                "in",
+                "is",
+                "latency",
+                "of",
+                "or",
+                "sessions",
+                "the",
+                "this",
+                "time",
+                "wait",
+                "waiting"
+            ],
+            "match_count": 113,
+            "entry": {
+                "timeout_id": "pg16_libpq_connection_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "client_connection_establishment_timeout",
+                "scope": "libpq/client connection parameter",
+                "official_definition": "Maximum wait for connection, in seconds; zero or not specified means wait indefinitely.",
+                "trigger_condition": "A libpq client connection attempt exceeds connect_timeout seconds.",
+                "workload_impact": "The client connection attempt fails instead of waiting indefinitely.",
+                "default_behavior": "Zero or absent value means wait indefinitely.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

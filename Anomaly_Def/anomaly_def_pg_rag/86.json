@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Buffer Cache and Latch Contention Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Database Memory Allocation Anomaly : The database engine allocates and retains more memory and swap than the host can safely supply, inflating buffer pools, work areas, plan caches, and other heaps until the operating system is under sustained memory pressure.\nBuffer Cache and Latch Contention Anomaly : Multiple sessions concurrently fight for access to hot buffer-cache pages, latches, and I/O slots, stalling on lightweight synchronization points rather than on row-level locks and causing CPU spin or wait inflation.\nStorage I/O Throughput Anomaly : Physical read- and write-request volume overwhelms the bandwidth, IOPS, or latency envelope of the underlying storage devices, keeping queue depths saturated and stretching out every I/O-bound database activity.\n\nWhen these three root causes strike at once, the system displays a blend of memory exhaustion symptoms (OS paging, resident-set bloat, OOM kills), extreme buffer-busy/latch waits, and escalating I/O wait times. Cache-hit ratios plunge as hot pages churn out of a shrunken or fragmented buffer pool; each miss forces synchronous disk access that is already throttled by saturated storage, elongating latch hold times and propagating wait chains across sessions. CPU usage oscillates between futile spin-loops on latches and idle time blocked on I/O, while overall throughput collapses and latency becomes erratic. Clustered or virtualized environments may add node evictions or failovers as memory and I/O pressure propagate at the host or storage fabric level.\n\nCausal interaction: Excessive memory allocation reduces free RAM, triggering the kernel to reclaim pages and expel dirty buffers, which immediately amplifies physical I/O demand. The surge in disk traffic collides with an already over-subscribed storage layer, driving up service times and inflating the duration for which buffer pages stay pinned or dirty. Prolonged disk flushes delay latch release, so more sessions queue for the same hot pages, intensifying latch contention. In turn, threads that spin or wait longer keep their per-session work areas allocated, further straining memory and encouraging the engine to evict clean pages more aggressively—feeding yet more I/O. The feedback loop among memory starvation, I/O saturation, and buffer-level serialization rapidly degrades both read and write paths, making the composite anomaly far more severe than any individual issue encountered in isolation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.41248800772444844,
+            "bm25_score": 14.88394071493538,
+            "lexical_score": 0.14657589106928312,
+            "matched_terms": [
+                "activity",
+                "an",
+                "and",
+                "by",
+                "for",
+                "idle",
+                "is",
+                "latency",
+                "of",
+                "on",
+                "or",
+                "pools",
+                "session",
+                "sessions",
+                "system",
+                "that",
+                "the",
+                "time",
+                "to",
+                "when",
+                "which"
+            ],
+            "match_count": 166,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_interval",
+                "parameter_name": "tcp_keepalives_interval",
+                "timeout_category": "network_keepalive_retry_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time after which a TCP keepalive message that has not been acknowledged by the client should be retransmitted.",
+                "trigger_condition": "A TCP keepalive probe is not acknowledged for tcp_keepalives_interval on systems supporting TCP_KEEPINTVL or an equivalent socket option.",
+                "workload_impact": "Controls retry timing for keepalive probes used to detect unresponsive client connections.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

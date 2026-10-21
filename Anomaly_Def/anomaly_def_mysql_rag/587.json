@@ -1,0 +1,59 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Transaction Lock Contention Anomaly: Concurrent transactions request incompatible locks on the same data objects, forcing wait queues or deadlocks inside the lock manager and stalling execution paths.\nTransaction Log Subsystem Anomaly: The write-ahead logging path—log buffer, flush, file switch, or archiving—becomes a throughput or latency bottleneck, slowing commits and blocking further redo generation.\n\nWhen both root causes surface together, the database exhibits a compound slowdown: lock-wait and deadlock reports appear at the same time that commit and log-flush latencies climb. Transactions remain idle while waiting for locks, yet even after becoming unblocked they may pause again on log-related waits before completing, stretching overall response times. Application threads pile up in connection pools, autovacuum or purge processes fall behind, deadlock frequency rises because long-held locks increase cycle probability, and checkpoint or archive storms coincide with surges of lock timeouts and retry storms. The overlapping symptoms can obscure diagnosis because every blocked session shows both lock and log wait states in alternating patterns.\n\nCausally, a slow log subsystem prolongs the commit phase of each transaction, extending the lifetime of every lock it holds. The longer locks stay active, the higher the chance that other sessions collide on the same resources, amplifying lock contention. In the opposite direction, severe lock queues delay transactions, causing sudden bursts of commits once the queue frees; these commit spikes push more redo to the already saturated log devices, worsening log flush congestion. The two feedback loops reinforce each other, driving a self-sustaining performance collapse unless both the lock hot spots and the log throughput constraint are addressed together.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.716093872326063,
+            "bm25_score": 35.9982267269475,
+            "lexical_score": 0.1856914670029424,
+            "matched_terms": [
+                "and",
+                "because",
+                "blocking",
+                "delay",
+                "for",
+                "in",
+                "incompatible",
+                "lifetime",
+                "lock",
+                "locks",
+                "longer",
+                "or",
+                "retry",
+                "session",
+                "sessions",
+                "the",
+                "to",
+                "transaction",
+                "waiting",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 28,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

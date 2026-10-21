@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Query Plan Selection Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Schema and Index Design Anomaly : Physical table, index, partition, and datatype choices do not fit the workload, forcing logically correct queries onto inherently inefficient access paths.\nQuery Plan Selection Anomaly : The optimizer, despite having usable statistics, selects or reuses a plan whose cost model estimates deviate from reality, yielding a far-from-optimal execution strategy.\nBuffer Cache and Latch Contention Anomaly : Concurrent sessions serialize on buffer-pool pages, latches, or I/O slots, spending time in buffer-busy or page-latch waits rather than useful work.\n\nWhen these three root causes strike together, the workload exhibits a toxic mix of symptoms: queries unpredictably alternate between index probes, full scans, and nested-loop explosions; each execution floods the buffer pool with unnecessary pages, evicts useful ones, and concentrates traffic on a handful of hot root or data pages. As concurrency rises, latch acquisition time, buffer-busy waits, and CPU spin escalate, while overall throughput collapses. Response times swing wildly—sometimes dominated by I/O from scan-heavy plans, other times by CPU consumed in latch spin or by excessive logical reads following non-covering index lookups. Because plan instability and buffer contention both surface as latency spikes, the boundary between optimizer mis-decisions and low-level page bottlenecks becomes blurred, complicating diagnosis.\n\nCausally, sub-optimal schema and index definitions deprive the optimizer of efficient, selective access paths. Lacking good alternatives, the optimizer may favor full-table scans or parameter-sensitive plans, producing large, concurrent page requests. These scans churn the buffer cache, keep hot root pages in constant use, and inflate latch pressure. The resulting contention stretches individual statement runtimes, altering cardinality feedback and further skewing future plan choices, while plan cache thrashing propagates the problem across sessions. Simultaneously, the prolonged holds on page latches slow down DML and background flush activity, which in turn accentuates the mismatch between the physical design and the incoming workload. The three anomalies therefore reinforce one another in a feedback loop that magnifies latency, reduces throughput, and obscures the single dominant culprit, requiring a holistic fix that addresses design, optimization, and buffering together.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.3577786092581049,
+            "bm25_score": 14.397334817229071,
+            "lexical_score": 0.10713507625272331,
+            "matched_terms": [
+                "activity",
+                "and",
+                "between",
+                "latency",
+                "not",
+                "or",
+                "queries",
+                "query",
+                "sessions",
+                "that",
+                "the",
+                "time",
+                "when",
+                "while"
+            ],
+            "match_count": 248,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

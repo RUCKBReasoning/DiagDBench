@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Data Block and Index Integrity Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Database Configuration Parameter Anomaly: Engine-level settings (memory, checkpoint, logging, parallelism, etc.) are mis-tuned relative to hardware capacity and workload demands, creating artificial bottlenecks or bursts of background activity.\nData Block and Index Integrity Anomaly: On-disk table or index pages are physically or logically corrupt, causing incorrect or failed access to stored rows and keys.\nStorage Space Capacity Anomaly: Physical or logical free space in data, log, temp, or backup areas exhausts, leading to allocation failures and stalled write-ahead logging.\n\nWhen all three root causes coexist, the database exhibits a tangled failure pattern: mis-sized memory pools and aggressive checkpoint or autovacuum settings drive elevated log generation and page flush activity; simultaneous hidden corruption produces sporadic checksum errors, failed index lookups, and forced full-table scans that inflate I/O and space consumption; meanwhile, limited free space prevents growth of datafiles, logs, or rebuild work areas. Operators may observe oscillating CPU spin on internal retry loops, surges of log-write and page-flush waits even while devices report inconsistent utilization, sudden query failures with “no space” or “corrupt page” errors, repeated crash-recovery cycles, and integrity-check tools reporting new corrupt objects after each restart.\n\nCausally, aggressive or ill-fitting configuration parameters (e.g., undersized checkpoint segments, oversized work-memory, excessive parallel workers) accelerate data churn and checkpoint frequency, amplifying write pressure. This heightened I/O stream consumes remaining disk capacity faster, raising the likelihood of out-of-space events that interrupt normal write-ahead logging. Abrupt log pauses or failed extensions in turn increase the window for partially written pages, intensifying the risk of physical corruption, while corruption itself can force emergency rewrites or index rebuilds that require additional space the system no longer has. The feedback loop between mis-tuned parameters, space exhaustion, and corruption escalates from intermittent slowdowns to systemic outages, making isolation of any single root cause difficult and leaving the database in an unstable and potentially unrecoverable state.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 16,
+            "score": 0.5031947015610649,
+            "bm25_score": 16.026940630915938,
+            "lexical_score": 0.12259005145797597,
+            "matched_terms": [
+                "and",
+                "are",
+                "data",
+                "for",
+                "level",
+                "or",
+                "out",
+                "the",
+                "this",
+                "unstable",
+                "when",
+                "window",
+                "write",
+                "written"
+            ],
+            "match_count": 38,
+            "entry": {
+                "timeout_id": "mysql84_xplugin_write_timeout",
+                "parameter_name": "mysqlx_write_timeout",
+                "timeout_category": "x_protocol_network_write_timeout",
+                "scope": "global/session/X Plugin",
+                "official_definition": "Write timeout for X Plugin network communication.",
+                "trigger_condition": "A MySQL X Protocol write operation exceeds mysqlx_write_timeout.",
+                "workload_impact": "The X Protocol network write operation times out.",
+                "default_behavior": "Defined as a MySQL X Plugin system variable.",
+                "system_domain": "network_transport",
+                "cause_analysis": "This timeout is usually triggered when network data is not acknowledged, received, or written within the configured transport-level waiting window.",
+                "solution_guidance": "Inspect packet loss, transport latency, client responsiveness, proxy behavior, and whether slow consumers or unstable links are delaying network progress.",
+                "observable_symptoms": [
+                    "network timeout",
+                    "disconnect",
+                    "read/write interruption"
+                ]
+            }
+        }
+    }
+]

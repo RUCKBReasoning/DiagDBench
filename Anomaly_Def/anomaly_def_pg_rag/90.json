@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Buffer Cache and Latch Contention Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions block or deadlock each other while competing for mutually incompatible locks managed by the lock manager.\nBuffer Cache and Latch Contention Anomaly : Sessions serialize on hot buffer pages, latches or I/O-slot structures inside the buffer manager, stalling while trying to read, pin, or flush pages.\nData Block and Index Integrity Anomaly : On-disk data or index pages are physically or logically corrupted, breaking key ordering, page links, or checksum verification.\n\nWhen all three root causes surface together, the system exhibits an intertwined failure pattern: blocking chains, deadlock victim rollbacks and application timeouts coexist with elevated buffer-busy/latch waits, CPU spin without progress, and corruption-related scan or checksum errors. Queries that finally acquire locks may still stall on latch waits; once latch access is granted, they can encounter corrupted pages that trigger retried I/O, forced page eviction, or error propagation back into the transaction layer—re-opening locks and widening wait chains. Monitoring views show simultaneous growth in lock-wait seconds, latch-wait seconds, and corruption or page-verification error counts; throughput collapses and latency becomes highly erratic.\n\nCausal interaction: a damaged data or index page can become a persistent hot spot because repeated access attempts force reloads and verification retries, driving up buffer-cache pinning and latch pressure. The resultant latch contention prolongs critical-section time, extending the period during which locks are held and thus intensifying transaction blocking and deadlock probability. Conversely, long lock waits keep pages pinned longer, reducing buffer turnover and making it harder for the engine to evict or rebuild corrupted pages, which perpetuates integrity faults. The three anomalies therefore reinforce each other in a feedback loop where corruption induces latch contention, latch contention magnifies lock contention, and lock contention prevents timely repair or page replacement, collectively degrading OLTP workload performance and reliability far beyond the impact of any single anomaly.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.42663430949986364,
+            "bm25_score": 21.182683117339845,
+            "lexical_score": 0.14369747899159663,
+            "matched_terms": [
+                "and",
+                "are",
+                "can",
+                "during",
+                "is",
+                "latency",
+                "long",
+                "or",
+                "progress",
+                "queries",
+                "sessions",
+                "still",
+                "system",
+                "that",
+                "the",
+                "time",
+                "when",
+                "while"
+            ],
+            "match_count": 168,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

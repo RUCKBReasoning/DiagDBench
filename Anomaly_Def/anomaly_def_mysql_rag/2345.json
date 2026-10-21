@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Storage I/O Throughput Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer chooses a markedly sub-optimal execution plan even though statistics are adequate, leading to unnecessary work, poor join methods, or non-selective access paths.\nStorage I/O Throughput Anomaly: The physical storage layer is saturated, so read/write latency, IOPS queues, and device wait times all climb well above design limits.\nOperating System Resource Limit Anomaly: Kernel-enforced caps on file handles, async-I/O contexts, threads, shared memory, or similar resources are reached, blocking further allocations by the database processes.\n\nWhen these three root causes strike simultaneously, symptoms compound: a suddenly degraded plan may switch from index probes to full table scans, inflating I/O volume precisely when the storage subsystem is already at or beyond throughput capacity. The bloated I/O demand lengthens device queues and elevates buffer-I/O and log-file waits; meanwhile, the database tries to open more files, spawn extra parallel or I/O helper threads, or allocate larger async-I/O queues to cope, but the operating system refuses additional resources. End-users see erratic execution times, timeouts, and partial outages where existing sessions hang on I/O waits while new sessions, parallel workers, or background check-pointers fail to start, sometimes emitting kernel \"too many open files\", \"cannot create thread\", or \"AIO context limit reached\" errors. Performance metrics show a puzzling mix of optimizer plan churn, soaring physical I/O latency, and sporadic OS-level allocation failures that mask one another and hinder straightforward diagnosis.\n\nCausally, a poor plan acts as the initial amplifier, multiplying page reads and log writes. The excess demand pushes the storage layer into saturation, driving up latency and elongating the lifespan of every I/O request. Prolonged I/O times inflate the number of simultaneously active requests, which in turn drives the engine to request more kernel objects—file descriptors for every open segment, async-I/O control blocks, and worker threads. Once OS limits are hit, these new allocations are denied, causing additional plan invalidations, failed worker creation, and fallback to even less efficient serial plans. Each layer therefore feeds the next: sub-optimal planning → storage overload → OS resource exhaustion → further planning and execution degradation, creating a reinforcing spiral that dramatically worsens overall database throughput and availability.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3099,
+            "score": 0.4463830123986187,
+            "bm25_score": 52.253007332090164,
+            "lexical_score": 0.1704331450094162,
+            "matched_terms": [
+                "access",
+                "and",
+                "are",
+                "capacity",
+                "check",
+                "creation",
+                "engine",
+                "failures",
+                "file",
+                "for",
+                "is",
+                "latency",
+                "log",
+                "next",
+                "open",
+                "or",
+                "paths",
+                "storage",
+                "the",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-011215",
+                "error_name": "ER_AUDIT_LOG_JSON_READER_FAILED_TO_OPEN_FILE",
+                "official_description": "Could not open JSON file for reading. Reading next file if exists.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

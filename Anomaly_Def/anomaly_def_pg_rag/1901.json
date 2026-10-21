@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Storage I/O Throughput Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Optimizer Statistics Anomaly: Optimizer metadata (row counts, histograms, correlations) is stale or incomplete, causing systematic cardinality misestimation and poor plan selection.\nStorage I/O Throughput Anomaly: Under-provisioned or degraded storage devices saturate throughput, IOPS, or latency budgets, inflating physical read/write wait time.\nNetwork and Connectivity Resource Anomaly: Network transport or connection-handling resources are exhausted or unstable, delaying session establishment and result transfer.\n\nWhen all three root causes are present, the database may exhibit amplified and intertwined symptoms: execution plans chosen on bad statistics drive excessive random or large-volume I/O, which immediately collides with an already saturated storage layer, inflating physical I/O latency and enlarging buffer cache churn. At the same time, client sessions experience long connection handshakes and slow data streaming; result sets linger in network queues, holding server backends in client-wait states that obscure and interleave with storage waits. Overall response times fluctuate unpredictably, AWR/monitoring views show simultaneous spikes in optimizer re-parse/recompile counts, storage-level wait events, and client/network wait events, making it difficult to attribute the slowdown to a single subsystem.\n\nCausal interaction: stale or missing statistics can select plans that read far more pages than necessary or force non-selective full scans; this inflated I/O demand pushes the storage system beyond its throughput ceiling, further extending statement runtimes and keeping server processes busy. The prolonged runtimes in turn hold open network sockets for longer periods and generate larger in-flight result sets, increasing connection pool occupancy and consuming listener backlog slots, which aggravates the Network and Connectivity Resource Anomaly. Conversely, network stalls delay completion of queries and DML that would trigger automatic statistics refreshes, allowing statistics staleness to persist. The feedback loop between misestimated plans, storage saturation, and network congestion compounds resource contention across all three layers, severely degrading both transactional and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 188,
+            "score": 0.6814709617563579,
+            "bm25_score": 37.25140896565853,
+            "lexical_score": 0.12610668548956336,
+            "matched_terms": [
+                "and",
+                "buffer",
+                "client",
+                "is",
+                "large",
+                "latency",
+                "of",
+                "or",
+                "resources",
+                "session",
+                "the",
+                "unstable",
+                "with"
+            ],
+            "match_count": 13,
+            "entry": {
+                "error_code": "53200",
+                "error_name": "out_of_memory",
+                "official_description": "out of memory",
+                "error_class": "Class 53 - Insufficient Resources",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "memory_and_buffer",
+                "cause_analysis": "The failure is typically associated with insufficient memory headroom, buffer pressure, oversized intermediate state, or memory-allocation constraints inside the engine or client library.",
+                "solution_guidance": "Check memory availability, per-session memory settings, large sorts or hashes, and whether workload concurrency is amplifying memory consumption.",
+                "observable_symptoms": [
+                    "memory pressure",
+                    "allocation failure",
+                    "spill",
+                    "unstable latency"
+                ]
+            }
+        }
+    }
+]

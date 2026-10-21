@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + MVCC Version Maintenance Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Optimizer Statistics Anomaly : The cost model relies on stale, incomplete, or skew-blind statistics, producing systematic cardinality misestimates that misguide plan selection.\nMVCC Version Maintenance Anomaly : Obsolete row versions and index entries accumulate faster than background cleanup can reclaim them, inflating table and index size and adding visibility-check overhead.\nBuffer Cache and Latch Contention Anomaly : Frequently accessed pages and in-flight I/O slots are protected by latches that become hot under pressure, forcing sessions to stall or spin while waiting for buffer-cache access.\n\nWhen these three conditions coexist, the database can display a compound symptom set: queries suddenly flip from index to full-table scans over massively bloated heaps and indexes; the scans drag huge numbers of dead tuples into the buffer pool, displacing useful pages and amplifying buffer churn; latch and buffer-busy waits soar, CPUs spin on hot root pages, and overall throughput collapses. Execution-plan estimates diverge drastically from reality, autovacuum or purge workers remain saturated yet fall further behind, checkpoint and background-writer activity spike, and storage consumption and I/O latency rise concurrently. Administrators may observe alternating bursts of high I/O, CPU spin, and memory pressure, with query plans oscillating unpredictably as statistics age and data volume grows.\n\nCausal chain: heavy OLTP update/delete traffic generates MVCC bloat, swelling the physical size of tables and indexes. Because statistics are not refreshed at the same pace, the optimizer still believes row counts are low and selects plans (e.g., nested-loop joins or index probes) that, once executed, touch many more pages than expected. The unexpected I/O inflates buffer-pool turnover; hot index and freelist pages needed for version look-ups suffer latch congestion. Meanwhile, the enlarged object footprints and constant churn consume buffer slots, lengthening dirty-page queues and prolonging latch hold times, which in turn slow vacuum/cleanup workers, allowing even more dead versions to accumulate. This feedback loop ties stale statistics, MVCC bloat, and buffer/latch contention into a self-reinforcing composite anomaly that can cripple transactional workloads unless all three root causes are addressed together.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.7440548970679974,
+            "bm25_score": 33.398594042649734,
+            "lexical_score": 0.146849656893325,
+            "matched_terms": [
+                "and",
+                "because",
+                "database",
+                "for",
+                "index",
+                "object",
+                "of",
+                "or",
+                "row",
+                "sessions",
+                "table",
+                "than",
+                "that",
+                "the",
+                "this",
+                "to",
+                "waiting",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 168,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

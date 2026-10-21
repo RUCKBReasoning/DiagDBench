@@ -1,0 +1,62 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Database Memory Allocation Anomaly + Replication Synchronization Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Optimizer-input metadata (row counts, histograms, correlations) is stale or incomplete, causing systematic cardinality misestimation and sub-optimal plan choices.\nDatabase Memory Allocation Anomaly : Engine memory regions (buffer pool, work areas, plan cache, background heaps) expand beyond the safe envelope of the host, provoking OS pressure, paging, or OOM events.\nReplication Synchronization Anomaly : Standbys or downstream consumers cannot receive or apply log records at the rate produced by the primary, creating widening log-position gaps and retention of unrecycled log segments.\n\nWhen these three root causes manifest together, the system exhibits a compound failure pattern: the optimizer repeatedly selects memory-hungry or parallel plans due to inaccurate statistics, inflating per-query work buffers and hash tables; this enlarges overall memory consumption, drives the database process into paging and stalls, and further slows local log generation and background I/O. The impaired primary now produces transaction logs in bursts with uneven latency, while replicas—already lagging—fall further behind because their replay threads contend for scarce memory and suffer the same mis-estimated plans. Observable symptoms therefore include: 1) dramatic divergence between estimated and actual rows in both primary and replica plans, 2) resident-set size and swap usage climbing in lock-step with plan cache and work-area footprints, 3) steep replication delay and unrecycled WAL/redo segments exhausting primary storage, 4) intermittent query timeouts, replica read staleness, and destabilising failover readiness.\n\nCausally, stale statistics can trigger memory pressure by choosing plans that favor large in-memory sorts, hashes, or excessive parallelism. The resulting memory allocation anomaly not only degrades local execution but also starves the replication sender and receiver processes, slowing log shipping and apply throughput. Growing replication lag, in turn, prevents log file recycling, expanding the I/O footprint and exacerbating memory pressure through larger buffer-pool churn. Meanwhile, delayed replicas keep their own statistics ever more outdated, reinforcing the optimizer statistics anomaly on the replay side. Thus the three root causes reinforce each other in a feedback loop that degrades query performance, memory stability, and replication health simultaneously.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3335,
+            "score": 0.6057552723702081,
+            "bm25_score": 73.34469435627365,
+            "lexical_score": 0.23127272727272727,
+            "matched_terms": [
+                "and",
+                "apply",
+                "between",
+                "downstream",
+                "execution",
+                "failure",
+                "health",
+                "is",
+                "keep",
+                "lag",
+                "log",
+                "now",
+                "of",
+                "on",
+                "or",
+                "process",
+                "receiver",
+                "replica",
+                "replication",
+                "retention",
+                "sender",
+                "shipping",
+                "stability",
+                "stale",
+                "the",
+                "to",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-011451",
+                "error_name": "ER_GRP_RPL_APPLIER_EXECUTION_FATAL_ERROR",
+                "official_description": "Fatal error during execution on the Applier process of Group Replication. The server will now leave the group.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

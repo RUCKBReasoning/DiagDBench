@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Database Configuration Parameter Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Row-count, histogram, and correlation metadata are stale or incomplete, leading the optimizer to misestimate cardinalities and pick inefficient plans.\nDatabase Configuration Parameter Anomaly : Critical engine parameters for memory, parallelism, logging, and background workers are mis-tuned relative to hardware, workload mix, or version defaults, so the engine’s internal resource governance does not match real demand.\nOperating System Resource Limit Anomaly : Kernel-enforced ceilings on file handles, shared memory, threads, or other OS objects are reached, blocking the database from allocating the resources it requests.\n\nWhen these three root causes coexist, the system exhibits a tangled symptom set: queries suddenly switch to plans that demand far more memory, I/O, or worker processes than the engine or kernel can grant; execution plans show huge gaps between estimated and actual rows, while concurrent sessions stall on memory-allocation, file-open, or worker-spawn errors. Wait events oscillate between CPU-bound parallel workers and OS-reported resource-exhaustion waits; checkpoint storms or log-write stalls appear even though storage and CPU remain under-utilised. Administrators may observe flurries of statement re-plans, background process restarts, and kernel messages about ENOMEM, EMFILE, or EAGAIN, all interleaved with optimizer-related recompiles and configuration warnings, making single-cause diagnosis difficult.\n\nCausally, stale statistics drive the optimizer to over- or under-estimate work, which, under mis-set memory/parallelism parameters, inflates per-query resource requests (e.g., oversized hash tables, excessive parallel workers). These exaggerated requests push the database to the brink of configured limits; when the engine then asks the OS for large shared-memory extents, additional threads, or many file descriptors, it collides with tight kernel quotas. Each rejection by the OS triggers retries, plan invalidations, or emergency fallbacks that further skew workload timing and data distributions, which in turn exacerbate statistics staleness and prompt more aggressive (but still misguided) plan and parameter usage. The feedback loop among bad statistics, poor configuration, and OS denials amplifies contention, degrades throughput, and can precipitate partial or total service outages.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.4978821436312003,
+            "bm25_score": 21.329809260286375,
+            "lexical_score": 0.13806306306306304,
+            "matched_terms": [
+                "and",
+                "are",
+                "can",
+                "count",
+                "does",
+                "for",
+                "not",
+                "of",
+                "on",
+                "operating",
+                "or",
+                "sessions",
+                "stale",
+                "system",
+                "than",
+                "the",
+                "to",
+                "when",
+                "which",
+                "with"
+            ],
+            "match_count": 297,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_idle",
+                "parameter_name": "tcp_keepalives_idle",
+                "timeout_category": "network_idle_keepalive_probe_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time with no network activity after which the operating system should send a TCP keepalive message to the client.",
+                "trigger_condition": "A TCP client connection has no network activity longer than tcp_keepalives_idle on systems supporting TCP_KEEPIDLE or an equivalent socket option.",
+                "workload_impact": "Starts TCP keepalive probing for an otherwise idle client connection; together with interval and count settings this can lead to dead connection detection.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

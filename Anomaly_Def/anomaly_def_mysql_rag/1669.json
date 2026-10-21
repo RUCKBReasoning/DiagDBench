@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Database Configuration Parameter Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer consistently chooses a markedly sub-optimal execution plan even though statistics are reasonable, leading to excessive I/O, CPU, or skewed access paths.\nDatabase Configuration Parameter Anomaly : Critical engine settings (memory pools, checkpoint cadence, parallelism, etc.) are mis-tuned for the hardware and workload, so the instance’s behavior is limited more by configuration than by true resource scarcity.\nBuffer Cache and Latch Contention Anomaly : Sessions serialize on hot buffer pages or latches inside the buffer manager, causing buffer-busy waits, CPU spin, and throughput collapse.\n\nWhen these three root causes coincide, the database exhibits a compound failure pattern: 1) erratic plan switches or uniformly bad plans inflate logical I/O and amplify page-touch frequency; 2) mis-sized buffer pools, aggressive checkpoints, or poor parallelism settings force constant page eviction and dirty-page flush storms; 3) the flood of page accesses converges on a limited cache, driving latch spins and buffer-busy waits. Observable symptoms therefore include extreme variance in response times, sudden drops in throughput even while CPU or storage appear partially idle, surges of page-latch and log-write waits interleaved with optimizer-related recompile or plan-cache misses, and workload regressions immediately after parameter changes or engine upgrades.\n\nCausal chain: a sub-optimal plan increases the volume and concurrency of page accesses. Because configuration parameters have left the buffer pool undersized and checkpoint cadence too aggressive, these extra pages cannot stay resident; they churn rapidly, keeping dirty-page queues full and forcing frequent flushes. The elevated churn creates hotspots (e.g., index root pages, allocation map pages) on which many sessions contend, escalating latch acquisition time. Meanwhile, mis-tuned parallelism or work-memory settings can inflate the number of concurrent workers executing the bad plan, multiplying the contention. The resulting feedback loop—bad plan → higher I/O → cache churn → latch contention → longer execution → even more concurrent executions—drives a systemic performance meltdown that is far more severe than any single anomaly acting alone.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 4005,
+            "score": 0.47299471816594274,
+            "bm25_score": 39.86812286095567,
+            "lexical_score": 0.16856892010535557,
+            "matched_terms": [
+                "access",
+                "and",
+                "are",
+                "cache",
+                "cannot",
+                "engine",
+                "failure",
+                "for",
+                "in",
+                "is",
+                "log",
+                "memory",
+                "or",
+                "paths",
+                "storage",
+                "the",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-012122",
+                "error_name": "ER_IB_MSG_298",
+                "official_description": "Cannot find tablespace for '%s' in the tablespace memory cache",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

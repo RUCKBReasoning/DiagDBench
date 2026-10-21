@@ -1,0 +1,61 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + MVCC Version Maintenance Anomaly + Replication Synchronization Anomaly",
+            "Description": "SQL Workload Logic Anomaly: Application-level statements or transaction patterns that retrieve, scan, or update far more data than business logic requires, prolonging statement and transaction execution times.\nMVCC Version Maintenance Anomaly: Accumulation of obsolete row versions and rollback records because background cleaners cannot reclaim space as fast as new versions are created, inflating table/index size and visibility-check cost.\nReplication Synchronization Anomaly: Downstream replicas or subscribers fall behind because they cannot receive, write, or apply primary-generated log records at production speed, causing log-position gaps and retention of old segments.\n\nWhen all three root causes coexist, the database exhibits an amplified mix of symptoms:  \n• Individual queries and batches run long, appear repeatedly in slow-query logs, and generate outsized undo/redo volume.  \n• Heap and index bloat rise rapidly, dragging down cache efficiency and lengthening sequential scans and visibility checks; autovacuum or purge workers stay saturated yet never catch up.  \n• Primary-side transaction logs grow quickly while replica replay lag widens; checkpoints stall waiting for log recycling, and disk-space alarms fire on both primary and standby.  \n• Replica read consistency degrades because larger version stores must be traversed during snapshot creation; long-running replica queries further delay vacuum on the primary, increasing bloat.  \n• End-users see highly variable latency, timeouts, and stale read results, and failover readiness deteriorates as replicas fall ever further behind.\n\nCausally, chatty or poorly filtered application workloads (SQL Workload Logic Anomaly) drive excessive updates, deletes, and wide scans, inflating the volume of row versions produced per transaction. This surge overwhelms MVCC cleanup processes, leading to persistent version bloat that slows both foreground queries and background maintenance. The same write amplification balloons the transaction log, which must be shipped and replayed on replicas; their apply threads struggle with the heavier redo stream and the expanded tables they must update, creating Replication Synchronization Anomaly. Replica lag prevents the primary from recycling log segments, prolongs the global transaction-id horizon, and holds back vacuum from pruning old versions—thereby worsening MVCC bloat. In turn, the bloated storage multiplies the cost of the already inefficient application queries, further escalating change volume and log generation. The feedback loop among chatty workload, version accumulation, and replication lag compounds resource exhaustion and performance instability in OLTP environments.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.7037035934738168,
+            "bm25_score": 36.4086951906954,
+            "lexical_score": 0.16201723587615702,
+            "matched_terms": [
+                "an",
+                "and",
+                "because",
+                "cannot",
+                "change",
+                "cleanup",
+                "delay",
+                "for",
+                "from",
+                "long",
+                "of",
+                "or",
+                "prevents",
+                "query",
+                "statement",
+                "than",
+                "that",
+                "the",
+                "this",
+                "transaction",
+                "vacuum",
+                "waiting",
+                "when",
+                "while"
+            ],
+            "match_count": 202,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

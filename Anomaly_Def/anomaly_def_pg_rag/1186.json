@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Transaction Lock Contention Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Row-count and data-distribution metadata are stale or incomplete, causing systematic cardinality misestimation by the optimizer.\nTransaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same resources, producing long blocking chains or deadlocks that throttle throughput.\nTransaction Log Subsystem Anomaly : The write-ahead log file group, buffer, or archival pipeline cannot keep pace with redo generation, so commits stall on log-flush or log-switch waits.\n\nWhen these three root causes strike simultaneously the database exhibits a compounded performance collapse: poorly estimated plans choose wide scans, large hash builds, or inappropriate join orders that touch far more rows than necessary. The over-sized data touch amplifies lock footprint and hold time, lengthening blocker-waiter chains and raising the probability of deadlocks. At the same time the excessive I/O created by those plans inflates redo volume; commit latency rises as the saturated log subsystem struggles to flush bigger log buffers, further prolonging the duration that locks are held. Symptoms therefore include: explosive growth in both estimated-vs-actual row-count gaps and lock-wait time, surging deadlock reports, escalating log-flush wait statistics, and a backlog of unarchived or unreplicated log segments. Application users perceive slow or hanging transactions followed by timeout or deadlock-victim errors, while internal monitoring shows overlapping cardinality-error warnings, lock-manager waits, and log-write bottlenecks.\n\nCausally, the three anomalies reinforce one another in a feedback loop: 1) Stale statistics mislead the optimizer into selecting plans that scan or update large data regions, inflating redo generation and obtaining many or coarse-grained locks. 2) The bloated lock footprint heightens contention; blocked sessions hold locks and transactional state open longer, generating still more redo during rollbacks or retries. 3) The overloaded log subsystem slows every commit or rollback, extending lock hold times and preventing blocked statements from completing, which in turn prevents automatic statistics refreshes that could have corrected the original misestimates. The intertwined effects continuously degrade throughput until manual intervention breaks the cycle by refreshing statistics, relieving lock hot spots, or expanding and tuning the log subsystem.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.2921183926879867,
+            "bm25_score": 13.93562585424922,
+            "lexical_score": 0.12741935483870967,
+            "matched_terms": [
+                "and",
+                "are",
+                "by",
+                "data",
+                "latency",
+                "long",
+                "longer",
+                "on",
+                "or",
+                "sessions",
+                "stale",
+                "than",
+                "the",
+                "time",
+                "timeout",
+                "when"
+            ],
+            "match_count": 219,
+            "entry": {
+                "timeout_id": "pg16_tcp_user_timeout",
+                "parameter_name": "tcp_user_timeout",
+                "timeout_category": "network_unacknowledged_data_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies how long transmitted data may remain unacknowledged before the TCP connection is forcibly closed.",
+                "trigger_condition": "TCP data sent by PostgreSQL remains unacknowledged longer than tcp_user_timeout on systems supporting TCP_USER_TIMEOUT.",
+                "workload_impact": "The TCP connection is forcibly closed.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

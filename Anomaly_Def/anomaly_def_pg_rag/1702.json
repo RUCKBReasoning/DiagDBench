@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Data Block and Index Integrity Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Inaccurate or stale optimizer metadata causes systematic misestimation of cardinalities and costs.\nData Block and Index Integrity Anomaly : On-disk data or index structures are physically or logically corrupted, making their contents unreliable.\nStorage I/O Throughput Anomaly : The storage subsystem is unable to deliver the needed read/write bandwidth or latency, leading to persistent I/O waits.\n\nWhen all three root causes are present simultaneously, execution plans are chosen on the basis of wrong cardinality assumptions, may access corrupt indexes or pages, and then wait excessively on saturated storage devices. Observable effects include: wildly fluctuating plan shapes, repeated plan recompilations, queries that return missing or duplicate rows, checksum or page-corruption errors in engine logs, sudden fall-back to full table scans that amplify I/O volume, disk queues pinned at maximum depth, prolonged lock or latch holding due to slow I/O, and batch windows or SLA response times degrading unpredictably. Because misestimated plans may mask corruption (e.g., skipping damaged index ranges) while corruption forces the optimizer to choose scan-heavy plans that overload the already saturated storage, symptoms intertwine and are hard to attribute to a single layer.\n\nCausal chain and reinforcement: corrupted indexes or pages can invalidate previously collected statistics, causing the optimizer to rely on stale or misleading data; the resulting sub-optimal plans drive higher I/O, which pushes the storage layer past its throughput limits. Sustained storage saturation lengthens write-ahead-logging and checkpoint cycles, increasing the vulnerability window in which additional corruption can occur during power loss or crash recovery. Prolonged I/O queues also delay automatic statistics jobs, keeping statistics stale even longer. The feedback loop of bad statistics → poor access paths → excessive I/O → deeper corruption risk and staler statistics progressively deteriorates overall database health and makes recovery and diagnosis significantly harder.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.2900310867078429,
+            "bm25_score": 12.253609490195702,
+            "lexical_score": 0.1143806485911749,
+            "matched_terms": [
+                "and",
+                "are",
+                "holding",
+                "in",
+                "is",
+                "latency",
+                "maximum",
+                "of",
+                "or",
+                "stale",
+                "the",
+                "wait",
+                "when"
+            ],
+            "match_count": 165,
+            "entry": {
+                "timeout_id": "pg16_libpq_connection_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "client_connection_establishment_timeout",
+                "scope": "libpq/client connection parameter",
+                "official_definition": "Maximum wait for connection, in seconds; zero or not specified means wait indefinitely.",
+                "trigger_condition": "A libpq client connection attempt exceeds connect_timeout seconds.",
+                "workload_impact": "The client connection attempt fails instead of waiting indefinitely.",
+                "default_behavior": "Zero or absent value means wait indefinitely.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

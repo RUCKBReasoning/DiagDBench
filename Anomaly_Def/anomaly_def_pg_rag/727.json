@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Query Plan Selection Anomaly + Database Configuration Parameter Anomaly",
+            "Description": "Schema and Index Design Anomaly : Physical table, index, partition, and data-type choices do not match workload access patterns, forcing otherwise well-written SQL into inherently expensive access paths.\nQuery Plan Selection Anomaly : The optimizer chooses a sub-optimal execution plan even with acceptable statistics, often because of cost-model quirks, parameter-sensitivity, or unstable plan-cache behaviour.\nDatabase Configuration Parameter Anomaly : Instance-level parameters governing memory, parallelism, logging, and background processes are mis-tuned for the hardware and workload, so bottlenecks arise even when the underlying resources are not truly saturated.\n\nCombined phenomena: When all three root causes coexist, queries routinely fall into full scans, non-covering index probes, or bloated nested-loop joins, yet plan shapes can fluctuate unpredictably between executions as the optimizer wrestles with poor physical paths and misleading cost signals. Mis-sized buffer pools or work-memory settings magnify the impact—large scans evicted from cache thrash I/O, while underestimated work memory forces excessive spills. Checkpoint storms or undersized log files can stall already long-running statements, and plan instability after each cache flush or parameter change complicates troubleshooting. Performance counters show simultaneous I/O saturation bursts, CPU spikes from repeated re-optimizations, and idle gaps where throttling parameters (e.g., max parallel workers) prevent effective hardware usage.\n\nCausal chain: A mismatching schema forces the optimizer to consider heavier plans; the optimizer’s cost model, already challenged, may settle on especially poor strategies or oscillate between them. Misconfigured memory, parallelism, or logging parameters then amplify the cost of whatever plan is chosen—small caches penalize the large scans induced by bad indexing, while excessive parallelism makes nested loops fight for resources, reinforcing the bad plan’s inefficiency. Conversely, aggressive or fluctuating configuration changes invalidate or reweight cost estimates, triggering further plan churn. The feedback loop among design flaws, plan mis-selection, and ill-suited runtime settings drives compounding latency, throughput collapse, and diagnostic ambiguity.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.7371272885789014,
+            "bm25_score": 28.859859021564567,
+            "lexical_score": 0.12375762859633826,
+            "matched_terms": [
+                "access",
+                "and",
+                "because",
+                "execution",
+                "from",
+                "is",
+                "long",
+                "of",
+                "or",
+                "query",
+                "running",
+                "sql",
+                "the",
+                "when",
+                "with",
+                "work",
+                "workload"
+            ],
+            "match_count": 199,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

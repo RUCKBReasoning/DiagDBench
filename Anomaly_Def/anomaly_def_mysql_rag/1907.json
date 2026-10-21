@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Storage I/O Throughput Anomaly + CPU Resource Anomaly",
+            "Description": "Optimizer Statistics Anomaly: Row-count and data-distribution metadata no longer reflect reality, forcing the optimizer to misestimate cardinalities and to pick sub-optimal, often I/O- or CPU-heavy, execution plans.\nStorage I/O Throughput Anomaly: Physical read/write demand exceeds the bandwidth, IOPS, or latency capacity of the underlying storage stack, causing prolonged I/O waits and throttling the database engine.\nCPU Resource Anomaly: Aggregate database processing saturates available CPU cycles, driving run-queue growth and widespread latency once cores are fully utilized.\n\nWhen these three root causes strike simultaneously, the workload exhibits mixed and mutually amplifying symptoms: execution plans with severe row-count misestimates choose overly large scans or sub-optimal join methods that inflate both buffer gets and physical I/O. The inflated I/O queue collides with an already congested storage layer, producing escalating read/write latencies, stalled checkpoints, and log-flush back-pressure. As the engine waits for I/O, ready tasks accumulate; when I/O finally completes, cascades of workers awaken and contend aggressively for already scarce CPU, spiking context switches, run-queue length, and further elongating response times. Performance dashboards oscillate between I/O wait and CPU saturation states, masking the true multi-layer nature of the bottleneck and complicating diagnosis.\n\nCausally, stale or incomplete statistics steer the optimizer toward plans that generate needless data volume—large full-table or partition scans, Cartesian joins, or excessive parallelism—which dramatically raise both logical and physical I/O. The bloated I/O demand quickly exhausts storage throughput ceilings, lengthening I/O wait times and causing query threads to sleep. Once I/O eventually returns, accumulated workers resume simultaneously, driving sudden CPU spikes that oversubscribe cores and trigger scheduler delays. The ensuing CPU contention slows the database’s background tasks (autostats refresh, checkpoint writing) and prolongs I/O operation submission, feeding back into the storage bottleneck. This feedback loop means each anomaly worsens the others: bad statistics create wasteful work, storage saturation stretches that work out, and CPU starvation prevents the optimizer and maintenance processes from correcting statistics or rebalancing load, thereby locking the system into a spiraling degradation state.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.6509883159541361,
+            "bm25_score": 22.10125827849803,
+            "lexical_score": 0.12338709677419354,
+            "matched_terms": [
+                "and",
+                "contention",
+                "exceeds",
+                "execution",
+                "for",
+                "operation",
+                "or",
+                "query",
+                "resource",
+                "the",
+                "this",
+                "when",
+                "with",
+                "work",
+                "workload"
+            ],
+            "match_count": 90,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

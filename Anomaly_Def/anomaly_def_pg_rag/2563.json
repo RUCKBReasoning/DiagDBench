@@ -1,0 +1,62 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Transaction Lock Contention Anomaly + Database Configuration Parameter Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Costing metadata (row counts, histograms, correlation statistics) is stale, missing, or incomplete, causing systematic misestimation of cardinalities and sub-optimal plan choices.\nTransaction Lock Contention Anomaly : Concurrent sessions request incompatible locks on the same resource, creating long blocking chains or deadlocks that throttle throughput and trigger rollbacks.\nDatabase Configuration Parameter Anomaly : Engine-level settings for memory, background workers, checkpoint cadence, or parallelism are mis-tuned for the hardware or workload, so internal subsystems either starve or over-allocate resources.\n\nWhen all three root causes coexist, the workload is exposed to a compound failure mode: the optimizer repeatedly selects inefficient, lock-prone plans; those plans inflate the number and duration of row or page locks, while mis-sized memory, log, and parallelism parameters lengthen critical sections and slow the resolution of blocking. Observable effects include extreme divergence between estimated and actual row counts, sudden drops in TPS accompanied by surging lock-wait and deadlock events, erratic CPU and memory utilization (some cores idle while others spin), checkpoint or log-flush bursts that coincide with lock spikes, frequent automatic plan recompiles that still fail to relieve blocking, and application timeouts that persist even though hardware is under-utilised.\n\nCausal chain: stale or missing statistics lead the optimizer to choose plans that scan or update far more rows than necessary, expanding the lock footprint. Because configuration parameters are sub-optimal—e.g., work memory too small, max parallelism too high for the buffer pool, or checkpoint intervals too short—each bloated plan holds locks longer, competes for limited memory, and may force excessive log flushes. The prolonged execution time of these poor plans increases the window in which other transactions request conflicting locks, magnifying blocking chains and raising the probability of deadlocks. In turn, the resulting wait storms and victim rollbacks trigger additional auto-stats invalidations and plan recompiles, perpetuating the feedback loop and pushing overall transactional throughput into collapse.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.7571428571428571,
+            "bm25_score": 37.486891030426925,
+            "lexical_score": 0.19047619047619047,
+            "matched_terms": [
+                "and",
+                "because",
+                "blocking",
+                "conflicting",
+                "database",
+                "for",
+                "incompatible",
+                "is",
+                "lock",
+                "longer",
+                "metadata",
+                "of",
+                "or",
+                "other",
+                "row",
+                "sessions",
+                "than",
+                "that",
+                "the",
+                "time",
+                "to",
+                "transaction",
+                "when",
+                "while",
+                "window"
+            ],
+            "match_count": 288,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Replication Synchronization Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Multiple sessions serialize on hot buffer-cache pages or latches, stalling while trying to pin or modify pages held by others.\nReplication Synchronization Anomaly : Standby or subscriber nodes cannot receive, persist, or apply WAL/redo fast enough, producing widening log-position gaps and retained primary logs.\nStorage I/O Throughput Anomaly : The underlying volumes hit their physical IOPS/throughput ceiling, driving up read/write latency and I/O wait time.\n\nWhen all three root causes are active, the database exhibits a compounded failure pattern: 1) CPU spin and prolonged page-latch waits on the primary, 2) storage queues and device latency spiking on both primary and replicas, 3) rapidly expanding write-ahead logs, relay logs, or retained segments, 4) replication lag that grows despite normal network health, 5) checkpoint and background-writer activity that cannot drain dirty pages, and 6) cascading response-time and throughput degradation that is hard to attribute to a single tier because buffer, storage, and replication metrics all show distress.\n\nCausal chain: Hot pages and latch contention generate bursts of physical I/O (dirty-page flushes and replacement reads); this extra traffic pushes the storage subsystem past its throughput limit, further lengthening flush times and keeping pages pinned longer, which in turn intensifies latch contention. The same saturated storage slows WAL writes and replay on replicas, so replay lags behind, preventing log recycling on the primary. The growing retained log set increases storage usage and write volume, feeding back into the storage bottleneck and extending latch hold times. Thus each anomaly reinforces the others, producing a feedback loop that degrades buffer concurrency, disk service levels, and replication freshness simultaneously.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 12,
+            "score": 0.4480855434203051,
+            "bm25_score": 10.419562478578479,
+            "lexical_score": 0.15362877328195246,
+            "matched_terms": [
+                "activity",
+                "and",
+                "are",
+                "is",
+                "latency",
+                "longer",
+                "of",
+                "or",
+                "replication",
+                "sessions",
+                "that",
+                "the",
+                "this",
+                "time",
+                "wal",
+                "when"
+            ],
+            "match_count": 33,
+            "entry": {
+                "timeout_id": "pg16_wal_receiver_timeout",
+                "parameter_name": "wal_receiver_timeout",
+                "timeout_category": "replication_receiver_timeout",
+                "scope": "server/replication",
+                "official_definition": "Terminates replication connections that are inactive longer than the specified amount of time.",
+                "trigger_condition": "A WAL receiver replication connection is inactive longer than wal_receiver_timeout.",
+                "workload_impact": "The replication connection is terminated.",
+                "default_behavior": "PostgreSQL documentation defines the parameter under standby server settings.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

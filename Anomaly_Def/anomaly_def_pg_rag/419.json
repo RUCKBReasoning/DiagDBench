@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Transaction Log Subsystem Anomaly + CPU Resource Anomaly",
+            "Description": "Schema and Index Design Anomaly : Physical data-model structures, indexes, partitions, and data types do not match workload access patterns, forcing inefficient access paths.\nTransaction Log Subsystem Anomaly : The write-ahead logging pipeline—generation, buffering, flushing, archiving—cannot keep pace with redo volume, causing commit stalls and log-related waits.\nCPU Resource Anomaly : Database processes consume sustained, near-saturation CPU, leaving insufficient cycles for other work and inflating run-queue latency.\n\nWhen all three root causes co-exist, the database exhibits a blended symptom set: queries that already scan whole tables or fetch many rows because of missing or non-covering indexes amplify redo generation, which in turn overwhelms the log buffer and I/O band­width. As commits wait for log flushes, user sessions pile up, yet they remain CPU-hungry while looping on retries or scanning data, driving host utilization to saturation. Observers see mixed wait profiles—log-flush and CPU scheduler waits spike together—alongside escalating query latencies, checkpoint storms, and sharp drops in TPS. Monitoring dashboards may misleadingly attribute the slowdown to any one layer, while in reality lock contention, log stalls, and CPU thrashing are interleaved.\n\nCausally, inefficient schema and index design multiplies the amount of data each DML or SELECT touches, inflating both CPU cycles and redo bytes per transaction. The surplus redo intensifies pressure on the transaction-log subsystem; once log-flush latency lengthens, foreground sessions hold locks longer and re-execute scans, compounding CPU load. Elevated CPU utilization then slows background log writer and archive processes, further delaying flushes and creating a feedback loop. The synergy of these root causes therefore magnifies performance degradation far beyond what each would inflict in isolation, pushing an OLTP system into a cascading slowdown that is difficult to diagnose without recognizing their mutual reinforcement.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.363056550698385,
+            "bm25_score": 17.56597547900138,
+            "lexical_score": 0.14166666666666666,
+            "matched_terms": [
+                "amount",
+                "an",
+                "and",
+                "are",
+                "for",
+                "is",
+                "latency",
+                "longer",
+                "not",
+                "of",
+                "on",
+                "or",
+                "sessions",
+                "system",
+                "the",
+                "to",
+                "together",
+                "when",
+                "which",
+                "with"
+            ],
+            "match_count": 183,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_idle",
+                "parameter_name": "tcp_keepalives_idle",
+                "timeout_category": "network_idle_keepalive_probe_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time with no network activity after which the operating system should send a TCP keepalive message to the client.",
+                "trigger_condition": "A TCP client connection has no network activity longer than tcp_keepalives_idle on systems supporting TCP_KEEPIDLE or an equivalent socket option.",
+                "workload_impact": "Starts TCP keepalive probing for an otherwise idle client connection; together with interval and count settings this can lead to dead connection detection.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

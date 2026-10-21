@@ -1,0 +1,66 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Transaction Lock Contention Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer reuses or picks a markedly sub-optimal execution plan even though statistics are adequate.\nTransaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same resources, leading to long blocking chains or deadlocks.\nNetwork and Connectivity Resource Anomaly : Network, listener, authentication, or socket resources between clients and the database are saturated, delayed, or exhausted.\n\nWhen all three anomalies strike together, the system exhibits a multi-layer performance collapse: 1) poor plans inflate statement runtimes and touch far more rows or pages than necessary, 2) the prolonged execution holds locks for longer periods, creating extensive blocker–waiter trees and frequent deadlocks, and 3) stalled or retried client connections accumulate, exhausting connection slots and further delaying both new sessions and network I/O for running ones. Operators may observe rapidly oscillating or contradictory symptoms—e.g., alternating spikes of CPU, lock-wait time, and client-read waits; sudden bursts of deadlock victim errors followed by connection-timeout errors; and highly variable execution plans in the cache that correlate with rising network retransmissions.\n\nCausal chain: a sub-optimal plan increases execution time and result-set size, which keeps locks and sockets open longer. The extended lock hold causes other sessions to queue, swelling the active session count and driving up connection demand exactly when the listener or socket queues are already saturated. Simultaneously, network slowdowns delay result delivery, further prolonging transaction lifetimes and amplifying lock contention; the backlog of waiting sessions provokes more hard-parses, heightening the risk of the optimizer selecting yet another bad plan under different parameter bindings. Each layer therefore reinforces the next, producing a feedback loop that degrades throughput far more severely than any single anomaly would.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.7653463552154651,
+            "bm25_score": 42.83558037417137,
+            "lexical_score": 0.21782118405155054,
+            "matched_terms": [
+                "active",
+                "and",
+                "another",
+                "any",
+                "blocking",
+                "client",
+                "delay",
+                "for",
+                "incompatible",
+                "lock",
+                "locks",
+                "long",
+                "longer",
+                "of",
+                "open",
+                "or",
+                "query",
+                "session",
+                "sessions",
+                "statement",
+                "than",
+                "that",
+                "the",
+                "time",
+                "timeout",
+                "transaction",
+                "transactions",
+                "waiting",
+                "when"
+            ],
+            "match_count": 177,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

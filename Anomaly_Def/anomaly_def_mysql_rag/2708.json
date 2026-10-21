@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Database Memory Allocation Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Composite Anomaly Definition: The database concurrently suffers from stale or insufficient optimizer statistics, runaway internal memory consumption, and exhaustion of critical operating-system resource limits. Together these three root causes create a feedback loop in which poor cardinality estimates drive memory-hungry plan choices that in turn collide with both engine-level memory ceilings and kernel-enforced quotas, provoking severe instability and performance collapse.\n\nOptimizer Statistics Anomaly: Row-count and distribution statistics no longer reflect actual data, forcing the optimizer to misestimate cardinalities and select sub-optimal execution plans.\nDatabase Memory Allocation Anomaly: Buffer caches, work areas, and other engine heaps grow beyond the host’s safe memory envelope, triggering paging, swapping, or OOM terminations.\nOperating System Resource Limit Anomaly: Database processes hit kernel limits on virtual memory, shared memory, file descriptors, or thread counts, leading to failed allocations and partial outages even while the database remains nominally online.\n\nCombined Phenomena: Queries may oscillate between unexpectedly large hash joins and nested loops, each consuming excessive work memory; sudden surges in parallel workers or spilled sorts drive resident-set size upward until the kernel begins to swap or deny new allocations. Execution plans show huge gaps between estimated and actual rows, while system logs simultaneously record memory-pressure stalls and \"cannot allocate shared memory / cannot fork\" errors. Automatic statistics jobs or plan recompilations may fail due to missing resources, making statistics staleness persistent. Application sessions encounter intermittent timeouts, plan regressions after data loads, and sporadic crashes as the database alternates between memory thrashing and kernel-level denials.\n\nCausal Chain and Interaction: Stale statistics underestimate result set sizes, causing the optimizer to prefer in-memory hash joins, large sorts, or wide parallelism that request generous work buffers. These inflated allocations accelerate the Database Memory Allocation Anomaly, pushing the engine toward or beyond physical memory and swap limits. As memory pressure intensifies, the operating system enforces hard ceilings on shared memory, address space, or thread creation, which prevents new backends or parallel workers from starting and may abort ongoing queries. Failed allocations interrupt statistics maintenance and query execution, leaving statistics even more outdated and prompting further misestimation. The three anomalies thus reinforce one another—misestimation fuels memory over-commitment, over-commitment exhausts kernel resources, and kernel denials impede the corrective mechanisms—culminating in cascading slowdowns, aborted queries, and potential instance restarts.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 948,
+            "score": 0.40992158830197545,
+            "bm25_score": 42.208285565421846,
+            "lexical_score": 0.138878842676311,
+            "matched_terms": [
+                "and",
+                "cannot",
+                "combined",
+                "engine",
+                "execution",
+                "in",
+                "instability",
+                "level",
+                "of",
+                "or",
+                "other",
+                "pressure",
+                "resource",
+                "the",
+                "to",
+                "together",
+                "virtual",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "3103",
+                "error_name": "ER_UNSUPPORTED_ALTER_INPLACE_ON_VIRTUAL_COLUMN",
+                "official_description": "INPLACE ADD or DROP of virtual columns cannot be combined with other ALTER TABLE actions",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

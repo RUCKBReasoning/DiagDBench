@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Database Configuration Parameter Anomaly + Database Memory Allocation Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Optimizer input metadata (row counts, histograms, correlations) is stale or incomplete, provoking systematic cardinality misestimation.\nDatabase Configuration Parameter Anomaly : Engine-level runtime settings for memory, parallelism, checkpointing, and other behaviors are mis-tuned for the actual hardware, workload, or version, causing non-resource constrained stalls and regressions.\nDatabase Memory Allocation Anomaly : Aggregate memory consumed by caches, work areas, and background components exceeds safe physical limits, triggering OS pressure, paging, or OOM events.\n\nWhen these three root causes coexist, the system exhibits erratic and mutually reinforcing symptoms: query plans fluctuate between under- and over-allocation of memory; inaccurately costed plans may request excessive hash/sort buffers that the mis-configured memory ceilings still allow, leading to sudden resident-set growth, swap storms, and plan evictions. Checkpoint storms or aggressive background workers spawned by poor configuration contend with bloated caches for RAM, while misestimated row counts cause the optimizer to either underutilize or over-utilize parallel workers, amplifying CPU spin waits and buffer thrashing. Operators chosen on bad statistics (e.g., multi-way hash joins, large sorts) aggravate memory pressure; once paging begins, previously minor log-write or I/O waits balloon, and feedback loops of plan recompilation and memory churn create workload instability. Symptoms therefore span: wildly diverging execution times, chronic memory pressure alarms, CPU under- or over-utilization unrelated to actual data volume, frequent plan cache flushes, and post-upgrade regressions that defy single-cause attribution.\n\nCausally, stale or missing statistics misguide the optimizer into selecting memory-intensive or improperly parallelized plans. Mis-set configuration parameters (e.g., inflated work_mem, oversized buffer pool, aggressive parallelism, or lax memory overcommit) permit those plans to reserve more memory than the host can sustain. The resulting memory over-allocation pushes the database process into OS paging or OOM territory, triggering automatic memory eviction, plan recompilations, and emergency checkpoints, all of which further distort statistics and raise background-worker activity. Each anomaly therefore feeds the others: bad statistics provoke wasteful memory usage, misconfiguration fails to constrain it, and memory exhaustion in turn disrupts statistics collection and background maintenance, creating a vicious cycle that severely degrades both OLTP and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.4859476316282008,
+            "bm25_score": 17.65740114679675,
+            "lexical_score": 0.12111702127659574,
+            "matched_terms": [
+                "activity",
+                "and",
+                "are",
+                "can",
+                "for",
+                "is",
+                "of",
+                "on",
+                "or",
+                "settings",
+                "stale",
+                "system",
+                "than",
+                "the",
+                "to",
+                "when",
+                "which",
+                "with"
+            ],
+            "match_count": 301,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_idle",
+                "parameter_name": "tcp_keepalives_idle",
+                "timeout_category": "network_idle_keepalive_probe_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time with no network activity after which the operating system should send a TCP keepalive message to the client.",
+                "trigger_condition": "A TCP client connection has no network activity longer than tcp_keepalives_idle on systems supporting TCP_KEEPIDLE or an equivalent socket option.",
+                "workload_impact": "Starts TCP keepalive probing for an otherwise idle client connection; together with interval and count settings this can lead to dead connection detection.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Database Memory Allocation Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently chooses a markedly sub-optimal execution plan even though statistics are reasonably accurate, leading to inefficient access paths, incorrect join orders, or inappropriate parallelism settings.\nDatabase Memory Allocation Anomaly : The database engine allocates or leaks so much memory to caches, work areas, and background structures that the host experiences sustained RAM pressure, paging, or OOM events, degrading every component that depends on predictable memory availability.\nTransaction Log Subsystem Anomaly : The write-ahead logging machinery—log buffers, redo files, flush and archive operations—cannot keep pace with the workload’s commit rate, causing log-related waits and potential stalls on the write path.\n\nWhen these three root causes occur concurrently, the system exhibits a blended failure pattern: a poor query plan may trigger excessive logical and physical I/O, large hash or sort buffers, and elevated redo generation; the inflated memory footprint from those work areas—combined with uncontrolled plan and buffer cache growth—pushes the host into memory pressure and paging, which in turn slows log buffer flushes and data-file I/O. The log subsystem, already undersized or on a saturated device, now faces a spike in redo volume and longer flush times, driving commit latency higher and forcing additional waits inside sessions already executing inefficient plans. Symptoms therefore include: rapid oscillation between different bad plans, surge in memory reservations per session, abrupt drops in page-cache hit ratios, escalating log write/sync waits, frequent checkpoint or log-switch storms, and eventual process throttling or termination by the OS as swap fills—making it difficult to isolate a single culprit.\n\nCausally, an ill-chosen plan (e.g., nested loops on skewed data) multiplies row processing and generates large temporary structures, inflating per-query work memory. This accelerates memory exhaustion, which induces OS-level paging; the resulting I/O contention further degrades plan performance and extends transaction lifetimes, amplifying redo generation. The overtaxed log subsystem must now flush bigger, bursty redo streams while competing with paging and data reads, lengthening commit durations. Prolonged commits keep locks held longer, increasing concurrency and memory usage, which feeds back into higher cache bloat and additional sub-optimal plan selections as the optimizer misinterprets transient statistics. Thus, each anomaly intensifies the others, creating a self-reinforcing loop that can cripple an OLTP system.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.30220737942719267,
+            "bm25_score": 12.579014622287113,
+            "lexical_score": 0.1012295081967213,
+            "matched_terms": [
+                "and",
+                "are",
+                "bad",
+                "latency",
+                "or",
+                "session",
+                "sessions",
+                "that",
+                "the",
+                "this",
+                "waits",
+                "when",
+                "with"
+            ],
+            "match_count": 74,
+            "entry": {
+                "timeout_id": "mysql84_connection_handshake_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "connection_handshake_timeout",
+                "scope": "global",
+                "official_definition": "The number of seconds that the mysqld server waits for a connect packet before responding with Bad handshake.",
+                "trigger_condition": "A client does not complete the initial connection packet exchange within connect_timeout.",
+                "workload_impact": "The connection attempt fails during handshake.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

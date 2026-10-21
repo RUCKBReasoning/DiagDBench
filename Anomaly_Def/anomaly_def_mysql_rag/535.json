@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Transaction Log Subsystem Anomaly + CPU Resource Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level SQL or transaction design forces the engine to scan or change more data than business logic really requires.\nTransaction Log Subsystem Anomaly : The write-ahead logging path (log buffer, log files, flush, archive, replication retention) becomes the primary bottleneck for commits.\nCPU Resource Anomaly : Database processes consume an abnormally high share of CPU, saturating host cores and slowing all work.\n\nWhen these three root causes are active together the system exhibits extreme and unpredictable latency spikes: statements linger in the slow-query log while commit calls block behind log-flush waits; CPU utilisation stays near 100 %, with long run-queues and scheduler waits; log files grow and switch rapidly yet archiver or replication threads fall behind, triggering \"log file full\" or \"cannot allocate next log\" conditions; application timeouts, deadlocks, and recovery-driven crashes become more frequent because transactions remain open for extended periods and hold locks longer than expected. Diagnostic views simultaneously show top SQL by CPU time, high redo generation rates, and dominant log-related wait events, making single-factor analysis inconclusive.\n\nCausally, inefficient workload logic produces oversized scans, updates, and long-lived transactions that explode redo volume and CPU demand. The surge in redo overwhelms the transaction-log subsystem; flush and archive stalls delay commits, which in turn keep transactions—and their locks—open even longer. While sessions wait for log space, they continue to consume CPU in spin-loops, context switching, or retry logic, driving further CPU saturation. The oversubscribed CPU then slows both query execution and the log writer/archiver threads, deepening log congestion. This feedback loop between bad SQL semantics, log pressure, and CPU exhaustion amplifies each individual anomaly, rapidly degrading overall OLTP throughput and stability.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.39958061097008685,
+            "bm25_score": 18.808076831177566,
+            "lexical_score": 0.15868131868131868,
+            "matched_terms": [
+                "and",
+                "are",
+                "data",
+                "for",
+                "latency",
+                "longer",
+                "more",
+                "of",
+                "or",
+                "replication",
+                "sessions",
+                "than",
+                "the",
+                "this",
+                "time",
+                "to",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 26,
+            "entry": {
+                "timeout_id": "mysql84_replica_network_timeout",
+                "parameter_name": "replica_net_timeout",
+                "timeout_category": "replication_network_timeout",
+                "scope": "global/replication",
+                "official_definition": "The number of seconds to wait for more data from a source/replica connection before aborting the read.",
+                "trigger_condition": "A replica waits longer than replica_net_timeout for more data from the source connection.",
+                "workload_impact": "The replication network read is aborted and the replica considers the connection interrupted.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

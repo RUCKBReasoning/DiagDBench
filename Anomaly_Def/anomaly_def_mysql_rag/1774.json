@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Database Memory Allocation Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Optimizer Statistics Anomaly : The cost model receives stale or incomplete statistics, resulting in systematic cardinality misestimation and sub-optimal plan shapes.\nDatabase Memory Allocation Anomaly : Cumulative memory reserved for caches, work areas, and background structures exceeds the safe limits of the host, provoking paging, cache shrinkage, or OOM termination.\nBuffer Cache and Latch Contention Anomaly : Sessions serialize on hot buffer pages, latches, or I/O slots, producing buffer-busy and latch waits that throttle throughput.\n\nWhen all three root causes surface concurrently, the system exhibits a compound failure pattern: queries choose memory-intensive operators (hash joins, large sorts) based on misestimated cardinalities; these operators overrun available work memory, forcing the engine to evict clean pages, shrink caches, and escalate to temporary spill or OS swap. The resulting buffer churn and reduced cache residency turn frequently accessed index root pages into hotspots, driving latch spin and wait amplification. Observable symptoms include wildly inaccurate plan estimates, sudden plan regressions after data changes, escalating resident-set size, swap-daemon or cgroup throttling, plummeting buffer-cache hit ratios, surges in PAGE_LATCH_* or BUFFER_BUSY waits, CPU spin without progress, and query runtimes that grow super-linearly with concurrency.\n\nCausal interaction: stale statistics mislead the optimizer to request much more (or much less) memory than is actually needed; over-allocated work areas aggregate across many sessions, tipping the instance into global memory pressure. As the engine trims the buffer pool to free memory for work areas, hotter pages cycle in and out more frequently, extending the hold time of latches protecting those pages. Longer latch waits elongate query execution, keeping their memory allocations alive and further intensifying pressure. Conversely, memory shortages can inhibit automatic statistics refresh jobs, perpetuating statistics staleness, while latch contention slows data-modification operations, leaving partitions in states that diverge further from recorded statistics. The three anomalies thus form a feedback loop that magnifies latency, degrades throughput, and risks stability far more severely than any single anomaly would in isolation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.33623962420821724,
+            "bm25_score": 10.875331886030207,
+            "lexical_score": 0.12983007710157946,
+            "matched_terms": [
+                "and",
+                "for",
+                "global",
+                "is",
+                "latency",
+                "of",
+                "or",
+                "progress",
+                "sessions",
+                "stale",
+                "that",
+                "the",
+                "time",
+                "waits",
+                "when",
+                "with"
+            ],
+            "match_count": 79,
+            "entry": {
+                "timeout_id": "mysql84_connection_handshake_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "connection_handshake_timeout",
+                "scope": "global",
+                "official_definition": "The number of seconds that the mysqld server waits for a connect packet before responding with Bad handshake.",
+                "trigger_condition": "A client does not complete the initial connection packet exchange within connect_timeout.",
+                "workload_impact": "The connection attempt fails during handshake.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

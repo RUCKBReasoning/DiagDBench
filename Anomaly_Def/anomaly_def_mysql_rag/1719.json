@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + MVCC Version Maintenance Anomaly + CPU Resource Anomaly",
+            "Description": "Composite definition: The system simultaneously suffers (1) heavy lock-manager conflicts that block or deadlock concurrent transactions, (2) runaway accumulation of obsolete MVCC versions that background cleaners cannot reclaim in time, and (3) sustained saturation of host CPU resources by database processes. The three root causes coexist and interact, jointly degrading throughput, increasing latency, and threatening availability on a write-intensive OLTP workload.\n\nCombined anomalous phenomena: \n• Long blocker-waiter chains and periodic deadlock victim errors coincide with rapidly growing table and index footprints, swollen undo/version stores, and vacuum/cleaner workers stuck in backlog. \n• Global CPU utilisation hovers near 100 %, run-queue length rises, and CPU-related wait events dominate performance views; at the same time, lock wait time, query latency, and application timeouts climb steeply. \n• Select queries encounter larger visibility-check costs due to bloated page contents, while update/delete statements both wait on locks and spend extra CPU sifting through long version chains. \n• Background cleanup workers, starved of CPU and blocked by long-running transactions, fall further behind, allowing version bloat and storage usage to snowball. \n\nCausal interaction: Lock contention prolongs transaction lifetimes and increases the number of in-flight snapshots, preventing garbage collection of obsolete versions and accelerating MVCC bloat. The enlarged version store forces foreground queries to scan more row versions, inflating CPU consumption, while overworked cleanup processes intensify CPU demand yet make little progress because they are pre-empted by user back-ends and impeded by still-held locks. Rising CPU saturation slows both application and maintenance tasks, lengthening lock hold times and further delaying version reclamation. This feedback loop amplifies each individual anomaly, driving the database into a state where blocking, storage growth, and CPU exhaustion reinforce one another, culminating in severe throughput collapse and potential service outages.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.5346635866541471,
+            "bm25_score": 27.74265679679882,
+            "lexical_score": 0.14027322404371584,
+            "matched_terms": [
+                "and",
+                "because",
+                "behind",
+                "blocked",
+                "by",
+                "contention",
+                "global",
+                "long",
+                "or",
+                "query",
+                "resource",
+                "running",
+                "the",
+                "this",
+                "time",
+                "with",
+                "workload"
+            ],
+            "match_count": 82,
+            "entry": {
+                "timeout_id": "mysql84_regular_expression_time_limit",
+                "parameter_name": "regexp_time_limit",
+                "timeout_category": "expression_evaluation_time_limit",
+                "scope": "global/session",
+                "official_definition": "The time limit for regular expression matching operations performed by the regular expression engine.",
+                "trigger_condition": "A regular expression match operation exceeds regexp_time_limit.",
+                "workload_impact": "The regular expression operation is constrained by the configured time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

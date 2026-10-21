@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Buffer Cache and Latch Contention Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer chooses a markedly sub-optimal execution plan even though statistics are accurate, inflating logical I/O, work-set size, and concurrency demand.\nBuffer Cache and Latch Contention Anomaly: Multiple sessions compete for hot buffer pages, latches, or page-pin resources, stalling on shared memory structures below the lock manager.\nStorage I/O Throughput Anomaly: The underlying storage subsystem is saturated so that physical read/write latency, IOPS, or throughput no longer meet the database engine’s demand.\n\nWhen these three root causes strike together, the workload experiences runaway response times and throughput collapse. Poorly chosen plans generate excessive and often non-sequential page access, rapidly rotating working sets through an already stressed buffer pool. As the same hot index or data pages are repeatedly loaded and evicted, latch and buffer-busy waits spike, while the engine simultaneously floods the storage layer with redundant physical I/O that it cannot sustain. Observable symptoms include: frequent plan flips coinciding with bursts of PAGE-LATCH or BUFFER_BUSY waits, CPU cores spinning while others idle in I/O wait, oscillating throughput, dramatic variance between executions of the same statement, inflated physical I/O counts despite a high logical read footprint, and sustained device queue depths with increasing storage latency. Monitoring views will show intertwined wait classes—optimizer-induced re-compilations, buffer latch stalls, and disk I/O waits—making single-root attribution difficult.\n\nCausal chain: a sub-optimal plan widens scans or drives high-fan-out nested loops, multiplying page requests. The surge in page fetches thrashes an undersized or already hot buffer cache, forcing frequent page replacements and intensifying latch acquisition on root and leaf pages. Each latch stall lengthens statement duration, keeping pages pinned longer and raising concurrency on the same hot structures. The inflated physical read/write demand then overruns storage throughput limits, elongating I/O service times; the slower I/O further extends page residency in the buffer and prolongs latch holds, feeding back into even more contention and reinforcing the optimizer’s incentive to keep or regenerate bad plans. The intertwined feedback loops between inefficient plans, memory-level contention, and storage saturation magnify latency and can lead to systemic slowdown or near-stall conditions under both OLTP and hybrid analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.6374238827827777,
+            "bm25_score": 22.40379699900064,
+            "lexical_score": 0.13088444595052523,
+            "matched_terms": [
+                "acquisition",
+                "an",
+                "and",
+                "cannot",
+                "for",
+                "in",
+                "is",
+                "lock",
+                "longer",
+                "or",
+                "sessions",
+                "statement",
+                "the",
+                "to",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 40,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

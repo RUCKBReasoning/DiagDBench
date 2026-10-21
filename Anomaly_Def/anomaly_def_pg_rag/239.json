@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Excess accumulation of obsolete row versions and index entries overwhelms background cleanup, inflating the version store and visibility-check costs.\nBuffer Cache and Latch Contention Anomaly : Hot pages and limited buffer-manager synchronization resources force sessions to serialize on latches or spin on buffer pins.\n\nWhen both root causes strike together, the system exhibits a mixture of version-store bloat symptoms and severe buffer-level waits. Dirty, bloated data pages churn through a constrained buffer pool, so every logical read or cleanup pass contends for already-hot pages and their latches. Wait-event dashboards show a blend of long MVCC visibility checks, buffer-busy waits, and latch spin time; checkpoint and auto-vacuum workers stay active yet fall behind, while foreground transactions report rising latency, especially on UPDATE/DELETE-heavy tables whose root index pages are constantly reloaded or latched. Disk usage and I/O grow rapidly, yet CPU idle time shrinks because sessions alternate between spinning on latches and scanning oversized heaps.\n\nCausally, unchecked MVCC bloat multiplies the number of pages that must reside in or cycle through the buffer cache, inflating pressure on limited buffer frames and the latches that guard them. Each cleanup, scan, or index probe must touch more pages, increasing the frequency with which many sessions converge on the same hot root or visibility map page, intensifying latch contention. In turn, heavy latch waits delay autovacuum or cleaning workers, allowing even more obsolete versions to accumulate and perpetuating the vicious cycle. The two anomalies therefore reinforce each other: version bloat amplifies buffer contention, and buffer contention slows the very tasks needed to remove the bloat, driving the database into progressive performance degradation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.7448669950738915,
+            "bm25_score": 28.35725985481181,
+            "lexical_score": 0.1495566502463054,
+            "matched_terms": [
+                "and",
+                "because",
+                "database",
+                "delay",
+                "for",
+                "index",
+                "of",
+                "or",
+                "other",
+                "row",
+                "sessions",
+                "that",
+                "the",
+                "time",
+                "to",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 176,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

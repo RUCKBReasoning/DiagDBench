@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Transaction Lock Contention Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Composite Definition:\nThis anomaly represents the simultaneous occurrence of (1) application-level SQL that processes more data and holds transactions open longer than necessary, (2) heavy lock-manager conflicts among concurrent transactions, and (3) intense competition for buffer-cache pages and their protecting latches. The three layers—statement semantics, lock management, and buffer management—interact to form a single cascading performance failure.\n\nCombined Observable Phenomena:\n• Very long or highly variable statement and transaction latencies; the same queries dominate slow-query and wait-event logs.\n• Large, persistent blocker–waiter chains, frequent deadlock detections, and a surge in lock-wait and deadlock-victim rollback statistics.\n• Concurrent spikes in buffer-busy and page-latch wait events, elevated CPU spin time, and stalled I/O submission as dirty pages accumulate.\n• Connection pools exhaust, application threads back up, timeouts and retries rise, and overall throughput collapses even though hardware utilization appears erratic (some CPUs spinning, others idle).\n\nCausal Chain and Interaction:\nInefficient SQL logic expands the number of rows scanned, updated, or locked and keeps transactions active across longer code paths. The enlarged lock footprint and extended hold time greatly raise the probability of conflicting lock requests, triggering blocking and deadlocks in the lock manager. While sessions wait, they still pin buffer pages and retain latches, making those pages hot spots. Simultaneously, the same overly broad scans repeatedly touch a small working set (e.g., index root or hot counter pages), driving up latch and buffer-busy contention. Latch stalls lengthen statement execution, which in turn prolongs transaction duration and exacerbates lock contention—a feedback loop that further amplifies blocking chains. The intertwined waits at the statement, lock, and buffer levels obscure root-cause isolation and push the database into a throughput-limiting congestion spiral.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.6729803951752362,
+            "bm25_score": 26.851940449691526,
+            "lexical_score": 0.1593012839653628,
+            "matched_terms": [
+                "and",
+                "blocking",
+                "conflicting",
+                "connection",
+                "for",
+                "lock",
+                "longer",
+                "number",
+                "of",
+                "or",
+                "sessions",
+                "statement",
+                "than",
+                "the",
+                "this",
+                "to",
+                "transaction",
+                "wait",
+                "waits",
+                "while"
+            ],
+            "match_count": 37,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

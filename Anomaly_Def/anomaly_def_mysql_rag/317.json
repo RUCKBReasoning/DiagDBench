@@ -1,0 +1,62 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Storage I/O Throughput Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Engine-level runtime parameters are mis-tuned relative to hardware capacity, workload mix, or version defaults, causing artificial bottlenecks that are not rooted in the true limits of the underlying resources.\nStorage I/O Throughput Anomaly : The physical storage subsystem cannot sustain the read/write rate demanded by the workload, leading to saturated IOPS / bandwidth, deep I/O queues, and growing latency.\nOperating System Resource Limit Anomaly : Kernel-enforced limits on file handles, shared memory, threads, or other process quotas are exhausted, preventing the database from allocating additional OS resources even though engine-level limits might appear sufficient.\n\nWhen all three anomalies are present simultaneously, symptoms overlap and amplify: checkpoint or log-flush storms triggered by bad configuration drive a surge of physical writes that immediately collide with an already bandwidth-bound storage layer, inflating write latency and pushing buffer-pool eviction and background flush waits sky-high. At the same time, the mounting backlog of I/O requests inflates kernel I/O contexts, file descriptors, and thread counts until OS quotas are hit, producing intermittent \"cannot allocate\" errors, failed worker spawns, or stalled client logins. Performance dashboards will show contradictory signals—CPU under-utilized, storage queues maxed out, and a rash of engine errors—making the root cause appear elusive. Batch windows stretch, OLTP transactions time out, and even read-only queries stall while waiting on dirty-page flushes that the storage device and OS can no longer service.\n\nCausally, mis-set configuration parameters (e.g., too small checkpoint intervals, undersized log files, or excessive per-session work memory) act as the trigger that inflates I/O pressure well beyond normal steady-state. This sustained pressure forces the storage layer into throughput saturation, prolonging every I/O and keeping queue depths persistently high. The prolonged queues, in turn, require more kernel objects—threads, async-I/O contexts, file descriptors—which quickly consume the OS resource quotas. Once these limits are breached, the database engine can neither launch relief workers nor open additional files, so the mis-configuration and storage congestion self-reinforce, driving the system into a cascading slowdown that is far more severe than any of the three anomalies would cause in isolation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5618,
+            "score": 0.61225974158634,
+            "bm25_score": 65.1158481486769,
+            "lexical_score": 0.1771978021978022,
+            "matched_terms": [
+                "and",
+                "any",
+                "are",
+                "both",
+                "capacity",
+                "configuration",
+                "engine",
+                "file",
+                "in",
+                "is",
+                "latency",
+                "log",
+                "of",
+                "only",
+                "or",
+                "pressure",
+                "set",
+                "storage",
+                "the",
+                "this",
+                "time",
+                "to",
+                "version",
+                "when",
+                "will",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013766",
+                "error_name": "ER_DEPRECATED_PERSISTED_VARIABLE_WITH_ALIAS",
+                "official_description": "The variable %s has been renamed to %s, and the old name deprecated. Only the old name was found in the persisted variable file. Next time the file is saved, both names will be stored. Issue any SET PERSIST command to save the file, get rid of this warning, and prepare the persisted configuration for when the variable is removed in a future version.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Buffer Cache and Latch Contention Anomaly + Replication Synchronization Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level SQL or transaction design forces the engine to process more rows, data, or time than business logic requires.\nBuffer Cache and Latch Contention Anomaly : Concurrent sessions serialize on hot buffer pages, latches, or page pins, throttling access despite sufficient overall memory.\nReplication Synchronization Anomaly : Downstream replicas cannot receive, write, or replay the primary’s log stream fast enough, causing widening log-position and apply lag.\n\nWhen all three root causes manifest together, the database exhibits extreme and wide-ranging distress: individual statements and whole transactions run long, saturating the buffer pool and generating spikes of buffer-busy and page-latch waits. CPU usage climbs yet throughput stalls as sessions spin on latches. Simultaneously, the primary’s write-ahead log grows rapidly and is retained because replicas fall behind; replica read staleness increases, failover readiness degrades, and log-shipping queues balloon. Monitoring views show the same costly SQL repeatedly in slow-query lists, elevated latch wait classes, and ever-increasing replication delay. These symptoms intertwine, making it difficult to attribute slow response times, memory pressure, or log growth to a single layer.\n\nCausally, inefficient SQL amplifies logical I/O volume and concentrates access on a small working set (e.g., hot index root pages), driving buffer churn and latch contention. The stalled foreground sessions extend transaction lifetimes, yielding larger and burstier log batches that must traverse the replication pipeline. At the same time, latch contention and buffer thrashing on the primary slow log generation checkpoints, while replicas—already stressed by reapplying the same inefficient SQL—struggle to read hot pages fast enough, further widening replay lag. The growing log backlog prevents space reclamation on the primary, inflating the buffer cache footprint and intensifying contention. Thus, inefficient workload logic, internal buffer-manager contention, and replication apply bottlenecks form a reinforcing loop that degrades both primary performance and downstream consistency.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.6564182259763113,
+            "bm25_score": 29.073230822312624,
+            "lexical_score": 0.14634020618556698,
+            "matched_terms": [
+                "access",
+                "and",
+                "because",
+                "behind",
+                "by",
+                "contention",
+                "in",
+                "is",
+                "long",
+                "or",
+                "query",
+                "statements",
+                "the",
+                "time",
+                "together",
+                "when",
+                "workload"
+            ],
+            "match_count": 102,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

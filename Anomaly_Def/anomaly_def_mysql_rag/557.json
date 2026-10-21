@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Transaction Log Subsystem Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Database Configuration Parameter Anomaly: Engine-level settings such as buffer size, checkpoint cadence, log-file size, and parallel I/O limits are mis-tuned for the hardware and workload, becoming a root cause of inefficiency on their own.\nTransaction Log Subsystem Anomaly: The write-ahead logging path—log buffer, log files, flush/sync, archiving, or replication retention—cannot sustain the commit rate, throttling transactional progress.\nStorage I/O Throughput Anomaly: The physical storage layer is saturated in throughput or IOPS, driving up latency for reads and writes across data, temp, and log files.\n\nWhen these three root causes coexist, the database experiences a compound failure pattern: commit latency and log-write waits soar while device-level I/O queues remain full, checkpoints and log-file switches occur in rapid succession, and background tasks such as archiving or replication fall behind, causing log directories to bloat. Application sessions observe timeouts, fluctuating throughput, and sharp CPU spikes as processes spin waiting for log buffer space or redo flush completion. Administrators may see paradoxical metrics—e.g., large idle memory yet aggressive checkpoint storms, or high log flush counts on already saturated disks—making diagnosis ambiguous.\n\nCausal chain: Mis-sized configuration parameters (tiny log buffers, small/maxed-out log files, overly aggressive checkpoint intervals, insufficient async I/O slots) force the engine to flush and switch logs more frequently. This amplified write churn overwhelms an already bandwidth-constrained storage subsystem. The storage saturation in turn slows each flush and file switch, deepening log backlog and extending critical sections that hold locks, thereby magnifying the Transaction Log Subsystem bottleneck. The log stall propagates up the stack, blocking write transactions, stalling background cleaners, and triggering further emergency checkpoints—closing a feedback loop where poor configuration exacerbates log pressure, which overloads limited storage, which further delays logging, culminating in severe OLTP performance collapse and elevated risk of crash-recovery or data-loss windows.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5713,
+            "score": 0.6161713202080982,
+            "bm25_score": 63.023935611101805,
+            "lexical_score": 0.18491379310344824,
+            "matched_terms": [
+                "and",
+                "are",
+                "cannot",
+                "data",
+                "engine",
+                "failure",
+                "file",
+                "files",
+                "force",
+                "is",
+                "latency",
+                "log",
+                "of",
+                "or",
+                "pressure",
+                "recovery",
+                "redo",
+                "storage",
+                "the",
+                "when",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013870",
+                "error_name": "ER_IB_MSG_LOG_UPGRADE_FORCED_RECV",
+                "official_description": "Cannot upgrade format (v%lu) of redo log files when innodb-force-recovery > 0.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

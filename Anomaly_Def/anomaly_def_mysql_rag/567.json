@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Composite anomaly definition: The database simultaneously suffers from unchecked growth of obsolete MVCC row versions and rollback records while also exhausting critical kernel-level resources (file descriptors, shared-memory segments, threads, etc.) enforced by the operating system. The two root causes coexist and interact, producing a compound failure mode that is more severe than either anomaly on its own.\n\nCombined anomalous phenomena: Administrators observe rapidly increasing dead-tuple ratios, bloated tables and indexes, and cleanup workers that are unable to keep pace; at the same time the engine begins to emit errors about failing to open files, create background or parallel workers, or attach to shared memory. Autovacuum/VACUUM jobs may start and immediately abort due to inability to acquire additional file handles or shared-memory slots, causing the version store to grow even faster. Long-running queries and replication slots hold old snapshots, while new sessions intermittently fail to connect. Query latencies rise because of swollen page scans, and partial outages emerge where existing back-ends remain active but maintenance and new work cannot proceed.\n\nCausal interaction: MVCC bloat drives increased I/O, additional temporary files, more background vacuum workers, and larger shared-memory requests—directly inflating consumption of kernel resources such as file descriptors and shm segments. Simultaneously, hitting OS limits throttles or terminates the very maintenance workers needed to reclaim dead versions, so version accumulation accelerates. Each anomaly therefore reinforces the other: MVCC churn pushes the system toward OS ceilings, and the OS ceilings prevent cleanup, creating a feedback loop that rapidly degrades performance, threatens transaction-ID wraparound, and can culminate in a service-level outage.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.7384523910642996,
+            "bm25_score": 28.89967825739435,
+            "lexical_score": 0.1281746368809989,
+            "matched_terms": [
+                "and",
+                "because",
+                "by",
+                "engine",
+                "is",
+                "limit",
+                "long",
+                "or",
+                "other",
+                "query",
+                "resource",
+                "running",
+                "the",
+                "time",
+                "work"
+            ],
+            "match_count": 28,
+            "entry": {
+                "timeout_id": "mysql84_regular_expression_time_limit",
+                "parameter_name": "regexp_time_limit",
+                "timeout_category": "expression_evaluation_time_limit",
+                "scope": "global/session",
+                "official_definition": "The time limit for regular expression matching operations performed by the regular expression engine.",
+                "trigger_condition": "A regular expression match operation exceeds regexp_time_limit.",
+                "workload_impact": "The regular expression operation is constrained by the configured time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

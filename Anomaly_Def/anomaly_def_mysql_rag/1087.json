@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Database Memory Allocation Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same objects, forming blocking chains or deadlocks that stall progress until a victim is chosen or the blocking clears.\nDatabase Memory Allocation Anomaly : Database processes collectively consume more RAM than the host can safely supply, provoking paging, OOM terminations, or cache churn that slows every operation.\nStorage Space Capacity Anomaly : Growth of data, log, temp, or backup areas exhausts allotted disk space, leading to allocation failures, halted checkpoints, or inability to persist new data.\n\nWhen all three root causes strike together, the system exhibits a layered failure pattern: long-running lock waits accumulate sessions that continue to hold memory grants; the pinned buffers, work areas, and unreleased cursor state inflate physical memory usage, pushing the host into swap. As memory pressure rises, sort and hash operations spill to TEMP, and frozen transactions prevent log truncation, rapidly consuming remaining disk space. The resulting space exhaustion then blocks further writes and checkpoints, which in turn prolongs lock retention and forces even more sessions into wait queues. Observable symptoms include explosive growth of lock-wait time, escalating resident-set size, heavy paging, TEMP and log files auto-extending until full, aborted transactions due to deadlock, OOM, or \"no space left\" errors, and cluster failover or crash-recovery storms that make diagnosis difficult.\n\nCausally, initial lock contention lengthens transaction lifetimes, keeping their memory allocations and unflushed log segments open. This sustained resource hold amplifies memory pressure and temp-space use. As RAM becomes scarce, the engine spills work to disk, accelerating space consumption; once disk fills, checkpoints and log archiving stall, so lock-holding transactions cannot commit or roll back, deepening the contention. Each anomaly therefore feeds the others in a reinforcing loop that can drive the database into a cascading outage if not interrupted.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.745270248336309,
+            "bm25_score": 27.618561641498964,
+            "lexical_score": 0.15090082778769678,
+            "matched_terms": [
+                "aborted",
+                "and",
+                "contention",
+                "engine",
+                "is",
+                "long",
+                "operation",
+                "operations",
+                "or",
+                "pattern",
+                "resource",
+                "running",
+                "the",
+                "this",
+                "time",
+                "together",
+                "when",
+                "work"
+            ],
+            "match_count": 53,
+            "entry": {
+                "timeout_id": "mysql84_regular_expression_time_limit",
+                "parameter_name": "regexp_time_limit",
+                "timeout_category": "expression_evaluation_time_limit",
+                "scope": "global/session",
+                "official_definition": "The time limit for regular expression matching operations performed by the regular expression engine.",
+                "trigger_condition": "A regular expression match operation exceeds regexp_time_limit.",
+                "workload_impact": "The regular expression operation is constrained by the configured time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

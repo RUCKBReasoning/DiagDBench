@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Storage I/O Throughput Anomaly + CPU Resource Anomaly",
+            "Description": "Optimizer Statistics Anomaly: Row-count and data-distribution metadata no longer reflect reality, forcing the optimizer to misestimate cardinalities and to pick sub-optimal, often I/O- or CPU-heavy, execution plans.\nStorage I/O Throughput Anomaly: Physical read/write demand exceeds the bandwidth, IOPS, or latency capacity of the underlying storage stack, causing prolonged I/O waits and throttling the database engine.\nCPU Resource Anomaly: Aggregate database processing saturates available CPU cycles, driving run-queue growth and widespread latency once cores are fully utilized.\n\nWhen these three root causes strike simultaneously, the workload exhibits mixed and mutually amplifying symptoms: execution plans with severe row-count misestimates choose overly large scans or sub-optimal join methods that inflate both buffer gets and physical I/O. The inflated I/O queue collides with an already congested storage layer, producing escalating read/write latencies, stalled checkpoints, and log-flush back-pressure. As the engine waits for I/O, ready tasks accumulate; when I/O finally completes, cascades of workers awaken and contend aggressively for already scarce CPU, spiking context switches, run-queue length, and further elongating response times. Performance dashboards oscillate between I/O wait and CPU saturation states, masking the true multi-layer nature of the bottleneck and complicating diagnosis.\n\nCausally, stale or incomplete statistics steer the optimizer toward plans that generate needless data volume—large full-table or partition scans, Cartesian joins, or excessive parallelism—which dramatically raise both logical and physical I/O. The bloated I/O demand quickly exhausts storage throughput ceilings, lengthening I/O wait times and causing query threads to sleep. Once I/O eventually returns, accumulated workers resume simultaneously, driving sudden CPU spikes that oversubscribe cores and trigger scheduler delays. The ensuing CPU contention slows the database’s background tasks (autostats refresh, checkpoint writing) and prolongs I/O operation submission, feeding back into the storage bottleneck. This feedback loop means each anomaly worsens the others: bad statistics create wasteful work, storage saturation stretches that work out, and CPU starvation prevents the optimizer and maintenance processes from correcting statistics or rebalancing load, thereby locking the system into a spiraling degradation state.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.36656867719629244,
+            "bm25_score": 14.199607378408484,
+            "lexical_score": 0.11035653650254668,
+            "matched_terms": [
+                "and",
+                "are",
+                "exceeds",
+                "for",
+                "latency",
+                "means",
+                "of",
+                "or",
+                "stale",
+                "the",
+                "this",
+                "wait",
+                "when"
+            ],
+            "match_count": 174,
+            "entry": {
+                "timeout_id": "pg16_libpq_connection_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "client_connection_establishment_timeout",
+                "scope": "libpq/client connection parameter",
+                "official_definition": "Maximum wait for connection, in seconds; zero or not specified means wait indefinitely.",
+                "trigger_condition": "A libpq client connection attempt exceeds connect_timeout seconds.",
+                "workload_impact": "The client connection attempt fails instead of waiting indefinitely.",
+                "default_behavior": "Zero or absent value means wait indefinitely.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

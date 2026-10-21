@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Replication Synchronization Anomaly + Storage Space Capacity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Replication Synchronization Anomaly : Standbys or downstream consumers cannot receive or apply WAL/redo fast enough to keep up with the primary, widening the log-position gap.\nStorage Space Capacity Anomaly : Physical or logical free space in data, log, archive, temp, or backup areas is exhausted, causing allocation failures and stalls.\nOperating System Resource Limit Anomaly : Kernel-enforced limits on file handles, shared memory, semaphores, threads, or similar objects are reached, preventing the database from creating or accessing required resources.\n\nWhen all three conditions arise together, the database estate experiences a spiraling failure mode: replication lag grows, retained WAL or relay logs accumulate, and the resulting surge in on-disk log volume drives the underlying storage toward full. At the same time, exhausted OS limits prevent archiver, cleanup, or apply processes from opening additional files, allocating shared memory, or spawning workers, so neither the primary nor the replicas can reclaim space or accelerate catch-up. Symptoms include rapidly inflating disk usage on primaries and standbys, replica replay lag jumping while apply workers crash or refuse to start, repeated \"no space\" or \"too many open files\" errors in both database and system logs, stalled checkpoints, disabled autovacuum or compaction tasks, and an increasing number of read-only queries served stale data from far-behind replicas.\n\nCausal chain and reinforcement: (1) Initial OS resource exhaustion (e.g., file-descriptor limits) throttles replication apply processes and archive writers; (2) slowed apply causes WAL retention on the primary, inflating log volume; (3) the sudden consumption of disk space triggers storage-capacity breaches that further block WAL archiving and temp-space operations; (4) with storage full, retry storms and additional worker spawns push the system even harder against the same OS limits, causing more process failures; (5) the feedback loop leaves both primary and replicas unable to advance, risking total outage or data-loss exposure if the primary crashes before replicas catch up.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.742493927125506,
+            "bm25_score": 30.4464969835937,
+            "lexical_score": 0.1416464237516869,
+            "matched_terms": [
+                "and",
+                "apply",
+                "before",
+                "causing",
+                "data",
+                "downstream",
+                "is",
+                "lag",
+                "or",
+                "preventing",
+                "replica",
+                "replication",
+                "stalled",
+                "the",
+                "to",
+                "when"
+            ],
+            "match_count": 42,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

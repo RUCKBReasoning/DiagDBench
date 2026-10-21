@@ -1,0 +1,61 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Transaction Lock Contention Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Schema and Index Design Anomaly: The physical data model lacks the indexes, partitions, or correct data types required by the workload, forcing otherwise well-written statements into wide scans and row-by-row lookups.\nTransaction Lock Contention Anomaly: Concurrent transactions request incompatible locks on the same rows, pages, or tables and are blocked or dead-locked while the lock manager resolves the conflict.\nNetwork and Connectivity Resource Anomaly: The transport path between clients and the database is saturated or connection slots are exhausted, slowing or aborting session establishment and data transfer.\n\nWhen these three root causes strike at once, the database exhibits an intertwined symptom set: full-table or non-covering index scans take longer and touch more rows, magnifying the number and duration of row and page locks they hold. Those prolonged locks create deeper blocker-waiter chains and more frequent deadlocks, which in turn keep backend sessions open and idle while they wait on locks or perform rollbacks. The inflated session count pushes the listener or process pool toward its limit; new client connections stall in handshake or are refused, and existing sessions pile up in client-read/client-write waits as network queues back up. Application layers experience a mix of slow query responses, lock-timeout or deadlock errors, and connection-establishment failures that are hard to attribute to a single layer because they surface concurrently.\n\nCausally, the missing or mis-shaped indexes expand the lock footprint and execution time of each statement, directly increasing the probability of lock contention. Blocked transactions then occupy server processes and hold TCP sockets open longer, consuming connection slots and filling the listener backlog. As the connection pool reaches its ceiling and network latency grows, clients retry and open additional sessions, further pressuring the listener and leaving even more idle sessions that still retain locks. This feedback loop amplifies both lock contention and network exhaustion, degrading throughput and making recovery difficult until all three design, concurrency, and connectivity issues are addressed together.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.4056283723410834,
+            "bm25_score": 22.48816027752388,
+            "lexical_score": 0.19323250627265126,
+            "matched_terms": [
+                "and",
+                "are",
+                "client",
+                "connection",
+                "dead",
+                "establishment",
+                "idle",
+                "is",
+                "latency",
+                "number",
+                "of",
+                "on",
+                "or",
+                "reaches",
+                "server",
+                "session",
+                "sessions",
+                "tcp",
+                "that",
+                "the",
+                "this",
+                "time",
+                "timeout",
+                "to",
+                "when"
+            ],
+            "match_count": 297,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_count",
+                "parameter_name": "tcp_keepalives_count",
+                "timeout_category": "network_keepalive_failure_threshold",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the number of TCP keepalive messages that can be lost before the server connection to the client is considered dead.",
+                "trigger_condition": "The number of lost TCP keepalive probes reaches tcp_keepalives_count on systems supporting TCP_KEEPCNT.",
+                "workload_impact": "The server can consider the client connection dead after the configured keepalive failure threshold.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

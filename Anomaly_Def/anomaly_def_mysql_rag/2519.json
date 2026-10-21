@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Buffer Cache and Latch Contention Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level statements or transaction patterns force the engine to touch more rows, hold locks longer, or perform excessive round-trips beyond actual business need.\nBuffer Cache and Latch Contention Anomaly : Concurrent sessions serialize on hot buffer pages, latches, or page-pin structures, causing CPU spinning and wait events rather than true resource shortage.\nOperating System Resource Limit Anomaly : Kernel-enforced ceilings on file descriptors, shared memory, semaphores, threads, or cgroup quotas prevent the database from allocating new low-level resources.\n\nWhen these three root causes manifest together, the workload generates oversized scans and long-running transactions that hammer a limited buffer pool, creating hot pages and latch hotspots. At the same time, the database process periodically fails to obtain additional kernel objects, intensifying stalls. Observable symptoms include: explosive growth of slow-query log entries, buffer-busy and latch wait events spiking in lockstep with application timeouts, CPU cores saturated by spin loops yet low transactional throughput, sudden \"cannot allocate shared memory / file handle / thread\" errors, aborted background workers, and severe variance in response times. Monitoring may show buffer cache hit ratios oscillating as pages churn, while OS metrics reveal descriptor or memory namespace exhaustion exactly when latch waits peak.\n\nCausally, chatty or bulk-scan SQL inflates the rate and duration of page accesses, concentrating pressure on a subset of data blocks. This amplifies latch contention in the buffer manager; each stall extends transaction lifetimes, which in turn holds resources longer and issues more I/O, deepening the hotspot. Prolonged contention causes threads to linger and proliferate, quickly consuming kernel file handles, shared-memory segments, or thread slots. Once OS limits are hit, the engine cannot create new worker threads or allocate additional shared buffers, so latch contention can no longer be alleviated by scaling concurrency, and blocked sessions accumulate. The feedback loop—inefficient SQL driving latch storms that balloon process counts and exhaust kernel quotas—leads to cascading slowdowns, partial outages, and ultimately systemic unavailability unless both the workload logic and the underlying resource ceilings are corrected.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.44260143887521514,
+            "bm25_score": 22.14430343377162,
+            "lexical_score": 0.13749999999999998,
+            "matched_terms": [
+                "aborted",
+                "and",
+                "by",
+                "cannot",
+                "in",
+                "longer",
+                "obtain",
+                "of",
+                "or",
+                "sessions",
+                "than",
+                "the",
+                "this",
+                "time",
+                "transaction",
+                "unless",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 119,
+            "entry": {
+                "timeout_id": "mysql84_innodb_row_lock_wait_timeout",
+                "parameter_name": "innodb_lock_wait_timeout",
+                "timeout_category": "innodb_row_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "The length of time in seconds an InnoDB transaction waits for a row lock before giving up.",
+                "trigger_condition": "An InnoDB transaction waits longer than innodb_lock_wait_timeout for a row lock.",
+                "workload_impact": "The lock wait gives up; by default only the current statement is rolled back unless innodb_rollback_on_timeout is enabled.",
+                "default_behavior": "Defined as an InnoDB system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

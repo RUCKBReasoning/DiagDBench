@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Composite anomaly definition: The database simultaneously suffers from runaway accumulation of obsolete MVCC row versions and from saturation or instability of the network / connection-handling layer, so that internal storage-management pressure and external communication bottlenecks coexist and interact to degrade OLTP throughput and availability.\n\nCombined anomalous phenomena: Administrators observe ballooning table and index sizes, escalating autovacuum or purge backlogs, and steadily worsening sequential-scan times while, at the same moments, clients experience slow or failed connection attempts, intermittent time-outs, and prolonged fetch latencies. Backend processes pile up in client-read or client-write waits, yet overall transaction throughput drops because statements also spend more time traversing bloated heaps and indexes. Listener queues fill, socket counts spike with half-open or idle connections holding old snapshots, and version-store wrap-around alarms coexist with operating-system warnings about exhausted file descriptors or TCP retransmissions. The mixed symptoms can obscure root-cause isolation because server-side I/O amplification mimics network slowness, while network stalls extend transaction lifetimes and hide version-bloat effects until space or XID horizons are suddenly reached.\n\nCausal interaction: Network congestion or connection-pool exhaustion delays transaction commit/close messages, leaving sessions in long-running states that keep their old snapshots alive. These snapshots hold back the global xmin or equivalent reclaim horizon, preventing vacuum/purge workers from removing dead tuples and deleted index entries. As obsolete versions accumulate, on-disk and in-cache data structures grow, increasing the work each query must perform and lengthening result-set transmission times. Larger result sets and slower scans in turn prolong client/network usage per transaction, further stressing listener backlogs, socket buffers, and bandwidth, creating a positive feedback loop that amplifies both anomalies and accelerates resource exhaustion. Ultimately, the intertwined issues can culminate in transaction-ID wraparound risks, critical disk-space pressure, widespread connection failures, and severe OLTP service degradation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 16,
+            "score": 0.5542685587171982,
+            "bm25_score": 18.414543610969158,
+            "lexical_score": 0.10979797979797978,
+            "matched_terms": [
+                "and",
+                "are",
+                "client",
+                "communication",
+                "data",
+                "global",
+                "network",
+                "or",
+                "read",
+                "slow",
+                "the",
+                "times",
+                "write"
+            ],
+            "match_count": 25,
+            "entry": {
+                "timeout_id": "mysql84_xplugin_write_timeout",
+                "parameter_name": "mysqlx_write_timeout",
+                "timeout_category": "x_protocol_network_write_timeout",
+                "scope": "global/session/X Plugin",
+                "official_definition": "Write timeout for X Plugin network communication.",
+                "trigger_condition": "A MySQL X Protocol write operation exceeds mysqlx_write_timeout.",
+                "workload_impact": "The X Protocol network write operation times out.",
+                "default_behavior": "Defined as a MySQL X Plugin system variable.",
+                "system_domain": "network_transport",
+                "cause_analysis": "This timeout is usually triggered when network data is not acknowledged, received, or written within the configured transport-level waiting window.",
+                "solution_guidance": "Inspect packet loss, transport latency, client responsiveness, proxy behavior, and whether slow consumers or unstable links are delaying network progress.",
+                "observable_symptoms": [
+                    "network timeout",
+                    "disconnect",
+                    "read/write interruption"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Replication Synchronization Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Composite Definition: The database concurrently suffers from stale or incomplete optimizer statistics, a replication pipeline that cannot keep up with primary redo generation, and impending or actual exhaustion of allocated storage space. The intersection of these three root causes causes a compound failure mode where poor cardinality estimates drive inefficient execution plans that inflate write-amplification, which in turn overwhelms both replication apply capacity and on-disk free space, precipitating log-retention and allocation failures across the cluster.\n\nOptimizer Statistics Anomaly: Critical metadata about row counts, value distributions, and correlations is outdated or missing, leading the optimizer to systematically misestimate cardinalities and choose sub-optimal plans.\nReplication Synchronization Anomaly: Standby or subscriber nodes lag in receiving or applying WAL/redo, widening log position gaps and preventing timely log recycling on the primary.\nStorage Space Capacity Anomaly: Physical or logical free space in data, temp, or log areas approaches exhaustion, threatening allocation failures and halting workload progress.\n\nCombined Phenomena:  • Query plans suddenly shift to full scans, large hash joins, or bloated sort/hash spill operations, driving up data-file growth, temp usage, and redo volume.  • Replication lag accelerates; relay logs or retained primary log segments balloon because space-starved replicas replay changes ever more slowly.  • Free space drops in multiple segments (data, temp, WAL, archive) leading to auto-extend failures, checkpoint stalls, and \"disk full\" errors that propagate to both primary and replicas.  • Monitoring shows simultaneous spikes in buffer cache churn, background statistics auto-update retries, replication retransmissions, and space-management alarms, making it hard to pinpoint a single culprit.\n\nCausal Chain: Stale or absent statistics trigger inefficient, I/O-heavy execution plans that inflate the volume of modified pages and generated redo. The surge in redo must traverse the replication channel; limited apply throughput on replicas widens lag windows and forces the primary to retain log segments longer, consuming additional disk space. As data and log files grow, storage free space dwindles; once thresholds are crossed, auto-stats jobs may be skipped, temp spills fail to allocate space, and replication may halt when it cannot write relay or archive logs—each feedback loop worsening the others. Ultimately, the trio of misestimation, replication backlog, and space exhaustion creates a self-amplifying degradation that threatens both performance and availability across the database ecosystem.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5724,
+            "score": 0.5143384630581712,
+            "bm25_score": 48.80232336538421,
+            "lexical_score": 0.17491683898228894,
+            "matched_terms": [
+                "and",
+                "are",
+                "capacity",
+                "data",
+                "disk",
+                "failure",
+                "failures",
+                "file",
+                "growth",
+                "is",
+                "log",
+                "management",
+                "missing",
+                "or",
+                "redo",
+                "storage",
+                "the",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013881",
+                "error_name": "ER_IB_MSG_LOG_FILE_MISSING_FOR_ID",
+                "official_description": "Missing redo log file %s (with start_lsn = %llu).",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Storage Space Capacity Anomaly + CPU Resource Anomaly",
+            "Description": "Storage Space Capacity Anomaly : Exhaustion of physical or logical free space for data, logs, or temporary areas, causing allocation failures and write stalls.\nCPU Resource Anomaly : Saturation of host CPU cycles by database processes, driving high run-queue waits and global latency.\n\nComposite phenomena: When space is running out while CPUs are already saturated, the database may exhibit a cascade of symptoms—DML, index builds, and temp-space operations first slow because the scheduler is starved, then fail outright with \"no space\" or \"cannot extend\" errors. Log writer, checkpoint, and archive processes contend for CPU at the same moment they are blocked on space, inflating commit latency and replica lag. Auto-extend attempts or space-reclaim jobs invoke additional background workers, spiking CPU even higher. From the client side the system appears intermittently hung, with query response times oscillating between CPU wait events and space-allocation errors, making the primary bottleneck hard to isolate.\n\nCausal chain and interaction: Space exhaustion forces the database to perform emergency tasks—auto-extension, space-reclamation, aggressive checkpointing, or archival moves—that themselves consume CPU. Conversely, heavy CPU saturation can delay or starve regular purge, compression, or backup jobs that would normally free space, allowing unused segments and logs to accumulate until the capacity threshold is hit. The two anomalies therefore reinforce each other: lack of CPU prevents space cleanup, while lack of space spawns more CPU-intensive exception handling, ultimately degrading throughput and raising the probability of a full outage.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.5289987229363624,
+            "bm25_score": 20.80443641831512,
+            "lexical_score": 0.1441860465116279,
+            "matched_terms": [
+                "and",
+                "are",
+                "at",
+                "between",
+                "can",
+                "client",
+                "handling",
+                "is",
+                "latency",
+                "or",
+                "query",
+                "running",
+                "system",
+                "that",
+                "the",
+                "when",
+                "while"
+            ],
+            "match_count": 317,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

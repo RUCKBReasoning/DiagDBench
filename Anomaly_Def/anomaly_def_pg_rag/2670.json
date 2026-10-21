@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Data Block and Index Integrity Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Hot buffer-pool pages, pins, or latches become a serialization bottleneck, forcing sessions to stall or spin while trying to access the same in-memory page frames.\nData Block and Index Integrity Anomaly : On-disk data or index pages are physically or logically corrupt, breaking key order, page links, or heap-to-index mappings and causing inconsistent query results and checksum errors.\nStorage I/O Throughput Anomaly : The underlying storage layer cannot sustain the read/write throughput or latency demanded by the workload, producing long device queues and elevated I/O wait times.\n\nWhen these three root causes strike simultaneously, the database experiences an intertwined set of symptoms: 1) elevated buffer-busy, latch, and page-pin waits coexist with 2) intermittent corruption errors, failed index probes, or sudden fall-back to full scans, while 3) read and write latencies from the storage layer remain persistently high. The corruption forces repeated page rereads, verification retries, or index rebuild attempts, each of which lengthens latch hold times and inflates buffer churn. Meanwhile, storage saturation stretches dirty-page flush cycles, so hot pages stay pinned and dirty for longer, further amplifying latch contention. The blend of corrupt structures and slow I/O also leads to erratic query plans, duplicate or missing rows, prolonged recovery checkpoints, and CPU spin loops that do not translate into useful work, making the overall performance degradation severe and hard to attribute to a single subsystem.\n\nCausally, storage throughput exhaustion slows every physical read and write, increasing the window during which pages remain latched or pinned in the buffer cache. The longer latch hold times exacerbate buffer contention, especially on the corrupt or hot pages that require extra verification or recovery work. Conversely, corruption inside data blocks and index pages causes additional I/O—forced rereads, page restores, or index repairs—which pushes more requests onto an already saturated storage system, deepening the throughput deficit. The prolonged flush and recovery cycles keep dirty or suspect pages resident and locked, causing further latch pile-ups. Thus, each anomaly feeds the others: corruption drives more I/O, slow I/O extends latch lifetimes, and latch contention hinders timely resolution of corruption and flush queues, creating a reinforcing loop that degrades both correctness and performance.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.5214237352741263,
+            "bm25_score": 16.662578067375723,
+            "lexical_score": 0.13012987012987012,
+            "matched_terms": [
+                "an",
+                "and",
+                "are",
+                "by",
+                "for",
+                "latency",
+                "not",
+                "of",
+                "on",
+                "or",
+                "probes",
+                "sessions",
+                "system",
+                "that",
+                "the",
+                "to",
+                "when",
+                "which"
+            ],
+            "match_count": 292,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_interval",
+                "parameter_name": "tcp_keepalives_interval",
+                "timeout_category": "network_keepalive_retry_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time after which a TCP keepalive message that has not been acknowledged by the client should be retransmitted.",
+                "trigger_condition": "A TCP keepalive probe is not acknowledged for tcp_keepalives_interval on systems supporting TCP_KEEPINTVL or an equivalent socket option.",
+                "workload_impact": "Controls retry timing for keepalive probes used to detect unresponsive client connections.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

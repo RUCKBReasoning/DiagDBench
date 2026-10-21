@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Replication Synchronization Anomaly + CPU Resource Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Replication Synchronization Anomaly : Standbys or downstream consumers cannot ingest and apply primary WAL at the rate it is produced, widening log-position gaps and preventing log recycling.\nCPU Resource Anomaly : Database processes saturate host CPU, driving load-average and run-queue pressure and slowing every code path that requires compute time.\nOperating System Resource Limit Anomaly : The database hits kernel-enforced ceilings on handles, processes/threads, shared memory, or similar objects, blocking new work even though engine-level slots still exist.\n\nWhen all three root causes strike together the system exhibits a compound failure signature: replica lag explodes while both primary and replica show near-100 % CPU, yet error logs also record ‘cannot allocate shared memory / open file / create thread’ messages. DML and queries on the primary slow because WAL flushes are throttled by back-pressure from stalled replicas, autovacuum or parallel workers fail to start due to kernel limits, and monitoring shows both high scheduler wait events and replication wait events. Replica apply workers repeatedly fall behind or crash-restart when they cannot obtain file handles or shared-memory segments, further inflating CPU as they respawn, while primary-side WAL segments accumulate, threatening disk exhaustion and jeopardizing failover readiness.\n\nCausal interaction: CPU saturation lengthens every system call, causing replication sender and receiver processes to miss network deadlines and aggravate apply lag. Growing apply lag forces more WAL traffic and larger relay logs, which in turn require additional CPU to process, forming a positive feedback loop. Simultaneously, the elevated process and thread count spawned by retrying replication and maintenance tasks drives the system past kernel resource ceilings; each allocation failure triggers more retries and logging, consuming yet more CPU. Hitting OS limits also prevents the database from spawning extra apply or parallel workers that might have alleviated lag or distributed CPU load, thereby entrenching both replication backlog and CPU starvation. The three anomalies thus reinforce one another, producing a blended symptom set that is broader, more severe, and harder to attribute to a single layer.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 239,
+            "score": 0.2763193700700383,
+            "bm25_score": 11.678995877663414,
+            "lexical_score": 0.12238160291438979,
+            "matched_terms": [
+                "and",
+                "by",
+                "create",
+                "engine",
+                "error",
+                "failure",
+                "in",
+                "is",
+                "level",
+                "or",
+                "pressure",
+                "resource",
+                "the",
+                "to",
+                "together"
+            ],
+            "match_count": 13,
+            "entry": {
+                "error_code": "HV00M",
+                "error_name": "fdw_unable_to_create_reply",
+                "official_description": "fdw unable to create reply",
+                "error_class": "Class HV - Foreign Data Wrapper Error (SQL/MED)",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

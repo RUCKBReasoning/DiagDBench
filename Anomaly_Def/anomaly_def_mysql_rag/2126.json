@@ -1,0 +1,61 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Data Block and Index Integrity Anomaly + Storage I/O Throughput Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Data Block and Index Integrity Anomaly: Physical pages or index structures are corrupted or inconsistent with logical row sets, leading to unreliable data retrieval and integrity-check failures.\nStorage I/O Throughput Anomaly: The underlying storage subsystem is saturated or degraded, driving up read/write latency, queue depths, and I/O waits for data, temp, or log files.\nNetwork and Connectivity Resource Anomaly: Client–server traffic is constrained by exhausted connection slots, socket backlog, or congested network paths, producing connection errors and prolonged data-transfer waits.\n\nWhen these three root causes coexist, the database may exhibit a confusing mix of symptoms: queries intermittently return wrong, duplicated, or missing rows, yet reported I/O and network latencies are simultaneously high. Integrity-check errors and checksum failures may appear alongside surging I/O wait events, slow commit acknowledgements, and a spike in client connection timeouts or retransmissions. Batch loads and backups can stall on disk queues, while application servers experience cascading connection retries. Because corruption can force the engine to abandon indexes and fall back to full table scans, the extra physical reads inflate disk traffic, which in turn exacerbates the already-saturated storage layer. Larger result sets flowing over degraded network paths further extend transaction lifetimes, keeping locks and resources held longer and amplifying contention.\n\nCausally, corruption in data or index pages may trigger inefficient scan patterns that multiply I/O volume; the inflated I/O demand then collides with storage throughput limits, lengthening latency and delaying page delivery to the engine. Prolonged statement execution extends the duration of result streaming to clients, swelling network usage and keeping connection slots occupied. Conversely, network slowdowns cause back-pressure on the server’s send buffers, preventing worker threads from completing and releasing pages, which prolongs lock holding and increases the window in which corrupted blocks are reread. Together, the three anomalies form a feedback loop—corruption forces heavier I/O, I/O saturation delays processing, and network congestion prolongs resource occupation—culminating in severe, multidimensional performance degradation and a heightened risk of permanent data loss or extended downtime.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.7549905123339657,
+            "bm25_score": 34.48722601604718,
+            "lexical_score": 0.18330170777988614,
+            "matched_terms": [
+                "and",
+                "because",
+                "block",
+                "client",
+                "connection",
+                "for",
+                "holding",
+                "is",
+                "lock",
+                "longer",
+                "network",
+                "of",
+                "or",
+                "server",
+                "statement",
+                "the",
+                "to",
+                "transaction",
+                "wait",
+                "waits",
+                "when",
+                "while",
+                "window",
+                "write"
+            ],
+            "match_count": 100,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

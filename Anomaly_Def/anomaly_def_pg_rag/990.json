@@ -1,0 +1,60 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Operating System Resource Limit Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Inaccurate, missing, or stale optimizer statistics cause systematic cardinality misestimation and mis-costing, leading the optimizer to select sub-optimal execution plans. \nOperating System Resource Limit Anomaly : Kernel-enforced caps on file handles, shared memory, threads, or other OS resources are exhausted, preventing the database from allocating processes, memory, or I/O contexts that it logically requires. \nNetwork and Connectivity Resource Anomaly : Listener, socket, or network-path capacity is insufficient or unstable, producing connection refusals, timeouts, and slow or stalled client/server data transfer.\n\nWhen all three root causes manifest concurrently, the database exhibits multilayer symptoms: 1) query plans flip unpredictably or lock into inefficient full scans or serial plans due to wrong row-count estimates; 2) those inefficient plans inflate memory, file-descriptor, worker, and I/O demands, accelerating exhaustion of the already tight OS resource limits and triggering \"cannot fork\", \"too many open files\", or \"cannot allocate shared memory\" errors; 3) as backend and listener resources saturate, new client connections back up, causing rising TCP SYN backlog, authentication stalls, mid-stream socket disconnects, and application-side timeouts. Performance telemetry shows extreme variance—some sessions hang on client read/write waits, others are terminated by internal errors, while surviving sessions run with degraded plans and long runtimes. Diagnosis is complicated because plan misestimates, kernel denials, and network failures surface in overlapping time windows, obscuring singular blame.\n\nCausal chain: Stale or incomplete statistics steer the optimizer toward plan shapes that open many files, allocate large temp segments, or request numerous parallel workers. These bloated resource requests collide with low or already near-exhausted OS limits, causing allocation failures that leave partially initialized backends, leaked file descriptors, and half-open sockets. The accumulation of such orphaned kernel objects further shrinks available OS quotas, amplifying the resource-limit anomaly. Meanwhile, aborted sessions and retrying application pools inflate connection churn, deepening the network and listener overload. Conversely, network-level slowdowns prolong transaction lifetimes, delaying statistic-gathering jobs and prolonging locks on objects, which keeps statistics stale and perpetuates misestimation. The feedback loop among poor statistics, OS-level exhaustion, and network saturation thus cascades, driving widespread performance collapse across both OLTP and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.6593797331154302,
+            "bm25_score": 27.80963777963473,
+            "lexical_score": 0.15913580246913578,
+            "matched_terms": [
+                "and",
+                "are",
+                "authentication",
+                "client",
+                "connection",
+                "count",
+                "is",
+                "network",
+                "of",
+                "on",
+                "operating",
+                "or",
+                "pools",
+                "sessions",
+                "socket",
+                "stale",
+                "system",
+                "tcp",
+                "the",
+                "time",
+                "to",
+                "when",
+                "which",
+                "with"
+            ],
+            "match_count": 210,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_idle",
+                "parameter_name": "tcp_keepalives_idle",
+                "timeout_category": "network_idle_keepalive_probe_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time with no network activity after which the operating system should send a TCP keepalive message to the client.",
+                "trigger_condition": "A TCP client connection has no network activity longer than tcp_keepalives_idle on systems supporting TCP_KEEPIDLE or an equivalent socket option.",
+                "workload_impact": "Starts TCP keepalive probing for an otherwise idle client connection; together with interval and count settings this can lead to dead connection detection.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

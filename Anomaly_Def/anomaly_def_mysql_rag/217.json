@@ -1,0 +1,59 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Database Memory Allocation Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "SQL Workload Logic Anomaly: Application-level statements or transaction logic oblige the engine to process and keep more rows, data, or transactional state than business requirements dictate.\nDatabase Memory Allocation Anomaly: Engine memory structures—buffer pools, work areas, caches, and session heaps—grow beyond the host’s safe physical limits, provoking paging, OOM terminations, or cache churn.\nBuffer Cache and Latch Contention Anomaly: Sessions serialize on hot buffer pages and associated latches, suffering wait-time spikes, CPU spin, and stalled I/O while vying for page access or flush slots.\n\nWhen these three root causes strike concurrently, the system exhibits extreme and erratic latency, with the same costly statements flooding slow-query logs while overall throughput collapses. Over-wide scans and long transactions inflate the working-set size, which in turn bloats buffer and work memory, driving the process resident set to the edge of physical RAM. Sustained memory pressure triggers paging, shrinking effective cache size and forcing constant page eviction. The resulting churn elevates buffer-busy and page-latch waits, causing CPU spin loops, queueing on hot pages, checkpoint stalls, and eventually OOM kills or node eviction. From the application perspective, users see timeouts, sporadic retries, and unpredictable performance cliffs that are difficult to attribute to a single layer because SQL, memory, and latch waits interleave in AWR/STATISTICS views.\n\nCausal chain: Inefficient SQL enlarges data touches and keeps transactions open longer, inflating per-query work areas and populating the buffer cache with more pages than hardware can comfortably hold. The excess allocations intensify memory pressure; once the OS begins reclaiming pages, cache turnover accelerates. Frequent evictions force the same hot root or sequence pages to be reloaded repeatedly, concentrating traffic and amplifying latch contention. Meanwhile, latch waits prolong each statement, stretching transaction lifetimes and further increasing the volume of in-memory state, which circles back to exacerbate memory exhaustion. Thus, the semantic inefficiencies of the workload ignite a feedback loop with memory over-commitment and buffer-latch hot spots, producing a severe, multifaceted performance degradation that persists until all underlying causes are addressed together.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5976,
+            "score": 0.6594684085628032,
+            "bm25_score": 64.64445845771446,
+            "lexical_score": 0.1718010622887494,
+            "matched_terms": [
+                "allocation",
+                "amplifying",
+                "and",
+                "associated",
+                "be",
+                "buffer",
+                "data",
+                "engine",
+                "latency",
+                "memory",
+                "of",
+                "or",
+                "per",
+                "pressure",
+                "session",
+                "size",
+                "state",
+                "the",
+                "to",
+                "until",
+                "wait",
+                "while",
+                "with",
+                "workload"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-015053",
+                "error_name": "ER_GROUP_REPLICATION_DECOMPRESS_EXCEEDS_MAX_SIZE",
+                "official_description": "Error while decompressing data using %s compression. The operation could not be performed as buffer size exceeded configured maximum size. Please wait until the value of the column COUNT_TRANSACTIONS_ROWS_VALIDATING of the table performance_schema.replication_group_member_stats decreases and try to join the new member again.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "memory_and_buffer",
+                "cause_analysis": "The failure is typically associated with insufficient memory headroom, buffer pressure, oversized intermediate state, or memory-allocation constraints inside the engine or client library.",
+                "solution_guidance": "Check memory availability, per-session memory settings, large sorts or hashes, and whether workload concurrency is amplifying memory consumption.",
+                "observable_symptoms": [
+                    "memory pressure",
+                    "allocation failure",
+                    "spill",
+                    "unstable latency"
+                ]
+            }
+        }
+    }
+]

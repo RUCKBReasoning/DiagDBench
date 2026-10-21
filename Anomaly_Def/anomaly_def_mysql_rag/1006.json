@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Database Memory Allocation Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Excessive accumulation of obsolete row versions and undo/rollback records because background cleanup cannot keep pace with update-delete churn.\nDatabase Memory Allocation Anomaly : Total memory consumed by caches, working areas, and background structures grows beyond the safe host envelope, provoking OS-level pressure, paging, or OOM events.\nStorage I/O Throughput Anomaly : Physical read-write demand from data, temp, and log files saturates the bandwidth/IOPS capacity of the underlying storage, producing long device queues and high latency.\n\nWhen all three conditions co-exist, the system exhibits a compounded failure pattern: tables and indexes swell with dead versions, inflating buffer-pool residency and exhausting memory; as the engine pages dirty and clean buffers more frequently under memory stress, the already overtaxed storage layer experiences further surges of random and sequential I/O. Checkpoint and vacuum/cleaner processes run constantly but fall behind, causing rollback segments and version stores to balloon on disk. Operators observe runaway RSS growth followed by paging or OOM kills, steep drops in cache hit ratios, soaring read/write latencies, prolonged lock-holder lifetimes, misestimated plans due to bloated statistics, and a vicious oscillation between CPU stalls on memory reclamation and waits on disk I/O.\n\nCausally, heavy update/delete workloads first trigger MVCC bloat, enlarging both on-disk heaps and in-memory buffers. The extra pages inflate the buffer cache and plan cache demand, tipping the system into memory over-commitment; the resulting eviction and swap activity converts what could have been memory hits into physical I/O. This amplification pushes the storage subsystem toward saturation, where higher latency further slows cleanup workers, allowing even more version accumulation. In turn, the expanding on-disk structures require larger memory allocations and longer I/O operations, forming a feedback loop in which MVCC maintenance, memory exhaustion, and storage bandwidth starvation continuously reinforce each other, rapidly degrading throughput and stability of the transactional workload.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.5204703359297875,
+            "bm25_score": 18.542155228857894,
+            "lexical_score": 0.12003968253968253,
+            "matched_terms": [
+                "activity",
+                "and",
+                "data",
+                "from",
+                "latency",
+                "longer",
+                "more",
+                "of",
+                "or",
+                "read",
+                "the",
+                "this",
+                "to",
+                "waits",
+                "when"
+            ],
+            "match_count": 48,
+            "entry": {
+                "timeout_id": "mysql84_replica_network_timeout",
+                "parameter_name": "replica_net_timeout",
+                "timeout_category": "replication_network_timeout",
+                "scope": "global/replication",
+                "official_definition": "The number of seconds to wait for more data from a source/replica connection before aborting the read.",
+                "trigger_condition": "A replica waits longer than replica_net_timeout for more data from the source connection.",
+                "workload_impact": "The replication network read is aborted and the replica considers the connection interrupted.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

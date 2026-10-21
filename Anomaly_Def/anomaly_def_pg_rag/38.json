@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent sessions hold or request mutually incompatible locks, forming long blocker–waiter chains or deadlocks that stop progress until a lock is released or a victim is rolled back.\nTransaction Log Subsystem Anomaly : The write-ahead log buffer, disk, switch, or archive pipeline cannot keep pace with redo generation, so commit, flush, or log-switch operations stall foreground writers.\n\nWhen both conditions arise together, the database exhibits sharp and erratic slow-downs: transactions wait first to obtain locks and, once granted, may still hang on COMMIT while the log flush queue grows. Deadlock detectors fire alongside log-write timeouts; application retries exacerbate the surge in active sessions, swelling lock tables, connection pools, and redo volume. Monitoring shows simultaneous spikes in lock-wait and log-related wait events, with throughput collapsing, response-time histograms bifurcating into fast and extremely slow tails, and sudden waves of rollback traffic after deadlock or timeout victims are chosen.\n\nCausally, the two root causes reinforce each other. Prolonged lock holds caused by slow commits (due to log flushing delays) lengthen blocking chains and increase the probability of deadlocks. Conversely, when lock contention forces transactions to queue or abort and retry, overall redo generation rises (additional row-version undo, repeated DML, compensating transactions), which further saturates the already constrained log subsystem. The feedback loop—the log becoming slower, extending lock duration, which in turn inflates redo volume—can drive the system into a self-perpetuating spiral of latency, throughput collapse, and escalating recovery workload.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.392565918009993,
+            "bm25_score": 16.11585596561092,
+            "lexical_score": 0.1737142857142857,
+            "matched_terms": [
+                "after",
+                "and",
+                "are",
+                "by",
+                "connection",
+                "is",
+                "latency",
+                "of",
+                "on",
+                "or",
+                "pools",
+                "progress",
+                "retry",
+                "sessions",
+                "system",
+                "that",
+                "the",
+                "time",
+                "timeout",
+                "to",
+                "when",
+                "which"
+            ],
+            "match_count": 164,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_interval",
+                "parameter_name": "tcp_keepalives_interval",
+                "timeout_category": "network_keepalive_retry_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time after which a TCP keepalive message that has not been acknowledged by the client should be retransmitted.",
+                "trigger_condition": "A TCP keepalive probe is not acknowledged for tcp_keepalives_interval on systems supporting TCP_KEEPINTVL or an equivalent socket option.",
+                "workload_impact": "Controls retry timing for keepalive probes used to detect unresponsive client connections.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

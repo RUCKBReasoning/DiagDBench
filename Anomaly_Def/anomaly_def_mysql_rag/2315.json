@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + MVCC Version Maintenance Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Composite Definition: The database simultaneously suffers from sub-optimal physical schema/index design, uncontrolled accumulation of obsolete MVCC row versions, and impending or actual exhaustion of available storage space. Each individual defect is problematic on its own, but their coexistence creates a feedback loop that severely degrades performance, threatens data availability, and complicates recovery or maintenance operations.\n\nCombined Observable Phenomena: Queries that should be index-efficient devolve into full-table or full-index scans across massively bloated heaps and indexes. Execution plans show both missing/ineffective indexes and misestimates caused by inflated table statistics. DML workloads experience escalating latency due to heavier page splits, visibility checks, and cache churn. Background cleanup workers (vacuum, purge, garbage collection) run nearly continuously yet fail to reclaim space fast enough; they also contend with poorly designed indexes that prolong every page visit. Meanwhile, data files, index segments, undo/rollback areas, and archive or log destinations grow rapidly, pushing the system toward auto-extend limits, out-of-space errors, or emergency read-only mode. Administrators may observe cyclic spikes of I/O, checkpoint stalls, and failed maintenance tasks that themselves need additional temporary space.\n\nCausal Interaction: Poor schema and indexing force queries—especially UPDATE and DELETE statements common in OLTP—to touch far more rows and pages than necessary, inflating the number and size of versioned tuples produced by MVCC. The surge in obsolete versions overwhelms cleanup workers; because indexes are non-covering or redundant, those workers must scan and rewrite extra pages, consuming CPU, I/O, and generating further versions. The resulting table and index bloat accelerates storage consumption, edging the system toward capacity limits. As free space dwindles, auto-extension failures and log-recycling stalls slow or block both application traffic and background maintenance, allowing even more version debris to accumulate. Conversely, space exhaustion prevents full vacuuming or index rebuilds that could mitigate bloat, locking the system into a vicious spiral of growing size, falling performance, and increasing risk of downtime.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.7360775862068965,
+            "bm25_score": 22.385577748701696,
+            "lexical_score": 0.12025862068965518,
+            "matched_terms": [
+                "additional",
+                "and",
+                "are",
+                "data",
+                "from",
+                "is",
+                "latency",
+                "more",
+                "number",
+                "of",
+                "or",
+                "read",
+                "than",
+                "the",
+                "to"
+            ],
+            "match_count": 108,
+            "entry": {
+                "timeout_id": "mysql84_network_read_timeout",
+                "parameter_name": "net_read_timeout",
+                "timeout_category": "network_read_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for more data from a connection before aborting the read.",
+                "trigger_condition": "The server waits for additional data from a connection longer than net_read_timeout.",
+                "workload_impact": "The network read is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

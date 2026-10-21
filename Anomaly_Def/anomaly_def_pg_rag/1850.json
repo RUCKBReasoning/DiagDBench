@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Storage I/O Throughput Anomaly + CPU Resource Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly : The log‐write, flush, switch, or archive path becomes the primary bottleneck, stalling commit processing and redo generation.\nStorage I/O Throughput Anomaly : The physical storage layer saturates its read/write or IOPS capacity, elevating latency for any file on the affected volumes.\nCPU Resource Anomaly : Host CPU cores are saturated by database processes, leaving little head-room for additional work and elongating run-queue waits.\n\nWhen these three root causes strike simultaneously, the database can exhibit a multi-layer performance collapse: commits and checkpoints queue behind slow log flushes; data and log I/O waits pile up because the storage subsystem itself is bandwidth-starved; meanwhile CPU remains pinned, so background writer, log writer, archiver, and user sessions all contend for compute cycles, lengthening every wait even further. Observable symptoms include: rapidly escalating commit latency, frequent log‐file switch warnings coupled with slow archive completion, device queue depths pegged, service times well above specification, scheduler and run-queue waits dominating wait-class views, and a system-wide slowdown where both short OLTP transactions and maintenance tasks time out or deadlock around resource starvation.\n\nCausally, each anomaly amplifies the others. A slow storage plane prolongs every log write, which increases the lifetime of foreground sessions holding latches and therefore raises CPU pressure; the elevated CPU load in turn slows log-writer and I/O submission threads, lowering the effective IOPS they can push to an already saturated device. As checkpoints and archivers miss their windows, log directories bloat, producing larger, burstier write operations that further flood the constrained storage path. The vicious cycle leads to a feedback loop where storage stalls raise CPU usage (busy-waiting, context switches), high CPU usage throttles I/O throughput (delayed submissions), and both together deepen the log subsystem bottleneck, potentially driving the database into prolonged stalls or crash-recovery scenarios.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.4094546639165231,
+            "bm25_score": 13.962488195413878,
+            "lexical_score": 0.12380015735641228,
+            "matched_terms": [
+                "and",
+                "are",
+                "by",
+                "data",
+                "holding",
+                "is",
+                "latency",
+                "on",
+                "or",
+                "remains",
+                "sessions",
+                "system",
+                "the",
+                "time",
+                "when"
+            ],
+            "match_count": 252,
+            "entry": {
+                "timeout_id": "pg16_tcp_user_timeout",
+                "parameter_name": "tcp_user_timeout",
+                "timeout_category": "network_unacknowledged_data_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies how long transmitted data may remain unacknowledged before the TCP connection is forcibly closed.",
+                "trigger_condition": "TCP data sent by PostgreSQL remains unacknowledged longer than tcp_user_timeout on systems supporting TCP_USER_TIMEOUT.",
+                "workload_impact": "The TCP connection is forcibly closed.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

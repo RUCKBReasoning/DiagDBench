@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Transaction Lock Contention Anomaly + Replication Synchronization Anomaly",
+            "Description": "Schema and Index Design Anomaly: The physical table, index, partition, and datatype layout does not match workload access paths, forcing scans, large lock footprints, and inefficient I/O regardless of statistics or optimizer choices.\nTransaction Lock Contention Anomaly: Concurrent transactions compete for mutually incompatible locks on the same rows, pages, or metadata, causing blocking chains or deadlocks that throttle throughput and trigger roll-backs.\nReplication Synchronization Anomaly: Standbys or downstream replicas cannot receive or apply WAL/redo at the rate produced by the primary, creating growing log-position lag and delaying fail-over readiness.\n\nWhen all three root causes coexist, the workload suffers a compound pathology: poor schema and index choices expand the number of rows touched per statement, inflating the lock scope and duration of every read or write. This bloated locking footprint magnifies blocker–waiter chains and deadlock frequency, stretching transaction execution times and leaving locks held longer. The prolonged transactions, in turn, enlarge commit records and postpone commit timestamps, so the primary emits heavier, burstier redo streams. Replicas, already stressed by having to replay inefficient plans on sub-optimal data structures, fall further behind, and their apply processes may themselves encounter the same lock conflicts, amplifying replication lag. Observable symptoms therefore include simultaneous full-table scans with high logical and physical I/O, long lock-wait and deadlock statistics on the primary, application time-outs, rapidly growing replication write/replay delay, swelling retained transaction logs on the primary, and replicas serving increasingly stale data.\n\nCausally, the static design flaws set the stage by making every transaction touch more data and hold more locks. This raises the probability and depth of lock contention; stalled or rolled-back transactions then produce larger, less frequent commit batches and force retries that inflate traffic. The resulting spike in log generation must traverse the replication channel, but the replicas, hampered by the same sub-optimal schema and by replay-time locking conflicts, cannot keep pace. Thus each anomaly reinforces the others: bad design drives contention; contention bloats and bursts the log stream; replication lag feeds back by delaying conflict resolution and vacuum/recovery processes, which further extends lock lifetimes on the primary. The intertwined effects degrade OLTP responsiveness and erode high-availability guarantees far more severely than any single anomaly alone.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2542,
+            "score": 0.5427938631970418,
+            "bm25_score": 72.38153045668015,
+            "lexical_score": 0.1689199689199689,
+            "matched_terms": [
+                "and",
+                "blocking",
+                "by",
+                "chains",
+                "concurrent",
+                "conflicts",
+                "for",
+                "incompatible",
+                "lock",
+                "logical",
+                "or",
+                "same",
+                "stalled",
+                "table",
+                "the",
+                "to",
+                "transaction",
+                "transactions",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010655",
+                "error_name": "OBSOLETE_ER_NDB_BINLOG_CANT_LOCK_NDB_BINLOG_INDEX",
+                "official_description": "NDB Binlog: Unable to lock table ndb_binlog_index",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "concurrency_and_transaction",
+                "cause_analysis": "The failure is typically associated with concurrent transactions contending for the same logical resources, incompatible lock acquisition order, or transaction-state conflicts surfaced by the engine.",
+                "solution_guidance": "Inspect blocking chains, reduce conflicting write overlap, shorten transaction lifetime, review lock acquisition order, and verify whether transaction scheduling or retry logic needs adjustment.",
+                "observable_symptoms": [
+                    "blocking",
+                    "rollback",
+                    "retry",
+                    "stalled transaction"
+                ]
+            }
+        }
+    }
+]

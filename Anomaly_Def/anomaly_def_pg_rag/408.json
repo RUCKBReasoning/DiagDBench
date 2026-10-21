@@ -1,0 +1,45 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + MVCC Version Maintenance Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Composite Definition:\nThe database simultaneously suffers from sub-optimal execution-plan choices, unchecked accumulation of obsolete MVCC row versions, and saturation of the underlying storage throughput budget. The three conditions reinforce each other, producing symptoms that are broader and more severe than any single anomaly alone.\n\nCombined Observable Phenomena:\n• Identical statements oscillate between different or obviously poor plans while response times keep rising.\n• Sequential scans, hash builds, or nested-loop outer scans read far more pages than expected because tables and indexes are bloated with dead tuples.\n• Device-level metrics show queue depths pegged, read and write latency multiples higher than normal, and log-flush or buffer-I/O waits dominating the wait profile even when CPU is idle.\n• Autovacuum/cleanup workers run constantly yet fail to shrink the version store; catalog views report high dead-tuples-to-live-tuples ratios and growing on-disk size.\n• Planner misestimates become more frequent as statistics lag behind the rapidly changing and bloated heap, leading to further plan instability.\n• Business transactions time out, batch windows stretch, and analytic queries executed on the same system observe inconsistent runtimes depending on whether they hit a cached or newly compiled plan.\n\nCausal Chain and Interaction:\n1. MVCC bloat inflates table and index size, distorting cardinality statistics and making cost estimates less reliable.\n2. The optimizer, already prone to plan-selection mistakes, is now working with misleading size estimates, increasing the probability of choosing plans that trigger large table scans, spill to temp, or lose beneficial parallelism.\n3. These poorly chosen plans generate excess physical I/O; the swollen objects mean each scan or index probe touches more pages, quickly saturating the storage subsystem.\n4. Once storage throughput is maxed out, I/O latency rises. Long-running queries hold snapshots open longer, which prevents cleanup workers from advancing the MVCC horizon, so dead versions accumulate even faster.\n5. The growing version store further enlarges the data footprint, feeding back into even worse cost estimates and heavier I/O, creating a self-reinforcing degradation loop that is difficult to attribute to any single layer without holistic analysis.\n",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 116,
+            "score": 0.3237807599196326,
+            "bm25_score": 15.177581933045012,
+            "lexical_score": 0.10203094777562863,
+            "matched_terms": [
+                "and",
+                "as",
+                "executed",
+                "execution",
+                "is",
+                "or",
+                "that",
+                "the",
+                "version",
+                "whether",
+                "with"
+            ],
+            "match_count": 9,
+            "entry": {
+                "error_code": "2F005",
+                "error_name": "function_executed_no_return_statement",
+                "official_description": "function executed no return statement",
+                "error_class": "Class 2F - SQL Routine Exception",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "sql_and_parser",
+                "cause_analysis": "The failure is typically associated with unsupported syntax, invalid statement structure, or feature usage that the target engine version cannot execute as written.",
+                "solution_guidance": "Validate SQL syntax, target-engine compatibility, statement shape, and whether the feature is supported under the current engine version or execution context.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "syntax error",
+                    "feature rejection"
+                ]
+            }
+        }
+    }
+]

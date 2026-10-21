@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer reuses or chooses a markedly sub-optimal execution plan even though statistics are reasonably accurate.\nBuffer Cache and Latch Contention Anomaly : Concurrent sessions serialize on hot buffer pages, page latches, or related lightweight locks, stalling on buffer-manager structures rather than row-level locks.\n\nWhen both root causes are active, the database experiences a feedback loop in which a poor plan amplifies latch pressure and the resulting contention magnifies the performance penalty of the bad plan. Observable symptoms include: \n• Sudden plan switches from index seeks to full scans that explode logical and physical I/O, immediately followed by spikes in BUF_BUSY/PAGE_LATCH wait events. \n• High CPU spin time with little throughput while multiple sessions run the same cached but sub-optimal plan. \n• Hot-spot pages such as index roots, sequence blocks, or a narrow range of heap pages becoming latch bottlenecks because the inefficient plan drives excessive, repetitive accesses. \n• Wide variance in query latency; some executions hang on latch waits while others recompile and obtain yet another unstable plan, making performance diagnosis confusing.\n\nCausal chain: A flawed plan can dramatically increase the number of page touches (e.g., table scans or nested loops with large outer row counts). This floods the buffer pool, concentrates access on a small set of pages, and lengthens dirty-page residency, all of which raise latch acquisition times. The heightened contention slows query completion, keeping the bad plan active longer and increasing concurrency on the same hot pages, further reinforcing the contention. In turn, the elongated execution times and fluctuating runtime statistics may trigger opportunistic recompilations that choose different but still sub-optimal plans, perpetuating the cycle and degrading overall system stability.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.7427320099255583,
+            "bm25_score": 23.50694467590702,
+            "lexical_score": 0.14244003308519437,
+            "matched_terms": [
+                "acquisition",
+                "and",
+                "another",
+                "because",
+                "in",
+                "locks",
+                "longer",
+                "obtain",
+                "or",
+                "sessions",
+                "than",
+                "the",
+                "this",
+                "to",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 120,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

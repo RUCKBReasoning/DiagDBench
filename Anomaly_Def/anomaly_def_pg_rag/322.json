@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + CPU Resource Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Obsolete row versions and rollback records accumulate faster than background cleaners can reclaim them, inflating the version store and visibility-check cost.\nCPU Resource Anomaly : Database processes drive host CPU utilization toward saturation, lengthening run-queue waits and inflating per-statement CPU time.\nNetwork and Connectivity Resource Anomaly : Network transport, listener, or connection-slot capacity becomes a bottleneck, delaying connection setup or data transfer between clients and the database.\n\nWhen these three root causes coincide, the system exhibits a tangled symptom set: bloated tables and indexes increase the CPU needed for visibility checks, just as cores are already saturated; long-running or stalled client sessions held up by network latency keep old snapshots open, preventing vacuum/cleaner progress and driving further version buildup; backend processes linger in client-read/client-write or run-queue waits, inflating process counts and CPU context switches. Overall throughput collapses, statement latency shows both CPU and network wait components, connection timeouts rise, and storage footprints and host load graphs climb together, making it difficult to attribute the slowdown to any single layer.\n\nCausally, network slowdowns extend transaction lifetimes, so obsolete row versions cannot be reclaimed, swelling the MVCC store. The enlarged heap forces every subsequent statement to scan more versions, consuming additional CPU cycles and pushing the host into saturation. CPU pressure, in turn, slows both background cleaners and packet processing, exacerbating network queuing and further prolonging client sessions. This positive feedback loop links MVCC backlog, compute exhaustion, and network congestion, each reinforcing the others and jointly degrading database performance under OLTP workloads.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.40790807261776485,
+            "bm25_score": 13.650794730505595,
+            "lexical_score": 0.15961325966850826,
+            "matched_terms": [
+                "and",
+                "are",
+                "be",
+                "check",
+                "client",
+                "clients",
+                "connection",
+                "in",
+                "latency",
+                "or",
+                "preventing",
+                "progress",
+                "sessions",
+                "the",
+                "this",
+                "time",
+                "to",
+                "when"
+            ],
+            "match_count": 77,
+            "entry": {
+                "timeout_id": "pg16_authentication_timeout",
+                "parameter_name": "authentication_timeout",
+                "timeout_category": "connection_authentication_timeout",
+                "scope": "server",
+                "official_definition": "Maximum amount of time allowed to complete client authentication; if not completed in time, the server closes the connection.",
+                "trigger_condition": "A would-be client does not complete the authentication protocol within authentication_timeout.",
+                "workload_impact": "The server closes the connection attempt, preventing hung clients from occupying a connection indefinitely.",
+                "default_behavior": "Default value is one minute.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

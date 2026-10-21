@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Replication Synchronization Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "SQL Workload Logic Anomaly: Application-layer statement or transaction design forces the engine to process or return more data than business logic requires.\nReplication Synchronization Anomaly: Downstream replicas cannot receive or apply primary WAL/redo at production rate, creating widening replay lag.\nOperating System Resource Limit Anomaly: Kernel-enforced limits on handles, threads, shared memory, or similar objects choke database and auxiliary processes.\n\nWhen these three root causes strike together, the system shows an extreme mix of symptoms: end-user statements experience long-tail latency and timeouts; primary-side WAL files and replica relay logs accumulate rapidly; replica read staleness and failover RPO/RTO violations grow; and both primary and replica emit errors about failing to open files, fork workers, allocate shmem, or schedule async I/O. Monitoring may reveal surging transaction durations, massive unresolved replication backlogs, sudden pauses in apply threads, and spurious partial outages where established sessions limp on while new sessions, background writers, or logical decoding workers fail to start.\n\nCausally, inefficient SQL inflates row scans, I/O, and transaction sizes, driving up WAL generation. The heavier WAL stream must traverse the replication channel; apply workers already slowed by CPU or I/O contention now meet even steeper backlogs. As lag balloons, the server retains more WAL segments and spawns extra sender, receiver, and apply processes to catch up, sharply increasing demands for file handles, shmem, semaphores, threads, and AIO contexts. If OS limits are low or already close to saturation, these extra processes hit hard caps, causing replication workers to crash or stall, further delaying apply and magnifying backlog. The vicious circle tightens: larger backlog leads to more retained WAL, which consumes more descriptors and disk, while application logic continues to generate oversized transactions. Ultimately the interplay of excessive workload, replication stress, and kernel resource exhaustion destabilizes both primary and replicas, complicating diagnosis because each layer manifests errors that mask the others.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2568,
+            "score": 0.5970948782550827,
+            "bm25_score": 58.60028111312618,
+            "lexical_score": 0.1353756708407871,
+            "matched_terms": [
+                "and",
+                "apply",
+                "channel",
+                "creating",
+                "downstream",
+                "for",
+                "handles",
+                "lag",
+                "or",
+                "receiver",
+                "replica",
+                "replication",
+                "sender",
+                "the",
+                "to"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010681",
+                "error_name": "OBSOLETE_ER_NDB_BINLOG_CANT_CREATE_BLOB",
+                "official_description": "NDB Binlog: Creating NdbEventOperation blob field %u handles failed (code=%d) for %s",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

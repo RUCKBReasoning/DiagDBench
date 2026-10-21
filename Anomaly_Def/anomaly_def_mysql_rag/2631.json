@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Buffer Cache and Latch Contention Anomaly + Replication Synchronization Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer repeatedly chooses sub-optimal execution plans even though statistics are sound, leading to excessive I/O, CPU, or parallel-execution misuse.\nBuffer Cache and Latch Contention Anomaly: Hot buffer pages and their protecting latches become points of serialization, stalling sessions that compete for page access or page-state changes.\nReplication Synchronization Anomaly: Standbys cannot receive, write, or apply primary log records fast enough, producing widening replication lag and preventing log recycling.\n\nWhen these three root causes manifest together, the database shows an explosive mix of symptoms: single statements oscillate between fast and extremely slow runtimes, while system-wide wait profiles are dominated by buffer-busy and page-latch waits. Concurrently, replication dashboards report growing receive/write/replay lag, swollen relay or retained log segments, and stale read-only replicas. Primary nodes exhibit CPU spin and erratic throughput as queries hammer hot pages; replicas inherit both the sub-optimal plans (through statement shipping or view routing) and the same latch hotspots during redo-apply or read traffic, amplifying their own delay. Checkpoints lengthen, dirty-page queues build up, and storage I/O saturates, further inflating query latency and replica catch-up times.\n\nCausally, a bad plan that favors full scans or high-fan-out nested loops generates a flood of logical reads, concentrating activity on a narrow set of root or data pages. This magnifies latch contention in the buffer manager, slowing every session—including the background processes that flush dirty buffers and ship or apply WAL/redo. The prolonged execution times inflate transaction size and log volume, causing the primary to outpace replica apply rates. The ensuing replication lag prevents log-segment recycling, keeping more pages dirty for longer and extending checkpoint cycles, which in turn deepens buffer churn and latch pressure. The feedback loop between poor plan choice, buffer-cache contention, and replication backlog progressively degrades both primary and replica performance until all tiers are simultaneously bottlenecked.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.647441609369657,
+            "bm25_score": 25.571861394004884,
+            "lexical_score": 0.17740341419586703,
+            "matched_terms": [
+                "activity",
+                "and",
+                "are",
+                "data",
+                "for",
+                "latency",
+                "longer",
+                "more",
+                "of",
+                "or",
+                "read",
+                "replica",
+                "replication",
+                "session",
+                "sessions",
+                "stale",
+                "the",
+                "this",
+                "to",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 125,
+            "entry": {
+                "timeout_id": "mysql84_replica_network_timeout",
+                "parameter_name": "replica_net_timeout",
+                "timeout_category": "replication_network_timeout",
+                "scope": "global/replication",
+                "official_definition": "The number of seconds to wait for more data from a source/replica connection before aborting the read.",
+                "trigger_condition": "A replica waits longer than replica_net_timeout for more data from the source connection.",
+                "workload_impact": "The replication network read is aborted and the replica considers the connection interrupted.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

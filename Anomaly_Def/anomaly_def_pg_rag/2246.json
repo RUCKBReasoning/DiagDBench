@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Database Memory Allocation Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly: Obsolete row versions, rollback records, and dead index entries accumulate faster than background cleaners can purge them.\nDatabase Memory Allocation Anomaly: The database allocates buffer, work-area, and cache memory beyond the host’s physical or virtual limits, provoking paging or OOM events.\nOperating System Resource Limit Anomaly: Kernel-enforced ceilings on file handles, shared memory, threads, or address space are hit, blocking further allocations or process creation.\n\nWhen these three conditions coexist, the system exhibits an intertwined failure pattern. Version bloat inflates table and index sizes, expanding the buffer cache and working-set footprint, while long-running transactions and cleanup lag pin even more pages in memory. The swelling resident set collides with fixed OS memory, handle, and shared-memory quotas; the host begins paging, and kernel logs show ENOMEM, EMFILE, or EAGAIN errors as new connections, background workers, or I/O contexts fail to start. Autovacuum or purge workers, already overwhelmed by the volume of stale versions, are themselves throttled or denied resources, causing version-store growth to accelerate. Query plans degrade as the optimizer misjudges bloat, sequential scans lengthen, cache hit ratios oscillate due to aggressive page eviction, and users experience sporadic timeouts, failed statements, or partial node outages.\n\nCausally, heavy update/delete churn produces excessive MVCC debris that must be kept in memory and the buffer pool until cleaned. This amplifies overall memory consumption, driving the Database Memory Allocation Anomaly. Rising memory pressure leads the engine to request more shared buffers, work memory, or background processes, which in turn collide with operating-system limits on virtual memory, shared segments, or open files—triggering the Operating System Resource Limit Anomaly. Once the OS begins refusing allocations or swapping aggressively, cleanup workers slow further, allowing even more version accumulation and cache bloat in a positive feedback loop that can culminate in out-of-memory kills, inability to spawn essential workers, and a cascading service degradation or outage.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.42555218008912427,
+            "bm25_score": 16.07946468047866,
+            "lexical_score": 0.12495716733295259,
+            "matched_terms": [
+                "and",
+                "are",
+                "be",
+                "can",
+                "dead",
+                "failure",
+                "of",
+                "on",
+                "or",
+                "stale",
+                "system",
+                "that",
+                "the",
+                "this",
+                "to",
+                "when"
+            ],
+            "match_count": 271,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_count",
+                "parameter_name": "tcp_keepalives_count",
+                "timeout_category": "network_keepalive_failure_threshold",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the number of TCP keepalive messages that can be lost before the server connection to the client is considered dead.",
+                "trigger_condition": "The number of lost TCP keepalive probes reaches tcp_keepalives_count on systems supporting TCP_KEEPCNT.",
+                "workload_impact": "The server can consider the client connection dead after the configured keepalive failure threshold.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

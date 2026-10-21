@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Buffer Cache and Latch Contention Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Database Memory Allocation Anomaly: Excessive or poorly governed growth of buffer caches, plan caches, work areas, and other in-memory structures pushes the database process and host beyond safe physical- or virtual-memory limits.\nBuffer Cache and Latch Contention Anomaly: Hot or rapidly churning buffer pages provoke intense latch, pin, or buffer-busy waits, causing CPU spin and latency spikes as sessions serialize on page access rather than on logical row locks.\nStorage Space Capacity Anomaly: Data files, temp areas, or log/archival destinations approach or reach full allocation, halting further writes, auto-extension, or log recycling and thereby stalling foreground activity.\n\nWhen these three conditions arise together, the system exhibits compounded symptoms: memory pressure drives frequent page evictions while latch contention inflates CPU usage and response-time variance; escalated dirty-page churn collides with shrinking free disk space, triggering aggressive checkpointing, prolonged flush cycles, and \"out-of-space\" or \"cannot extend\" errors. Concurrently, cache blow-out and swap activity magnify latch hold times, while blocked writes caused by full data, temp, or log areas propagate back to buffer flushers and user sessions, producing a mixture of memory OOM events, page-latch stalls, checkpoint storms, and transaction timeouts that are difficult to attribute to a single layer.\n\nCausally, runaway memory allocation shrinks effective buffer-pool headroom, forcing hotter pages to be recycled more often and increasing latch pressure on the remaining working set. Heightened latch contention keeps pages pinned longer, decelerating flush threads; the resulting backlog inflates dirty-page counts, accelerating file growth and temp/log consumption. As storage capacity tightens, checkpoints lengthen, extension or log-archive failures freeze buffer write-out, causing even more resident-set growth (as dirty pages cannot be freed) and further latch congestion. Each anomaly thus reinforces the others—memory bloat fuels contention, contention inflates dirty buffers, and space exhaustion blocks relief paths—culminating in system-wide stalls, crashes, or node evictions.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.7241374636643634,
+            "bm25_score": 26.463488192116365,
+            "lexical_score": 0.1510810810810811,
+            "matched_terms": [
+                "access",
+                "and",
+                "be",
+                "blocked",
+                "contention",
+                "longer",
+                "more",
+                "of",
+                "or",
+                "other",
+                "out",
+                "than",
+                "that",
+                "the",
+                "time",
+                "together",
+                "user",
+                "when",
+                "with",
+                "work"
+            ],
+            "match_count": 211,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

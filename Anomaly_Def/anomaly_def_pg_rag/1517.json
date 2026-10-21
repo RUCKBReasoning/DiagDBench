@@ -1,0 +1,44 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Database Memory Allocation Anomaly + Replication Synchronization Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer persistently picks sub-optimal execution plans despite reasonably accurate statistics, causing excessive I/O, CPU, or wrong join and access strategies.\nDatabase Memory Allocation Anomaly: Database memory regions (buffer/cache, work areas, plan cache, etc.) grow beyond safe limits, triggering OS memory pressure, paging, or OOM events.\nReplication Synchronization Anomaly: Standby or downstream replicas cannot ingest or apply log records as fast as the primary produces them, leading to widening replay lag and retention of un-recycled logs.\n\nWhen all three root causes strike concurrently, their symptoms overlap and intensify: 1) Erratic plan flips or bad plans inflate logical and physical I/O, create huge hash/sort structures, and spawn excess parallel workers; 2) the inflated work memory and bloated plan cache accelerate overall memory exhaustion, provoking paging, swap-thrashing, or forced background process restarts; 3) sustained resource contention on the primary—extra CPU, I/O waits, and memory pressure—slows transaction processing and write-ahead logging, while swollen log files cannot be recycled because replicas are falling behind. Replication delay in turn removes read-scaling capacity, pushing more analytic and read traffic back onto the overloaded primary and compounding the plan churn and memory stress. Visibility becomes blurred: administrators may see cache-hit drops, rising commit latency, growing replication lags, and OS-level swapping all at once, making it difficult to isolate a single trigger.\n\nCausally, sub-optimal plans generate large intermediate results and parallel workers that demand extraordinary memory; the resulting Database Memory Allocation Anomaly introduces OS paging and CPU stalls, elongating statement runtimes and increasing the volume and duration of redo generation. The primary’s slower log flush and the surge of larger transactions then overwhelm the replication pipeline, producing Replication Synchronization Anomaly. Conversely, the growing backlog of unapplied logs prevents log truncation, enlarging in-memory log buffers and further pressuring memory. The diminished replica capacity pushes additional read queries back to the primary, causing the optimizer to re-optimize with different parameter sniffing contexts, perpetuating plan instability and creating a feedback loop that amplifies all three anomalies.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 140,
+            "score": 0.33301837798087797,
+            "bm25_score": 19.854597542987236,
+            "lexical_score": 0.08004807692307692,
+            "matched_terms": [
+                "and",
+                "logical",
+                "or",
+                "overlap",
+                "the",
+                "transaction",
+                "transactions",
+                "with",
+                "write"
+            ],
+            "match_count": 12,
+            "entry": {
+                "error_code": "40P01",
+                "error_name": "deadlock_detected",
+                "official_description": "deadlock detected",
+                "error_class": "Class 40 - Transaction Rollback",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "concurrency_and_transaction",
+                "cause_analysis": "The failure is typically associated with concurrent transactions contending for the same logical resources, incompatible lock acquisition order, or transaction-state conflicts surfaced by the engine.",
+                "solution_guidance": "Inspect blocking chains, reduce conflicting write overlap, shorten transaction lifetime, review lock acquisition order, and verify whether transaction scheduling or retry logic needs adjustment.",
+                "observable_symptoms": [
+                    "blocking",
+                    "rollback",
+                    "retry",
+                    "stalled transaction"
+                ]
+            }
+        }
+    }
+]

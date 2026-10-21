@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Replication Synchronization Anomaly + Storage I/O Throughput Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Replication Synchronization Anomaly: Standbys or downstream consumers cannot read, persist, or apply WAL/redo fast enough, causing ever-growing log-position gaps and replica lag.\nStorage I/O Throughput Anomaly: The physical devices or storage fabric are saturated, driving up read/write latencies and queue depths and slowing all database I/O.\nStorage Space Capacity Anomaly: Allocated disk or logical volume free space is exhausted for data, log, archive, temp, or backup areas, producing allocation failures and blocking further growth.\n\nWhen these three issues occur together, the database experiences compounding symptoms: replication delay widens rapidly while primary and replica disks show both high latency and dwindling free space. Primary log segments accumulate because they cannot be recycled until replicas catch up, but the replicas themselves are replaying slowly due to saturated I/O paths. The retained logs, growing relay logs, and stalled archiving consume the remaining disk capacity on both tiers, causing space-exhaustion errors, forced pauses of replication or checkpoint activity, prolonged commit acknowledgment times, escalating application latency, and eventually write failures that can freeze the entire workload. Monitoring dashboards show soaring replication lag, elevated storage wait events, device queues at maximum depth, and critical free-space alarms firing almost simultaneously.\n\nCausally, an underlying Storage I/O Throughput Anomaly throttles both the primary’s log flushes and the replicas’ redo apply rates. This slowdown makes replicas fall behind, which prevents the primary from removing old log segments. The retained logs rapidly consume disk, triggering a Storage Space Capacity Anomaly on both primary and standby volumes. As space tightens, background checkpoints and archiving intensify I/O pressure, further degrading throughput and creating a positive feedback loop that worsens replication lag and accelerates space depletion. The intertwined nature of insufficient I/O bandwidth and shrinking free space amplifies the replication backlog, culminating in systemic stalls, potential replication stoppage, and risk of primary outage due to full disks.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.6007377081798114,
+            "bm25_score": 23.98350351113637,
+            "lexical_score": 0.1453803510933169,
+            "matched_terms": [
+                "an",
+                "and",
+                "be",
+                "because",
+                "blocking",
+                "cannot",
+                "delay",
+                "for",
+                "is",
+                "of",
+                "or",
+                "the",
+                "this",
+                "to",
+                "wait",
+                "when",
+                "while",
+                "write"
+            ],
+            "match_count": 59,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

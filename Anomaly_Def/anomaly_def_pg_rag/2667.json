@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions request mutually incompatible locks on the same resource and therefore wait, block, or deadlock.\nStorage Space Capacity Anomaly : The database exhausts free space in data, log, temp, or archive areas so that further page, extent, or segment allocations fail.\n\nWhen both root causes strike at once, sessions already queued on locks find their waits prolonged by space-allocation stalls, while space-related errors trigger rollbacks that propagate new lock requests and deadlocks. Observable effects include rapidly rising lock-wait time, deadlock and victim reports interleaved with \"no space left\" or \"cannot allocate extent\" errors, frozen or hung DML/DDL statements, exploding connection-pool wait lists, log file growth that plateaus at the capacity ceiling, checkpoint or log-switch delays, and application retries that add more concurrent lock contenders.\n\nCausally, long-running or blocked transactions hold locks and referenced undo/redolog segments open, preventing log recycling and freeing of extents; this accelerates space exhaustion in log and data areas. Conversely, once the storage boundary is hit, INSERT/UPDATE/DELETE operations pause on space-allocation paths, lengthening their lock tenure and enlarging blocking chains. Rollback operations triggered by allocation failures can further inflate undo and redo volumes, immediately reclaiming no space and deepening the capacity crisis. The mutual reinforcement between lock persistence and space starvation can drive the system into a feedback loop of mounting contention, cascading rollbacks, and service-level degradation unless both dimensions are relieved simultaneously.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.6753080890330733,
+            "bm25_score": 25.414640508653413,
+            "lexical_score": 0.16154905335628225,
+            "matched_terms": [
+                "and",
+                "blocking",
+                "cannot",
+                "database",
+                "incompatible",
+                "is",
+                "lock",
+                "of",
+                "or",
+                "sessions",
+                "that",
+                "the",
+                "this",
+                "time",
+                "transaction",
+                "triggered",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 293,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

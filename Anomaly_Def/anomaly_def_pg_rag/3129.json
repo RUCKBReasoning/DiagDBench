@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Storage I/O Throughput Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Concurrent sessions serialize on hot buffer pages or latches, causing page-level stalls despite adequate overall memory size.\nStorage I/O Throughput Anomaly : Underlying disks or storage fabric reach their throughput/IOPS ceiling, stretching read- and write-service times well beyond the engine’s expectations.\nOperating System Resource Limit Anomaly : Kernel-enforced quotas on file descriptors, shared memory, async-I/O contexts, or threads are exhausted, blocking further resource acquisition by the database process.\n\nWhen all three conditions arise together, the wait profile is dominated by a chaotic mix of buffer-busy/latch waits, abnormally long I/O latencies, and intermittent \"cannot allocate <kernel object>\" errors. Checkpoint, buffer flush, and log-flush events stay in flight far longer than usual, keeping dirty pages pinned and intensifying latch contention. CPU usage oscillates between spin-waiting on latches and idle periods while sessions sleep on I/O or kernel resource waits. Connection spikes, bulk loads, or index maintenance can suddenly tip the system into a state where new back-end or parallel workers fail to start, even as existing sessions hang on buffer pins.\n\nCausal chain: Saturated storage slows every page read and dirty-page write, lengthening the window during which pages remain pinned and latches are held. Extended latch hold times magnify buffer-cache contention, increasing the number of concurrent sessions stalled in spin loops or waiting queues. To compensate, the engine issues more outstanding I/O and spawns additional background workers, pushing file handles, async-I/O rings, and thread counts toward their OS limits. Once those limits are hit, further I/O submission or worker creation is denied by the kernel, creating a feedback loop where buffers cannot be flushed or read, latches remain locked, and the transaction and query workload deteriorates rapidly.\n",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 195,
+            "score": 0.17762559557607416,
+            "bm25_score": 10.060001710503506,
+            "lexical_score": 0.1356203007518797,
+            "matched_terms": [
+                "and",
+                "be",
+                "by",
+                "engine",
+                "in",
+                "is",
+                "level",
+                "object",
+                "or",
+                "resource",
+                "state",
+                "the",
+                "to",
+                "together",
+                "workload"
+            ],
+            "match_count": 15,
+            "entry": {
+                "error_code": "55000",
+                "error_name": "object_not_in_prerequisite_state",
+                "official_description": "object not in prerequisite state",
+                "error_class": "Class 55 - Object Not In Prerequisite State",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

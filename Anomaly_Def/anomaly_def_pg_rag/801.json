@@ -1,0 +1,45 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Transaction Log Subsystem Anomaly + Replication Synchronization Anomaly",
+            "Description": "Composite definition: The database simultaneously suffers from (1) the optimizer selecting sub-optimal execution plans, (2) the transaction-log subsystem becoming a write-path bottleneck, and (3) downstream replicas unable to receive or apply the generated log stream at the primary’s production rate. The three root causes coexist and interact, producing a compound failure that degrades both primary OLTP throughput and replica freshness.\n\nCombined anomalous phenomena: • Statements whose text is constant are intermittently re-optimized into expensive plans, causing explosive row scans, large sort or hash work-tables, and bursts of write activity. • Commit latency, log flush and sync waits, and checkpoint frequency spike as the bloated plans generate excessive redo, saturating the undersized or contended log files. • Replication monitoring shows rapidly widening send/receive and replay lags; relay or archive logs accumulate, replicas fall behind, and primary log space cannot be recycled, leading to log-file exhaustion warnings. • Operationally, users observe erratic response times, stalled write transactions during log switches, and stale or unavailable read replicas, making failover risky and maintenance windows unpredictable.\n\nCausal chain and interaction: A poor optimizer decision (e.g., full-table scan instead of index seek, or a nested-loop with mis-estimated outer rows) dramatically inflates the volume and duration of data modifications and row versioning, which amplifies redo generation. The surge of log records overwhelms a marginal log subsystem, lengthening commit cycles and increasing the backlog of un-archived or un-flushed segments. Because replication relies on timely shipping and application of the same log stream, any slowdown in log I/O instantly throttles replica catch-up; conversely, replica lag prevents log truncation and forces the primary to retain more segments, further stressing the log disks. The prolonged commits also raise the likelihood of plan invalidations and recompilations, encouraging the optimizer to keep exploring alternative (often still sub-optimal) plans, perpetuating the high-redo pattern. Together, the three anomalies reinforce each other, producing a feedback loop that degrades write throughput, destabilizes plan selection, and jeopardizes replication SLAs.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 178,
+            "score": 0.25611206471585896,
+            "bm25_score": 11.802259131378026,
+            "lexical_score": 0.10565983528059758,
+            "matched_terms": [
+                "and",
+                "as",
+                "cannot",
+                "definition",
+                "execution",
+                "failure",
+                "is",
+                "or",
+                "that",
+                "the",
+                "with"
+            ],
+            "match_count": 10,
+            "entry": {
+                "error_code": "42P11",
+                "error_name": "invalid_cursor_definition",
+                "official_description": "invalid cursor definition",
+                "error_class": "Class 42 - Syntax Error or Access Rule Violation",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "sql_and_parser",
+                "cause_analysis": "The failure is typically associated with unsupported syntax, invalid statement structure, or feature usage that the target engine version cannot execute as written.",
+                "solution_guidance": "Validate SQL syntax, target-engine compatibility, statement shape, and whether the feature is supported under the current engine version or execution context.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "syntax error",
+                    "feature rejection"
+                ]
+            }
+        }
+    }
+]

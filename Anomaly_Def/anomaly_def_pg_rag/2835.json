@@ -1,0 +1,62 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Database Memory Allocation Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent sessions contend for mutually incompatible locks, forming blocking chains or deadlocks that stall statement progress until waits time out or a victim is aborted.\nDatabase Memory Allocation Anomaly : The database engine and its sessions collectively allocate more memory than the host can safely supply, provoking paging, OOM kills, or cache-churn stalls.\nNetwork and Connectivity Resource Anomaly : Network paths, listener slots, sockets, or authentication workers become saturated, delaying connection establishment and slowing result transfer between clients and the server.\n\nWhen all three root causes strike at once, symptoms overlap and amplify: lock-wait time rises while overall query latency balloons; back-end processes linger in a blocked or idle-in-transaction state, yet their resident sets keep growing under memory pressure; swapping exacerbates CPU stalls and prolongs critical sections, so locks are held even longer. Clients experience intermittent connection refusals, SSL handshake timeouts, or slow result streaming, which in turn keeps transactions open on the server side, deepening lock queues and consuming more memory for retained result buffers and session state. Monitoring dashboards show simultaneous spikes in lock-wait events, OS page-in/out rates, backend counts near the max-connections limit, rising retransmission and round-trip times, and a steep drop in completed TPS.\n\nCausally, any one factor can trigger the others: network slowness stretches query duration, so locks remain held longer and more worker memory stays allocated; swelling lock queues force new sessions to wait, increasing the number of connected backends and their aggregate memory footprint; global memory pressure induces CPU stalls and garbage collection that further slow protocol I/O, aggravating network backlog. The positive feedback loop—slower I/O → longer lock hold → more memory retained → heavier paging → even slower I/O—can rapidly push the system into cascading timeouts, deadlock retries, or ultimately node eviction, making the composite anomaly more severe than the sum of its parts.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.7567907444668007,
+            "bm25_score": 36.76970543716586,
+            "lexical_score": 0.18930248155600266,
+            "matched_terms": [
+                "aborted",
+                "and",
+                "any",
+                "blocking",
+                "database",
+                "for",
+                "incompatible",
+                "is",
+                "lock",
+                "longer",
+                "of",
+                "or",
+                "overlap",
+                "session",
+                "sessions",
+                "statement",
+                "than",
+                "that",
+                "the",
+                "time",
+                "to",
+                "transaction",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 302,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

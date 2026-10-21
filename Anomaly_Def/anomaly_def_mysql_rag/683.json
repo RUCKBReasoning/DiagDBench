@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Buffer Cache and Latch Contention Anomaly + CPU Resource Anomaly",
+            "Description": "Database Configuration Parameter Anomaly: Engine-level settings (memory pools, checkpoint cadence, parallelism, etc.) are mis-tuned relative to hardware capacity and workload characteristics.\nBuffer Cache and Latch Contention Anomaly: Sessions serialize on hot buffer pages, latches, or I/O slots, causing page-level stalls regardless of total memory size.\nCPU Resource Anomaly: Database processes collectively saturate host CPU, driving high run-queue pressure and system-wide latency.\n\nWhen all three root causes co-exist, the system exhibits a multifaceted bottleneck pattern: CPU utilization hovers at or near 100 %, yet throughput stays flat because many runnable threads spin or block on buffer-busy and latch waits. Wait-event views report an alternating mix of latch, buffer-busy, and scheduler/run-queue waits; OS metrics show high context-switch and spin time with pockets of idle I/O capacity. Checkpoint storms or aggressive background writers triggered by mis-set parameters extend the dirty-page queue, prolonging latch hold times and further bloating CPU usage. End-user queries suffer from unpredictable latency spikes and throughput collapse that do not improve even when more CPU cores are provisioned or when isolated configuration knobs are tweaked.\n\nCausally, ill-chosen configuration parameters (e.g., undersized buffer pool, overly aggressive checkpoint interval, excessive worker or parallelism limits) create hot pages and rapid buffer churn, which magnify latch contention inside the buffer manager. The same mis-configuration often spawns too many runnable workers; as they fight for the same latches, they spin, driving up CPU consumption and inflating the run queue. Elevated CPU pressure in turn lengthens the time to service background flushes and checkpoints, keeping dirty pages in memory longer and re-intensifying latch contention—a feedback loop that obscures the original mis-configuration and makes the combined anomaly more severe than any single root cause alone.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.6724176237808585,
+            "bm25_score": 19.50006425835042,
+            "lexical_score": 0.18236842105263157,
+            "matched_terms": [
+                "and",
+                "are",
+                "for",
+                "from",
+                "idle",
+                "latency",
+                "longer",
+                "more",
+                "not",
+                "of",
+                "or",
+                "pools",
+                "sessions",
+                "than",
+                "the",
+                "time",
+                "to",
+                "triggered",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 32,
+            "entry": {
+                "timeout_id": "mysql84_network_read_timeout",
+                "parameter_name": "net_read_timeout",
+                "timeout_category": "network_read_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for more data from a connection before aborting the read.",
+                "trigger_condition": "The server waits for additional data from a connection longer than net_read_timeout.",
+                "workload_impact": "The network read is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

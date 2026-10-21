@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Database Configuration Parameter Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "SQL Workload Logic Anomaly: Application-layer statement or transaction design that forces the engine to read or write more data, rows, or time than business logic actually requires.\nDatabase Configuration Parameter Anomaly: Mis-tuned engine parameters governing memory, logging, checkpointing, parallelism, or connection limits that are out of line with hardware capacity and workload characteristics.\nNetwork and Connectivity Resource Anomaly: Saturation, misconfiguration, or instability in the network or listener layer that restricts the rate at which clients can establish or sustain database connections and move result bytes.\n\nWhen these three root causes strike simultaneously, observable symptoms spread across every tier: statement execution times become highly variable, slow-query logs fill with the same chatty or wide-scan SQL, while server metrics show erratic buffer-pool hit ratios, bursty checkpoint or log-write waits even though CPU or I/O may appear underutilized. Concurrently, clients experience intermittent connection timeouts, increased authentication latency, and stalled result streaming, leading to retry storms that inflate transaction concurrency. Internal views may show innocent-looking wait events alternating between client-read/client-write, configuration-induced stalls (e.g., small log buffers or aggressive checkpoints), and long-running scans triggered by unfocused predicates—all blending into a hard-to-separate symptom set.\n\nCausal chain: chatty or bloated SQL overwhelms memory and I/O; if configuration parameters such as work-memory, buffer-pool size, max connections, or checkpoint cadence are set too low or too aggressive, the engine thrashes—evicting hot pages, flushing dirty buffers, and throttling background writers. These stalls lengthen transaction lifetimes, keeping sockets open longer and pushing more bytes over the wire. The stressed network layer, already constrained by queue, TLS, or process limits, now becomes a second bottleneck, delaying packet exchange and authentication cycles. Those network delays in turn hold server backends in client-I/O waits, further consuming connection slots and worker threads governed by the same mis-tuned parameters, which widens the resource gap for every subsequent bloated statement. The feedback loop—inefficient SQL creating load spikes, poor configuration amplifying internal contention, and network saturation magnifying end-to-end latency—drives a compound degradation that is more severe and harder to diagnose than any single anomaly alone.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 15,
+            "score": 0.4275077071169896,
+            "bm25_score": 21.037087580563586,
+            "lexical_score": 0.15975450709627925,
+            "matched_terms": [
+                "and",
+                "are",
+                "client",
+                "data",
+                "delaying",
+                "for",
+                "is",
+                "latency",
+                "network",
+                "or",
+                "out",
+                "packet",
+                "read",
+                "slow",
+                "the",
+                "times",
+                "triggered",
+                "when",
+                "write"
+            ],
+            "match_count": 39,
+            "entry": {
+                "timeout_id": "mysql84_xplugin_read_timeout",
+                "parameter_name": "mysqlx_read_timeout",
+                "timeout_category": "x_protocol_network_read_timeout",
+                "scope": "global/session/X Plugin",
+                "official_definition": "Read timeout for X Plugin network communication.",
+                "trigger_condition": "A MySQL X Protocol read operation exceeds mysqlx_read_timeout.",
+                "workload_impact": "The X Protocol network read operation times out.",
+                "default_behavior": "Defined as a MySQL X Plugin system variable.",
+                "system_domain": "network_transport",
+                "cause_analysis": "This timeout is usually triggered when network data is not acknowledged, received, or written within the configured transport-level waiting window.",
+                "solution_guidance": "Inspect packet loss, transport latency, client responsiveness, proxy behavior, and whether slow consumers or unstable links are delaying network progress.",
+                "observable_symptoms": [
+                    "network timeout",
+                    "disconnect",
+                    "read/write interruption"
+                ]
+            }
+        }
+    }
+]

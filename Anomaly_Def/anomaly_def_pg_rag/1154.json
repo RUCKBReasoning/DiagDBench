@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Transaction Lock Contention Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "SQL Workload Logic Anomaly: Application-level SQL or transaction design forces the engine to touch more rows, hold transactions open longer, or perform extra round-trips beyond business needs.\nTransaction Lock Contention Anomaly: Concurrent transactions request incompatible locks on the same resources, leading to long wait chains or deadlocks managed by the lock manager.\nOperating System Resource Limit Anomaly: The database process hits kernel-enforced ceilings such as file-descriptor, thread, or shared-memory limits, preventing new workers or I/O operations.\n\nWhen these three root causes coexist, the system exhibits a blended symptom set: individual statements run slowly and appear repeatedly in slow-query logs; lock-wait and deadlock statistics surge, producing victim rollbacks and application retries; and, simultaneously, the engine logs failures to open files, spawn threads, or allocate shared memory, causing partial connection or worker starvation. Blocking sessions linger because the lock manager cannot grant locks, while new sessions or parallel workers cannot be created due to exhausted OS resources, amplifying queue length at both the database and application tiers. Observable effects include steep drops in throughput, rising response-time variance, connection-pool exhaustion, and oscillations between lock timeouts, transaction aborts, and \"resource cannot be acquired\" engine errors.\n\nCausal chain: chatty or scan-heavy SQL inflates transaction scope and lock footprint, lengthening the time each lock is held and turning otherwise brief conflicts into chronic blocking or deadlock scenarios. Prolonged waits keep server processes alive and idle for longer, inflating the number of simultaneously active threads, file handles, and asynchronous I/O contexts. This sustained pressure drives the database process toward OS-level resource ceilings. Once those limits are reached, the engine can no longer spawn new worker threads to service blocked or retrying sessions, which in turn magnifies lock contention because fewer transactions can progress to release their locks. The positive feedback loop between over-heavy SQL, extended lock holding, and kernel resource exhaustion pushes the database into a severe, self-reinforcing degradation state that is difficult to resolve without addressing all three layers.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.3785985907398105,
+            "bm25_score": 17.972415191798945,
+            "lexical_score": 0.16802656546489564,
+            "matched_terms": [
+                "and",
+                "are",
+                "be",
+                "can",
+                "connection",
+                "holding",
+                "idle",
+                "is",
+                "number",
+                "of",
+                "on",
+                "or",
+                "progress",
+                "server",
+                "sessions",
+                "system",
+                "that",
+                "the",
+                "this",
+                "time",
+                "to",
+                "when"
+            ],
+            "match_count": 216,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_count",
+                "parameter_name": "tcp_keepalives_count",
+                "timeout_category": "network_keepalive_failure_threshold",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the number of TCP keepalive messages that can be lost before the server connection to the client is considered dead.",
+                "trigger_condition": "The number of lost TCP keepalive probes reaches tcp_keepalives_count on systems supporting TCP_KEEPCNT.",
+                "workload_impact": "The server can consider the client connection dead after the configured keepalive failure threshold.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

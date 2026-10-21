@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Database Configuration Parameter Anomaly + Replication Synchronization Anomaly",
+            "Description": "Schema and Index Design Anomaly : Physical data-model structures, indexing, partitioning, or column definitions do not align with workload access paths, forcing inefficient scans and extra look-ups.\nDatabase Configuration Parameter Anomaly : Engine-level runtime settings for memory, logging, parallelism, and background workers are mis-tuned relative to hardware and workload, introducing artificial bottlenecks or bursts of maintenance activity.\nReplication Synchronization Anomaly : Downstream replicas cannot receive, persist, or apply primary transaction-log traffic at source speed, causing growing apply lag and retention of log segments.\n\nWhen all three root causes are present simultaneously, the system exhibits a blended symptom set: primary queries show high latency and erratic plan shapes (full scans, excessive random I/O); checkpoint, log-write, and work-memory waits spike even though raw CPU and I/O remain under-utilised; at the same time replica lag widens rapidly, retention of log segments inflates primary disk usage, and read-only workloads on replicas see increasingly stale data. Performance troubleshooting becomes harder because any point-in-time metric may show multiple saturated subsystems (buffer cache churn, background writer thrashing, replication apply backlog), yet none individually explains the full degradation.\n\nCausal interaction: poorly designed schemas generate larger row sets and bloated indexes, inflating the volume of dirty pages and redo that the primary must handle. Mis-configured memory and checkpoint parameters then accelerate flush storms, fragment the buffer cache, or throttle worker memory, amplifying query cost and redo generation even further. The swollen and bursty log stream must be shipped to replicas, but their apply threads—already contending with the same inefficient schema structure—fall behind, creating replication lag. As log segments cannot be recycled until all replicas acknowledge them, disk pressure on the primary rises, triggering additional checkpoints and background cleanup that again interact with the mis-tuned parameters. The three root causes therefore reinforce each other in a feedback loop that degrades primary throughput, replica freshness, and overall system stability far more severely than any single anomaly alone.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.3854618531764853,
+            "bm25_score": 16.557787616410458,
+            "lexical_score": 0.14418573797678275,
+            "matched_terms": [
+                "activity",
+                "and",
+                "any",
+                "are",
+                "but",
+                "configured",
+                "for",
+                "latency",
+                "not",
+                "of",
+                "or",
+                "stale",
+                "than",
+                "that",
+                "the",
+                "time",
+                "transaction",
+                "when",
+                "with"
+            ],
+            "match_count": 212,
+            "entry": {
+                "timeout_id": "pg16_idle_session_timeout",
+                "parameter_name": "idle_session_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle, but not within an open transaction, for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle and not inside an open transaction longer than the configured threshold.",
+                "workload_impact": "The session is terminated; the documentation warns about using this with connection pools or middleware.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

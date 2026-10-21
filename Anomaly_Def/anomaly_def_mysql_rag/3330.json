@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer chooses a markedly sub-optimal execution plan despite usable statistics, often because of flawed cost comparisons, plan reuse pathologies, or version/configuration changes.\nOperating System Resource Limit Anomaly : The database hits kernel-enforced ceilings on objects such as file descriptors, shared-memory segments, threads, or async-I/O contexts, causing failures outside the engine’s own resource governance.\n\nWhen both root causes are present, workloads exhibit erratic and hard-to-explain behaviour: the same statement may alternate between fast and extremely slow executions; some runs error out with OS-level \"cannot create thread/file/shm\" messages, while others limp through with degraded performance. Parallel queries may start but stall after only a subset of workers appear, leading to skewed execution, temp-spill explosions, or repeated plan abort/retry cycles. System-wide, operators observe sudden surges in CPU and I/O from full scans or massive hash builds selected by the optimizer, coinciding with spikes in kernel resource-exhaustion logs. Session creation, background autovacuum or checkpoint processes, and I/O completion threads intermittently fail, producing partial outages that disappear once load subsides.\n\nCausal chain: a poor plan often allocates far more resources than a well-tuned one—opening many table/index files, spawning numerous workers, or spilling to large temporary files. This accelerates consumption of kernel-limited objects, pushing the system over OS quotas. Once limits are reached, the database cannot create additional workers, files, or I/O contexts, causing in-flight queries to abort or replan. The optimizer, unaware of the external constraint, may repeatedly choose the same high-resource plan, triggering a feedback loop of retries, plan cache pollution, and further resource churn. Conversely, OS denials can invalidate or refuse parallel plans, forcing the optimizer to fall back to less efficient serial scans, which lengthen execution time and keep resources busy even longer. The mutual reinforcement of bad plan choices and kernel resource exhaustion amplifies latency variance, throughput collapse, and operational instability across both transactional and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.5248598829580275,
+            "bm25_score": 21.230942312117048,
+            "lexical_score": 0.13002183406113538,
+            "matched_terms": [
+                "and",
+                "back",
+                "because",
+                "by",
+                "cannot",
+                "in",
+                "longer",
+                "of",
+                "only",
+                "or",
+                "retry",
+                "session",
+                "statement",
+                "than",
+                "the",
+                "this",
+                "time",
+                "when"
+            ],
+            "match_count": 156,
+            "entry": {
+                "timeout_id": "mysql84_innodb_row_lock_wait_timeout",
+                "parameter_name": "innodb_lock_wait_timeout",
+                "timeout_category": "innodb_row_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "The length of time in seconds an InnoDB transaction waits for a row lock before giving up.",
+                "trigger_condition": "An InnoDB transaction waits longer than innodb_lock_wait_timeout for a row lock.",
+                "workload_impact": "The lock wait gives up; by default only the current statement is rolled back unless innodb_rollback_on_timeout is enabled.",
+                "default_behavior": "Defined as an InnoDB system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

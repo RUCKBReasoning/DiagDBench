@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Transaction Log Subsystem Anomaly + Replication Synchronization Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level statements or transaction scopes are written in a way that forces the engine to process and persist more changes than business logic really requires.\nTransaction Log Subsystem Anomaly : The generation, buffering, flushing, or archival of write-ahead log records becomes the bottleneck on the primary node’s commit path.\nReplication Synchronization Anomaly : Downstream replicas or subscribers cannot receive or apply the primary’s log stream at the rate it is produced, causing growing replication lag.\n\nWhen all three conditions coexist, the database experiences a compounded failure mode in which chatty, long-running, or excessively bulk-modifying transactions inflate redo volume, saturating the primary’s log buffer, log device, and archiver. Commit latency spikes and back-pressure propagates to the application layer, while replicas fall progressively behind, evidenced by rapidly expanding log files, stalled log recycling, escalating log-flush and log-sync waits, widening replica replay lag, and a surge of application timeouts and retried statements. Monitoring views may simultaneously show the same heavyweight SQL statements in slow-query logs, high log write times on the primary, and growing apply delay on replicas, making it difficult to attribute blame to any single layer.\n\nCausally, inefficient workload semantics generate unnecessary DML volume and long transactions; this amplifies redo generation and forces the transaction-log subsystem to operate at or beyond its physical limits. As the log device and archiver struggle, commit stalls lengthen, further extending transaction lifetimes and exacerbating lock retention and row version buildup. The swollen and slower log stream must then be shipped to replicas, which, already constrained by network, I/O, or apply throughput, cannot keep pace. Their mounting lag prevents the primary from recycling old log segments, inflating on-disk log usage and adding even more pressure to the log subsystem. The feedback loop—heavy workload ➝ log saturation ➝ replication backlog ➝ log retention—creates a self-reinforcing performance degradation that can culminate in write stalls, replica desynchronization, and risk of availability loss.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2587,
+            "score": 0.4905525369108905,
+            "bm25_score": 54.76437435583845,
+            "lexical_score": 0.17821019993584947,
+            "matched_terms": [
+                "and",
+                "apply",
+                "downstream",
+                "failure",
+                "is",
+                "keep",
+                "lag",
+                "log",
+                "network",
+                "node",
+                "on",
+                "or",
+                "replica",
+                "replication",
+                "retention",
+                "the",
+                "to",
+                "way"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010700",
+                "error_name": "OBSOLETE_ER_NDB_BINLOG_LOST_SCHEMA_CONNECTION_CONTINUING",
+                "official_description": "NDB Binlog: ...and on our way",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

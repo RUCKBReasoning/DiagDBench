@@ -1,0 +1,64 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Data Block and Index Integrity Anomaly + CPU Resource Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer repeatedly chooses a markedly sub-optimal execution plan despite reasonably accurate statistics, often because of flawed cost comparisons, plan reuse issues, or version/configuration changes.\nData Block and Index Integrity Anomaly : The on-disk heap or index pages have become physically or logically inconsistent, causing look-ups or scans to return incorrect or unpredictable results.\nCPU Resource Anomaly : Database processes monopolise host CPU, driving sustained saturation and system-wide latency inflation.\n\nWhen all three root causes surface together, the engine must execute poor plans against corrupted or internally inconsistent structures while the server is already starved for CPU. Observable effects include:  • Frequent plan flips between index and full scans as the optimizer struggles to evaluate damaged indexes, leading to erratic and ever-changing plan caches.  • Corruption-induced logical I/O retries, checksum validations, or forced page reads magnifying CPU usage so that run-queue lengths spike and scheduler waits dominate wait-class statistics.  • Queries that should return quickly instead loop through large row sets or perform repeated look-ups that either miss rows (due to bad indexes) or re-read the same pages, producing both correctness anomalies (missing/duplicated rows) and severe latency variability.  • Emergency fail-over, corruption-check jobs, or auto-rebuild operations launching under CPU pressure, causing further contention and making it difficult to pin blame on a single layer.  • Error logs may show alternating entries of \"corrupt page detected\" and \"plan removed from cache due to recompile\", coinciding with CPU spikes and throughput collapse.\n\nCausally, damaged data or index pages can mislead the optimizer: page-level inconsistencies prompt the engine to distrust indexes, leading to sudden plan changes that favour full table scans. These broader scans, in turn, inflate CPU consumption. The resulting CPU saturation slows background validation and recovery threads, delaying page-repair tasks and allowing corruption to persist longer. High CPU pressure also accelerates plan cache churn, increasing the likelihood that the optimizer will pick different—and often worse—plans on each execution. The vicious circle of corrupt structures provoking bad plans, which then explode CPU usage, which in turn hinders corruption remediation and plan stability, amplifies both performance degradation and data-integrity risk.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5751,
+            "score": 0.7403833728618191,
+            "bm25_score": 76.34952380500759,
+            "lexical_score": 0.16478792070078377,
+            "matched_terms": [
+                "already",
+                "and",
+                "as",
+                "between",
+                "check",
+                "data",
+                "disk",
+                "effects",
+                "either",
+                "engine",
+                "error",
+                "from",
+                "have",
+                "in",
+                "inconsistent",
+                "is",
+                "issues",
+                "latency",
+                "may",
+                "of",
+                "or",
+                "pressure",
+                "recovery",
+                "server",
+                "that",
+                "the",
+                "to",
+                "while",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013908",
+                "error_name": "ER_BINLOG_CRASH_RECOVERY_MALFORMED_LOG",
+                "official_description": "Found invalid event sequence while recovering from binary log file '%s', between positions %llu and %llu: %s. The recovery process was stopped early and no transaction was recovered. Side effects may be transactions in an inconsistent state between the binary log and the storage engines, or transactions kept by storage engines in a prepared state (possibly holding locks). Either fix the issues with the binary log or, to release possibly acquired locks, disable the binary log during server recovery. Note that disabling the binary log may lead to loss of transactions that were already acknowledged as successful to client connections and may have been replicated to other servers in the topology.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

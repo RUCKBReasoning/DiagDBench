@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Database Memory Allocation Anomaly : Excessive growth of engine buffer caches, work areas, and ancillary heaps drives the database process beyond the safe physical-memory or swap envelope of the host.\nOperating System Resource Limit Anomaly : Database processes hit kernel-enforced ceilings for objects such as file descriptors, shared-memory segments, semaphores, threads, or cgroup quotas, independent of database-level quotas.\n\nWhen both conditions surface concurrently, the system exhibits a blended failure pattern: resident-set size balloons until the kernel begins paging, while at the same time new threads, shared-memory extents, or file handles cannot be granted. Administrators observe escalating swap usage, cache-hit degradation, and memory-pressure-induced CPU stalls alongside erratic \"cannot allocate memory / resource temporarily unavailable\" errors, inability to spawn parallel workers, and partial service where existing sessions limp on but new logins, sorts, or I/O requests fail. Restart storms may occur because an out-of-memory killer terminates the process just as unreleased kernel objects accumulate, causing the next startup to inherit or exceed tight resource caps.\n\nCausally, aggressive memory allocation magnifies the likelihood of breaching kernel limits: each session or parallel worker spawned to service the enlarged workload reserves its own stack, file handles, and asynchronous I/O contexts, accelerating exhaustion of per-process quotas. In turn, once the kernel refuses additional handles or threads, the database engine cannot offload or flush memory through background tasks, so buffers remain pinned and continue to grow, intensifying host memory pressure. This feedback loop turns two individually manageable issues into a compound outage where memory bloat feeds kernel-resource starvation and vice versa, rapidly degrading overall database stability.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.4840000234357652,
+            "bm25_score": 13.251662672290525,
+            "lexical_score": 0.117876254180602,
+            "matched_terms": [
+                "an",
+                "and",
+                "because",
+                "cannot",
+                "for",
+                "in",
+                "or",
+                "session",
+                "sessions",
+                "the",
+                "this",
+                "to",
+                "when",
+                "while"
+            ],
+            "match_count": 51,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

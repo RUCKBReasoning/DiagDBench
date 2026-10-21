@@ -1,0 +1,59 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Database Memory Allocation Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same rows, pages, or metadata, leading to wait chains or deadlocks that stall or abort user work. \nDatabase Memory Allocation Anomaly : The engine’s aggregate memory footprint grows beyond safe limits, provoking host-level pressure, paging, or OOM terminations as caches, work areas, and background heaps expand uncontrollably. \nBuffer Cache and Latch Contention Anomaly : Sessions serialize on hot buffer-cache pages, latches, or I/O slots, producing high latch and buffer-busy waits and CPU spin without useful progress. \n\nWhen all three anomalies coincide, the system experiences compounding symptoms: lock wait times and deadlock rates surge while CPU usage oscillates between spin-looping on latches and kernel scheduling delays caused by memory pressure. Throughput collapses as transactions queue behind both lock owners and latch holders, while memory overcommitment forces buffer evictions and paging, further inflating latch durations and lengthening lock hold times. Users observe erratic response times, frequent query cancellations or victim rollbacks, intermittent \"out of memory\" or node-eviction events, and sharp drops in cache hit ratios that aggravate I/O latency and extend blocking intervals.\n\nCausal interaction: excessive memory allocation shrinks true free memory, increasing buffer churn and forcing more frequent page replacement and flush activity; this elevates buffer-latch contention as many sessions compete for the same hot pages. Longer latch acquisition extends the time transactions keep logical locks, intensifying lock contention and enlarging blocker-waiter chains. Conversely, lock queues slow statement completion, allowing work areas, sort buffers, and session heaps to stay resident longer and inflate memory pressure. The resulting paging amplifies latch hold times, forming a positive feedback loop that escalates all three anomalies and can ultimately trigger deadlocks, OOM terminations, or engine restarts.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.7555702341137124,
+            "bm25_score": 36.41759725146924,
+            "lexical_score": 0.18523411371237458,
+            "matched_terms": [
+                "acquisition",
+                "and",
+                "blocking",
+                "for",
+                "in",
+                "incompatible",
+                "lock",
+                "locks",
+                "longer",
+                "metadata",
+                "or",
+                "scheduling",
+                "session",
+                "sessions",
+                "statement",
+                "the",
+                "this",
+                "to",
+                "transaction",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 46,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

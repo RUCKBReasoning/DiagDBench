@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + MVCC Version Maintenance Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Row-count, histogram, or correlation metadata no longer reflect the real data distribution, causing systematic cardinality misestimation and sub-optimal plan choice.\nMVCC Version Maintenance Anomaly : Obsolete row versions and index entries accumulate faster than background cleanup can reclaim them, inflating table size and adding visibility-check overhead.\nOperating System Resource Limit Anomaly : Kernel-enforced caps on file handles, shared memory, semaphores, threads, or other OS objects are reached, preventing the database from allocating needed resources.\n\nWhen these three root causes strike together, the system exhibits a blend of misleading planner estimates, suddenly slow queries, rising disk and memory footprint, and intermittent OS-level allocation failures. Execution plans may flip from index probes to full scans just as the underlying tables become bloated with dead tuples; the resulting surge in I/O, buffer usage, and parallel worker demand quickly consumes file descriptors, shared-memory segments, or thread slots. Administrators may see autovacuum or cleanup workers stuck or crashing due to fork/handle limits, statistics collectors unable to write new stats, and a vicious circle of plan instability, longer execution times, and mounting OS error messages. Symptoms appear scattershot—poor plans, bloated storage, and sporadic \"cannot open file\", \"cannot create thread\", or \"cannot attach to shared memory\" errors—making root-cause isolation difficult.\n\nCausal chain: heavy update/delete activity grows the version store, enlarging tables and indexes. The inflated objects exacerbate the optimizer’s existing stale statistics, further skewing estimates and leading it to select plans that touch far more data than expected, which increases CPU and I/O pressure. To cope, the engine spawns more workers and opens more files, but the concurrent demand collides with tight OS limits. Cleanup and statistics refresh processes are among the first to fail under these limits, so dead-tuple bloat and statistic staleness worsen, reinforcing each other. The positive feedback loop ultimately degrades throughput, triggers OS allocation errors, and pushes the database toward partial or total outage.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.4831477521509978,
+            "bm25_score": 18.72039345753597,
+            "lexical_score": 0.12742290748898677,
+            "matched_terms": [
+                "activity",
+                "and",
+                "are",
+                "can",
+                "check",
+                "dead",
+                "messages",
+                "of",
+                "on",
+                "or",
+                "probes",
+                "stale",
+                "system",
+                "that",
+                "the",
+                "to",
+                "when"
+            ],
+            "match_count": 184,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_count",
+                "parameter_name": "tcp_keepalives_count",
+                "timeout_category": "network_keepalive_failure_threshold",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the number of TCP keepalive messages that can be lost before the server connection to the client is considered dead.",
+                "trigger_condition": "The number of lost TCP keepalive probes reaches tcp_keepalives_count on systems supporting TCP_KEEPCNT.",
+                "workload_impact": "The server can consider the client connection dead after the configured keepalive failure threshold.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

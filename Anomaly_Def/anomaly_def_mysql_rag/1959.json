@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Transaction Lock Contention Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Stale, missing, or insufficient optimizer statistics cause systematic cardinality misestimation and mis-costed execution plans.\nTransaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same resources, forming long blocking chains or deadlocks that stall progress.\nBuffer Cache and Latch Contention Anomaly : Sessions vie for hot buffer pages, latches, or I/O slots, forcing serialization and CPU spin even when logical memory is sufficient.\n\nWhen these three root causes coincide, the database exhibits compounded instability: poorly costed plans may favor full-table scans, unordered index usage, or lock-escalating access paths that touch far more rows and pages than necessary. The inflated footprint magnifies both row/table lock conflicts and the number of buffer pages and latches each transaction must pin. As blocking lengthens, pages stay latched and dirty longer, amplifying buffer-busy, page-latch, and lock-wait events, while deadlock detectors and application timeouts trigger frequent rollbacks and retries. Execution plans show severe row-count misestimates alongside bloated lock and latch wait statistics, checkpoint stalls, and oscillating CPU utilization.\n\nCausally, inaccurate statistics misguide the optimizer into choosing plans that create wide lock scopes (e.g., table scans, range locks) and concentrate traffic on a few hot pages. The resulting lock contention prolongs transaction lifetimes, causing threads to hold latches and buffer pins for extended periods. Extended latch holds throttle page circulation, forcing more sessions to spin or sleep on latch acquisition, which in turn slows data access and keeps locks active even longer. The protracted blocking suppresses or delays statistics refresh operations, allowing data drift to grow and further degrading plan quality—forming a reinforcing loop that steadily degrades throughput and inflates latency in write-heavy transactional workloads.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.6237199700433295,
+            "bm25_score": 23.917238638465854,
+            "lexical_score": 0.13621794871794873,
+            "matched_terms": [
+                "and",
+                "blocking",
+                "for",
+                "in",
+                "incompatible",
+                "is",
+                "lock",
+                "longer",
+                "of",
+                "or",
+                "row",
+                "sessions",
+                "than",
+                "the",
+                "transaction",
+                "wait",
+                "when"
+            ],
+            "match_count": 92,
+            "entry": {
+                "timeout_id": "mysql84_innodb_row_lock_wait_timeout",
+                "parameter_name": "innodb_lock_wait_timeout",
+                "timeout_category": "innodb_row_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "The length of time in seconds an InnoDB transaction waits for a row lock before giving up.",
+                "trigger_condition": "An InnoDB transaction waits longer than innodb_lock_wait_timeout for a row lock.",
+                "workload_impact": "The lock wait gives up; by default only the current statement is rolled back unless innodb_rollback_on_timeout is enabled.",
+                "default_behavior": "Defined as an InnoDB system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

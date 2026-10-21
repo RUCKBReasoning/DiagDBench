@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Replication Synchronization Anomaly",
+            "Description": "Schema and Index Design Anomaly : Physical data-model structures (tables, partitions, indexes, datatypes, constraints) do not match the workload’s access patterns, forcing inefficient access paths and inflating DML and query cost.\nReplication Synchronization Anomaly : The replication pipeline cannot receive, persist, or apply primary-side log records fast enough, causing widening apply lag and retention of log segments on the source.\n\nWhen these two root causes strike at the same time, the database exhibits a mixed set of local performance issues and distributed data-movement symptoms: primary queries suffer from full scans, non-covering index lookups, and write slow-downs due to oversized or missing indexes, while replicas simultaneously fall further behind because the bloated change stream (extra page writes, larger redo records, unnecessary index maintenance) overwhelms network, I/O, and apply threads. Monitoring may show high CPU and I/O on both primary and replicas, growing replication lag, expanding WAL/binlog retention, hot-spot pages locked on the replicas during re-indexing, and unpredictable read staleness that cannot be eliminated merely by tuning replication parameters.\n\nCausally, the poor physical design inflates every data modification—each insert, update, or delete touches more pages and indexes, enlarging transaction-log volume and increasing per-statement latency. The heavier log stream must traverse the replication channel, stressing network and replica resources; as replicas fall behind, retained log segments accumulate on the primary, further consuming I/O bandwidth and storage and lengthening checkpoint and vacuum cycles. Conversely, sustained replication lag prevents timely feedback about design fixes (e.g., new indexes) and can hold metadata locks, delaying online schema evolution and perpetuating the sub-optimal design. Together, the two anomalies reinforce each other, degrading both local workload performance and the availability of up-to-date replicas, thereby compromising overall system throughput, latency, and resilience.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.7221066678708075,
+            "bm25_score": 29.912200863252018,
+            "lexical_score": 0.14105339105339104,
+            "matched_terms": [
+                "and",
+                "data",
+                "from",
+                "latency",
+                "more",
+                "network",
+                "not",
+                "of",
+                "or",
+                "read",
+                "replica",
+                "replication",
+                "source",
+                "the",
+                "time",
+                "to",
+                "when"
+            ],
+            "match_count": 144,
+            "entry": {
+                "timeout_id": "mysql84_replica_network_timeout",
+                "parameter_name": "replica_net_timeout",
+                "timeout_category": "replication_network_timeout",
+                "scope": "global/replication",
+                "official_definition": "The number of seconds to wait for more data from a source/replica connection before aborting the read.",
+                "trigger_condition": "A replica waits longer than replica_net_timeout for more data from the source connection.",
+                "workload_impact": "The replication network read is aborted and the replica considers the connection interrupted.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

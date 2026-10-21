@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Transaction Log Subsystem Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Database Configuration Parameter Anomaly: Engine-level runtime settings (memory pools, checkpoint cadence, log size, parallelism, etc.) are mis-tuned relative to hardware capacity and workload demands.\nTransaction Log Subsystem Anomaly: The generation, flushing, or archival of write-ahead log records becomes the principal bottleneck on the write path.\nData Block and Index Integrity Anomaly: On-disk pages or index structures become physically or logically corrupt, rendering access paths and checksums unreliable.\n\nWhen these three root causes manifest together, the system may exhibit a confusing blend of symptoms: 1) commit latency and log-flush waits surge while overall I/O and CPU metrics appear under-utilised; 2) sudden checkpoint storms, repeated log-file switches, or archiver backlogs coincide with query plans unexpectedly falling back to full table scans or returning inconsistent row counts; 3) integrity-check utilities report page or index corruption just as background workers throttle or stall due to mis-sized memory pools and aggressive checkpoint parameters; 4) application workloads experience intermittent dead-time where writes hang, followed by bursts of redo, page-verification errors, and emergency auto-recovery cycles.\n\nCausal interaction: Mis-configured memory and checkpoint parameters can inflate redo generation rates and shrink log-buffer headroom, quickly pushing the transaction-log subsystem into saturation. Prolonged log pressure delays checkpoint completion and increases dirty-page residency, making any latent page or index corruption more likely to surface during forced flushes or crash-recovery cycles. Conversely, the presence of corrupted pages triggers extra recovery and validation work, amplifying log-write volume and stressing both the mis-configured buffers and the already constrained log path. The three factors therefore reinforce one another: bad parameters create excess log traffic, log saturation prolongs exposure to corrupt data pages, and corruption events in turn force additional I/O and recovery processing, all of which feed back into the mis-tuned configuration and exacerbate throughput collapse and data-quality risks.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.7422454287515763,
+            "bm25_score": 29.778284626983957,
+            "lexical_score": 0.14081809583858762,
+            "matched_terms": [
+                "access",
+                "and",
+                "by",
+                "configured",
+                "constrained",
+                "engine",
+                "or",
+                "path",
+                "quality",
+                "query",
+                "the",
+                "time",
+                "together",
+                "when",
+                "with",
+                "work",
+                "workload"
+            ],
+            "match_count": 17,
+            "entry": {
+                "timeout_id": "mysql84_regular_expression_time_limit",
+                "parameter_name": "regexp_time_limit",
+                "timeout_category": "expression_evaluation_time_limit",
+                "scope": "global/session",
+                "official_definition": "The time limit for regular expression matching operations performed by the regular expression engine.",
+                "trigger_condition": "A regular expression match operation exceeds regexp_time_limit.",
+                "workload_impact": "The regular expression operation is constrained by the configured time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

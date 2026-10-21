@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + MVCC Version Maintenance Anomaly + Database Memory Allocation Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level SQL or transactional design forces the engine to touch more data, rows, or time than the business need, inflating execution cost and concurrency footprints.\nMVCC Version Maintenance Anomaly : Obsolete row versions and rollback information pile up faster than background cleaners can reclaim them, bloating tables and indexes and increasing visibility-check overhead.\nDatabase Memory Allocation Anomaly : Engine memory-consuming structures—buffers, work areas, plan cache, session heaps—grow beyond the host’s safe physical limits, driving OS pressure and eviction.\n\nWhen these three faults co-exist, the system exhibits a blended symptom set: statements already slow from poor logic generate massive update/delete churn that swells the MVCC version store; the enlarged tables and growing undo segments demand additional buffer‐cache and work memory, accelerating overall RAM consumption. Operators observe a mix of long-tail query latency, surging table and index size, constantly busy autovacuum/cleaner workers, rising checkpoint and I/O times, cache hit-ratio deterioration, OS swapping or OOM events, and frequent application timeouts. Because each anomaly amplifies the others, symptoms can appear cyclic—memory pressure throttles cleaners, which lets version bloat grow, further inflating memory, while bloated objects make the original inefficient SQL even slower and more memory-hungry.\n\nCausally, inefficient SQL logic issues large scans, wide projections, and oversized batches that touch and modify far more rows than necessary. This churn not only inflates active memory usage for sorts, hashes, and buffer pins but also produces an oversized trail of old versions. If long transactions or open cursors from the same workload hold snapshots, vacuum/cleaner processes cannot reclaim those versions, and their own work queues lengthen. The still-growing version store must be kept resident in memory and eventually spills to disk, intensifying both memory allocation pressure and I/O. Memory stress may then throttle background workers or push them out of CPU time-slices, slowing cleanup even further—a positive feedback loop that degrades performance, jeopardizes cluster stability, and risks transaction-ID horizon or OOM crashes.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.3144631290881146,
+            "bm25_score": 13.33709091706419,
+            "lexical_score": 0.128068669527897,
+            "matched_terms": [
+                "and",
+                "be",
+                "check",
+                "from",
+                "if",
+                "in",
+                "latency",
+                "not",
+                "of",
+                "or",
+                "session",
+                "the",
+                "this",
+                "time",
+                "to",
+                "when"
+            ],
+            "match_count": 70,
+            "entry": {
+                "timeout_id": "pg16_authentication_timeout",
+                "parameter_name": "authentication_timeout",
+                "timeout_category": "connection_authentication_timeout",
+                "scope": "server",
+                "official_definition": "Maximum amount of time allowed to complete client authentication; if not completed in time, the server closes the connection.",
+                "trigger_condition": "A would-be client does not complete the authentication protocol within authentication_timeout.",
+                "workload_impact": "The server closes the connection attempt, preventing hung clients from occupying a connection indefinitely.",
+                "default_behavior": "Default value is one minute.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

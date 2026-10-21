@@ -1,0 +1,61 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + MVCC Version Maintenance Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer repeatedly selects a substantially sub-optimal execution plan even though statistics are acceptable and no single plan should be reused.\nMVCC Version Maintenance Anomaly : Obsolete row versions and rollback records accumulate faster than background cleanup workers can reclaim them, inflating the physical size of tables and indexes and adding visibility-check overhead.\n\nComposite anomaly definition: The database concurrently suffers from plan-selection errors and runaway MVCC version buildup. While the workload is running, every statement is exposed both to bloated storage structures and to an execution plan that is not well adapted to the real cost landscape, creating a feedback loop that degrades throughput and latency.\n\nCombined observable phenomena: 1) Plans flip between index probes and full scans or choose inefficient join orders; at the same time, table and index sizes grow rapidly, causing I/O and buffer-pool pressure. 2) Execution-time skew increases dramatically—some executions are trapped in long sequential scans over dead rows, others fail early due to timeout. 3) Autovacuum or cleanup workers show sustained backlog, yet long-running queries with bad plans keep old snapshots open, preventing garbage collection. 4) The optimizer’s estimated costs diverge even further from reality because the bloated heap increases page counts, but the cost model picks plans that are optimal only for the leaner structure assumed at compile time. 5) Administrators observe both plan cache churn and high version-store utilization without obvious blocking locks.\n\nCausal chain and reinforcement: MVCC bloat inflates relation size and alters physical access costs; however, the optimizer’s plan selection anomaly fails to adapt, locking in plans that underweight the I/O penalty of scanning the expanded data. These inefficient plans run longer, holding snapshots and transaction IDs open for extended periods, which in turn delays vacuum/garbage collection and accelerates version accumulation. The growing version store further distorts cost dynamics, increasing the likelihood that the optimizer will mis-rank candidates on subsequent compilations, amplifying plan instability and continuing the vicious cycle. Without intervention—such as forced plan baselines plus aggressive vacuum tuning—both anomalies feed each other, driving the system into severe performance and storage crisis.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.5443224164943737,
+            "bm25_score": 26.053128766611934,
+            "lexical_score": 0.16697175732217573,
+            "matched_terms": [
+                "an",
+                "and",
+                "are",
+                "can",
+                "check",
+                "dead",
+                "for",
+                "holding",
+                "is",
+                "latency",
+                "longer",
+                "no",
+                "not",
+                "of",
+                "on",
+                "or",
+                "should",
+                "system",
+                "than",
+                "the",
+                "time",
+                "timeout",
+                "to",
+                "which",
+                "with"
+            ],
+            "match_count": 313,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_idle",
+                "parameter_name": "tcp_keepalives_idle",
+                "timeout_category": "network_idle_keepalive_probe_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time with no network activity after which the operating system should send a TCP keepalive message to the client.",
+                "trigger_condition": "A TCP client connection has no network activity longer than tcp_keepalives_idle on systems supporting TCP_KEEPIDLE or an equivalent socket option.",
+                "workload_impact": "Starts TCP keepalive probing for an otherwise idle client connection; together with interval and count settings this can lead to dead connection detection.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

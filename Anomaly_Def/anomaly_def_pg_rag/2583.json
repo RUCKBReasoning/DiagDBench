@@ -1,0 +1,59 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Data Block and Index Integrity Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly: Excessive accumulation of obsolete row versions, rollback records, and deleted index entries because background cleaners cannot keep up.\nData Block and Index Integrity Anomaly: On-disk data pages or index structures become physically or logically corrupt, breaking key order, page links, or heap–index mappings.\nStorage I/O Throughput Anomaly: The physical storage layer is saturated in bandwidth, IOPS, or latency, causing prolonged waits on reads, writes, and durability flushes.\n\nWhen all three root causes are present, the database exhibits a blended symptom set: version stores and rollback segments expand rapidly while VACUUM or purge workers are throttled by slow I/O, causing autovacuum backlogs and rising transaction-ID age. Concurrently, corruption in indexes or data pages yields mismatches between index and heap counts, checksum errors, and sudden plan shifts to sequential scans. The shift to full scans and repeated page re-reads inflate I/O demand, further overwhelming an already saturated storage subsystem; meanwhile corruption-induced retries, double-reads for verification, or forced page repairs increase latency variability and queue depth. Administrators observe a vicious cycle of longer query response times, high I/O wait, bloated tables, integrity-check failures, and relentless engine warnings about wraparound, corruption, and I/O stalls—making it difficult to distinguish which subsystem is primarily at fault.\n\nCausally, saturated storage slows the purge and vacuum processes needed to reclaim obsolete versions, allowing version bloat to escalate. The larger heaps and indexes produced by this bloat in turn require more pages to be read and written, amplifying I/O pressure. Simultaneously, any latent corruption—perhaps triggered by prior I/O errors or abrupt shutdowns—causes index lookups to fail and the planner to fall back to heap scans, dramatically multiplying I/O volume and exposing additional corrupt pages. Each corrupt-page encounter can force re-reads or page-level recovery writes, further congesting the storage path. The compounded effect is a reinforcing feedback loop where I/O saturation, version bloat, and structural corruption mutually aggravate one another, accelerating performance degradation and threatening data availability.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.749478374836173,
+            "bm25_score": 33.38126181749755,
+            "lexical_score": 0.16492791612057667,
+            "matched_terms": [
+                "an",
+                "and",
+                "another",
+                "any",
+                "because",
+                "cannot",
+                "database",
+                "for",
+                "index",
+                "is",
+                "longer",
+                "of",
+                "or",
+                "row",
+                "the",
+                "this",
+                "to",
+                "transaction",
+                "triggered",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 289,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

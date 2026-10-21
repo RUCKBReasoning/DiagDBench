@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Optimizer Statistics Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Composite definition: The database is simultaneously affected by (1) application-layer SQL that processes more data or holds transactions longer than business logic requires, (2) stale or insufficient optimizer statistics that cause systematic cardinality misestimation and sub-optimal plan choices, and (3) a write-ahead log subsystem whose generation, flushing, or archival capacity is saturated. All three root causes coexist and interact during the same workload execution.\n\nCombined observable phenomena: Queries show extreme and erratic latency, with execution plans exhibiting large mismatches between estimated and actual row counts, wide scans, or inappropriate join orders. Transactions remain open far longer than normal, consume excessive locks, and generate unusually large volumes of redo. Commit, checkpoint, and log-flush waits spike, archive or replica-shipping queues back up, and application sessions face timeouts or cascading retries. Performance degradations may appear suddenly after data loads or schema changes, yet persist because inefficient SQL continues to execute against misinformed plans while the log subsystem throttles all write traffic, making the individual symptoms difficult to isolate.\n\nCausal chain and interaction: Inefficient SQL logic expands data touched per statement; when paired with inaccurate statistics, the optimizer selects plans that further magnify row processing, I/O, and sort or hash spill volumes. The bloated work units inflate redo generation and prolong transaction duration, driving a surge of log records that must be flushed and archived. The overwhelmed log subsystem lengthens commit latency, which in turn holds locks and latches for longer periods, inflating concurrency conflicts and extending transaction lifespans. These longer transactions keep snapshot versions and index pages \"in flight,\" preventing automatic statistics refresh from triggering and thereby keeping statistics stale. The feedback loop—poor SQL logic → bad cardinality → excess redo → log bottleneck → longer transactions → delayed stats upkeep—amplifies systemic slowdown until all three layers are addressed together.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2591,
+            "score": 0.4088178056462229,
+            "bm25_score": 41.203726877904344,
+            "lexical_score": 0.14183673469387756,
+            "matched_terms": [
+                "and",
+                "between",
+                "commit",
+                "during",
+                "is",
+                "keep",
+                "log",
+                "of",
+                "or",
+                "replica",
+                "shipping",
+                "stale",
+                "the",
+                "to",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010704",
+                "error_name": "OBSOLETE_ER_NDB_BINLOG_ERROR_DURING_GCI_COMMIT",
+                "official_description": "NDB Binlog: Error during COMMIT of GCI. Error: %d",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + MVCC Version Maintenance Anomaly + Database Configuration Parameter Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Statistics on tables and indexes are stale, incomplete, or missing, causing the optimizer to mis-estimate cardinalities and choose sub-optimal execution plans.\nMVCC Version Maintenance Anomaly : Obsolete row versions and dead tuples accumulate because background cleaners cannot keep pace with update/delete churn, inflating table and index bloat and adding visibility-check overhead.\nDatabase Configuration Parameter Anomaly : Critical engine parameters (memory pools, autovacuum thresholds, checkpoint cadence, etc.) are mis-tuned for the hardware and workload, throttling maintenance workers and distorting resource usage.\n\nWhen all three conditions coexist, the system exhibits severe and intertwined symptoms: execution plans are based on outdated statistics that under-represent the true size of bloated tables, leading the optimizer to choose index scans that devolve into expensive heap fetches or nested-loop joins that explode in runtime. Meanwhile, query latency rises unpredictably as each row visit incurs extra MVCC visibility checks against a swollen version store. Autovacuum or cleanup workers run almost continuously yet never reclaim space, while checkpoints and log flushes spike due to excessive undo/redo generation amplified by mis-sized memory and checkpoint parameters. Wait-event profiles show a mix of CPU spin on mischosen plans, I/O saturation from bloated table scans, and maintenance worker contention, making the performance picture noisy and hard to interpret. Statistics refresh jobs may take longer on the enlarged objects, causing even greater staleness and propagating the feedback loop.\n\nCausal chain: Mis-tuned configuration (e.g., small maintenance work memory, conservative autovacuum cost limits, or infrequent checkpoints) slows version cleanup, letting dead tuples pile up and tables swell. The sudden growth invalidates existing statistics, but disabled or throttled auto-analyze prevents timely refresh, so the optimizer continues to rely on severely wrong cardinality estimates. Poor plans generated from those estimates further increase I/O and redo traffic, which, given the same misconfiguration, drives the background workers deeper into backlog, reinforcing both version bloat and statistics staleness. The triad thus creates a self-amplifying cycle where configuration mis-tuning magnifies MVCC debris, which distorts statistics, which in turn provokes even heavier resource pressure, culminating in pervasive and persistent performance degradation in transactional workloads.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.4114370734800764,
+            "bm25_score": 13.487643851978408,
+            "lexical_score": 0.11503442149677992,
+            "matched_terms": [
+                "and",
+                "are",
+                "check",
+                "for",
+                "in",
+                "latency",
+                "of",
+                "or",
+                "parameter",
+                "pools",
+                "stale",
+                "the",
+                "wait",
+                "when"
+            ],
+            "match_count": 132,
+            "entry": {
+                "timeout_id": "pg16_libpq_connection_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "client_connection_establishment_timeout",
+                "scope": "libpq/client connection parameter",
+                "official_definition": "Maximum wait for connection, in seconds; zero or not specified means wait indefinitely.",
+                "trigger_condition": "A libpq client connection attempt exceeds connect_timeout seconds.",
+                "workload_impact": "The client connection attempt fails instead of waiting indefinitely.",
+                "default_behavior": "Zero or absent value means wait indefinitely.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Database Memory Allocation Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Schema and Index Design Anomaly : The physical data model and indexing strategy do not match workload access patterns, forcing queries into sub-optimal, page-hungry access paths.\nDatabase Memory Allocation Anomaly : The database engine allocates or leaks more memory than the host can safely provide, causing OS pressure, paging, and cache eviction.\nBuffer Cache and Latch Contention Anomaly : Concurrent sessions serialize on hot buffer pages and internal latches, stalling while waiting for page pins, I/O slots, or flush slots.\n\nWhen all three root causes coincide, the system exhibits a blended failure signature: massive full-table/partial-index scans and large in-memory sorts inflate per-session work areas; the swollen memory footprint forces the OS to reclaim pages, shrinking the effective buffer cache just as demand for it peaks. Shrink-and-churn drives dirty-page flushing and buffer replacement, which in turn amplifies latch waits on hot root and data pages. Users observe steep and erratic query latencies, periodic freezes during swap storms, CPU cores lost to latch spinning, and dramatic throughput collapse that rebounds only after both design and memory settings are corrected.\n\nCausal chain: poor schema and index design expands the volume of pages each query must touch, driving up both buffer-cache residency and per-query work memory. This heightened memory appetite accelerates exhaustion of the global memory budget, triggering OS paging and aggressive buffer evictions. Frequent eviction means the same small set of hot pages is repeatedly read, dirtied, and flushed, intensifying latch and buffer-busy contention. In parallel, memory pressure slows background flushers, lengthening the time pages stay dirty and prolonging latch hold duration, which further blocks already inefficient queries. The three root causes therefore reinforce one another in a vicious cycle: design inefficiency → memory overuse → cache churn → latch contention → more concurrency and memory usage, ultimately destabilizing both OLTP and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.6745459857251087,
+            "bm25_score": 19.848455158200036,
+            "lexical_score": 0.15439932318104904,
+            "matched_terms": [
+                "and",
+                "another",
+                "for",
+                "global",
+                "in",
+                "is",
+                "of",
+                "only",
+                "or",
+                "schema",
+                "session",
+                "sessions",
+                "than",
+                "the",
+                "this",
+                "time",
+                "up",
+                "waiting",
+                "waits",
+                "when"
+            ],
+            "match_count": 105,
+            "entry": {
+                "timeout_id": "mysql84_innodb_row_lock_wait_timeout",
+                "parameter_name": "innodb_lock_wait_timeout",
+                "timeout_category": "innodb_row_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "The length of time in seconds an InnoDB transaction waits for a row lock before giving up.",
+                "trigger_condition": "An InnoDB transaction waits longer than innodb_lock_wait_timeout for a row lock.",
+                "workload_impact": "The lock wait gives up; by default only the current statement is rolled back unless innodb_rollback_on_timeout is enabled.",
+                "default_behavior": "Defined as an InnoDB system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

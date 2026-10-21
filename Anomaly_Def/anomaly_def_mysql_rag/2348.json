@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Transaction Lock Contention Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Schema and Index Design Anomaly : Table structure, partitioning, and indexing do not match workload access patterns, forcing inefficient scans and lookups independent of statistics freshness.\nTransaction Lock Contention Anomaly : Concurrent transactions compete for mutually incompatible locks, causing blocking chains or deadlocks that throttle throughput.\nStorage Space Capacity Anomaly : Free space in data, log, temp, or backup areas approaches exhaustion, leading to allocation failures and stalled writes.\n\nWhen all three conditions coexist, the database exhibits a compound failure mode: poorly indexed statements fan out to many rows or pages, inflating the lock footprint of every transaction; the resulting long-lived locks generate extensive blocker–waiter chains that back up connection pools. At the same time, bloated table and index structures plus un-ended transactions prevent space reuse, pushing data files, transaction logs, and temp areas toward their capacity limits. Operators may observe a mixture of symptoms—escalating lock-wait time, sudden spikes in full-table scan I/O, deadlock victim errors, autogrow failures, and \"out of space\" messages—all intertwined and therefore difficult to attribute to a single root cause.\n\nCausally, the design flaw is the first domino: missing or non-covering indexes make each query touch more rows, holding more locks for longer. The enlarged lock scope amplifies contention; blocked or rolled-back transactions remain open, keeping undo and redo segments active and preventing space reclamation. As log files cannot be truncated and tablespaces swell with untouched but still-locked pages, the storage subsystem fills up. Near-full disks slow auto-extension, which in turn lengthens commit processing and prolongs lock duration, further intensifying contention. Thus, deficient physical design, lock manager stress, and dwindling free space form a self-reinforcing loop that rapidly degrades transactional performance and risks outright service interruption.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 4784,
+            "score": 0.31380761619709896,
+            "bm25_score": 40.08791380230254,
+            "lexical_score": 0.13405797101449274,
+            "matched_terms": [
+                "access",
+                "and",
+                "capacity",
+                "data",
+                "failure",
+                "failures",
+                "is",
+                "log",
+                "or",
+                "storage",
+                "the",
+                "truncated",
+                "undo",
+                "when",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-012901",
+                "error_name": "ER_IB_MSG_1077",
+                "official_description": "Undo tablespace number %lu was being truncated when mysqld quit.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

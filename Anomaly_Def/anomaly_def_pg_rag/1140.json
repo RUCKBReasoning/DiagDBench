@@ -1,0 +1,46 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Replication Synchronization Anomaly",
+            "Description": "Composite definition: The database is simultaneously experiencing severe lock-manager contention that blocks or deadlocks foreground transactions and a replication pipeline that is unable to receive, persist, or apply write-ahead log records at the pace they are produced.\n\nCombined phenomena: On the primary, lock-wait queues, growing deadlock reports, rising transaction latency, and connection-pool back-pressure are observed at the same time that monitoring shows widening log-position gaps, increasing apply lag, and expanding retained WAL or relay logs on replicas. Users may see time-outs and retry storms, while read replicas deliver ever-staler data and lose fail-over currency. Disk consumption for unrecycled logs escalates, CPU on replicas spikes as single-threaded apply workers fall behind, and replica error logs may contain lock-conflict messages when replay encounters the same hot rows currently contended on the primary.\n\nCausal interaction: Prolonged or blocked transactions keep exclusive locks and their corresponding commit LSNs open, preventing log recycling and enlarging the volume of WAL that must be shipped downstream. When the locks finally release, large bursts of accumulated WAL can saturate network or I/O on replicas, deepening lag. Conversely, if synchronous or semi-synchronous replication is in use, a slowed or stalled replica lengthens commit acknowledgment times on the primary, forcing locks to be held even longer and intensifying contention. Apply-side lock conflicts on the replica can further delay replay and feed back into the commit path if the primary waits for replica confirmation, creating a mutually reinforcing loop that rapidly degrades both transactional throughput and replication freshness.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 99,
+            "score": 0.29689883466882955,
+            "bm25_score": 18.753717974348806,
+            "lexical_score": 0.11699999999999999,
+            "matched_terms": [
+                "and",
+                "be",
+                "error",
+                "held",
+                "in",
+                "is",
+                "must",
+                "or",
+                "pressure",
+                "same",
+                "the",
+                "to",
+                "transaction"
+            ],
+            "match_count": 11,
+            "entry": {
+                "error_code": "25008",
+                "error_name": "held_cursor_requires_same_isolation_level",
+                "official_description": "held cursor requires same isolation level",
+                "error_class": "Class 25 - Invalid Transaction State",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

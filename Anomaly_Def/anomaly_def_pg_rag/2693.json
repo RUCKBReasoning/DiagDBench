@@ -1,0 +1,47 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Operating System Resource Limit Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Composite definition: This anomaly occurs when the transaction-log subsystem is saturated at the same time that the database is hitting operating-system resource ceilings and running out of network or listener capacity, so that commit processing, kernel object allocation, and client connectivity are all simultaneously constrained.\n\nCombined anomalous phenomena: Users observe sharp increases in commit and connection-establishment latency, frequent time-outs, and sporadic \"cannot allocate file descriptor / shared memory / thread\" errors in both database and system logs. Log-flush and log-sync waits surge while archiver or replication processes stall because they cannot open new log files or spawn workers. The number of half-open or TIME_WAIT sockets and refused connections rises, yet existing sessions linger in client-read or client-write waits because log flushes are delayed. Checkpoints and log-file switches bunch together, archive directories balloon, and retry storms from application tiers further inflate listener backlogs. Overall, the instance drifts into a state where it serves some in-flight work slowly, rejects new sessions, and risks an abrupt halt if undo or log space is fully exhausted.\n\nCausal chain and interaction: A bursty OLTP workload generates redo faster than the storage or archiver can absorb, elongating commit paths and increasing the residence time of every session. The longer sessions stay connected, the more cumulative file handles, threads, async-I/O contexts, and sockets the engine must keep open, accelerating depletion of kernel-enforced limits. Once those limits are crossed, attempts to create new log segments, start archiver jobs, or accept incoming connections fail, which further blocks log switches and propagates commit stalls. Meanwhile, clients experiencing time-outs aggressively retry, inflating connection rates and network traffic, which magnifies socket-queue pressure and compounds handle exhaustion. Each root cause therefore feeds the others in a positive feedback loop, rapidly degrading both write throughput and service availability.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 235,
+            "score": 0.19442434319447371,
+            "bm25_score": 11.767871568924395,
+            "lexical_score": 0.11579439252336447,
+            "matched_terms": [
+                "and",
+                "engine",
+                "handle",
+                "in",
+                "is",
+                "must",
+                "or",
+                "pressure",
+                "resource",
+                "state",
+                "the",
+                "to",
+                "together",
+                "workload"
+            ],
+            "match_count": 14,
+            "entry": {
+                "error_code": "HV00K",
+                "error_name": "fdw_reply_handle",
+                "official_description": "fdw reply handle",
+                "error_class": "Class HV - Foreign Data Wrapper Error (SQL/MED)",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

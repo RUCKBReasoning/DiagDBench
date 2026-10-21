@@ -1,0 +1,43 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Replication Synchronization Anomaly + CPU Resource Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly: Obsolete row versions and logically deleted index entries pile up faster than background cleanup can reclaim them, bloating the heap and indexes.\nReplication Synchronization Anomaly: Stand-by or subscriber nodes fall behind because they cannot ingest or replay the primary’s WAL stream at the rate it is produced.\nCPU Resource Anomaly: Database-related processes saturate host CPU, starving both foreground queries and essential background workers of compute cycles.\n\nWhen all three root causes strike together, the system shows a compound symptom set: sustained near-100 % CPU, long run queues, and pervasive latency spikes; rapidly growing table and index sizes with falling live-row density; sequential scans and UPDATE/DELETEs slowing as visibility checks touch ever-larger version chains; replication views displaying widening receive, flush, and replay lags together with a swelling stock of retained WAL segments; VACUUM or equivalent cleanup workers reported as backlogged while still consuming high CPU; replica read traffic returning increasingly stale data; and disk usage rising on both primary (due to unrecycled WAL) and replicas (due to redo backlog).\n\nCausal chain: excessive update/delete churn or long-running snapshots start the version buildup. The bloated pages force foreground scans and background VACUUM to do more work per row, driving CPU demand upward. CPU saturation slows both cleanup workers and the single-threaded or poorly parallelized replication apply processes, letting more dead versions and unreplayed WAL accumulate. In turn, replication lag prevents the primary from advancing its \"oldest xmin\" horizon, blocking further removal of dead tuples and accelerating heap bloat. The feedback loop—MVCC bloat → higher CPU → slower replication → frozen xmin → even more MVCC bloat—can quickly spiral, degrading throughput, enlarging storage footprints, and eroding failover safety.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 144,
+            "score": 0.35055990648608637,
+            "bm25_score": 9.401545664697949,
+            "lexical_score": 0.09118811881188119,
+            "matched_terms": [
+                "and",
+                "as",
+                "cannot",
+                "is",
+                "or",
+                "the",
+                "usage",
+                "version",
+                "with"
+            ],
+            "match_count": 9,
+            "entry": {
+                "error_code": "42846",
+                "error_name": "cannot_coerce",
+                "official_description": "cannot coerce",
+                "error_class": "Class 42 - Syntax Error or Access Rule Violation",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "sql_and_parser",
+                "cause_analysis": "The failure is typically associated with unsupported syntax, invalid statement structure, or feature usage that the target engine version cannot execute as written.",
+                "solution_guidance": "Validate SQL syntax, target-engine compatibility, statement shape, and whether the feature is supported under the current engine version or execution context.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "syntax error",
+                    "feature rejection"
+                ]
+            }
+        }
+    }
+]

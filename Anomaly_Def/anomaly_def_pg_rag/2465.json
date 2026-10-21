@@ -1,0 +1,47 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Storage Space Capacity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Stale, absent, or insufficient optimizer statistics cause systematic cardinality misestimation that misguides the cost-based optimizer.\nStorage Space Capacity Anomaly : The database or supporting filesystems run out of allocatable free space, leading to allocation failures for data, logs, or temporary work areas.\nOperating System Resource Limit Anomaly : Kernel-enforced quotas on file handles, shared memory, semaphores, threads, or related objects are exhausted, preventing the database from obtaining required OS resources.\n\nWhen all three root causes coexist, symptoms overlap and amplify: execution plans already mis-estimated by stale statistics choose hash joins, large sorts, or spill-to-temp operations that inflate temporary segments and redo volume, accelerating space consumption. As free space dwindles, auto-extension or archive-log operations fail, producing \"cannot allocate extent\", \"out of space\", or \"archiving paused\" messages alongside severe performance drops. Concurrently, the engine attempts more re-compilations and worker spawns to find alternative plans or perform emergency space management, but hits kernel limits on file descriptors, shared memory, or threads. The cluster therefore exhibits erratic slowdowns, frequent plan invalidations, aborted DML, failed new connections, and a mixture of database-level and OS-level errors that are hard to disentangle.\n\nCausal chain: Stale statistics first generate bloated or spill-heavy plans that create excess temporary I/O and log output, rapidly consuming free space. Imminent space exhaustion forces the engine into frequent file opens, auto-extend attempts, and log switches, multiplying the demand for file handles and other kernel objects. Simultaneously, failed space allocations block normal maintenance tasks such as statistics refresh jobs, further prolonging statistics staleness and reinforcing poor plan choices. As space and temp usage surge, each additional session or background process needed for recovery or parallelism contends for shrinking OS quotas, eventually breaching per-process or cgroup limits. The three anomalies thus form a feedback loop: bad statistics → space pressure → OS resource pressure → inability to gather new statistics or free space, culminating in widespread contention, partial outages, and unpredictable query behavior.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 186,
+            "score": 0.19974583931495657,
+            "bm25_score": 15.626034368136729,
+            "lexical_score": 0.12194503171247356,
+            "matched_terms": [
+                "and",
+                "but",
+                "by",
+                "engine",
+                "execution",
+                "in",
+                "insufficient",
+                "level",
+                "or",
+                "pressure",
+                "resource",
+                "resources",
+                "the",
+                "to"
+            ],
+            "match_count": 14,
+            "entry": {
+                "error_code": "53000",
+                "error_name": "insufficient_resources",
+                "official_description": "insufficient resources",
+                "error_class": "Class 53 - Insufficient Resources",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

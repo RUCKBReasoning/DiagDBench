@@ -1,0 +1,42 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Transaction Log Subsystem Anomaly + CPU Resource Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Costing metadata no longer matches the real data distribution, producing systematic cardinality errors and sub-optimal execution plans.\nTransaction Log Subsystem Anomaly : The write-ahead logging path—log buffer, log file, archiver, or replication retention—cannot persist or recycle redo fast enough, throttling commit throughput.\nCPU Resource Anomaly : Database processes saturate host CPU cycles, keeping runnable queues permanently full and inflating latency across all operations.\n\nWhen these three root causes strike together, the system shows a confused mixture of symptoms: queries exhibit wildly inaccurate cardinality estimates and choose plan shapes that scan or join far more rows than intended; the excessive row processing amplifies redo generation, quickly filling log buffers and exhausting log file bandwidth. As log flush and sync waits climb, user transactions stall at commit time, while foreground sessions already burdened by poor plans consume ever more CPU in longer execution paths. Log-writer and archiver processes compete for the same CPU cores now saturated by query workers, so both data processing and log persistence slow further. The database reports simultaneous spikes in CPU-bound wait events, log write-related waits, and optimizer recompile events, making isolation of any single culprit difficult.\n\nCausally, stale or incomplete statistics produce execution plans that scan and update large data volumes, inflating CPU demand and redo generation. The surge of log records overwhelms an already constrained transaction-log subsystem, lengthening commit times and forcing foreground processes to linger in log-related waits where they still hold latches and locks. These blocked or looping sessions keep consuming scheduler time slices, pushing CPU utilization toward saturation. In turn, CPU saturation starves the log-writer and statistics-gathering tasks, preventing timely statistics refresh and slowing log flushes, which feeds back into even poorer plans and deeper commit stalls. The intertwined feedback loop of bad plans → high CPU & redo → log bottleneck → more CPU pressure → deferred statistics refresh creates a self-reinforcing degradation spiral that can cripple OLTP throughput and inflate end-to-end response times.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 112,
+            "score": 0.3734239202902363,
+            "bm25_score": 22.109625045672097,
+            "lexical_score": 0.07466766523123011,
+            "matched_terms": [
+                "and",
+                "at",
+                "execution",
+                "or",
+                "still",
+                "the",
+                "time",
+                "user"
+            ],
+            "match_count": 14,
+            "entry": {
+                "error_code": "2B000",
+                "error_name": "dependent_privilege_descriptors_still_exist",
+                "official_description": "dependent privilege descriptors still exist",
+                "error_class": "Class 2B - Dependent Privilege Descriptors Still Exist",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "authentication_and_authorization",
+                "cause_analysis": "The failure is typically associated with user identity, privilege scope, object access checks, or credential validation at session establishment or statement execution time.",
+                "solution_guidance": "Verify account credentials, privilege grants, object ownership, role settings, and whether the execution context has sufficient access rights.",
+                "observable_symptoms": [
+                    "access denied",
+                    "authentication failure",
+                    "permission error"
+                ]
+            }
+        }
+    }
+]

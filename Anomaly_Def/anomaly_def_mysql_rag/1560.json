@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + MVCC Version Maintenance Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Optimizer Statistics Anomaly: Optimizer inputs (row counts, histograms, correlation data) are stale or incomplete, leading the planner to choose systematically mis-costed execution plans.\nMVCC Version Maintenance Anomaly: Obsolete row versions and rollback records accumulate because background cleanup is throttled or blocked, inflating on-disk objects and visibility-check overhead.\nTransaction Log Subsystem Anomaly: The write-ahead log path (generation, flush, switch, archive, retention) becomes a bottleneck, stretching commit latency and stalling writers.\n\nWhen these three root causes coincide, the system exhibits a multi-layer performance collapse:  \n• Queries adopt inefficient plans—e.g., index probes where true cardinalities demand scans, or vice-versa—because statistics reflect the pre-bloat data shape rather than the current, heavily versioned heap.  \n• Table and index bloat from unreclaimed versions drastically lengthens I/O paths; the mischosen plans amplify I/O and CPU consumption, further stressing the buffer pool and cache hierarchy.  \n• Concurrently, surging redo from update/delete churn and from the faulty plans’ extra work overwhelms the log buffer and log device, inflating commit latency, causing frequent log-flush waits, and delaying checkpoints and archival.  \n• Long-running transactions that keep version snapshots open also prevent log segment recycling, so log directories and version stores grow together, consuming space and triggering emergency autovacuum or checkpoint storms.  \n• Background statistics jobs, vacuum/cleanup workers, and log archivers all contend for I/O and CPU, falling further behind and creating a feedback loop where stale statistics, bloat, and log pressure reinforce each other.  \n\nCausally, excessive MVCC bloat inflates table sizes and redo generation, which in turn magnifies transaction-log throughput requirements. Log subsystem saturation slows commits and prolongs active snapshots, blocking vacuum from pruning dead tuples and perpetuating version accumulation. The expanding heap and skewed dead/live row ratios render existing statistics obsolete; suppressed or delayed statistics refreshes (due to long transactions or choking maintenance workers) lock the optimizer into poor plans that intensify CPU and I/O demand, generating even more undo/redo. This vicious cycle can escalate to severe space exhaustion, widespread query slowdowns, and potential outage if log or transaction-ID horizons are reached.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1619,
+            "score": 0.49726171694787885,
+            "bm25_score": 48.95499713972182,
+            "lexical_score": 0.12014575741801145,
+            "matched_terms": [
+                "and",
+                "can",
+                "execution",
+                "for",
+                "in",
+                "is",
+                "more",
+                "or",
+                "pressure",
+                "reached",
+                "row",
+                "table",
+                "the",
+                "to",
+                "together",
+                "versions"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "4089",
+                "error_name": "ER_INNODB_MAX_ROW_VERSION",
+                "official_description": "Maximum row versions reached for table %s. No more columns can be added or dropped instantly. Please use COPY/INPLACE.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Database Memory Allocation Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent sessions contend for mutually incompatible locks, forming blocking chains or deadlocks that stall statement progress until waits time out or a victim is aborted.\nDatabase Memory Allocation Anomaly : The database engine and its sessions collectively allocate more memory than the host can safely supply, provoking paging, OOM kills, or cache-churn stalls.\nNetwork and Connectivity Resource Anomaly : Network paths, listener slots, sockets, or authentication workers become saturated, delaying connection establishment and slowing result transfer between clients and the server.\n\nWhen all three root causes strike at once, symptoms overlap and amplify: lock-wait time rises while overall query latency balloons; back-end processes linger in a blocked or idle-in-transaction state, yet their resident sets keep growing under memory pressure; swapping exacerbates CPU stalls and prolongs critical sections, so locks are held even longer. Clients experience intermittent connection refusals, SSL handshake timeouts, or slow result streaming, which in turn keeps transactions open on the server side, deepening lock queues and consuming more memory for retained result buffers and session state. Monitoring dashboards show simultaneous spikes in lock-wait events, OS page-in/out rates, backend counts near the max-connections limit, rising retransmission and round-trip times, and a steep drop in completed TPS.\n\nCausally, any one factor can trigger the others: network slowness stretches query duration, so locks remain held longer and more worker memory stays allocated; swelling lock queues force new sessions to wait, increasing the number of connected backends and their aggregate memory footprint; global memory pressure induces CPU stalls and garbage collection that further slow protocol I/O, aggravating network backlog. The positive feedback loop—slower I/O → longer lock hold → more memory retained → heavier paging → even slower I/O—can rapidly push the system into cascading timeouts, deadlock retries, or ultimately node eviction, making the composite anomaly more severe than the sum of its parts.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 138,
+            "score": 0.618896235446629,
+            "bm25_score": 41.05077473822118,
+            "lexical_score": 0.1375310687655344,
+            "matched_terms": [
+                "and",
+                "blocking",
+                "chains",
+                "concurrent",
+                "engine",
+                "for",
+                "incompatible",
+                "is",
+                "lock",
+                "or",
+                "overlap",
+                "state",
+                "the",
+                "transaction",
+                "transactions"
+            ],
+            "match_count": 15,
+            "entry": {
+                "error_code": "40001",
+                "error_name": "serialization_failure",
+                "official_description": "serialization failure",
+                "error_class": "Class 40 - Transaction Rollback",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "concurrency_and_transaction",
+                "cause_analysis": "The failure is typically associated with concurrent transactions contending for the same logical resources, incompatible lock acquisition order, or transaction-state conflicts surfaced by the engine.",
+                "solution_guidance": "Inspect blocking chains, reduce conflicting write overlap, shorten transaction lifetime, review lock acquisition order, and verify whether transaction scheduling or retry logic needs adjustment.",
+                "observable_symptoms": [
+                    "blocking",
+                    "rollback",
+                    "retry",
+                    "stalled transaction"
+                ]
+            }
+        }
+    }
+]

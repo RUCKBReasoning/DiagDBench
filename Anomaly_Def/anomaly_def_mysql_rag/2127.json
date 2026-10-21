@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Data Block and Index Integrity Anomaly + Storage I/O Throughput Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Data Block and Index Integrity Anomaly: Physical pages or index structures are corrupted or inconsistent with logical row sets, leading to unreliable data retrieval and integrity-check failures.\nStorage I/O Throughput Anomaly: The underlying storage subsystem is saturated or degraded, driving up read/write latency, queue depths, and I/O waits for data, temp, or log files.\nNetwork and Connectivity Resource Anomaly: Client–server traffic is constrained by exhausted connection slots, socket backlog, or congested network paths, producing connection errors and prolonged data-transfer waits.\n\nWhen these three root causes coexist, the database may exhibit a confusing mix of symptoms: queries intermittently return wrong, duplicated, or missing rows, yet reported I/O and network latencies are simultaneously high. Integrity-check errors and checksum failures may appear alongside surging I/O wait events, slow commit acknowledgements, and a spike in client connection timeouts or retransmissions. Batch loads and backups can stall on disk queues, while application servers experience cascading connection retries. Because corruption can force the engine to abandon indexes and fall back to full table scans, the extra physical reads inflate disk traffic, which in turn exacerbates the already-saturated storage layer. Larger result sets flowing over degraded network paths further extend transaction lifetimes, keeping locks and resources held longer and amplifying contention.\n\nCausally, corruption in data or index pages may trigger inefficient scan patterns that multiply I/O volume; the inflated I/O demand then collides with storage throughput limits, lengthening latency and delaying page delivery to the engine. Prolonged statement execution extends the duration of result streaming to clients, swelling network usage and keeping connection slots occupied. Conversely, network slowdowns cause back-pressure on the server’s send buffers, preventing worker threads from completing and releasing pages, which prolongs lock holding and increases the window in which corrupted blocks are reread. Together, the three anomalies form a feedback loop—corruption forces heavier I/O, I/O saturation delays processing, and network congestion prolongs resource occupation—culminating in severe, multidimensional performance degradation and a heightened risk of permanent data loss or extended downtime.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.5766451543328324,
+            "bm25_score": 26.323741077567156,
+            "lexical_score": 0.14114143920595534,
+            "matched_terms": [
+                "and",
+                "because",
+                "for",
+                "holding",
+                "in",
+                "is",
+                "lock",
+                "locks",
+                "longer",
+                "or",
+                "statement",
+                "the",
+                "to",
+                "transaction",
+                "waits",
+                "when",
+                "while",
+                "window"
+            ],
+            "match_count": 100,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

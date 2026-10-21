@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Buffer Cache and Latch Contention Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Engine-level settings (memory, checkpoint, parallelism, etc.) are mis-tuned relative to hardware and workload, so the bottleneck stems from the parameter choices themselves rather than true resource exhaustion.\nBuffer Cache and Latch Contention Anomaly : Sessions stall on buffer-pool page pins, latches, and other lightweight synchronization points because hot or churning pages force serialised access and CPU spin-waiting.\nOperating System Resource Limit Anomaly : The database process collides with kernel-enforced ceilings on file descriptors, shared memory, semaphores, aio contexts, processes/threads, or cgroup quotas, blocking further allocations even though database-level resources appear free.\n\nWhen these three root causes strike together, the system exhibits a tangled symptom set: 1) extreme and erratic wait-event mixes in which buffer-busy/latch waits, log-write waits, and kernel resource-allocation errors appear in the same time slices; 2) bursts of checkpoint-driven I/O that stall on both latch contention and OS aio/file-handle shortages, causing sharp latency spikes and temporary query freezes; 3) CPU saturation by spin loops despite low measured user throughput; 4) sudden connection or worker-spawn failures accompanied by kernel messages about ENFILE, EMFILE, or shared-memory limits, leading to partial outages while existing sessions themselves are trapped behind hot-page latches; 5) highly variable performance after configuration changes, instance restarts, or workload surges, making the individual anomalies hard to distinguish because each masks or amplifies the others.\n\nCausally, mis-sized engine parameters (e.g., an undersized buffer pool, overly aggressive checkpoint target, or excessive parallel-worker cap) increase buffer turnover, concentrate access on a small set of pages, and flood the I/O and logging paths, which in turn magnifies latch contention inside the buffer manager. As latch pressure rises, sessions hold internal resources longer and attempt to open more files, spawn more background workers, or allocate larger shared-memory segments to cope with the backlog, quickly bumping into restrictive OS limits. Conversely, once the kernel refuses new handles, shared memory, or threads, the database cannot expand buffer pools or I/O contexts, forcing even tighter reuse of the existing cache and further intensifying page churn and latch waits. The feedback loop between bad configuration, internal contention, and external resource caps can thus cascade into severe throughput collapse and erratic, hard-to-diagnose performance degradation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3095,
+            "score": 0.407064277479856,
+            "bm25_score": 41.39878011307325,
+            "lexical_score": 0.14272727272727273,
+            "matched_terms": [
+                "access",
+                "and",
+                "are",
+                "engine",
+                "failures",
+                "file",
+                "latency",
+                "log",
+                "or",
+                "paths",
+                "pressure",
+                "set",
+                "the",
+                "to",
+                "true",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-011211",
+                "error_name": "ER_AUDIT_LOG_RENAME_LOG_FILE_BEFORE_FLUSH",
+                "official_description": "Audit log file (%s) must be manually renamed before audit_log_flush is set to true.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

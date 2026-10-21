@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Optimizer Statistics Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Schema and Index Design Anomaly : Tables, indexes, partitions, constraints, or data types are not aligned with workload access patterns, forcing inefficient physical access paths.\nOptimizer Statistics Anomaly : Catalog statistics are stale or insufficient, causing systematic misestimation of row counts and selectivity during plan generation.\nOperating System Resource Limit Anomaly : Kernel-enforced quotas on files, memory segments, processes, or other OS objects cap the database’s ability to allocate required resources.\n\nWhen these three root causes coincide, the database exhibits a compound failure pattern: queries choose and execute sub-optimal plans (e.g., full scans, non-covering index probes) that already over-consume I/O and CPU; estimation errors hide or exacerbate the bad physical design, leading the optimizer to deploy even more I/O-intensive or parallel plans; meanwhile, the surge in physical work and connection retries pushes the instance against OS-level ceilings, triggering sporadic \"cannot open file\", \"cannot create thread\", or \"shared memory exhausted\" errors. Auto-stats jobs, index rebuilds, and plan compilation may intermittently fail due to insufficient OS resources, while query latency becomes wildly unstable—sometimes stalling not only on data access but also on the inability to spawn workers or allocate I/O contexts.\n\nCausally, the poor schema/index design increases the cost of every logical request, inflating resource consumption (handles, memory, parallel workers). This heavier footprint accelerates exhaustion of kernel limits. Once limits are hit, essential background tasks such as statistics collection or index maintenance abort, keeping statistics perpetually stale and preventing corrective indexing actions—thereby reinforcing both the statistics and design anomalies. In turn, the optimizer, deprived of accurate statistics and constrained by disabled parallelism, produces even more resource-hungry plans, which further stress the already saturated OS resources. This feedback loop magnifies latency, raises failure rates, and can culminate in partial or full service degradation despite no single anomaly appearing catastrophic in isolation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.7398384414350202,
+            "bm25_score": 28.141047469722416,
+            "lexical_score": 0.13279480478340067,
+            "matched_terms": [
+                "access",
+                "and",
+                "by",
+                "constrained",
+                "limit",
+                "or",
+                "other",
+                "pattern",
+                "query",
+                "resource",
+                "the",
+                "this",
+                "when",
+                "with",
+                "work",
+                "workload"
+            ],
+            "match_count": 10,
+            "entry": {
+                "timeout_id": "mysql84_regular_expression_time_limit",
+                "parameter_name": "regexp_time_limit",
+                "timeout_category": "expression_evaluation_time_limit",
+                "scope": "global/session",
+                "official_definition": "The time limit for regular expression matching operations performed by the regular expression engine.",
+                "trigger_condition": "A regular expression match operation exceeds regexp_time_limit.",
+                "workload_impact": "The regular expression operation is constrained by the configured time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

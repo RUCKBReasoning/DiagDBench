@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Composite anomaly definition: The database simultaneously suffers from unchecked growth of obsolete MVCC row versions and rollback records while also exhausting critical kernel-level resources (file descriptors, shared-memory segments, threads, etc.) enforced by the operating system. The two root causes coexist and interact, producing a compound failure mode that is more severe than either anomaly on its own.\n\nCombined anomalous phenomena: Administrators observe rapidly increasing dead-tuple ratios, bloated tables and indexes, and cleanup workers that are unable to keep pace; at the same time the engine begins to emit errors about failing to open files, create background or parallel workers, or attach to shared memory. Autovacuum/VACUUM jobs may start and immediately abort due to inability to acquire additional file handles or shared-memory slots, causing the version store to grow even faster. Long-running queries and replication slots hold old snapshots, while new sessions intermittently fail to connect. Query latencies rise because of swollen page scans, and partial outages emerge where existing back-ends remain active but maintenance and new work cannot proceed.\n\nCausal interaction: MVCC bloat drives increased I/O, additional temporary files, more background vacuum workers, and larger shared-memory requests—directly inflating consumption of kernel resources such as file descriptors and shm segments. Simultaneously, hitting OS limits throttles or terminates the very maintenance workers needed to reclaim dead versions, so version accumulation accelerates. Each anomaly therefore reinforces the other: MVCC churn pushes the system toward OS ceilings, and the OS ceilings prevent cleanup, creating a feedback loop that rapidly degrades performance, threatens transaction-ID wraparound, and can culminate in a service-level outage.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.7470805101634117,
+            "bm25_score": 29.676280802133476,
+            "lexical_score": 0.15693503387803903,
+            "matched_terms": [
+                "active",
+                "and",
+                "because",
+                "cannot",
+                "cleanup",
+                "from",
+                "is",
+                "long",
+                "of",
+                "open",
+                "or",
+                "query",
+                "sessions",
+                "terminates",
+                "than",
+                "that",
+                "the",
+                "time",
+                "transaction",
+                "vacuum",
+                "while"
+            ],
+            "match_count": 191,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

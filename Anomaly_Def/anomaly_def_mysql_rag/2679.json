@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Database Memory Allocation Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Schema and Index Design Anomaly: Static mismatch between the physical data model (tables, indexes, partitions, constraints, data types) and the workload’s access patterns, forcing costly access paths regardless of optimizer or statistics quality.\nDatabase Memory Allocation Anomaly: Oversubscription or mis-sizing of buffer caches, work areas, plan caches, and other engine heaps that pushes the host into paging, swapping, or OOM situations, degrading cache efficiency and stability.\nData Block and Index Integrity Anomaly: Physical corruption or logical inconsistency inside on-disk pages and index structures, leading to incorrect or unpredictable data retrieval and engine error conditions.\n\nWhen these three root causes co-exist, the system exhibits a blended failure signature: 1) queries repeatedly fall back from expected index seeks to full scans because damaged or ill-chosen indexes cannot be trusted or do not satisfy predicates; 2) the resulting large I/O and memory-hungry hash/sort operations inflate buffer and work memory usage, driving the engine past safe memory limits and provoking sustained OS paging, swap storms, or forced process terminations; 3) memory pressure amplifies corruption symptoms as dirty buffers are flushed and re-read, causing sporadic checksum failures, latch contention, and plan cache evictions; 4) application sessions observe erratic latency spikes, intermittent wrong-result sets, and sudden node restarts that are hard to attribute to any single layer.\n\nCausal chain: a poor schema/index design expands I/O footprints and work-area sizes, directly increasing memory consumption. The inflated memory demand collides with already aggressive or uncapped allocations, tipping the system into memory pressure that magnifies every access inefficiency. Under stress, the engine touches more pages, including already corrupted ones; repeated reads of damaged pages trigger additional retries, checksum validations, or forced full-table scans, which further bloat memory and I/O load. Conversely, memory exhaustion can lead to incomplete writes, interrupted index rebuilds, or crash-recovery gaps, injecting fresh corruption into data blocks and indexes. The corruption then erodes optimizer trust in existing indexes, pushing even more queries onto the pathologically designed fallback scans and perpetuating a vicious cycle of design inefficiency, memory depletion, and structural corruption.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.2812102886330269,
+            "bm25_score": 10.57298840192006,
+            "lexical_score": 0.08424749163879598,
+            "matched_terms": [
+                "and",
+                "because",
+                "cannot",
+                "in",
+                "not",
+                "or",
+                "schema",
+                "sessions",
+                "the",
+                "to",
+                "when"
+            ],
+            "match_count": 127,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

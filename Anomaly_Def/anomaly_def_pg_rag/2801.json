@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Buffer Cache and Latch Contention Anomaly + CPU Resource Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions block or deadlock each other while waiting on mutually incompatible locks managed by the lock manager.\nBuffer Cache and Latch Contention Anomaly : Sessions serialize on hot buffer-cache pages, latches, or I/O slots inside the buffer manager, stalling logical I/O even when row-level locks are free.\nCPU Resource Anomaly : Database processes saturate host CPU, driving long run queues and scheduler waits regardless of which logical layer issues the work.\n\nWhen all three anomalies arise together, the system experiences intertwined blocking at multiple layers: row/table locks queue transactions; those waiting transactions continue to hold buffer pins and latches, inflating internal contention; meanwhile the accumulation of spin-loops, latch retries, deadlock detectors, and repeated application retries drives CPU utilization to saturation. Observable effects include explosive wait-event diversity (lock waits, buffer-busy waits, latch spins, and CPU run-queue waits), steep increases in end-to-end latency, throughput collapse, escalating deadlock victim counts, and connection pools that exhaust while CPUs remain pegged at or near 100 percent.\n\nCausal chain: a small set of hot rows or pages first triggers lock contention; blocked sessions keep their buffer pages pinned and repeatedly wake to recheck lock status, amplifying buffer-cache and latch contention. The extra spin/wakeup activity multiplies CPU demand, and the over-utilized CPUs delay the lock manager, latch acquisition, and I/O completion, lengthening critical sections and further widening lock and latch queues. The feedback loop between lock holding, buffer/latch hot spots, and CPU saturation creates a self-reinforcing spiral that rapidly degrades overall database performance until one or more pressure points are relieved.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 139,
+            "score": 0.711400697054551,
+            "bm25_score": 46.52098869103088,
+            "lexical_score": 0.12711431742508322,
+            "matched_terms": [
+                "acquisition",
+                "and",
+                "blocking",
+                "by",
+                "completion",
+                "concurrent",
+                "incompatible",
+                "lock",
+                "logical",
+                "or",
+                "the",
+                "transaction",
+                "transactions"
+            ],
+            "match_count": 15,
+            "entry": {
+                "error_code": "40003",
+                "error_name": "statement_completion_unknown",
+                "official_description": "statement completion unknown",
+                "error_class": "Class 40 - Transaction Rollback",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "concurrency_and_transaction",
+                "cause_analysis": "The failure is typically associated with concurrent transactions contending for the same logical resources, incompatible lock acquisition order, or transaction-state conflicts surfaced by the engine.",
+                "solution_guidance": "Inspect blocking chains, reduce conflicting write overlap, shorten transaction lifetime, review lock acquisition order, and verify whether transaction scheduling or retry logic needs adjustment.",
+                "observable_symptoms": [
+                    "blocking",
+                    "rollback",
+                    "retry",
+                    "stalled transaction"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Transaction Log Subsystem Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Database Configuration Parameter Anomaly: Engine-level settings (memory, checkpoint cadence, log sizing, parallelism, etc.) are mis-tuned relative to hardware capacity, workload intensity, or version defaults.\nTransaction Log Subsystem Anomaly: The write-ahead logging pipeline—log buffer, files, flush/switch/archive processes—cannot keep pace with redo generation, stalling commits and checkpoints.\nOperating System Resource Limit Anomaly: Kernel-enforced ceilings on file handles, shared memory, threads, or I/O contexts throttle database processes independently of the engine’s internal resource governance.\n\nWhen these three issues strike concurrently, symptoms overlap and amplify: commit latency and log-flush waits spike even though storage and CPU appear under-utilized; checkpoints and log-file switches occur in erratic bursts, sometimes failing with \"unable to open file\" or shared-memory allocation errors; background writers, archivers, and replication senders fall behind, causing bloated log directories and prolonged recovery point objectives; new sessions or parallel workers intermittently fail to start, and the engine may enter a partial hang where active transactions linger in commit wait while resource-starved background tasks cannot progress. Performance counters show low device saturation but high wait times on log and kernel primitives, confusing first-level diagnostics.\n\nCausally, mis-sized configuration parameters (e.g., too small log buffer, aggressive checkpoint_timeout, excessive max_connections) inflate the churn on the transaction log. The surge in file creation, flush, and archive activity collides with operating-system limits on file descriptors, asynchronous I/O contexts, and shared memory, causing kernel denials that further slow or block log operations. Each blocked flush extends transaction hold times, boosting in-memory log pressure and triggering even more checkpoints, which in turn amplifies I/O and resource requests to the OS. This feedback loop escalates until both the logging subsystem and the kernel resource pools are saturated, yielding a compounded performance and availability degradation characteristic of this composite anomaly.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.4097446766973279,
+            "bm25_score": 12.461246155170604,
+            "lexical_score": 0.13224686080683942,
+            "matched_terms": [
+                "activity",
+                "and",
+                "are",
+                "in",
+                "latency",
+                "of",
+                "or",
+                "parameter",
+                "pools",
+                "progress",
+                "sessions",
+                "the",
+                "this",
+                "wait",
+                "when"
+            ],
+            "match_count": 154,
+            "entry": {
+                "timeout_id": "pg16_libpq_connection_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "client_connection_establishment_timeout",
+                "scope": "libpq/client connection parameter",
+                "official_definition": "Maximum wait for connection, in seconds; zero or not specified means wait indefinitely.",
+                "trigger_condition": "A libpq client connection attempt exceeds connect_timeout seconds.",
+                "workload_impact": "The client connection attempt fails instead of waiting indefinitely.",
+                "default_behavior": "Zero or absent value means wait indefinitely.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

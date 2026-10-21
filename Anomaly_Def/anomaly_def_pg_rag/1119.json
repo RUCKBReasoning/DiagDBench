@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Data Block and Index Integrity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly : Saturation or stalling of the write-ahead logging pipeline (log buffer, log files, flush/sync, archival or replication) that delays commit processing and other write activity.\nData Block and Index Integrity Anomaly : Physical or logical corruption of on-disk data pages or index structures that causes inconsistencies between stored bytes and the logical contents expected by the database engine.\nOperating System Resource Limit Anomaly : Exhaustion of kernel-managed resources (file descriptors, shared-memory segments, semaphores, threads, AIO contexts, cgroup quotas, etc.) that prevents the database from performing normal I/O and process management.\n\nWhen these three root causes strike simultaneously, the database exhibits a compounded failure pattern: commit latency and log-flush waits rise sharply while the engine intermittently fails to open or extend log and data files due to depleted file handles or address space. Archive or redo-shipping workers throttle or abort, causing log directories to balloon and checkpoints to storm. Concurrently, corrupted pages or indexes surface as checksum errors, duplicate or missing rows, and emergency plan fall-backs to full scans; recovery attempts may repeatedly fail or loop because required log segments cannot be written, read, or archived. Administrators observe a mixture of engine corruption panics, \"unable to allocate shared memory / file handle\" errors from the kernel, and prolonged application write stalls, making root-cause isolation difficult.\n\nCausally, tight OS resource limits can starve the log subsystem of file descriptors, AIO slots, or thread quotas, slowing or blocking log writes and archives; prolonged stalls increase the window during which partially flushed or torn pages may be exposed, heightening the risk of data and index corruption if a crash or timeout forces an abort. Conversely, existing page or index corruption triggers extra recovery, verification, and redo activity, inflating log generation and magnifying pressure on the already constrained log pipeline and OS resources. The mutual reinforcement between log congestion, kernel-level resource starvation, and structural corruption can drive the database into cascading failures, escalating from performance degradation to systemic outage and data-loss risk.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.7459065934065934,
+            "bm25_score": 34.19815761040855,
+            "lexical_score": 0.153021978021978,
+            "matched_terms": [
+                "an",
+                "and",
+                "because",
+                "blocking",
+                "cannot",
+                "database",
+                "index",
+                "of",
+                "or",
+                "other",
+                "required",
+                "that",
+                "the",
+                "timeout",
+                "to",
+                "transaction",
+                "waits",
+                "when",
+                "while",
+                "window"
+            ],
+            "match_count": 217,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

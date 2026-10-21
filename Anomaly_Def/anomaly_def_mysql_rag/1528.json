@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Transaction Log Subsystem Anomaly + CPU Resource Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer persistently selects sub-optimal execution plans even though statistics are accurate, leading to inefficient operator choices, excessive work, or inappropriate degrees of parallelism.\nTransaction Log Subsystem Anomaly: The write-ahead logging path—log buffer, log file set, flush/sync, or archival pipeline—cannot keep pace with redo generation, inflating commit latency and stalling write activity.\nCPU Resource Anomaly: Database processes monopolize CPU cycles, driving host utilization toward saturation and lengthening run-queue and scheduling waits.\n\nCombined phenomena: When all three anomalies manifest together on an OLTP system, poorly chosen plans generate unnecessary row accesses, joins, and sorts that dramatically inflate CPU consumption as well as redo volume. The spike in CPU usage lengthens execution times, which in turn extends transaction hold time and keeps log flushes outstanding longer. Concurrently, the overworked transaction-log subsystem becomes the primary choke point; commit latency, log file sync, and log buffer space waits soar. Users observe erratic query latency, batch timeouts, and periods of near system freeze where both CPU run queues and log-related wait events climb in lockstep. Because each anomaly masks and amplifies the others, standard plan-stability or I/O tuning efforts appear ineffective until the intertwined root causes are disentangled.\n\nCausal chain analysis: A bad plan (e.g., full scans or Cartesian joins) dramatically increases CPU cycles and generates excess redo for each DML operation. The resulting CPU saturation slows down log flush threads that compete for the same cores, so log writes take longer, lengthening commit paths and forcing additional back-pressure on application sessions. Meanwhile, the overwhelmed log subsystem forces foreground transactions to wait, extending their execution window and keeping the sub-optimal, CPU-hungry plans active even longer, further intensifying CPU pressure. This feedback loop aggravates both resource domains, producing a cascading slowdown that can culminate in write stalls, severe throughput collapse, and unstable performance across the entire OLTP workload.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3693,
+            "score": 0.520698199666809,
+            "bm25_score": 47.65076256797405,
+            "lexical_score": 0.14740309483683162,
+            "matched_terms": [
+                "all",
+                "and",
+                "are",
+                "file",
+                "for",
+                "in",
+                "latency",
+                "log",
+                "operation",
+                "or",
+                "path",
+                "paths",
+                "pressure",
+                "the",
+                "to",
+                "users",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-011809",
+                "error_name": "ER_PID_FILE_PRIV_DIRECTORY_INSECURE",
+                "official_description": "Insecure configuration for --pid-file: Location '%s' in the path is accessible to all OS users. Consider choosing a different directory.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,45 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Database Memory Allocation Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Optimizer Statistics Anomaly : The cost model receives stale or incomplete statistics, resulting in systematic cardinality misestimation and sub-optimal plan shapes.\nDatabase Memory Allocation Anomaly : Cumulative memory reserved for caches, work areas, and background structures exceeds the safe limits of the host, provoking paging, cache shrinkage, or OOM termination.\nBuffer Cache and Latch Contention Anomaly : Sessions serialize on hot buffer pages, latches, or I/O slots, producing buffer-busy and latch waits that throttle throughput.\n\nWhen all three root causes surface concurrently, the system exhibits a compound failure pattern: queries choose memory-intensive operators (hash joins, large sorts) based on misestimated cardinalities; these operators overrun available work memory, forcing the engine to evict clean pages, shrink caches, and escalate to temporary spill or OS swap. The resulting buffer churn and reduced cache residency turn frequently accessed index root pages into hotspots, driving latch spin and wait amplification. Observable symptoms include wildly inaccurate plan estimates, sudden plan regressions after data changes, escalating resident-set size, swap-daemon or cgroup throttling, plummeting buffer-cache hit ratios, surges in PAGE_LATCH_* or BUFFER_BUSY waits, CPU spin without progress, and query runtimes that grow super-linearly with concurrency.\n\nCausal interaction: stale statistics mislead the optimizer to request much more (or much less) memory than is actually needed; over-allocated work areas aggregate across many sessions, tipping the instance into global memory pressure. As the engine trims the buffer pool to free memory for work areas, hotter pages cycle in and out more frequently, extending the hold time of latches protecting those pages. Longer latch waits elongate query execution, keeping their memory allocations alive and further intensifying pressure. Conversely, memory shortages can inhibit automatic statistics refresh jobs, perpetuating statistics staleness, while latch contention slows data-modification operations, leaving partitions in states that diverge further from recorded statistics. The three anomalies thus form a feedback loop that magnifies latency, degrades throughput, and risks stability far more severely than any single anomaly would in isolation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 151,
+            "score": 0.17883533619403025,
+            "bm25_score": 13.11795634468287,
+            "lexical_score": 0.10689894778638079,
+            "matched_terms": [
+                "and",
+                "as",
+                "engine",
+                "execution",
+                "failure",
+                "is",
+                "or",
+                "reserved",
+                "that",
+                "the",
+                "with"
+            ],
+            "match_count": 12,
+            "entry": {
+                "error_code": "42939",
+                "error_name": "reserved_name",
+                "official_description": "reserved name",
+                "error_class": "Class 42 - Syntax Error or Access Rule Violation",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "sql_and_parser",
+                "cause_analysis": "The failure is typically associated with unsupported syntax, invalid statement structure, or feature usage that the target engine version cannot execute as written.",
+                "solution_guidance": "Validate SQL syntax, target-engine compatibility, statement shape, and whether the feature is supported under the current engine version or execution context.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "syntax error",
+                    "feature rejection"
+                ]
+            }
+        }
+    }
+]

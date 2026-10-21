@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Buffer Cache and Latch Contention Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Critical metadata about data distribution is stale, incomplete, or missing, causing the optimizer to misestimate cardinalities and choose sub-optimal execution plans.\nBuffer Cache and Latch Contention Anomaly : Heavy concurrent access to a small set of hot pages or an undersized buffer pool forces sessions to serialize on buffer latches and page pins, inflating wait times and CPU spin.\nOperating System Resource Limit Anomaly : Kernel-enforced ceilings on file descriptors, shared memory, semaphores, threads, or cgroup quotas are reached, preventing the database from allocating additional low-level resources.\n\nComposite definition: The database concurrently suffers from incorrect optimizer statistics, severe buffer-cache/latch contention, and exhaustion of critical OS-level resources. Poor plan choices amplify page hot spots, while latch storms and multiplied background activity consume kernel objects until hard limits are hit, jointly throttling throughput and raising latency.\n\nCombined anomalous phenomena: 1) Execution plans with grossly inaccurate row-count estimates repeatedly choose nested loops or index range scans that hammer the same root, inner-table, or index pages. 2) Buffer-busy and page-latch wait events surge; CPU utilization shows high spin without corresponding work completion. 3) As sessions accumulate in latch waits, new connections, parallel workers, or I/O requests start failing with \"too many open files,\" \"cannot allocate shared memory,\" or \"unable to create thread\" errors logged by both the engine and the OS. 4) Automatic statistics refresh jobs abort due to unavailable OS handles, keeping statistics stale and locking the system in a degradation loop. Diagnosis becomes difficult because symptoms oscillate between optimizer misestimates, latch waits, and sporadic OS allocation errors.\n\nCausal chain: Stale or low-quality statistics lead the optimizer to route a large fraction of queries through plans that over-concentrate activity on a narrow set of pages (e.g., small hash tables, root index pages, or hot partitions). The resulting hot-page pattern drives intense latch contention in the buffer manager. Prolonged latch waits inflate session counts, background I/O, and retry loops, which in turn consume additional file handles, semaphores, and thread slots. Once OS resource limits are breached, new workers and auto-statistics jobs fail, preventing corrective statistics collection and reinforcing misestimation. Simultaneously, limited OS resources slow checkpoint and flush operations, keeping hot pages resident and further intensifying latch storms—forming a self-reinforcing feedback loop that degrades both transactional and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.3490403828378214,
+            "bm25_score": 16.19576815169678,
+            "lexical_score": 0.1184514831573655,
+            "matched_terms": [
+                "activity",
+                "and",
+                "are",
+                "between",
+                "is",
+                "kernel",
+                "latency",
+                "or",
+                "queries",
+                "session",
+                "sessions",
+                "stale",
+                "system",
+                "that",
+                "the",
+                "while"
+            ],
+            "match_count": 201,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

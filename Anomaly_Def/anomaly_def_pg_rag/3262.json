@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Buffer Cache and Latch Contention Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer chooses or re-uses an execution plan that is materially sub-optimal even though statistics are reasonable.\nBuffer Cache and Latch Contention Anomaly : Sessions serialize on buffer-pool pages or their latches, causing CPU spin waits and latency spikes.\nStorage Space Capacity Anomaly : The database or log areas run out of free space, leading to allocation failures and stalled writes.\n\nComposite definition: The workload encounters all three conditions concurrently—poor execution plans drive excessive I/O and buffer hot spots, those hot spots intensify low-level latch contention, and the amplified I/O churn quickly consumes the remaining physical or logical storage space, eventually hitting space exhaustion boundaries.\n\nCombined anomalous phenomena: 1) Identical statements flip between index scans and table scans, producing unexpected full-table or hash-join plans that touch far more pages than normal. 2) Buffer-busy, page-latch, and IO wait events rise together; CPUs show high spin time while throughput flattens. 3) Free-space monitors drop precipitously; auto-extend or archive operations fail, and DML or log writes stall. 4) Performance volatility escalates—each plan flip can suddenly flood the buffer cache, evicting useful pages and forcing more physical reads against an already space-starved storage layer.\n\nCausal chain: A sub-optimal plan (e.g., full scan instead of index access) multiplies page touches and dirty-page generation. The surge of concurrent accesses to a small set of root or data pages creates intense latch contention, elongating critical sections and prolonging transaction lifetimes. Longer transactions and extra I/O amplify log growth and data-file expansion, rapidly consuming remaining disk space. As space approaches exhaustion, autogrowth pauses and checkpoints slow, further extending latch holds and causing the optimizer to invalidate or recompile plans more frequently, which can select even worse plans. The feedback loop between poor plan choice, buffer/latch pressure, and shrinking free space magnifies latency and eventually leads to workload-blocking space errors.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.24828215286417588,
+            "bm25_score": 9.009225739561803,
+            "lexical_score": 0.10282131661442007,
+            "matched_terms": [
+                "an",
+                "and",
+                "are",
+                "is",
+                "latency",
+                "of",
+                "on",
+                "or",
+                "sessions",
+                "that",
+                "the",
+                "time",
+                "to",
+                "which"
+            ],
+            "match_count": 321,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_interval",
+                "parameter_name": "tcp_keepalives_interval",
+                "timeout_category": "network_keepalive_retry_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time after which a TCP keepalive message that has not been acknowledged by the client should be retransmitted.",
+                "trigger_condition": "A TCP keepalive probe is not acknowledged for tcp_keepalives_interval on systems supporting TCP_KEEPINTVL or an equivalent socket option.",
+                "workload_impact": "Controls retry timing for keepalive probes used to detect unresponsive client connections.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

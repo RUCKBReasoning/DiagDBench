@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Storage I/O Throughput Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "SQL Workload Logic Anomaly : The application issues inefficient SQL or transaction patterns that force the engine to process and move more data than business logic actually requires.\nStorage I/O Throughput Anomaly : The physical storage layer cannot deliver the sustained read/write bandwidth, IOPS, or latency demanded by the engine.\nOperating System Resource Limit Anomaly : Kernel-enforced limits on file handles, shared memory, threads, or other OS objects are exhausted by the database process.\n\nWhen these three root causes coexist, the database shows a compound symptom set: statements already slow from poor SQL logic wait even longer on saturated storage queues; overall latency and variance spike, with slow-query logs filling rapidly and application timeouts multiplying. Simultaneously, the engine begins to emit file-open, async-I/O, or thread-creation errors as OS quotas are hit, causing new sessions, parallel workers, or log writer helpers to fail intermittently. Wait-event profiles oscillate between buffer-I/O, log-write stalls, and OS-level resource-acquisition waits, making diagnosis non-trivial. Long-running transactions hold locks and pins while they repeatedly retry failed I/O or background task creation, further inflating contention and cascading delays across otherwise independent workloads.\n\nCausal chain: inefficient SQL logic amplifies data volume and row touches, inflating buffer misses and forcing heavier physical I/O. The excess I/O drives the storage subsystem past its throughput ceiling, lengthening every read/write and inflating device queue depth. Prolonged I/O completion times keep database worker threads busy for longer, increasing the concurrent demand for kernel objects—more open file descriptors, async-I/O contexts, and waiting threads—until OS-imposed limits are breached. Once those limits are hit, new I/O requests or worker threads fail or block, which in turn triggers additional retries and longer transactions inside the database engine, further increasing data volume and I/O pressure. Each anomaly therefore reinforces the others, creating a feedback loop that degrades throughput, elevates tail latency, and risks partial or total service outage.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.399355894524953,
+            "bm25_score": 19.49210746923589,
+            "lexical_score": 0.121237922705314,
+            "matched_terms": [
+                "and",
+                "are",
+                "for",
+                "latency",
+                "longer",
+                "on",
+                "operating",
+                "or",
+                "otherwise",
+                "sessions",
+                "system",
+                "than",
+                "the",
+                "to",
+                "when",
+                "which",
+                "with"
+            ],
+            "match_count": 303,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_idle",
+                "parameter_name": "tcp_keepalives_idle",
+                "timeout_category": "network_idle_keepalive_probe_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time with no network activity after which the operating system should send a TCP keepalive message to the client.",
+                "trigger_condition": "A TCP client connection has no network activity longer than tcp_keepalives_idle on systems supporting TCP_KEEPIDLE or an equivalent socket option.",
+                "workload_impact": "Starts TCP keepalive probing for an otherwise idle client connection; together with interval and count settings this can lead to dead connection detection.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

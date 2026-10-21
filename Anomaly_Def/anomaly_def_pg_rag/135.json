@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Composite Anomaly Definition: The database simultaneously suffers from accelerated accumulation of obsolete MVCC row versions and saturation of the underlying storage-subsystem’s read/write throughput. The version store keeps expanding while the physical devices that must hold, read, and clean those extra pages are already at or beyond their performance envelope.\n\nCombined Observable Phenomena: Administrators will notice rapidly growing table and index sizes, soaring obsolete-to-live row ratios, and autovacuum/cleaner workers that run constantly yet make little progress. At the same time, I/O wait events dominate wait-class statistics; average and p-99 latencies for data-file, log, and temp-space operations rise sharply; queue depths remain full; and overall transaction response times elongate even though CPU utilization is modest. Sequential scans and index probes both touch many more pages because of bloat, compounding physical I/O. Planner misestimates lead to poor plans, while checkpoints, WAL flushes, and batch jobs overrun their windows due to throttled bandwidth. Alerts may escalate for near-term transaction-ID wraparound, version-store exhaustion, or log flush timeouts.\n\nCausal Interaction: Excessive update/delete churn produces large numbers of dead tuples that background cleanup workers must remove. Each cleanup cycle issues additional reads and writes, inflating I/O demand. When the storage layer is already throughput-constrained, these maintenance I/Os contend with foreground queries and deferred writes, slowing both application workload and cleanup itself. The slowdown lets even more obsolete versions pile up, further bloating on-disk structures and increasing every future I/O operation’s cost. This positive feedback loop—version bloat increasing I/O volume, and I/O saturation throttling bloat removal—drives the system into a self-reinforcing degradation spiral that jeopardizes performance, space availability, and transactional safety.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.36461340447771257,
+            "bm25_score": 12.608873165634368,
+            "lexical_score": 0.10888009049773754,
+            "matched_terms": [
+                "and",
+                "are",
+                "at",
+                "is",
+                "or",
+                "progress",
+                "queries",
+                "system",
+                "that",
+                "the",
+                "this",
+                "time",
+                "when",
+                "while"
+            ],
+            "match_count": 170,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

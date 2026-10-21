@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + MVCC Version Maintenance Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Composite Definition:\nThe database simultaneously suffers from sub-optimal execution-plan choices, unchecked accumulation of obsolete MVCC row versions, and saturation of the underlying storage throughput budget. The three conditions reinforce each other, producing symptoms that are broader and more severe than any single anomaly alone.\n\nCombined Observable Phenomena:\n• Identical statements oscillate between different or obviously poor plans while response times keep rising.\n• Sequential scans, hash builds, or nested-loop outer scans read far more pages than expected because tables and indexes are bloated with dead tuples.\n• Device-level metrics show queue depths pegged, read and write latency multiples higher than normal, and log-flush or buffer-I/O waits dominating the wait profile even when CPU is idle.\n• Autovacuum/cleanup workers run constantly yet fail to shrink the version store; catalog views report high dead-tuples-to-live-tuples ratios and growing on-disk size.\n• Planner misestimates become more frequent as statistics lag behind the rapidly changing and bloated heap, leading to further plan instability.\n• Business transactions time out, batch windows stretch, and analytic queries executed on the same system observe inconsistent runtimes depending on whether they hit a cached or newly compiled plan.\n\nCausal Chain and Interaction:\n1. MVCC bloat inflates table and index size, distorting cardinality statistics and making cost estimates less reliable.\n2. The optimizer, already prone to plan-selection mistakes, is now working with misleading size estimates, increasing the probability of choosing plans that trigger large table scans, spill to temp, or lose beneficial parallelism.\n3. These poorly chosen plans generate excess physical I/O; the swollen objects mean each scan or index probe touches more pages, quickly saturating the storage subsystem.\n4. Once storage throughput is maxed out, I/O latency rises. Long-running queries hold snapshots open longer, which prevents cleanup workers from advancing the MVCC horizon, so dead versions accumulate even faster.\n5. The growing version store further enlarges the data footprint, feeding back into even worse cost estimates and heavier I/O, creating a self-reinforcing degradation loop that is difficult to attribute to any single layer without holistic analysis.\n",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.7148224137985189,
+            "bm25_score": 31.740387704209535,
+            "lexical_score": 0.14356552538370718,
+            "matched_terms": [
+                "and",
+                "any",
+                "because",
+                "database",
+                "index",
+                "is",
+                "longer",
+                "of",
+                "or",
+                "other",
+                "row",
+                "table",
+                "than",
+                "that",
+                "the",
+                "time",
+                "to",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 183,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

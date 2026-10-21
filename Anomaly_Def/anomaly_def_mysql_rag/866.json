@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Transaction Log Subsystem Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "SQL Workload Logic Anomaly : The submitted SQL or transaction design forces the engine to read, write, or lock far more data and for longer intervals than the business case requires.\nTransaction Log Subsystem Anomaly : The write-ahead logging path—log buffer, log files, archiver, or replication retention—cannot keep pace with redo generation, throttling commit throughput.\nOperating System Resource Limit Anomaly : Kernel-enforced ceilings on file descriptors, shared memory, semaphores, threads, or cgroup quotas prevent the database from allocating the resources it needs.\n\nWhen these three root causes coincide, the system exhibits compounded symptoms: application statements show extreme and highly variable response times; commit latency spikes and fluctuates as log flushes back up; slow-query logs fill with the same chatty or scan-heavy statements; background error logs reveal \"unable to open file\", \"cannot allocate shared memory\", or thread-creation failures; checkpoints and log-switch storms occur more frequently; sessions intermittently fail to start or hang during commit; and archival/replication lag balloons, causing retention directories to overflow. Performance degradations appear erratic because even minor workload surges exacerbate both log contention and operating-system denial events, while the bloated, long-running transactions keep locks and resources held, amplifying blocking chains.\n\nCausal chain: inefficient SQL or over-long transactions inflate redo generation and hold resources for extended periods, driving the transaction log subsystem to its limits. As log buffers and files saturate, the database requests more file handles, I/O contexts, shared memory, and background threads to flush, switch, or archive logs. Simultaneously, OS-level limits on these kernel objects cap the database’s ability to relieve log pressure. The stalled log subsystem lengthens commit times, which further prolongs the already excessive transactions produced by the workload logic anomaly, creating larger bursts of redo and compounding lock contention. This feedback loop accelerates consumption of kernel resources until limits are hit, after which both new sessions and log-handling processes fail, precipitating a cascading slowdown or partial outage of the transactional workload.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.745089658764928,
+            "bm25_score": 34.78270275400628,
+            "lexical_score": 0.15894230769230766,
+            "matched_terms": [
+                "and",
+                "because",
+                "by",
+                "contention",
+                "error",
+                "for",
+                "limit",
+                "long",
+                "or",
+                "path",
+                "query",
+                "resource",
+                "running",
+                "statements",
+                "the",
+                "this",
+                "when",
+                "with",
+                "workload"
+            ],
+            "match_count": 41,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

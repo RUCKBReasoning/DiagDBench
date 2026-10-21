@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Replication Synchronization Anomaly + CPU Resource Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same objects, forming blocking chains or deadlocks that stall commit progress and inflate lock-wait time.\nReplication Synchronization Anomaly : Standbys or downstream replicas are unable to receive or apply log records as fast as the primary generates them, causing growing log-position lag and retention of old log segments.\nCPU Resource Anomaly : Database processes consume nearly all available CPU cycles, driving run-queue growth and broad latency spikes across the workload.\n\nWhen all three root causes arise together the database exhibits a blended failure pattern: application sessions pile up in lock-wait queues while overall query and transaction latency lengthens; at the same time replica apply and replay lag widens sharply, with relay logs or retained WAL segments ballooning on both primary and replicas. Monitoring views show surging lock-wait counters, escalating CPU utilization on primary and replica nodes, frequent deadlock victim errors, and replication delay alerts all at once. Because commit completion is blocked, primary log generation becomes bursty—alternating between idle periods and spikes—while replicas, already CPU-bound, struggle to catch up, leading to stale read-only traffic, compromised failover objectives, and disk pressure from unrecycled logs.\n\nCausally, intense lock contention forces transactions to hold locks and keep their redo in the primary’s log for longer, inflating the volume of WAL that must eventually stream to replicas in a short time window. These bursts drive higher CPU demand for log shipping, decompression, and apply logic on both sides of the replication channel. Simultaneously, the CPU Resource Anomaly slows lock-manager arbitration and deadlock detection on the primary, prolonging blocking chains and further delaying commits. On replicas, CPU saturation throttles redo apply rates, which increases replication lag and prevents the primary from discarding old log segments, amplifying storage pressure and background housekeeping work that itself consumes more CPU. The feedback loop between lock-induced commit stalls, replication backlog, and compute exhaustion deepens end-to-end latency and threatens both transactional throughput and high-availability objectives.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5184,
+            "score": 0.6270410052094016,
+            "bm25_score": 79.0175458305104,
+            "lexical_score": 0.20759252539912915,
+            "matched_terms": [
+                "and",
+                "apply",
+                "between",
+                "channel",
+                "detection",
+                "downstream",
+                "failure",
+                "is",
+                "keep",
+                "lag",
+                "log",
+                "manager",
+                "on",
+                "or",
+                "replica",
+                "replication",
+                "retention",
+                "shipping",
+                "stale",
+                "the",
+                "to",
+                "transaction",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013305",
+                "error_name": "ER_GRP_RPL_FAILED_TO_INSERT_TRX_ON_TCM_ON_AFTER_CERTIFICATION",
+                "official_description": "Error registering transaction '%s:%lld' on Group Replication consistency manager after conflict detection.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

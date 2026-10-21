@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Replication Synchronization Anomaly + CPU Resource Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Replication Synchronization Anomaly : Standbys or downstream consumers cannot receive, persist, or apply transaction-log records at the rate the primary emits them, causing widening log-position gaps and retained WAL segments.\nCPU Resource Anomaly : Database processes saturate host CPU, exhausting compute cycles and inflating run-queue and scheduler waits across all workload components.\nNetwork and Connectivity Resource Anomaly : Transport, listener, socket, or connection-slot resources between clients/replicas and the server are unable to sustain the offered throughput, yielding timeouts, retransmissions, and refused sessions.\n\nWhen these three root causes strike simultaneously, symptoms compound: replication lag grows rapidly while both primary and replica CPUs remain pegged, yet neither side can clear backlogs because network throughput and connection-handling capacity are throttled. Clients observe slow or failed connections, rising statement latency, and stale read-only replica data. Primary disk usage surges as unrecycled WAL accumulates; OS metrics reveal high context-switch rates, swollen socket queues, retransmissions, and long run queues. Monitoring views show replication replay delay, CPU-bound wait events, and client-read/client-write waits intertwined, making it difficult to attribute latency to a single layer.\n\nCausally, network congestion or listener exhaustion first restricts log streaming and client traffic, causing the primary to retain WAL. The replica, receiving data in bursts, spikes its apply workers and saturates CPU, further delaying catch-up. Concurrently, CPU saturation on the primary slows both query processing and the network stack, amplifying packet loss and connection backlog, which in turn worsens replication lag. Each layer therefore reinforces the other: network bottlenecks throttle replication, replication lag inflates CPU bursts during catch-up, and CPU exhaustion degrades network I/O handling. The feedback loop drives escalating lag, widespread latency, and degraded failover readiness until at least one resource pressure is relieved.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.7399789702683103,
+            "bm25_score": 28.34220349951304,
+            "lexical_score": 0.13326323422770123,
+            "matched_terms": [
+                "and",
+                "because",
+                "cannot",
+                "context",
+                "database",
+                "delay",
+                "is",
+                "or",
+                "other",
+                "sessions",
+                "statement",
+                "the",
+                "to",
+                "transaction",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 297,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Data Block and Index Integrity Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly: Excessive accumulation of obsolete row versions, rollback records, and deleted index entries because background cleaners cannot keep up.\nData Block and Index Integrity Anomaly: On-disk data pages or index structures become physically or logically corrupt, breaking key order, page links, or heap–index mappings.\nStorage I/O Throughput Anomaly: The physical storage layer is saturated in bandwidth, IOPS, or latency, causing prolonged waits on reads, writes, and durability flushes.\n\nWhen all three root causes are present, the database exhibits a blended symptom set: version stores and rollback segments expand rapidly while VACUUM or purge workers are throttled by slow I/O, causing autovacuum backlogs and rising transaction-ID age. Concurrently, corruption in indexes or data pages yields mismatches between index and heap counts, checksum errors, and sudden plan shifts to sequential scans. The shift to full scans and repeated page re-reads inflate I/O demand, further overwhelming an already saturated storage subsystem; meanwhile corruption-induced retries, double-reads for verification, or forced page repairs increase latency variability and queue depth. Administrators observe a vicious cycle of longer query response times, high I/O wait, bloated tables, integrity-check failures, and relentless engine warnings about wraparound, corruption, and I/O stalls—making it difficult to distinguish which subsystem is primarily at fault.\n\nCausally, saturated storage slows the purge and vacuum processes needed to reclaim obsolete versions, allowing version bloat to escalate. The larger heaps and indexes produced by this bloat in turn require more pages to be read and written, amplifying I/O pressure. Simultaneously, any latent corruption—perhaps triggered by prior I/O errors or abrupt shutdowns—causes index lookups to fail and the planner to fall back to heap scans, dramatically multiplying I/O volume and exposing additional corrupt pages. Each corrupt-page encounter can force re-reads or page-level recovery writes, further congesting the storage path. The compounded effect is a reinforcing feedback loop where I/O saturation, version bloat, and structural corruption mutually aggravate one another, accelerating performance degradation and threatening data availability.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 795,
+            "score": 0.47584125032808827,
+            "bm25_score": 45.072749517943166,
+            "lexical_score": 0.14194218452483987,
+            "matched_terms": [
+                "and",
+                "by",
+                "cannot",
+                "check",
+                "corruption",
+                "data",
+                "in",
+                "index",
+                "integrity",
+                "is",
+                "key",
+                "needed",
+                "or",
+                "storage",
+                "structural",
+                "the"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "1821",
+                "error_name": "ER_FK_COLUMN_CANNOT_DROP",
+                "official_description": "Cannot drop column '%-.192s': needed in a foreign key constraint '%-.192s'",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "integrity_and_constraints",
+                "cause_analysis": "The failure is typically associated with logical data inconsistency, structural corruption, uniqueness conflicts, or referential-integrity rules being violated by the workload or storage state.",
+                "solution_guidance": "Validate data consistency, inspect constraints and index integrity, and check whether data-cleaning, repair, or workload correction is required before retrying.",
+                "observable_symptoms": [
+                    "constraint failure",
+                    "duplicate data rejection",
+                    "corruption warning"
+                ]
+            }
+        }
+    }
+]

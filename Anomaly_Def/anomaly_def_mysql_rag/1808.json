@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Buffer Cache and Latch Contention Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions compete for mutually incompatible locks on the same rows, pages, or metadata, producing long blocking chains or deadlocks inside the lock-manager layer.\nBuffer Cache and Latch Contention Anomaly : Sessions stall while fighting over hot buffer-cache pages, latches, or page pins, so every logical page access may spin or sleep before proceeding.\nStorage I/O Throughput Anomaly : The physical devices or storage virtualization tier are saturated, stretching read- and write-service times far beyond the engine’s expectations.\n\nWhen these three root causes strike together, the database exhibits extreme and baffling slowdowns: lock-wait and deadlock diagnostics explode while buffer-latch and I/O wait events spike; CPU may oscillate between idling (tasks sleeping on I/O) and frantic spinning (latch retries); transaction throughput collapses, statement latencies become highly variable, and connection pools back up. Autovacuum, checkpoints, or log flushes linger in the I/O queue, holding buffer-cache pages dirty and pinned, which in turn prolongs lock hold times. Application layers experience timeouts and cascading retries, masking whether the dominant bottleneck is logical locking, latch hot spots, or raw device saturation.\n\nCausally, saturated storage stretches page read and flush times, so backend processes keep buffer pages and their latches for longer, inflating latch-queue lengths. Extended latch ownership delays row-level operations, meaning locks on those rows or pages are held longer, propagating larger blocker-waiter trees and increasing the likelihood of deadlocks. Simultaneously, growing lock queues raise the number of active sessions that are all poised to proceed, so when a latch or page finally frees, a burst of threads hits the same hot page, further intensifying latch contention. The feedback loop between prolonged I/O, held latches, and extended lock durations amplifies each symptom, creating a compound performance cliff that is far steeper than any individual anomaly would cause on its own.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2704,
+            "score": 0.3113479560303965,
+            "bm25_score": 38.20008331242112,
+            "lexical_score": 0.1399014778325123,
+            "matched_terms": [
+                "access",
+                "and",
+                "are",
+                "engine",
+                "events",
+                "for",
+                "in",
+                "is",
+                "log",
+                "or",
+                "read",
+                "storage",
+                "the",
+                "transaction",
+                "whether",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010819",
+                "error_name": "ER_BINLOG_EVENTS_READ_FROM_APPLIER_METADATA",
+                "official_description": "%lu events read in relaylog file '%s' for updating Retrieved_Gtid_Set and/or IO thread transaction parser state.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

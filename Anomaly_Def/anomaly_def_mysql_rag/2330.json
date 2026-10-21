@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Replication Synchronization Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Multiple sessions serialize on hot buffer-cache pages or latches, stalling while trying to pin or modify pages held by others.\nReplication Synchronization Anomaly : Standby or subscriber nodes cannot receive, persist, or apply WAL/redo fast enough, producing widening log-position gaps and retained primary logs.\nStorage I/O Throughput Anomaly : The underlying volumes hit their physical IOPS/throughput ceiling, driving up read/write latency and I/O wait time.\n\nWhen all three root causes are active, the database exhibits a compounded failure pattern: 1) CPU spin and prolonged page-latch waits on the primary, 2) storage queues and device latency spiking on both primary and replicas, 3) rapidly expanding write-ahead logs, relay logs, or retained segments, 4) replication lag that grows despite normal network health, 5) checkpoint and background-writer activity that cannot drain dirty pages, and 6) cascading response-time and throughput degradation that is hard to attribute to a single tier because buffer, storage, and replication metrics all show distress.\n\nCausal chain: Hot pages and latch contention generate bursts of physical I/O (dirty-page flushes and replacement reads); this extra traffic pushes the storage subsystem past its throughput limit, further lengthening flush times and keeping pages pinned longer, which in turn intensifies latch contention. The same saturated storage slows WAL writes and replay on replicas, so replay lags behind, preventing log recycling on the primary. The growing retained log set increases storage usage and write volume, feeding back into the storage bottleneck and extending latch hold times. Thus each anomaly reinforces the others, producing a feedback loop that degrades buffer concurrency, disk service levels, and replication freshness simultaneously.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.7418923030118649,
+            "bm25_score": 21.84628434692441,
+            "lexical_score": 0.13964101003954973,
+            "matched_terms": [
+                "and",
+                "apply",
+                "health",
+                "is",
+                "lag",
+                "longer",
+                "or",
+                "preventing",
+                "replication",
+                "the",
+                "this",
+                "times",
+                "to",
+                "waits",
+                "when"
+            ],
+            "match_count": 109,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

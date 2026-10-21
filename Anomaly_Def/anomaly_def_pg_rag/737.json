@@ -1,0 +1,42 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Buffer Cache and Latch Contention Anomaly + Replication Synchronization Anomaly",
+            "Description": "Database Memory Allocation Anomaly : Excessive or uncontrolled growth of database memory regions (buffer/plan caches, work areas, etc.) that pushes the host into severe memory pressure, paging, or OOM conditions.\nBuffer Cache and Latch Contention Anomaly : Hot-page or latch serialization inside the buffer manager that forces sessions to spin or wait when pinning, accessing, or flushing shared pages.\nReplication Synchronization Anomaly : Downstream replicas cannot receive, persist, or apply WAL/redo at the rate the primary generates it, leading to widening log‐position and replay lag.\n\nWhen all three root causes are active, the database shows an intertwined failure pattern: memory pressure inflates buffer-replacement churn while hot pages and latch waits spike, driving CPU spin and elongated service times on the primary. The same saturation reduces headroom for the replication sender process, and the stalled page flushes needed to recycle dirty buffers restrain checkpoint progress, so retained log segments and relay logs balloon. On replicas, backlog growth forces larger memory footprints for relay/applier buffers, possibly inducing their own memory exhaustion and further slowing apply. Observability surfaces reveal simultaneous high memory utilization, escalating page-latch or buffer-busy waits, replication apply/flush lag, and log recycling frozen by both memory and latch bottlenecks; symptoms blur together, making single-cause diagnosis difficult.\n\nCausally, uncontrolled memory allocation amplifies buffer pool turnover; as pages are evicted prematurely, they become hot and are immediately re-read, intensifying latch contention. The extra CPU and I/O consumed by this churn slows checkpoint and log flush threads, throttling the replication sender’s ability to stream redo. Replication lag then prevents log truncation, extending the primary’s active log set and enlarging memory-resident replication queues, which feed back into overall memory pressure. On replicas, delayed apply keeps buffer pages dirty longer, prolonging their latch holding time and echoing contention downstream. This positive feedback loop between memory exhaustion, latch serialization, and replication backlog escalates latency, risks OOM or node eviction, and undermines HA objectives.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 216,
+            "score": 0.17771845546765833,
+            "bm25_score": 10.201014004075972,
+            "lexical_score": 0.07552808252824628,
+            "matched_terms": [
+                "and",
+                "by",
+                "failure",
+                "needed",
+                "or",
+                "pressure",
+                "the",
+                "to",
+                "together"
+            ],
+            "match_count": 10,
+            "entry": {
+                "error_code": "HV002",
+                "error_name": "fdw_dynamic_parameter_value_needed",
+                "official_description": "fdw dynamic parameter value needed",
+                "error_class": "Class HV - Foreign Data Wrapper Error (SQL/MED)",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

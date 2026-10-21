@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Database Memory Allocation Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Transaction Lock Contention Anomaly: Concurrent sessions hold or request mutually incompatible locks on the same resources, leading to long blocking chains or deadlocks that stall forward progress. \nDatabase Memory Allocation Anomaly: Database components (buffer/cache, work areas, background heaps) collectively grow beyond safe physical limits, provoking host-level memory pressure and paging. \nOperating System Resource Limit Anomaly: The database process exhausts kernel-enforced quotas for objects such as file descriptors, shared-memory segments, semaphores, or process IDs, preventing new allocations.\n\nWhen these three root causes coincide, symptoms overlap and magnify: lock-wait time and deadlock frequency surge while overall throughput and connection acceptance plunge; meanwhile the database’s resident-set size climbs until the kernel begins paging or refuses further memory, leading to sporadic \"cannot allocate memory\" or \"too many open files\" errors. Stalled or killed transactions repeatedly reconnect and retry, inflating connection bursts that generate more processes/threads and file handles, which in turn collide with OS limits. Administrators observe alternating lock-wait spikes, sudden session failures, escalating swap usage, growing wait queues in the connection pool, and flurries of engine and kernel log messages about lock timeouts, out-of-memory kills, and resource-limit denials—all without a single clear chokepoint.\n\nCausally, intensive lock contention lengthens transaction lifetimes, inflating the number of concurrent sessions that stay resident and each one’s memory/work-area footprint. The bloated memory demand brings the host to the brink of physical exhaustion; once paging starts, transaction execution slows further, prolonging locks and amplifying contention—a feedback loop. Simultaneously, the surge in waiting sessions and frequent reconnection attempts multiply process/thread and file-descriptor usage, quickly breaching OS quotas. Hitting those limits causes some sessions or background workers to crash, which roll back their locks and force other transactions to restart, re-enter queues, and allocate fresh memory, perpetuating the instability. Thus, the interplay of lock contention, runaway memory growth, and kernel resource exhaustion creates a self-reinforcing spiral that can culminate in partial or total service outage.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.7469583627381792,
+            "bm25_score": 36.001703312281826,
+            "lexical_score": 0.15652787579393085,
+            "matched_terms": [
+                "and",
+                "attempts",
+                "blocking",
+                "cannot",
+                "for",
+                "in",
+                "incompatible",
+                "lock",
+                "locks",
+                "or",
+                "overlap",
+                "retry",
+                "session",
+                "sessions",
+                "the",
+                "to",
+                "transaction",
+                "waiting",
+                "when",
+                "while"
+            ],
+            "match_count": 65,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

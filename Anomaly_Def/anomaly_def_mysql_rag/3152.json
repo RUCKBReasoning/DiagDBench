@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly: Excessive accumulation of obsolete row versions and index entries outpaces background cleanup, inflating the version store and bloating on-disk structures.\nTransaction Log Subsystem Anomaly: The generation, flushing, or archival of write-ahead log (WAL) records becomes the bottleneck, stretching commit latency and stalling write throughput.\n\nComposite definition: Both version-store bloat and log-subsystem saturation are active at the same time, so every modifying transaction must cope with heavier MVCC bookkeeping while also waiting longer for its corresponding log records to be flushed and archived.\n\nCombined anomalous phenomena: 1) Commit times rise unpredictably because transactions spend extra CPU cycles scanning swollen version chains and then block on congested log-flush waits. 2) Table and index files grow rapidly alongside the WAL directory, causing storage exhaustion warnings for both data and log areas. 3) Autovacuum or purge workers run continuously yet fall further behind, while checkpoint and log-archive processes report backlog; checkpoint storms triggered by the log side amplify IO pressure on already bloated heaps. 4) Planners misestimate row counts due to table bloat, producing scan plans that magnify the I/O amplified by frequent checkpoints, making it difficult to attribute latency spikes to one layer alone.\n\nCausal chain and reinforcement: High update/delete churn first inflates the version store; the extra redo produced by deleting and relinking MVCC versions accelerates WAL generation. The swollen WAL in turn forces more frequent checkpoints and log-file switches, throttling background cleaners that need IO bandwidth to prune dead tuples, so MVCC bloat accumulates even faster. If archive or replication lag prevents log recycling, disk space pressure can suspend new transactions; long-running snapshots retained by slow replicas also keep old versions alive, preventing cleanup. Thus each anomaly feeds the other, creating a positive feedback loop that degrades throughput, inflates storage, and risks full-stop outages.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3986,
+            "score": 0.5722626961628089,
+            "bm25_score": 52.81560683375581,
+            "lexical_score": 0.16413323518586675,
+            "matched_terms": [
+                "and",
+                "are",
+                "data",
+                "disk",
+                "file",
+                "for",
+                "io",
+                "latency",
+                "log",
+                "or",
+                "pressure",
+                "stop",
+                "storage",
+                "the",
+                "to",
+                "waiting",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-012102",
+                "error_name": "ER_IB_MSG_278",
+                "official_description": "Tablespace %s, waiting for IO to stop for %lld seconds",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

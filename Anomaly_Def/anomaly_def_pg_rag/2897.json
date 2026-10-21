@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Transaction Log Subsystem Anomaly + Replication Synchronization Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level statements or transaction scopes are written in a way that forces the engine to process and persist more changes than business logic really requires.\nTransaction Log Subsystem Anomaly : The generation, buffering, flushing, or archival of write-ahead log records becomes the bottleneck on the primary node’s commit path.\nReplication Synchronization Anomaly : Downstream replicas or subscribers cannot receive or apply the primary’s log stream at the rate it is produced, causing growing replication lag.\n\nWhen all three conditions coexist, the database experiences a compounded failure mode in which chatty, long-running, or excessively bulk-modifying transactions inflate redo volume, saturating the primary’s log buffer, log device, and archiver. Commit latency spikes and back-pressure propagates to the application layer, while replicas fall progressively behind, evidenced by rapidly expanding log files, stalled log recycling, escalating log-flush and log-sync waits, widening replica replay lag, and a surge of application timeouts and retried statements. Monitoring views may simultaneously show the same heavyweight SQL statements in slow-query logs, high log write times on the primary, and growing apply delay on replicas, making it difficult to attribute blame to any single layer.\n\nCausally, inefficient workload semantics generate unnecessary DML volume and long transactions; this amplifies redo generation and forces the transaction-log subsystem to operate at or beyond its physical limits. As the log device and archiver struggle, commit stalls lengthen, further extending transaction lifetimes and exacerbating lock retention and row version buildup. The swollen and slower log stream must then be shipped to replicas, which, already constrained by network, I/O, or apply throughput, cannot keep pace. Their mounting lag prevents the primary from recycling old log segments, inflating on-disk log usage and adding even more pressure to the log subsystem. The feedback loop—heavy workload ➝ log saturation ➝ replication backlog ➝ log retention—creates a self-reinforcing performance degradation that can culminate in write stalls, replica desynchronization, and risk of availability loss.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 123,
+            "score": 0.35012115938059707,
+            "bm25_score": 13.25402536991363,
+            "lexical_score": 0.15331658291457284,
+            "matched_terms": [
+                "and",
+                "be",
+                "by",
+                "engine",
+                "failure",
+                "in",
+                "is",
+                "its",
+                "level",
+                "logic",
+                "modifying",
+                "must",
+                "or",
+                "pressure",
+                "sql",
+                "the",
+                "to",
+                "workload"
+            ],
+            "match_count": 14,
+            "entry": {
+                "error_code": "38002",
+                "error_name": "modifying_sql_data_not_permitted",
+                "official_description": "modifying sql data not permitted",
+                "error_class": "Class 38 - External Routine Exception",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

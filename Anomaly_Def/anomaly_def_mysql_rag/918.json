@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + MVCC Version Maintenance Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Optimizer Statistics Anomaly : The optimizer bases its cost estimates on stale or incomplete metadata, causing systematic misestimation of cardinalities and ultimately poor plan choices.\nMVCC Version Maintenance Anomaly : Obsolete row versions and rollback records accumulate faster than background cleanup can reclaim them, inflating table and index size and increasing visibility-check costs.\nStorage I/O Throughput Anomaly : The physical devices that store data, temp, or log files become throughput- or latency-bound, so every read or write waits behind saturated queues.\n\nWhen all three root causes appear together, symptoms overlap and magnify: execution plans chosen from incorrect statistics are forced to scan or join vastly larger on-disk structures bloated by version buildup; these larger scans, in turn, drive far more physical I/O against disks that are already maxed out, pushing latency higher and keeping buffer-pool hit ratios low. Administrators observe wildly inaccurate row-count estimates, sudden plan flips after data-change bursts, soaring table and index sizes, nonstop autovacuum or purge activity, steep growth in I/O wait events, and long-running queries that stall during large sequential reads or log flushes. Cleanup workers and statistics refresh jobs may run continuously but still fall behind because every page read or written is throttled by the saturated storage layer, while critical OLTP transactions suffer from both plan inefficiency and I/O backlog.\n\nCausally, MVCC version bloat first enlarges the physical footprint of hot tables and indexes. This footprint inflation invalidates previously correct statistics and raises the volume of data the optimizer must consider, seeding the Optimizer Statistics Anomaly. Misestimated plans often select full scans or sub-optimal join orders that touch even more pages, amplifying storage traffic. The extra I/O exacerbates the Storage I/O Throughput Anomaly, slowing both foreground queries and the background cleaners that would otherwise shrink the version store and trigger statistics refreshes. The stalled cleaners allow even more bloat to accumulate, which further skews statistics and perpetuates a feedback loop of increasing workload cost and diminishing throughput.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.7394838709677419,
+            "bm25_score": 29.27975653800147,
+            "lexical_score": 0.13161290322580646,
+            "matched_terms": [
+                "and",
+                "because",
+                "behind",
+                "by",
+                "execution",
+                "in",
+                "is",
+                "long",
+                "or",
+                "running",
+                "select",
+                "the",
+                "this",
+                "together",
+                "when",
+                "workload"
+            ],
+            "match_count": 44,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

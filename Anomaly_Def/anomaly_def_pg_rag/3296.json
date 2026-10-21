@@ -1,0 +1,44 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Transaction Log Subsystem Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same data or metadata resources, creating blocking chains or deadlocks inside the lock-manager layer.\nTransaction Log Subsystem Anomaly : The write-ahead logging path (log buffer, log file, archiver, or sync pipeline) becomes the primary bottleneck, stretching commit latency and stalling write activity.\nStorage Space Capacity Anomaly : Free space for data, log, or archive destinations falls to (or below) critical thresholds, causing allocation failures and preventing log or data growth.\n\nWhen all three root causes surface simultaneously, the database can enter a cascade of reinforcing symptoms: commits slow down because log flushes wait on saturated log devices or on archiver/replication lag created by space shortages; transactions keep their locks for much longer, inflating lock-wait time, expanding blocking chains, and multiplying deadlock incidents. Blocked sessions accumulate in connection pools, while error logs alternate among lock timeouts, \"log write stall\", and \"no space left\" messages. Checkpoint storms, repeated log-switch attempts, and emergency autogrowth retries further increase I/O contention, amplifying both log and lock delays. Overall throughput collapses and application timeouts spike, yet the overlapping symptoms obscure which layer is the primary trigger.\n\nCausally, dwindling storage space throttles the archiver or prevents log segment recycling, forcing the transaction log subsystem to pause commits until space frees up. These elongated commit phases keep transactional locks active far beyond their normal duration, igniting severe lock contention. In turn, the growing queue of blocked and retried transactions inflates redo generation and temp usage, accelerating space exhaustion and putting even more pressure on the log subsystem. The feedback loop between space starvation, log stall, and prolonged lock holding drives the system into a self-reinforcing degradation spiral that can culminate in widespread transaction aborts or a full outage.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 206,
+            "score": 0.38117692095418465,
+            "bm25_score": 28.88827618489605,
+            "lexical_score": 0.09876943005181346,
+            "matched_terms": [
+                "and",
+                "blocking",
+                "chains",
+                "contention",
+                "is",
+                "or",
+                "prolonged",
+                "the",
+                "time",
+                "wait"
+            ],
+            "match_count": 16,
+            "entry": {
+                "error_code": "57P05",
+                "error_name": "idle_session_timeout",
+                "official_description": "idle session timeout",
+                "error_class": "Class 57 - Operator Intervention",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "timeout_and_waiting",
+                "cause_analysis": "The failure is typically associated with extended waiting, resource queues, unresponsive peers, or configured time limits being exceeded before the requested operation completes.",
+                "solution_guidance": "Check wait sources, blocking chains, network responsiveness, timeout settings, and whether resource contention is prolonging operation completion.",
+                "observable_symptoms": [
+                    "timeout",
+                    "prolonged waiting",
+                    "interrupted operation"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Buffer Cache and Latch Contention Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Optimizer Statistics Anomaly: Cardinality-estimation inputs are stale or incomplete, causing the optimizer to choose sub-optimal execution plans.\nBuffer Cache and Latch Contention Anomaly: Concurrent sessions serialize on hot buffer pages and latches, stalling CPU threads despite sufficient overall memory.\nStorage I/O Throughput Anomaly: The physical devices that host data, temp, or log files are saturated in bandwidth, IOPS, or latency budget.\n\nWhen these three root causes coincide, the database exhibits a multi-layered performance collapse. Misestimated row counts lead the optimizer to favor plans that repeatedly probe or update a few root index pages or a single hot heap page, sharply amplifying latch contention inside the buffer cache. The same skewed plans may also trigger large, unexpected full scans or spill operations that thrash the already over-subscribed buffer pool, forcing frequent evictions and surges of physical I/O. Because the storage layer is simultaneously throughput-bound, each extra read or write caused by the bad plans waits in a deep device queue, lengthening latch-hold times and propagating wait chains. Observable symptoms therefore mix extreme plan-estimate errors, chronic PAGE/BUFFER_LATCH and BUFFER_BUSY waits, CPU spin without forward progress, and soaring read/write latency with device queues pegged, making the individual issues hard to isolate.\n\nCausally, stale statistics start the chain by driving the optimizer toward access patterns that concentrate traffic on a small set of pages and inflate I/O volume. The resulting hot pages cause threads to fight for buffer-cache latches; every lost spin or sleep extends critical sections. Meanwhile, the inflated I/O demand encounters a storage subsystem already at its throughput ceiling, so each physical read or write takes longer, further extending the period during which latches are held or re-acquired. The prolonged latch holding feeds back into higher concurrency pressure, while the slower I/O prevents the buffer pool from refreshing pages quickly, keeping the same hot pages in constant circulation. The interaction of these three factors forms a reinforcing loop that magnifies latency spikes, shrinks throughput, and can eventually lead to workload timeouts or node instability.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 34,
+            "score": 0.16242699700972718,
+            "bm25_score": 9.36804306240332,
+            "lexical_score": 0.13045045045045045,
+            "matched_terms": [
+                "and",
+                "by",
+                "data",
+                "execution",
+                "for",
+                "in",
+                "instability",
+                "is",
+                "its",
+                "or",
+                "pressure",
+                "the",
+                "to",
+                "trigger",
+                "with",
+                "workload"
+            ],
+            "match_count": 9,
+            "entry": {
+                "error_code": "22018",
+                "error_name": "invalid_character_value_for_cast",
+                "official_description": "invalid character value for cast",
+                "error_class": "Class 22 - Data Exception",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

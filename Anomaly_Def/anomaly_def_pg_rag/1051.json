@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Storage Space Capacity Anomaly + CPU Resource Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Page-level serialization inside the buffer manager where sessions compete for latches, pins, or hot pages, stalling access even though memory is available.\nStorage Space Capacity Anomaly : Physical or logical free space reaches its hard limit, preventing further data-file, log, or temp-area growth and returning allocation-failed errors.\nCPU Resource Anomaly : Database processes consume nearly all host CPU cycles, pushing run-queue length and context-switch rates to saturation.\n\nWhen all three root causes arise together, the system exhibits a compound failure pattern: intense latch waits and buffer-busy events are interleaved with repeated allocation-failed errors while overall response time is further stretched by CPU starvation. Hot pages spin on latches yet cannot be evicted or flushed because datafiles or redo/archive destinations have no free space, causing dirty-page flush threads to loop futilely and burn CPU. Concurrent sessions observe a mixture of page-latch, space-allocation, and scheduler-related wait events, prolonged commit latency (logs cannot extend), surging spin CPU without throughput gain, and sudden statement failures once space or CPU is fully exhausted.\n\nCausally, space exhaustion blocks checkpoints and background writers from completing, keeping dirty pages resident. These pages amplify latch contention because they cannot be flushed and released, lengthening hold times on buffer latches. The extended latch hold times drive up CPU utilization as sessions spin or context-switch while waiting, pushing the host toward CPU saturation. In turn, a saturated CPU slows the very maintenance tasks (file growth, log archival, buffer flush) needed to resolve space shortages and clear dirty pages, completing a feedback loop that escalates all three anomalies and can lead to widespread throughput collapse or instance hang.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.5068756548446163,
+            "bm25_score": 16.49805447805454,
+            "lexical_score": 0.14789002557544756,
+            "matched_terms": [
+                "and",
+                "are",
+                "be",
+                "can",
+                "failure",
+                "is",
+                "latency",
+                "of",
+                "on",
+                "or",
+                "reaches",
+                "sessions",
+                "system",
+                "that",
+                "the",
+                "time",
+                "to",
+                "when"
+            ],
+            "match_count": 210,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_count",
+                "parameter_name": "tcp_keepalives_count",
+                "timeout_category": "network_keepalive_failure_threshold",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the number of TCP keepalive messages that can be lost before the server connection to the client is considered dead.",
+                "trigger_condition": "The number of lost TCP keepalive probes reaches tcp_keepalives_count on systems supporting TCP_KEEPCNT.",
+                "workload_impact": "The server can consider the client connection dead after the configured keepalive failure threshold.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

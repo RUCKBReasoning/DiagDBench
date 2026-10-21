@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Replication Synchronization Anomaly + Storage Space Capacity Anomaly + CPU Resource Anomaly",
+            "Description": "Replication Synchronization Anomaly : Replicas or downstream consumers are unable to receive or apply primary transaction-log records at the rate they are generated, producing widening replication lag.\nStorage Space Capacity Anomaly : Physical or logical free space for data files, logs, or temporary areas is exhausted or approaching hard limits, leading to allocation failures and blocked recycling.\nCPU Resource Anomaly : Database or related processes saturate host CPU cores, creating run-queue buildup and pervasive latency.\n\nWhen all three conditions arise together, the database experiences a compound failure mode in which replication lag grows rapidly, on-disk log segments and relay files accumulate until file systems or tablespaces fill, and the CPU remains pegged as both primary and replica processes fight for compute time to generate, transmit, and replay an ever-growing backlog. Observable symptoms include:  \n• Exponential increase of replication \"write/flush/replay\" delay accompanied by near-full disk or object-store usage on both primary and replica nodes.  \n• Frequent \"cannot allocate space\", \"write failed\", or \"archive destination full\" errors interleaved with scheduler and CPU spin waits.  \n• Periodic stalls where foreground user transactions block on log-space or checkpoint waits, followed by bursty catch-up periods that again spike CPU to 100%.  \n• Monitoring shows rebounding replication lag after every attempted recovery cycle, with replica apply threads starved for CPU while also contending with I/O stalls caused by full disks.\n\nCausal interaction: CPU saturation on either primary or replica slows log generation, network processing, and redo apply threads, which in turn inflates replication lag. The unresolved lag forces the primary to retain past WAL segments, rapidly consuming storage and pushing both primary and archive destinations toward capacity limits. As free space dwindles, checkpoints, auto-extension, and archive writes pause foreground activity, but these pauses cause queues to build, after which surges of deferred work reignite CPU pressure. On the replica side, limited CPU prolongs apply times, so retained relay logs bloat local storage, risking replay halts when disks fill. Conversely, once space exhaustion triggers excessive garbage collection, error logging, or retry loops, additional CPU is consumed, further aggravating saturation. The feedback loop among slow replication, shrinking space, and CPU overload can cascade into systemic outage or forced failovers if not interrupted.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 83,
+            "score": 0.18274931128165897,
+            "bm25_score": 12.141486095022419,
+            "lexical_score": 0.13602401129943503,
+            "matched_terms": [
+                "and",
+                "but",
+                "by",
+                "data",
+                "error",
+                "failure",
+                "in",
+                "is",
+                "not",
+                "object",
+                "or",
+                "pressure",
+                "resource",
+                "the",
+                "to",
+                "together",
+                "with"
+            ],
+            "match_count": 13,
+            "entry": {
+                "error_code": "2203C",
+                "error_name": "sql_json_object_not_found",
+                "official_description": "sql json object not found",
+                "error_class": "Class 22 - Data Exception",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

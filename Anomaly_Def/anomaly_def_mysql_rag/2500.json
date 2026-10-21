@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Transaction Log Subsystem Anomaly + CPU Resource Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Costing metadata no longer matches the real data distribution, producing systematic cardinality errors and sub-optimal execution plans.\nTransaction Log Subsystem Anomaly : The write-ahead logging path—log buffer, log file, archiver, or replication retention—cannot persist or recycle redo fast enough, throttling commit throughput.\nCPU Resource Anomaly : Database processes saturate host CPU cycles, keeping runnable queues permanently full and inflating latency across all operations.\n\nWhen these three root causes strike together, the system shows a confused mixture of symptoms: queries exhibit wildly inaccurate cardinality estimates and choose plan shapes that scan or join far more rows than intended; the excessive row processing amplifies redo generation, quickly filling log buffers and exhausting log file bandwidth. As log flush and sync waits climb, user transactions stall at commit time, while foreground sessions already burdened by poor plans consume ever more CPU in longer execution paths. Log-writer and archiver processes compete for the same CPU cores now saturated by query workers, so both data processing and log persistence slow further. The database reports simultaneous spikes in CPU-bound wait events, log write-related waits, and optimizer recompile events, making isolation of any single culprit difficult.\n\nCausally, stale or incomplete statistics produce execution plans that scan and update large data volumes, inflating CPU demand and redo generation. The surge of log records overwhelms an already constrained transaction-log subsystem, lengthening commit times and forcing foreground processes to linger in log-related waits where they still hold latches and locks. These blocked or looping sessions keep consuming scheduler time slices, pushing CPU utilization toward saturation. In turn, CPU saturation starves the log-writer and statistics-gathering tasks, preventing timely statistics refresh and slowing log flushes, which feeds back into even poorer plans and deeper commit stalls. The intertwined feedback loop of bad plans → high CPU & redo → log bottleneck → more CPU pressure → deferred statistics refresh creates a self-reinforcing degradation spiral that can cripple OLTP throughput and inflate end-to-end response times.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1760,
+            "score": 0.4090468475136948,
+            "bm25_score": 36.866991135982175,
+            "lexical_score": 0.12895412844036697,
+            "matched_terms": [
+                "and",
+                "data",
+                "file",
+                "in",
+                "latency",
+                "log",
+                "metadata",
+                "no",
+                "or",
+                "paths",
+                "persistence",
+                "pressure",
+                "the",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "6083",
+                "error_name": "ER_LH_AVRO_HEADER_NO_SCHEMA",
+                "official_description": "File %.*s: No schema in Avro header metadata.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

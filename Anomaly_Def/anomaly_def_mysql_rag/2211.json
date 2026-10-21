@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Replication Synchronization Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer persistently chooses a sub-optimal execution plan despite having reasonably accurate statistics, leading to excessive CPU, I/O, or memory consumption per statement.\nReplication Synchronization Anomaly: Standby or subscriber nodes cannot receive or apply WAL / redo as fast as the primary produces it, causing growing log-position gaps and replay lag.\nOperating System Resource Limit Anomaly: Kernel-enforced limits on file descriptors, shared memory, semaphores, threads, or similar resources prevent the database from opening new objects or spawning background workers.\n\nWhen all three root causes manifest concurrently, the system exhibits a blend of symptoms that blur subsystem boundaries:  \n• Queries that used to be fast suddenly slow down or fluctuate because the optimizer has switched to scan-heavy or single-threaded plans; parallel workers may be missing due to OS thread limits.  \n• The inefficient plans inflate transaction duration and generate excessive redo, which in turn causes replication send and apply queues to balloon; monitoring shows rapidly widening WAL/LSN gaps and replicas falling minutes or hours behind.  \n• At the same time, OS resource ceilings are hit—log-sender or apply processes fail to open additional files, allocate shm segments, or start extra apply threads—leading to error messages in both database logs and kernel logs, further throttling replication and occasionally aborting query executions.  \n• The primary’s pg_wal or redo area grows uncontrollably because old segments cannot be recycled while replicas lag, risking full disks and cascading slowdowns.  \nOverall, users observe erratic response times, timeouts, stale read traffic on replicas, and declining fail-over readiness, yet the individual symptoms overlap enough to obscure the multi-layered root cause.\n\nCausal interaction: A poor plan elevates I/O and CPU load, inflating the volume and rate of transaction log generation. This heavier WAL stream must traverse the replication channel, but replicas already struggle because OS-level limits cap the number of receiver/apply workers and restrict kernel objects (file handles, AIO contexts). The constrained replication workers fall further behind, which prevents log recycling on the primary, amplifying storage pressure and increasing contention for file descriptors—tightening the OS resource squeeze. Simultaneously, the exhausted kernel quotas prevent the optimizer from spawning parallel execution or maintaining plan cache structures, encouraging more plan switches and further entrenching sub-optimal plans. The feedback loop between wasteful plans, replication backlog, and kernel-level throttling drives the database into a degraded, unstable state.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.7324940508088273,
+            "bm25_score": 29.482281508076873,
+            "lexical_score": 0.12163029525032092,
+            "matched_terms": [
+                "and",
+                "apply",
+                "be",
+                "causing",
+                "channel",
+                "lag",
+                "or",
+                "receiver",
+                "replication",
+                "sender",
+                "the",
+                "this",
+                "times",
+                "to",
+                "when"
+            ],
+            "match_count": 104,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

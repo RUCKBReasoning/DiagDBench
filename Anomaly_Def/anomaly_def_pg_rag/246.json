@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + MVCC Version Maintenance Anomaly + Database Memory Allocation Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions hold or request mutually incompatible locks on the same rows, pages, or metadata, forming long blocking chains or deadlocks that stall progress until victims are rolled back.\nMVCC Version Maintenance Anomaly : Obsolete row versions and undo records accumulate faster than background cleaners can reclaim them, inflating the version store and degrading visibility checks.\nDatabase Memory Allocation Anomaly : Buffer caches, work areas, and other in-memory structures grow beyond the host’s safe capacity, provoking paging, OOM kills, or instance restarts.\n\nWhen these three root causes strike at once, the database exhibits a toxic mix of symptoms:  \n• Sessions pile up in lock-wait or deadlock retry loops while overall transaction throughput and application responsiveness collapse.  \n• Heap and index footprints balloon because cleanup workers are prevented from advancing the snapshot horizon, inflating on-disk size, slowing sequential scans, and further stressing shared buffers.  \n• The surging version store and proliferating lock objects consume large amounts of shared memory; combined with unbounded per-query work areas and buffer-cache churn, this tips the host into heavy paging or OOM events.  \n• Monitoring shows simultaneous spikes in lock-wait time, deadlock detections, bloat and vacuum/autovacuum lag, rapidly growing memory RSS, and degraded cache hit ratios; emergency restarts may occur, wiping in-flight work and masking the underlying dual/triple interaction.\n\nCausal interaction: Hot rows or long-running transactions first create lock contention. Blocked or orphaned transactions hold snapshots open, freezing the MVCC cleanup horizon and causing rapid version accumulation. The expanding version store must be cached or paged, driving up shared-memory and OS memory consumption. Rising memory pressure slows background cleaners, which further delays version reclamation, while paging elongates lock-hold durations as transactions struggle to read bloated pages. This positive feedback loop tightens lock contention, accelerates bloat, and amplifies memory exhaustion, ultimately threatening database availability through deadlocks, timeouts, and process termination.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.23276697258345092,
+            "bm25_score": 11.154510139567488,
+            "lexical_score": 0.12184124286928025,
+            "matched_terms": [
+                "and",
+                "are",
+                "be",
+                "of",
+                "on",
+                "or",
+                "progress",
+                "responsiveness",
+                "retry",
+                "sessions",
+                "that",
+                "the",
+                "this",
+                "time",
+                "to",
+                "when",
+                "which"
+            ],
+            "match_count": 175,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_interval",
+                "parameter_name": "tcp_keepalives_interval",
+                "timeout_category": "network_keepalive_retry_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time after which a TCP keepalive message that has not been acknowledged by the client should be retransmitted.",
+                "trigger_condition": "A TCP keepalive probe is not acknowledged for tcp_keepalives_interval on systems supporting TCP_KEEPINTVL or an equivalent socket option.",
+                "workload_impact": "Controls retry timing for keepalive probes used to detect unresponsive client connections.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

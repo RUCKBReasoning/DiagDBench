@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Database Memory Allocation Anomaly : Excessive or uncontrolled growth of buffer caches, work areas, plan caches, or other in-engine heaps drives the database server’s physical memory and swap consumption beyond the safe capacity of the host.\nNetwork and Connectivity Resource Anomaly : Insufficient or saturated network, listener, authentication, or socket resources prevent timely creation, maintenance, or teardown of client connections and data streams.\n\nWhen both root causes are active, the system exhibits intermixed memory-pressure and connectivity symptoms: rapid RSS growth and paging coincide with surging connection-establishment latency, sporadic authentication failures, and rising counts of orphaned or half-open sockets. Background OOM killings or node evictions interrupt sessions, prompting client retry storms that flood the listener. Simultaneously, stalled result transmissions caused by congested NIC queues keep back-end processes idle yet resident in memory, inflating per-session buffers and further degrading cache hit ratios. Overall query latency becomes erratic, with spikes tied to both memory-induced CPU stalls and retransmission-driven waits, making single-cause diagnosis difficult.\n\nCausally, the two anomalies reinforce one another: memory bloat increases each server process’s footprint, so every additional or leaked connection disproportionately consumes RAM, hastening memory exhaustion and triggering kernel swapping that slows packet processing. Conversely, network slowdowns and connection pool thrashing inflate the number and lifetime of backend processes, amplifying aggregate memory demand. Large result sets transferred slowly over a congested network keep per-query work areas and sort buffers allocated longer, compounding allocation pressure. The feedback loop between rising memory use and deteriorating connectivity can cascade into widespread session drops, automatic restarts, or cluster node fencing, severely impairing overall database availability and throughput.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.5074046868775536,
+            "bm25_score": 14.27253112709809,
+            "lexical_score": 0.15759137769447046,
+            "matched_terms": [
+                "and",
+                "are",
+                "authentication",
+                "by",
+                "client",
+                "connection",
+                "connections",
+                "establishment",
+                "idle",
+                "latency",
+                "of",
+                "or",
+                "retry",
+                "session",
+                "sessions",
+                "socket",
+                "system",
+                "that",
+                "the",
+                "to",
+                "when"
+            ],
+            "match_count": 279,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_interval",
+                "parameter_name": "tcp_keepalives_interval",
+                "timeout_category": "network_keepalive_retry_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time after which a TCP keepalive message that has not been acknowledged by the client should be retransmitted.",
+                "trigger_condition": "A TCP keepalive probe is not acknowledged for tcp_keepalives_interval on systems supporting TCP_KEEPINTVL or an equivalent socket option.",
+                "workload_impact": "Controls retry timing for keepalive probes used to detect unresponsive client connections.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

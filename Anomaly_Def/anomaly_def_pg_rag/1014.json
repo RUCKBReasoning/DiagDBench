@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Transaction Lock Contention Anomaly",
+            "Description": "Schema and Index Design Anomaly: A static mismatch between the physical data model (tables, indexes, partitions, constraints, data types) and the workload’s access patterns, forcing otherwise well-formed queries into broad scans or non-covering lookups.\nTransaction Lock Contention Anomaly: Excessive or conflicting lock requests among concurrent transactions that lead to long blocking chains or deadlocks, degrading throughput and provoking rollbacks.\n\nWhen these two root causes co-exist, the system exhibits a blend of I/O-heavy access paths and severe lock queuing. Queries that should have been quick, selective index probes instead scan whole tables or large index ranges, acquiring and holding many row, page, or even table locks for extended periods. This inflates lock footprints, lengthens critical-section times, and causes cascades of blockers and waiters. Observable symptoms include simultaneous spikes in logical/physical I/O, CPU usage, lock wait time, deadlock frequency, connection-pool exhaustion, and dramatic variance in response times; execution plans show scans while lock-diagnostic views reveal growing wait chains often ending in deadlock victim rollbacks.\n\nCausally, poor schema and index design enlarges the scope and duration of locking: missing or non-covering indexes force full scans that touch many rows, causing transactions to acquire more locks and hold them longer. The broadened lock scope increases the probability of conflict with other concurrent transactions, intensifying lock contention. In turn, prolonged blocking and repeated deadlocks further delay statement completion, keeping scans active even longer and amplifying the performance penalty of the design flaw. The feedback loop between inefficient access paths and escalating lock waits can drive the database into a state of chronic congestion where both throughput and user experience deteriorate sharply.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.21382532605684132,
+            "bm25_score": 13.354525041493027,
+            "lexical_score": 0.11787757437070936,
+            "matched_terms": [
+                "and",
+                "connection",
+                "for",
+                "holding",
+                "in",
+                "instead",
+                "of",
+                "or",
+                "the",
+                "this",
+                "time",
+                "wait",
+                "when"
+            ],
+            "match_count": 152,
+            "entry": {
+                "timeout_id": "pg16_libpq_connection_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "client_connection_establishment_timeout",
+                "scope": "libpq/client connection parameter",
+                "official_definition": "Maximum wait for connection, in seconds; zero or not specified means wait indefinitely.",
+                "trigger_condition": "A libpq client connection attempt exceeds connect_timeout seconds.",
+                "workload_impact": "The client connection attempt fails instead of waiting indefinitely.",
+                "default_behavior": "Zero or absent value means wait indefinitely.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

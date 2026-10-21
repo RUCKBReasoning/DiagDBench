@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Database Memory Allocation Anomaly : Excessive growth of engine buffer caches, work areas, and ancillary heaps drives the database process beyond the safe physical-memory or swap envelope of the host.\nOperating System Resource Limit Anomaly : Database processes hit kernel-enforced ceilings for objects such as file descriptors, shared-memory segments, semaphores, threads, or cgroup quotas, independent of database-level quotas.\n\nWhen both conditions surface concurrently, the system exhibits a blended failure pattern: resident-set size balloons until the kernel begins paging, while at the same time new threads, shared-memory extents, or file handles cannot be granted. Administrators observe escalating swap usage, cache-hit degradation, and memory-pressure-induced CPU stalls alongside erratic \"cannot allocate memory / resource temporarily unavailable\" errors, inability to spawn parallel workers, and partial service where existing sessions limp on but new logins, sorts, or I/O requests fail. Restart storms may occur because an out-of-memory killer terminates the process just as unreleased kernel objects accumulate, causing the next startup to inherit or exceed tight resource caps.\n\nCausally, aggressive memory allocation magnifies the likelihood of breaching kernel limits: each session or parallel worker spawned to service the enlarged workload reserves its own stack, file handles, and asynchronous I/O contexts, accelerating exhaustion of per-process quotas. In turn, once the kernel refuses additional handles or threads, the database engine cannot offload or flush memory through background tasks, so buffers remain pinned and continue to grow, intensifying host memory pressure. This feedback loop turns two individually manageable issues into a compound outage where memory bloat feeds kernel-resource starvation and vice versa, rapidly degrading overall database stability.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.4196704678101138,
+            "bm25_score": 11.108309746136287,
+            "lexical_score": 0.106809462915601,
+            "matched_terms": [
+                "and",
+                "at",
+                "be",
+                "kernel",
+                "or",
+                "session",
+                "sessions",
+                "system",
+                "the",
+                "this",
+                "time",
+                "when",
+                "while"
+            ],
+            "match_count": 214,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

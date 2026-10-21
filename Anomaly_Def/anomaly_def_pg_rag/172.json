@@ -1,0 +1,43 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Database Configuration Parameter Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Obsolete row versions and deleted index entries accumulate faster than background cleanup can reclaim them, inflating the version store and bloating tables and indexes.\nDatabase Configuration Parameter Anomaly : Memory, checkpoint, background-worker, and parallelism parameters are mis-tuned for the actual hardware and workload, so internal subsystems receive too little or too much resource budget at the wrong cadence.\nBuffer Cache and Latch Contention Anomaly : Sessions repeatedly serialize on hot buffer pages, latches, or I/O slots, producing buffer-busy waits, spin-loops, and latency spikes.\n\nWhen all three root causes co-exist, the system exhibits a feedback loop of bloat and contention: 1) tables and indexes swell with dead versions, causing sequential scans, index probes, and visibility checks to touch far more pages; 2) because the buffer pool is undersized or flushing too aggressively due to mis-set parameters, these extra page touches churn rapidly through the cache, driving up buffer-busy waits, page evictions, and latch acquisition times; 3) cleanup workers remain permanently behind, yet their activity competes with foreground queries for the same hot pages, further lengthening latch wait chains. Observable symptoms include simultaneously growing version-store metrics, high buffer-latch and buffer-pin waits, sustained CPU spin without full core utilization, erratic checkpoint spikes, and warning logs about both transaction-ID wraparound and I/O stall despite apparent hardware headroom.\n\nCausal chain: Misconfigured memory, checkpoint, and autovacuum/autopurge parameters starve background cleaners and shrink effective cache capacity, letting dead tuples accumulate. The expanding heap forces every transaction to read and dirty more pages, which—in the tight cache—triggers frequent evictions and dirty-page flushes. Each flush or page replacement requires latches and I/O slots that many sessions now contend for, magnifying buffer-level serialization. The heightened latch contention slows both cleaners and user transactions, so version bloat grows even faster, further increasing page churn and latch pressure. Thus, configuration mis-tuning sparks a self-reinforcing cycle between MVCC debris build-up and buffer-cache contention, steadily degrading OLTP throughput and latency.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 113,
+            "score": 0.4635326002087999,
+            "bm25_score": 21.92892720948437,
+            "lexical_score": 0.08330232558139535,
+            "matched_terms": [
+                "and",
+                "at",
+                "checks",
+                "exist",
+                "is",
+                "or",
+                "the",
+                "user",
+                "with"
+            ],
+            "match_count": 9,
+            "entry": {
+                "error_code": "2BP01",
+                "error_name": "dependent_objects_still_exist",
+                "official_description": "dependent objects still exist",
+                "error_class": "Class 2B - Dependent Privilege Descriptors Still Exist",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "authentication_and_authorization",
+                "cause_analysis": "The failure is typically associated with user identity, privilege scope, object access checks, or credential validation at session establishment or statement execution time.",
+                "solution_guidance": "Verify account credentials, privilege grants, object ownership, role settings, and whether the execution context has sufficient access rights.",
+                "observable_symptoms": [
+                    "access denied",
+                    "authentication failure",
+                    "permission error"
+                ]
+            }
+        }
+    }
+]

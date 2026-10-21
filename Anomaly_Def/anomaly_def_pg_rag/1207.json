@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Transaction Log Subsystem Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Excessive accumulation of obsolete row versions and rollback records outpaces background cleanup, inflating the version store and enlarging physical data structures.\nTransaction Log Subsystem Anomaly : The write-ahead log path—generation, flushing, switching, or archiving—cannot keep up with the redo rate, driving up commit latency and stalling writers.\nData Block and Index Integrity Anomaly : On-disk pages, index structures, or heap–index mappings become internally inconsistent, causing logical corruption and unreliable access paths.\n\nWhen all three root causes manifest together, the system exhibits a mix of space bloat, rising commit and checkpoint delays, and intermittent data-integrity errors. Bloated tables and indexes lengthen scans and enlarge checkpoint footprints just as the log subsystem is already saturated, so checkpoints and log switches occur more often and take longer. Corrupted pages or mis-linked index nodes encountered during cleanup, vacuum, or recovery processes surface as checksum failures, failed autovacuum passes, or crash-recovery loops. Applications observe sporadic timeouts on writes, escalating snapshot-too-old or serialization failures, incorrect query results from damaged indexes, and sudden crash-restores that replay very large, backlog-laden logs.\n\nCausally, heavy update/delete churn first drives MVCC bloat, inflating both the data files and the volume of redo that must be logged. The swollen log stream stresses the transaction-log subsystem; when log flushing or archiving lags, checkpoints are delayed, holding dirty pages longer and extending the window during which an unexpected crash can leave partially written, corrupt pages. Simultaneously, overfilled version stores force longer vacuum cycles that touch more pages; if those pages reside on hardware already strained by sustained log I/O, the probability of torn-page or write-ordering violations rises, seeding data-block and index corruption. Once corruption appears, cleanup and recovery processes generate even more redo and may repeatedly visit the same damaged pages, amplifying both the MVCC maintenance backlog and log-write pressure. The feedback loop among unchecked version buildup, log saturation, and physical corruption rapidly degrades performance and reliability until all three layers—visibility management, durability path, and on-disk structures—need immediate remediation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.7412444717444717,
+            "bm25_score": 27.507080998775105,
+            "lexical_score": 0.13748157248157247,
+            "matched_terms": [
+                "access",
+                "and",
+                "be",
+                "from",
+                "is",
+                "logged",
+                "longer",
+                "more",
+                "of",
+                "or",
+                "path",
+                "query",
+                "that",
+                "the",
+                "together",
+                "too",
+                "until",
+                "when",
+                "with"
+            ],
+            "match_count": 221,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

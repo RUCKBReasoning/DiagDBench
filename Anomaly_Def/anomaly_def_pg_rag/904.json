@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Transaction Lock Contention Anomaly + CPU Resource Anomaly",
+            "Description": "Schema and Index Design Anomaly: A static mismatch between the physical data model (tables, indexes, partitions, data types, constraints) and the workload’s access patterns, forcing inefficient access paths regardless of statistics or optimizer choice.\nTransaction Lock Contention Anomaly: Concurrent transactions request incompatible locks on the same data or metadata objects, producing wait chains or deadlocks that stall or abort workload execution.\nCPU Resource Anomaly: Database processes collectively saturate host CPU, driving run-queue growth, context switching, and broad latency inflation independent of any single SQL statement.\n\nWhen all three root causes co-exist, the system exhibits an intertwined failure pattern: queries perform full scans or non-covering index lookups that touch many rows, inflating the lock footprint and holding row/page/table locks far longer than expected. The enlarged critical sections create dense blocker–waiter trees and frequent deadlocks, while the excessive I/O and predicate evaluation work drives CPU utilization toward saturation. Under high CPU load, the lock manager itself slows, lengthening detection and wake-up cycles, so blocking and deadlock resolution take longer. Applications see sharp spikes in response times, timeouts, and retry storms; monitoring shows near-max CPU usage, long lock-wait queues, repeated deadlock victim messages, and plan shapes dominated by scans that could be selective with proper indexing.\n\nCausally, poor schema and index design is the initiating factor: missing or non-covering indexes force broad data access, which increases the number and duration of locks acquired. The prolonged locks raise the probability of collisions and deadlocks, producing Transaction Lock Contention. As sessions wait, blocked tasks may still consume CPU through spin-loops or wake-ups, while unblocked sessions keep issuing inefficient scans, jointly driving a CPU Resource Anomaly. Elevated CPU usage slows lock acquisition, latch operations, and deadlock detection, further extending transaction lifetimes and deepening contention. The feedback loop—inefficient access ➔ longer locks ➔ higher contention ➔ CPU saturation ➔ slower lock processing—amplifies each symptom until overall OLTP throughput collapses.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 242,
+            "score": 0.18438903027975434,
+            "bm25_score": 12.074587437693262,
+            "lexical_score": 0.13535207882720499,
+            "matched_terms": [
+                "and",
+                "be",
+                "by",
+                "context",
+                "execution",
+                "failure",
+                "in",
+                "is",
+                "or",
+                "raise",
+                "resource",
+                "sql",
+                "statement",
+                "the",
+                "with",
+                "workload"
+            ],
+            "match_count": 10,
+            "entry": {
+                "error_code": "P0001",
+                "error_name": "raise_exception",
+                "official_description": "raise exception",
+                "error_class": "Class P0 - PL/pgSQL Error",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

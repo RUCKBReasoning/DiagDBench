@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Transaction Log Subsystem Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Database Configuration Parameter Anomaly: Engine-level settings such as buffer size, checkpoint cadence, log-file size, and parallel I/O limits are mis-tuned for the hardware and workload, becoming a root cause of inefficiency on their own.\nTransaction Log Subsystem Anomaly: The write-ahead logging path—log buffer, log files, flush/sync, archiving, or replication retention—cannot sustain the commit rate, throttling transactional progress.\nStorage I/O Throughput Anomaly: The physical storage layer is saturated in throughput or IOPS, driving up latency for reads and writes across data, temp, and log files.\n\nWhen these three root causes coexist, the database experiences a compound failure pattern: commit latency and log-write waits soar while device-level I/O queues remain full, checkpoints and log-file switches occur in rapid succession, and background tasks such as archiving or replication fall behind, causing log directories to bloat. Application sessions observe timeouts, fluctuating throughput, and sharp CPU spikes as processes spin waiting for log buffer space or redo flush completion. Administrators may see paradoxical metrics—e.g., large idle memory yet aggressive checkpoint storms, or high log flush counts on already saturated disks—making diagnosis ambiguous.\n\nCausal chain: Mis-sized configuration parameters (tiny log buffers, small/maxed-out log files, overly aggressive checkpoint intervals, insufficient async I/O slots) force the engine to flush and switch logs more frequently. This amplified write churn overwhelms an already bandwidth-constrained storage subsystem. The storage saturation in turn slows each flush and file switch, deepening log backlog and extending critical sections that hold locks, thereby magnifying the Transaction Log Subsystem bottleneck. The log stall propagates up the stack, blocking write transactions, stalling background cleaners, and triggering further emergency checkpoints—closing a feedback loop where poor configuration exacerbates log pressure, which overloads limited storage, which further delays logging, culminating in severe OLTP performance collapse and elevated risk of crash-recovery or data-loss windows.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 16,
+            "score": 0.46349891552217926,
+            "bm25_score": 14.986005369656962,
+            "lexical_score": 0.14244514106583073,
+            "matched_terms": [
+                "and",
+                "are",
+                "data",
+                "for",
+                "is",
+                "latency",
+                "level",
+                "loss",
+                "or",
+                "out",
+                "progress",
+                "the",
+                "this",
+                "waiting",
+                "when",
+                "write"
+            ],
+            "match_count": 15,
+            "entry": {
+                "timeout_id": "mysql84_xplugin_write_timeout",
+                "parameter_name": "mysqlx_write_timeout",
+                "timeout_category": "x_protocol_network_write_timeout",
+                "scope": "global/session/X Plugin",
+                "official_definition": "Write timeout for X Plugin network communication.",
+                "trigger_condition": "A MySQL X Protocol write operation exceeds mysqlx_write_timeout.",
+                "workload_impact": "The X Protocol network write operation times out.",
+                "default_behavior": "Defined as a MySQL X Plugin system variable.",
+                "system_domain": "network_transport",
+                "cause_analysis": "This timeout is usually triggered when network data is not acknowledged, received, or written within the configured transport-level waiting window.",
+                "solution_guidance": "Inspect packet loss, transport latency, client responsiveness, proxy behavior, and whether slow consumers or unstable links are delaying network progress.",
+                "observable_symptoms": [
+                    "network timeout",
+                    "disconnect",
+                    "read/write interruption"
+                ]
+            }
+        }
+    }
+]

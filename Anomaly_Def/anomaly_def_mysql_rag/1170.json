@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Buffer Cache and Latch Contention Anomaly + CPU Resource Anomaly",
+            "Description": "Schema and Index Design Anomaly : Table layouts, data types, indexes, and partitioning do not match access patterns, forcing every statement through intrinsically inefficient access paths.\nBuffer Cache and Latch Contention Anomaly : Concurrent sessions serialize on hot buffer-cache pages, latches, and I/O slots, stalling while competing for low-level memory structures rather than logical locks.\nCPU Resource Anomaly : Database processes consume most available CPU cycles, driving run-queue pressure and system-wide latency once cores saturate.\n\nWhen all three issues occur together, the workload shows a mix of plan scans and lookup amplification that flood the buffer pool, triggering excessive page replacements and dirty-page flushes. Sessions pile up on buffer-busy and page-latch waits, while at the same time CPUs peg near 100 % due to constant buffer pin spinning, latch polling, and over-executed, non-selective query plans. Performance views report simultaneous spikes in logical I/O, latch wait time, and CPU time per transaction; response-time variance grows unpredictably, and even simple queries intermittently stall behind internal contention rather than explicit user locks.\n\nCausal chain: Poor schema and index design inflates the number of pages each statement must touch, rapidly churning the limited buffer cache. The heightened churn forces frequent page evictions and flushes, concentrating accesses on a small set of root or hotspot pages that all sessions must repeatedly pin, thereby escalating buffer-latch contention. The resulting spin-loops and retry logic, combined with the already bloated execution work, drive CPU utilization to saturation. High CPU load then prolongs latch holding times and slows background flusher threads, which in turn exacerbates buffer pressure and contention, creating a reinforcing feedback loop that magnifies latency and erodes overall throughput.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.6063574447597255,
+            "bm25_score": 25.058064001640677,
+            "lexical_score": 0.14736263736263736,
+            "matched_terms": [
+                "and",
+                "for",
+                "holding",
+                "in",
+                "locks",
+                "not",
+                "or",
+                "retry",
+                "schema",
+                "sessions",
+                "statement",
+                "than",
+                "the",
+                "to",
+                "transaction",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 56,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

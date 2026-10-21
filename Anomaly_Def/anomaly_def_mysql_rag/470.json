@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Concurrent sessions serialize on hot buffer-cache pages, latches, or page pins, stalling while they wait for access to shared in-memory blocks.\nStorage Space Capacity Anomaly : The database runs out of free physical or logical space for data files, logs, or temp areas, leading to allocation failures and write stoppages.\n\nWhen these two root causes strike at the same time, the system exhibits a hybrid failure pattern: extreme buffer-busy and page-latch waits coexist with space-related allocation, extend, and redo/archive stalls. Checkpoints, background writers, and user processes spin or block on latches while dirty pages accumulate, yet they cannot be flushed because data files, temp segments, or log destinations have no room to grow. Symptoms include skyrocketing latch wait time, CPU spin without progress, repeated \"no space left\" or \"cannot extend\" errors, log switch holdups that freeze commits, and abrupt latency spikes on all I/O paths. Monitoring may show the buffer pool nearly full of dirty or pinned pages, IO throughput plummeting despite high device activity, and free-space gauges dropping to zero.\n\nCausal chain: space exhaustion throttles or outright blocks background flushes and log writes, forcing dirty pages to remain in the buffer longer; those pages stay latched, amplifying buffer contention for every session that needs them. Simultaneously, the prolonged latch holds slow transaction throughput, so log segments remain active and cannot be recycled, accelerating space depletion in both data and log areas. Failed auto-extension attempts further increase latch hold times as processes repeatedly retry buffer flushes and metadata updates. The two anomalies therefore reinforce each other: space shortages prevent relieving buffer pressure, while buffer contention slows down the very maintenance actions (flush, archive, cleanup) required to free space, driving the database into a self-sustaining spiral of stalls and eventual service outage.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.300675847561505,
+            "bm25_score": 12.418136367991274,
+            "lexical_score": 0.14135338345864662,
+            "matched_terms": [
+                "activity",
+                "and",
+                "cannot",
+                "for",
+                "latency",
+                "of",
+                "or",
+                "out",
+                "progress",
+                "session",
+                "sessions",
+                "that",
+                "the",
+                "time",
+                "times",
+                "when"
+            ],
+            "match_count": 1,
+            "entry": {
+                "timeout_id": "mysql84_client_connection_timeout_option",
+                "parameter_name": "--connect-timeout",
+                "timeout_category": "client_connection_establishment_timeout",
+                "scope": "client option",
+                "official_definition": "The number of seconds before connection timeout for MySQL client programs that support this option.",
+                "trigger_condition": "A MySQL client program cannot establish a connection before the configured connect timeout.",
+                "workload_impact": "The client connection attempt times out.",
+                "default_behavior": "Defined as a MySQL client connection option.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

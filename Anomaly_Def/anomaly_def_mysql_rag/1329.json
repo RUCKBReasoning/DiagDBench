@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + MVCC Version Maintenance Anomaly",
+            "Description": "Composite definition: The database concurrently suffers from stale or incomplete optimizer statistics and from runaway accumulation of obsolete MVCC row versions, so both the optimizer’s picture of data distribution and the physical storage layout are drifting away from reality at the same time.\n\nCombined observable phenomena: 1) Estimates vs. actuals diverge even more sharply because dead tuples and page bloat make real row counts higher while statistics still reflect a much smaller live set. 2) Queries that formerly used selective index paths switch to serial or bitmap heap scans, yet those scans run markedly slower than expected owing to fragmented, low-density pages full of dead rows. 3) Autovacuum/cleanup workers show sustained backlog, while automatic statistics refreshes either do not trigger (percentage-based thresholds never met after size inflation) or run but take longer and block on bloated objects. 4) Execution plans oscillate after each manual ANALYZE or forced vacuum, producing unstable performance and making regression diagnosis difficult. 5) Storage usage, version-store metrics, and execution-plan row-count warnings all rise together, and I/O wait times increase on both data and temp spaces.\n\nCausal chain and interaction: Heavy update/delete churn creates large volumes of dead tuples, inflating table and index size; this physical bloat invalidates prior statistics. Because the statistics module triggers on percentage of modified *live* rows, the enlarged object causes required thresholds to rise, delaying automatic statistics refresh and worsening staleness. In turn, poor cardinality estimates drive the optimizer toward full-table access paths that read every dead tuple, generating yet more visibility checks and I/O, further taxing VACUUM/cleanup workers already behind schedule. Long-running transactions that hold old snapshots block both vacuum reclaim and statistics for frozen XIDs, perpetuating the feedback loop. The two root causes therefore reinforce each other, accelerating performance degradation and storage growth until manual intervention (force vacuum + analyze) or resource exhaustion occurs.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1442,
+            "score": 0.5640392286475409,
+            "bm25_score": 52.98638577999888,
+            "lexical_score": 0.12252663622526634,
+            "matched_terms": [
+                "access",
+                "and",
+                "at",
+                "checks",
+                "do",
+                "execution",
+                "for",
+                "not",
+                "object",
+                "or",
+                "other",
+                "the",
+                "time",
+                "while"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "3891",
+                "error_name": "ER_CURRENT_PASSWORD_NOT_REQUIRED",
+                "official_description": "Do not specify the current password while changing it for other users.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "authentication_and_authorization",
+                "cause_analysis": "The failure is typically associated with user identity, privilege scope, object access checks, or credential validation at session establishment or statement execution time.",
+                "solution_guidance": "Verify account credentials, privilege grants, object ownership, role settings, and whether the execution context has sufficient access rights.",
+                "observable_symptoms": [
+                    "access denied",
+                    "authentication failure",
+                    "permission error"
+                ]
+            }
+        }
+    }
+]

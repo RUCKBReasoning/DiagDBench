@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Buffer Cache and Latch Contention Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Schema and Index Design Anomaly: A static mismatch between table structures, indexes, partitions, and the workload’s access predicates that forces the optimizer onto wide scans, non-covering index probes, or hot-page insert patterns.\nBuffer Cache and Latch Contention Anomaly: Intensive competition among sessions for buffer-pool pages, page pins, and latches that serialises access, causes CPU spin or waits, and throttles throughput even when higher-level locks are free.\nOperating System Resource Limit Anomaly: Exhaustion of kernel-enforced resources—file descriptors, shared-memory segments, semaphores, thread slots, AIO contexts, cgroup quotas—preventing the database from allocating memory, buffers, or worker processes.\n\nWhen all three root causes coexist, the workload exhibits extreme and erratic latency, bursty throughput, and frequent transient errors. Full-table scans and non-selective index access flood the limited buffer cache, evicting useful pages and triggering constant physical I/O. The undersized or starved buffer pool amplifies buffer-busy waits and page-latch contention as hot root pages, sequence blocks, or last pages of append-only tables are thrashed by concurrent sessions. Simultaneously, the operating system intermittently refuses additional shared-memory allocations, file opens, or thread spawns, leading to sudden query failures, stalled background writers, or disabled parallel plans. Monitoring views show a mix of high logical I/O, spikes in BUFFER_BUSY/LATCH_* waits, and kernel-level \"Too many open files\", \"ENOMEM\", or \"semget failed\" messages, making it difficult to attribute the slowdown to a single layer.\n\nCausally, the poor schema and index design enlarges the I/O footprint and concentrates activity on a small set of pages. This load magnifies buffer-pool pressure; because OS-level limits cap the cache size or the number of shared-memory segments, the engine cannot keep enough pages resident, leading to relentless eviction and reload cycles. Each reload requires latches and I/O slots, increasing contention inside the buffer manager. As contention lengthens critical-section hold times, latch spin and sleep escalate CPU consumption, while OS resource denials further reduce available worker threads or AIO descriptors, stretching I/O completion times and checkpoint flushes. The three issues thus form a reinforcing loop: sub-optimal data access inflates buffer demand, restricted OS resources prevent the cache or process pool from scaling, and the overstressed buffer manager becomes a hotspot, collectively degrading both transactional and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.4451302469185874,
+            "bm25_score": 15.70015203370757,
+            "lexical_score": 0.11784561926036236,
+            "matched_terms": [
+                "and",
+                "because",
+                "cannot",
+                "for",
+                "number",
+                "of",
+                "or",
+                "reduce",
+                "schema",
+                "sessions",
+                "the",
+                "this",
+                "to",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 114,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

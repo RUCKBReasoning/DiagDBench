@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + MVCC Version Maintenance Anomaly + Replication Synchronization Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently chooses or reuses an execution plan that is substantially sub-optimal even though statistics are reasonably accurate.\nMVCC Version Maintenance Anomaly : Obsolete row versions and logically deleted index entries accumulate faster than background cleanup can reclaim them, inflating table size and visibility-check cost.\nReplication Synchronization Anomaly : Downstream replicas cannot receive, persist, or apply transaction-log records as fast as the primary generates them, causing replay lag and log-retention growth.\n\nWhen these three root causes strike together, the system shows a blend of symptoms: 1) query plans alternate between index probes and full scans or stick to a poor plan, yet execution times lengthen regardless because heaps and indexes are bloated with dead rows; 2) long-running or repeatedly re-planned queries emit far more I/O and WAL, which rapidly widens replica write/flush/replay lag; 3) replication lag, in turn, keeps old snapshots open on standbys, preventing garbage collection on the primary, so the version store and table bloat swell further; 4) statistics collected on the enlarged tables exaggerate row counts, confusing the optimizer and prompting additional mis-plans; 5) the primary’s pg_wal / redo or archive area grows because segments cannot be recycled until replicas catch up, exacerbating storage pressure already heightened by MVCC bloat.\n\nCausal chain: heavy OLTP churn creates many dead versions; delayed vacuum leads to bloated relations and skewed cost estimates, encouraging the optimizer to switch to full table scans or poorly chosen join orders, which inflate execution time and emit more WAL. The surge in WAL overwhelms replicas whose apply threads are already slowed by replaying large, poorly batched updates, so replication lag increases. That lag holds replication snapshots open, preventing further vacuum progress on the primary and locking in the version bloat that triggered the plan regression. This feedback loop steadily degrades query performance, bloats storage, and erodes recovery point objectives, making the composite anomaly significantly more damaging than any individual root cause alone.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.7512972572275759,
+            "bm25_score": 32.662603443919195,
+            "lexical_score": 0.17099085742525327,
+            "matched_terms": [
+                "and",
+                "apply",
+                "be",
+                "causing",
+                "downstream",
+                "is",
+                "lag",
+                "long",
+                "or",
+                "preventing",
+                "progress",
+                "replica",
+                "replication",
+                "than",
+                "the",
+                "this",
+                "times",
+                "to",
+                "triggered",
+                "when"
+            ],
+            "match_count": 26,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

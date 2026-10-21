@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Replication Synchronization Anomaly + Storage Space Capacity Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly: Obsolete row versions, rollback records, and dead index entries pile up faster than background cleanup workers can reclaim them.\nReplication Synchronization Anomaly: Stand-by or downstream replicas cannot receive or apply the primary’s WAL/redo stream at the rate it is generated.\nStorage Space Capacity Anomaly: Physical or logical free space for data files, transaction logs, temp areas, or archives is exhausted or about to hit a hard boundary.\n\nWhen all three conditions co-exist, the system shows a compound failure pattern: version stores, heap and index files, and retained WAL segments grow rapidly; replicas fall ever further behind, reporting escalating receive, flush, and replay lags; primary-side log directories, tablespaces, and temp areas approach 100 % usage; autovacuum or purge workers run continuously yet remain ineffective; long-running queries on replicas see increasingly stale data; and once space is fully consumed, new transactions, temp operations, or log writes error out, potentially bringing both primary and replicas to a halt. Monitoring may report contradictory signals—high bloat on primary tables, massive log backlogs, and space exhaustion alarms—making root-cause isolation difficult.\n\nCausal chain: heavy update/delete churn inflates MVCC bloat, which in turn drives up WAL volume. The surging WAL stream overwhelms replicas, forcing the primary to retain additional log segments until they have been replayed. Those unrecycled segments, along with the enlarged tables, consume disk rapidly, pushing the system toward space exhaustion. As free space shrinks, checkpoints, autovacuum, and replica apply processes compete for I/O and fail more often, slowing cleanup and replay still further. The positive feedback loop—bloat ➝ more WAL ➝ replication lag ➝ retained logs ➝ space pressure ➝ slower cleanup/apply ➝ more bloat—amplifies each constituent anomaly and jeopardizes both data freshness and service availability.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3551,
+            "score": 0.5716602054304596,
+            "bm25_score": 60.83237745557407,
+            "lexical_score": 0.16613300492610836,
+            "matched_terms": [
+                "and",
+                "apply",
+                "as",
+                "cannot",
+                "downstream",
+                "failure",
+                "is",
+                "lag",
+                "log",
+                "once",
+                "or",
+                "replica",
+                "replication",
+                "running",
+                "stale",
+                "still",
+                "the",
+                "to",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-011667",
+                "error_name": "ER_GRP_RPL_APPLIER_NOT_STARTED_DUE_TO_RUNNING_PREV_SHUTDOWN",
+                "official_description": "Cannot start the Group Replication applier as a previous shutdown is still running: The thread will stop once its task is complete.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

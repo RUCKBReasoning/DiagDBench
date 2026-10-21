@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Replication Synchronization Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Obsolete row versions, rollback records, and dead index entries accumulate faster than background cleanup can reclaim them, inflating the heap and version store.\nReplication Synchronization Anomaly : Standbys or downstream consumers cannot receive, persist, or apply transaction-log records at the rate the primary generates them, leading to widening replication lag and retention of extra log segments.\n\nWhen both root causes are active, the system shows a compound pattern: dead‐row ratios, table and index sizes, and version-store length rise sharply while, at the same time, replica-side receive/flush/replay positions drift further behind the primary. Autovacuum or equivalent cleaners remain busy yet ineffective because replication-held snapshots prevent pruning; primary log-segment archives grow because neither cleanup nor replica acknowledgment frees them. Application sessions may see slower reads due to bloated pages, delayed failover readiness, and inconsistent read staleness on replicas. Monitoring views report simultaneously high \"dead tuples\" and escalating \"replication lag\", with disk pressure mounting on both primary (unrecycled WAL) and replicas (backlog of unapplied redo).\n\nCausally, replication lag lengthens the global xmin or equivalent transaction-age horizon, freezing the visibility of old row versions and blocking their removal. The stalled cleanup enlarges the heap and forces the primary to emit more full-page images and update records, which in turn amplifies WAL volume and further overloads the already lagging replicas. The positive feedback loop—replica lag preventing cleanup, and unchecked version churn inflating WAL traffic—creates a self-reinforcing degradation that can exhaust storage, throttle throughput, and endanger recovery objectives.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.3444948485573736,
+            "bm25_score": 11.634575935765005,
+            "lexical_score": 0.11713193752077102,
+            "matched_terms": [
+                "and",
+                "are",
+                "can",
+                "dead",
+                "of",
+                "on",
+                "or",
+                "sessions",
+                "system",
+                "that",
+                "the",
+                "time",
+                "to",
+                "when"
+            ],
+            "match_count": 272,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_count",
+                "parameter_name": "tcp_keepalives_count",
+                "timeout_category": "network_keepalive_failure_threshold",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the number of TCP keepalive messages that can be lost before the server connection to the client is considered dead.",
+                "trigger_condition": "The number of lost TCP keepalive probes reaches tcp_keepalives_count on systems supporting TCP_KEEPCNT.",
+                "workload_impact": "The server can consider the client connection dead after the configured keepalive failure threshold.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

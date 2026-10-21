@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently chooses a substantially sub-optimal execution plan despite acceptable statistics, leading to inefficient access paths, excessive work, or poor parallelism.\nOperating System Resource Limit Anomaly : Database processes or sessions hit kernel-enforced limits for files, memory, threads, or other OS objects, preventing new allocations and throttling normal engine activity.\n\nWhen these two root causes strike simultaneously, the database may show volatile and erratic performance: some statements swing from fast to extremely slow as bad plans drive up I/O, memory, or worker-thread demand, which in turn collides with exhausted OS quotas. Operators observe frequent plan flips, sudden full-table scans that flood buffer cache, spikes in context switches, parallel-worker start-up failures, \"cannot allocate memory/handle\" errors, and sessions hanging in compilation or execution. Existing connections limp along with degraded throughput while new logins, background tasks, or parallel workers are refused by the kernel, making it difficult to diagnose whether the bottleneck is inside the optimizer or below the database layer.\n\nCausal interaction: a sub-optimal plan typically inflates resource consumption—opening many files, scanning large data regions, spawning extra threads, or allocating larger memory areas. This surge accelerates exhaustion of kernel-level limits (file descriptors, shared memory, process IDs, AIO contexts). Conversely, once those limits are reached, the optimizer may be forced to recompile without access to parallel workers or temp-space files, pushing it toward even worse plans and provoking further plan churn. The feedback loop between poor plan choices and OS denials amplifies latency variance, expands partial outages, and obscures root-cause isolation because each anomaly masks and triggers the other.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.32369267456124584,
+            "bm25_score": 13.756294358933214,
+            "lexical_score": 0.1352541811558205,
+            "matched_terms": [
+                "activity",
+                "and",
+                "are",
+                "bad",
+                "for",
+                "is",
+                "latency",
+                "of",
+                "or",
+                "sessions",
+                "that",
+                "the",
+                "this",
+                "when",
+                "whether",
+                "with"
+            ],
+            "match_count": 49,
+            "entry": {
+                "timeout_id": "mysql84_connection_handshake_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "connection_handshake_timeout",
+                "scope": "global",
+                "official_definition": "The number of seconds that the mysqld server waits for a connect packet before responding with Bad handshake.",
+                "trigger_condition": "A client does not complete the initial connection packet exchange within connect_timeout.",
+                "workload_impact": "The connection attempt fails during handshake.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

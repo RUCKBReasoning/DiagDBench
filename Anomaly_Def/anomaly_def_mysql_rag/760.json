@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Database Configuration Parameter Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Excessive accumulation of obsolete row versions and logically deleted index entries outpaces background vacuum/clean-up activity, inflating the version store and visibility-check overhead.\nDatabase Configuration Parameter Anomaly : Mis-tuned engine parameters (memory pools, checkpoint cadence, worker limits, etc.) are misaligned with hardware and workload, causing secondary inefficiencies that are not due to the raw resources themselves.\nTransaction Log Subsystem Anomaly : The write-ahead log becomes the primary bottleneck because flushing, switching, or archiving cannot keep up with redo generation, leading to commit stalls and log-space pressure.\n\nCombined phenomena: When all three root causes coexist, the database exhibits simultaneous bloat of table and index pages, soaring version-store or undo-segment size, growing transaction-log directories, and chronic background-worker backlogs. Commit latency and \"log flush\" wait events spike, yet CPU, I/O, or memory meters may show headroom, confusing first-level diagnostics. Vacuum/cleanup workers contend with aggressive checkpoints and log switches triggered by mis-tuned parameters; the resulting I/O storms further delay version pruning. Query planners misestimate both row counts and I/O cost because live-row density is low and statistics are stale, leading to erratic plan choices and unpredictable response times. Alerts about approaching transaction-ID wrap-around, exhausted log space, or stalled archivers may appear nearly simultaneously.\n\nCausal chain: Heavy update/delete churn inflates the version store. Because checkpoint cadence, buffer-pool size, log-buffer length, and cleanup cost limits are poorly configured, background workers cannot reclaim space before new versions arrive. The growing undo/version space in turn amplifies redo generation, driving the transaction log faster toward capacity. Log saturation forces more frequent checkpoints and full-page writes, which consume I/O bandwidth that cleanup processes also need, creating a feedback loop. Each subsystem starves the others: mis-tuned parameters throttle vacuum bandwidth, vacuum delays raise redo volume, and log pressure forces yet more aggressive checkpoints. The intertwined effects compound latency spikes, storage growth, and risk of service interruption far beyond what any single anomaly would cause in isolation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 4425,
+            "score": 0.5445221161244539,
+            "bm25_score": 55.994770264587785,
+            "lexical_score": 0.17243932538050183,
+            "matched_terms": [
+                "and",
+                "are",
+                "capacity",
+                "check",
+                "engine",
+                "growth",
+                "is",
+                "latency",
+                "log",
+                "new",
+                "or",
+                "pages",
+                "pressure",
+                "size",
+                "space",
+                "storage",
+                "the",
+                "to",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-012542",
+                "error_name": "ER_IB_MSG_718",
+                "official_description": "Extending tablespace : %lu space name: %s to new size: %lu pages during recovery.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

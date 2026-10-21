@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Optimizer Statistics Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Schema and Index Design Anomaly : Static mismatch between the physical data model (tables, partitions, indexes, data types, constraints) and the workload’s access patterns, forcing even well-written SQL into inefficient access paths.\nOptimizer Statistics Anomaly : Row-count and data-distribution metadata no longer represent reality, leading the optimizer to choose sub-optimal execution plans because of systematic cardinality errors.\nTransaction Log Subsystem Anomaly : The write-ahead log buffer, files, or archiving pipeline become the primary bottleneck, inflating commit latency and stalling write activity.\n\nWhen all three root causes strike at once, the database shows a wide mix of symptoms: queries that should be index-seek or range-scan operations devolve into full-table scans; the optimizer’s row-count guesses are wildly off, so it sometimes picks nested-loop plans that explode into millions of logical reads, or hash/merge joins that spill to disk. These bloated read workloads generate excessive undo/redo and trigger large batch updates or page splits because the underlying index design is non-covering or poorly aligned with predicates. The extra redo volume quickly saturates the log buffer and forces frequent log flushes, leading to LOG_BUFFER_WAIT, LOG_FILE_SYNC, or similar waits; foreground sessions experience both query CPU spikes and commit stalls. Checkpoint storms, long-running auto-stats jobs, and emergency index rebuilds further amplify log traffic, while stale statistics prevent the optimizer from recognizing the true cost of these maintenance tasks. As a result, performance degradations appear both in read and write paths, and the root causes are easily misattributed to generic I/O or concurrency issues.\n\nCausal chain: Poor schema and index design makes almost every CRUD statement touch more rows or columns than necessary. This inflates I/O and redo generation. Because statistics are stale or inaccurate, the optimizer cannot compensate—it often picks plans that further widen the access path or use memory-hungry operators, compounding data modification volume. The surge in redo overwhelms the transaction log subsystem, which responds with longer flush times and throttled commit throughput. Those commit delays in turn slow DML completion, extending lock lifetimes and causing even more contention and blocking, which invites emergency maintenance (manual stats updates, index rebuilds) that again produces heavy redo. Each anomaly therefore reinforces the others, creating a feedback loop that degrades overall database stability far beyond the impact of any single root cause.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.19727573016720723,
+            "bm25_score": 10.781026543268872,
+            "lexical_score": 0.13000877963125548,
+            "matched_terms": [
+                "activity",
+                "and",
+                "any",
+                "are",
+                "is",
+                "latency",
+                "longer",
+                "of",
+                "or",
+                "sessions",
+                "stale",
+                "than",
+                "that",
+                "the",
+                "this",
+                "transaction",
+                "when",
+                "with"
+            ],
+            "match_count": 246,
+            "entry": {
+                "timeout_id": "pg16_idle_session_timeout",
+                "parameter_name": "idle_session_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle, but not within an open transaction, for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle and not inside an open transaction longer than the configured threshold.",
+                "workload_impact": "The session is terminated; the documentation warns about using this with connection pools or middleware.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

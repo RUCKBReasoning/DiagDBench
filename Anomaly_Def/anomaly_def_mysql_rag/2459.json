@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Optimizer Statistics Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Composite definition: The database is simultaneously affected by (1) application-layer SQL that processes more data or holds transactions longer than business logic requires, (2) stale or insufficient optimizer statistics that cause systematic cardinality misestimation and sub-optimal plan choices, and (3) a write-ahead log subsystem whose generation, flushing, or archival capacity is saturated. All three root causes coexist and interact during the same workload execution.\n\nCombined observable phenomena: Queries show extreme and erratic latency, with execution plans exhibiting large mismatches between estimated and actual row counts, wide scans, or inappropriate join orders. Transactions remain open far longer than normal, consume excessive locks, and generate unusually large volumes of redo. Commit, checkpoint, and log-flush waits spike, archive or replica-shipping queues back up, and application sessions face timeouts or cascading retries. Performance degradations may appear suddenly after data loads or schema changes, yet persist because inefficient SQL continues to execute against misinformed plans while the log subsystem throttles all write traffic, making the individual symptoms difficult to isolate.\n\nCausal chain and interaction: Inefficient SQL logic expands data touched per statement; when paired with inaccurate statistics, the optimizer selects plans that further magnify row processing, I/O, and sort or hash spill volumes. The bloated work units inflate redo generation and prolong transaction duration, driving a surge of log records that must be flushed and archived. The overwhelmed log subsystem lengthens commit latency, which in turn holds locks and latches for longer periods, inflating concurrency conflicts and extending transaction lifespans. These longer transactions keep snapshot versions and index pages \"in flight,\" preventing automatic statistics refresh from triggering and thereby keeping statistics stale. The feedback loop—poor SQL logic → bad cardinality → excess redo → log bottleneck → longer transactions → delayed stats upkeep—amplifies systemic slowdown until all three layers are addressed together.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.745,
+            "bm25_score": 29.643115510222884,
+            "lexical_score": 0.14999999999999997,
+            "matched_terms": [
+                "and",
+                "back",
+                "because",
+                "by",
+                "for",
+                "in",
+                "is",
+                "longer",
+                "of",
+                "or",
+                "row",
+                "schema",
+                "sessions",
+                "statement",
+                "than",
+                "the",
+                "transaction",
+                "up",
+                "waits",
+                "when"
+            ],
+            "match_count": 116,
+            "entry": {
+                "timeout_id": "mysql84_innodb_row_lock_wait_timeout",
+                "parameter_name": "innodb_lock_wait_timeout",
+                "timeout_category": "innodb_row_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "The length of time in seconds an InnoDB transaction waits for a row lock before giving up.",
+                "trigger_condition": "An InnoDB transaction waits longer than innodb_lock_wait_timeout for a row lock.",
+                "workload_impact": "The lock wait gives up; by default only the current statement is rolled back unless innodb_rollback_on_timeout is enabled.",
+                "default_behavior": "Defined as an InnoDB system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

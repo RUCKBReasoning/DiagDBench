@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Database Memory Allocation Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Schema and Index Design Anomaly: Static mismatch between the physical data model (tables, indexes, partitions, constraints, data types) and the workload’s access patterns, forcing costly access paths regardless of optimizer or statistics quality.\nDatabase Memory Allocation Anomaly: Oversubscription or mis-sizing of buffer caches, work areas, plan caches, and other engine heaps that pushes the host into paging, swapping, or OOM situations, degrading cache efficiency and stability.\nData Block and Index Integrity Anomaly: Physical corruption or logical inconsistency inside on-disk pages and index structures, leading to incorrect or unpredictable data retrieval and engine error conditions.\n\nWhen these three root causes co-exist, the system exhibits a blended failure signature: 1) queries repeatedly fall back from expected index seeks to full scans because damaged or ill-chosen indexes cannot be trusted or do not satisfy predicates; 2) the resulting large I/O and memory-hungry hash/sort operations inflate buffer and work memory usage, driving the engine past safe memory limits and provoking sustained OS paging, swap storms, or forced process terminations; 3) memory pressure amplifies corruption symptoms as dirty buffers are flushed and re-read, causing sporadic checksum failures, latch contention, and plan cache evictions; 4) application sessions observe erratic latency spikes, intermittent wrong-result sets, and sudden node restarts that are hard to attribute to any single layer.\n\nCausal chain: a poor schema/index design expands I/O footprints and work-area sizes, directly increasing memory consumption. The inflated memory demand collides with already aggressive or uncapped allocations, tipping the system into memory pressure that magnifies every access inefficiency. Under stress, the engine touches more pages, including already corrupted ones; repeated reads of damaged pages trigger additional retries, checksum validations, or forced full-table scans, which further bloat memory and I/O load. Conversely, memory exhaustion can lead to incomplete writes, interrupted index rebuilds, or crash-recovery gaps, injecting fresh corruption into data blocks and indexes. The corruption then erodes optimizer trust in existing indexes, pushing even more queries onto the pathologically designed fallback scans and perpetuating a vicious cycle of design inefficiency, memory depletion, and structural corruption.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.26721982104254693,
+            "bm25_score": 10.502980849541174,
+            "lexical_score": 0.10409373235460191,
+            "matched_terms": [
+                "and",
+                "are",
+                "be",
+                "latency",
+                "not",
+                "of",
+                "on",
+                "or",
+                "sessions",
+                "system",
+                "that",
+                "the",
+                "to",
+                "when",
+                "which"
+            ],
+            "match_count": 293,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_interval",
+                "parameter_name": "tcp_keepalives_interval",
+                "timeout_category": "network_keepalive_retry_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time after which a TCP keepalive message that has not been acknowledged by the client should be retransmitted.",
+                "trigger_condition": "A TCP keepalive probe is not acknowledged for tcp_keepalives_interval on systems supporting TCP_KEEPINTVL or an equivalent socket option.",
+                "workload_impact": "Controls retry timing for keepalive probes used to detect unresponsive client connections.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

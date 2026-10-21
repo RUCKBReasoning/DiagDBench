@@ -1,0 +1,47 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Database Memory Allocation Anomaly: Memory regions owned by the database engine grow beyond the safe limits of the host, driving paging, swapping, or OOM events.\nStorage I/O Throughput Anomaly: Underlying storage volumes are unable to deliver the required read/write bandwidth or IOPS, resulting in persistently elevated latency and long device queues.\n\nComposite anomaly definition: The database simultaneously exhausts server memory while the storage subsystem is already throughput-bound. The memory allocator keeps demanding pages that the storage layer cannot supply or flush fast enough, and the storage layer cannot keep pace with the extra traffic induced by memory pressure.\n\nCombined anomalous phenomena: 1) Dramatic oscillation between memory and I/O waits—buffer-cache eviction storms lead to surges of physical reads, while swap activity inflates write traffic. 2) CPU utilization appears sporadic: worker threads stall on both page-in/page-out operations and storage waits, masking the true root causes. 3) Cache-hit ratios plunge despite large cache sizes, checkpoint and log-flush latency spikes, batch windows stretch, and clustered or virtualized nodes face eviction due to compounded memory and I/O SLA violations. 4) Diagnostic views show ballooning resident-set size, high page-fault rates, deep storage queues, and mixed wait events (buffer I/O, memory latch sleep, page flushes) that are hard to attribute to a single layer.\n\nCausal chain and interaction: Excessive memory allocation evicts hot pages prematurely, forcing the engine to issue more physical reads; the already saturated storage cannot satisfy these reads quickly, causing sessions to remain active longer and hold even more memory, which further heightens memory pressure. Conversely, slow storage flushes delay the release of dirty buffers and temp segments, obliging the engine to allocate additional memory to continue processing, inching the system closer to swapping. Each anomaly amplifies the other, creating a feedback loop that degrades throughput, increases latency, and threatens instance stability far more severely than either issue in isolation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.4288636877381671,
+            "bm25_score": 12.91938373480065,
+            "lexical_score": 0.09639473684210526,
+            "matched_terms": [
+                "and",
+                "causing",
+                "is",
+                "long",
+                "longer",
+                "or",
+                "out",
+                "than",
+                "the",
+                "to",
+                "waits"
+            ],
+            "match_count": 137,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

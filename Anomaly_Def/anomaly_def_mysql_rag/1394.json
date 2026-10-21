@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + CPU Resource Anomaly",
+            "Description": "Schema and Index Design Anomaly : Physical data-model and indexing choices mismatch workload access paths, forcing otherwise correct SQL to read or write far more data than necessary.\nCPU Resource Anomaly : Host CPU cores become saturated by database processes, throttling all sessions regardless of their individual efficiency.\n\nWhen these root causes strike together, the system displays a blend of I/O-heavy access paths and persistent CPU saturation. Execution plans show full scans, large hash or sort operations, and repeated key lookups, while OS metrics report high run-queue depth, elevated context switches, and spikes in CPU time for the most frequent statements. Latency escalates non-linearly: queries slowed by scan-heavy plans also wait longer in CPU run queues, causing lock hold times, connection pool exhaustion, and sporadic timeouts. Maintenance tasks (auto-vacuum, statistics refresh, checkpoint, log flushing) compete for already scarce CPU, so short stalls ripple into user-visible slowdowns and variance in response times.\n\nCausally, sub-optimal schema and missing or misaligned indexes compel the optimizer to choose resource-hungry plans that read and process excess rows; this inflates per-query CPU demand. The aggregate effect of many such inefficient executions drives CPU Resource Anomaly. Once cores are saturated, the scheduler elongates every CPU quantum, further magnifying the cost of each scan, join, and sort. High CPU pressure delays background tasks that might otherwise mitigate bloat or refresh statistics, locking the system into a feedback loop where degraded physical design and compute starvation reinforce one another, ultimately depressing throughput and threatening stability under both transactional and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.5419564306916382,
+            "bm25_score": 18.62487940613376,
+            "lexical_score": 0.1601096983295936,
+            "matched_terms": [
+                "and",
+                "are",
+                "connection",
+                "data",
+                "for",
+                "latency",
+                "longer",
+                "more",
+                "of",
+                "or",
+                "read",
+                "sessions",
+                "than",
+                "the",
+                "this",
+                "time",
+                "to",
+                "wait",
+                "when"
+            ],
+            "match_count": 66,
+            "entry": {
+                "timeout_id": "mysql84_replica_network_timeout",
+                "parameter_name": "replica_net_timeout",
+                "timeout_category": "replication_network_timeout",
+                "scope": "global/replication",
+                "official_definition": "The number of seconds to wait for more data from a source/replica connection before aborting the read.",
+                "trigger_condition": "A replica waits longer than replica_net_timeout for more data from the source connection.",
+                "workload_impact": "The replication network read is aborted and the replica considers the connection interrupted.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

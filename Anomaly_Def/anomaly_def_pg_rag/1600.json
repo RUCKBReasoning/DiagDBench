@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Replication Synchronization Anomaly + Data Block and Index Integrity Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Replication Synchronization Anomaly: Cross-node log receive and apply path falls behind the primary’s log-generation rate.\nData Block and Index Integrity Anomaly: On-disk data or index pages become physically or logically corrupt or inconsistent.\nStorage I/O Throughput Anomaly: Underlying storage devices cannot sustain the read/write bandwidth or latency demanded by the database engine.\n\nWhen all three root causes strike together, the system exhibits a compound failure surface: replication lag widens rapidly while both primary and replica I/O wait times spike; integrity-check utilities or background scrubbing jobs report page or index corruption; relay or retained WAL segments accumulate on the primary, consuming space and further increasing write latency; replicas may repeatedly disconnect or crash on encountering corrupt pages, causing replay gaps that leave them far behind and unusable for read traffic or failover; normal query traffic experiences elongated response times, and emergency repair actions (reindex, checksum verification, physical copy) run slowly or stall because storage bandwidth is already exhausted.\n\nCausal interaction: saturated storage reduces the throughput of both the primary’s log writer and the replicas’ redo apply threads, directly inflating replication lag. The same I/O pressure increases the chance that incomplete or torn writes occur, leading to new block or index corruption. Conversely, encountering corrupted pages during replay forces replicas to perform additional random reads, error handling, or crash-recovery cycles, which in turn drive up I/O demand and deepen the storage bottleneck. Because replicas cannot advance past the corrupt regions, the primary must retain ever-growing WAL, further stressing disk capacity and write throughput; this retention prevents log recycling, perpetuating high I/O queues and making both replication and corruption recovery progressively harder. The feedback loop among I/O saturation, corruption, and replay lag amplifies each anomaly and can push the cluster into a state where neither failover nor on-line repair is feasible without first relieving the storage constraint.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 90,
+            "score": 0.5440936459512894,
+            "bm25_score": 32.69887638036531,
+            "lexical_score": 0.14303030303030304,
+            "matched_terms": [
+                "and",
+                "by",
+                "check",
+                "constraint",
+                "corruption",
+                "data",
+                "failure",
+                "index",
+                "integrity",
+                "is",
+                "or",
+                "repair",
+                "state",
+                "storage",
+                "the"
+            ],
+            "match_count": 12,
+            "entry": {
+                "error_code": "23502",
+                "error_name": "not_null_violation",
+                "official_description": "not null violation",
+                "error_class": "Class 23 - Integrity Constraint Violation",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "integrity_and_constraints",
+                "cause_analysis": "The failure is typically associated with logical data inconsistency, structural corruption, uniqueness conflicts, or referential-integrity rules being violated by the workload or storage state.",
+                "solution_guidance": "Validate data consistency, inspect constraints and index integrity, and check whether data-cleaning, repair, or workload correction is required before retrying.",
+                "observable_symptoms": [
+                    "constraint failure",
+                    "duplicate data rejection",
+                    "corruption warning"
+                ]
+            }
+        }
+    }
+]

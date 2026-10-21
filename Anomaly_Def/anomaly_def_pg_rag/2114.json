@@ -1,0 +1,59 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Sessions serialize on hot or frequently churned buffer-cache pages and their associated latches, causing CPU spin, buffer-busy/page-latch waits, and stalled logical I/O despite adequate total memory.\nNetwork and Connectivity Resource Anomaly : The client–server communication path or connection-handling layer cannot accept, authenticate, or move data at the offered rate, producing connection timeouts, socket backlog growth, and elevated client-read/client-write waits.\n\nWhen both anomalies strike together, users see erratic but severe end-to-end slowdowns: connection attempts hang or are rejected, established sessions pause on network I/O waits, and those that do reach the executor frequently block on page latches. CPU utilisation oscillates between spin-loops inside the engine and kernel time in network interrupts, while transaction latency and abort rates surge. Monitoring views show simultaneous spikes in buffer busy/page latch waits and client-read/client-write waits, with an inflated count of active back-end processes holding latches yet unable to flush or return result sets because network throughput is impaired. Application servers exhaust connection pools, triggering retry storms that further amplify both latch pressure and network congestion.\n\nCausal interaction: Impaired network throughput lengthens the time each backend spends streaming result sets, prolonging the interval during which it keeps buffer pages pinned or dirty-flush slots allocated, thereby heightening latch contention for other sessions. In the opposite direction, heavy buffer contention slows query completion, so sessions occupy network connections longer and increase concurrent socket demand, which pushes the listener and OS queues toward their limits and raises the probability of connection errors. The feedback loop between prolonged in-engine critical-section holding and saturated network resources escalates queuing at both layers, degrading overall throughput and making the individual root causes harder to isolate.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.4945952170101429,
+            "bm25_score": 19.077449033603635,
+            "lexical_score": 0.18640476374603665,
+            "matched_terms": [
+                "an",
+                "and",
+                "are",
+                "but",
+                "client",
+                "connection",
+                "for",
+                "handling",
+                "holding",
+                "inside",
+                "is",
+                "latency",
+                "longer",
+                "of",
+                "or",
+                "pools",
+                "sessions",
+                "that",
+                "the",
+                "time",
+                "transaction",
+                "when",
+                "with"
+            ],
+            "match_count": 264,
+            "entry": {
+                "timeout_id": "pg16_idle_session_timeout",
+                "parameter_name": "idle_session_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle, but not within an open transaction, for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle and not inside an open transaction longer than the configured threshold.",
+                "workload_impact": "The session is terminated; the documentation warns about using this with connection pools or middleware.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

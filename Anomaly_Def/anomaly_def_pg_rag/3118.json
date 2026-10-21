@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Storage Space Capacity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Excessive accumulation of obsolete row versions and index entries because background cleanup cannot keep pace with update/delete churn, inflating the version store and scan/visibility overhead.\nStorage Space Capacity Anomaly : Physical or logical free space in data, log, archive, temp, or backup areas falls to critical levels, causing allocation failures and write stalls.\nOperating System Resource Limit Anomaly : Kernel-enforced ceilings on file descriptors, shared-memory segments, semaphores, threads, or similar objects are reached, preventing the database from creating or accessing required OS resources.\n\nWhen all three anomalies co-exist, the database exhibits compounding symptoms: rapid growth of data files, rollback segments, and indexes consumes remaining disk space, while the engine’s attempts to extend files, write WAL/redo, build temp objects, or create new version segments start to fail with no-space errors. Simultaneously, the profusion of version and temp files inflates the number of open file handles and shared-memory allocations, driving the system into kernel-level limit breaches that manifest as sporadic session failures, inability to fork background or parallel workers, and repeated \"too many open files\" or \"cannot allocate shared memory\" messages in both database and system logs. Autovacuum/cleanup workers run constantly yet make little progress because they cannot allocate additional disk or OS resources, leading to escalating transaction-ID wraparound warnings, runaway checkpoint and archive backlogs, deteriorating query latency, and eventual cluster-wide freeze.\n\nCausally, heavy update/delete activity generates large volumes of dead tuples; if cleanup workers are throttled or blocked by long-running snapshots, the version store swells. The bloated heap and indexes rapidly deplete free storage, pushing the system into space-pressure territory. Near-full filesystems force frequent, fragmented auto-extensions and generate many small segment files, multiplying the number of file descriptors the engine must keep open. This surge, combined with intensified cleanup and retry logic, drives consumption of kernel objects (FDs, semaphores, threads) until OS limits are hit. Once either space or OS resources are exhausted, cleanup workers fail to start or complete, further accelerating MVCC bloat and space consumption in a vicious feedback loop that culminates in service outages, data-modification failures, and degraded read performance.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.5207292075145236,
+            "bm25_score": 18.504021485361353,
+            "lexical_score": 0.13742290748898678,
+            "matched_terms": [
+                "activity",
+                "and",
+                "are",
+                "complete",
+                "from",
+                "if",
+                "in",
+                "latency",
+                "of",
+                "or",
+                "preventing",
+                "progress",
+                "session",
+                "the",
+                "this",
+                "to",
+                "when"
+            ],
+            "match_count": 130,
+            "entry": {
+                "timeout_id": "pg16_authentication_timeout",
+                "parameter_name": "authentication_timeout",
+                "timeout_category": "connection_authentication_timeout",
+                "scope": "server",
+                "official_definition": "Maximum amount of time allowed to complete client authentication; if not completed in time, the server closes the connection.",
+                "trigger_condition": "A would-be client does not complete the authentication protocol within authentication_timeout.",
+                "workload_impact": "The server closes the connection attempt, preventing hung clients from occupying a connection indefinitely.",
+                "default_behavior": "Default value is one minute.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

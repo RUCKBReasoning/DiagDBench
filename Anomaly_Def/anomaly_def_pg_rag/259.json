@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Obsolete row versions, rollback records, and logically-deleted index entries accumulate faster than background cleaners can reclaim them, inflating on-disk and in-memory structures and lengthening visibility checks.\nBuffer Cache and Latch Contention Anomaly : Concurrent sessions repeatedly fight for hot buffer pages, page pins, and latches, causing stalls, CPU spin, and prolonged waits in the buffer manager.\n\nWhen both root causes strike at once, the system experiences a compound failure mode in which bloated MVCC metadata increases the number and churn rate of buffer pages while those same pages become hotspots contended for by many sessions. Observable symptoms include: 1) rapidly growing table and index size that pushes the working set beyond the ideal buffer-pool footprint, 2) sharp rises in buffer-busy/latch wait events coinciding with background vacuum/cleaner activity, 3) CPU usage dominated by spin-loops and visibility scans rather than useful work, 4) escalating I/O as the cache thrashes between old and freshly dirtied versions, and 5) unstable query plans as the optimizer misjudges bloat-inflated statistics and fluctuating cache hit ratios.\n\nCausally, heavy update/delete churn generates excess MVCC garbage, swelling the number of distinct physical pages that must stay resident or be repeatedly fetched. This expansion dilutes buffer-pool effectiveness and forces more sessions to converge on the remaining truly hot root, index, and free-space pages, intensifying latch contention. At the same time, cleaners that try to prune dead versions issue additional reads and writes, further saturating the buffer manager and extending latch hold times. The longer latches are held, the more they delay other sessions, allowing even more obsolete versions to pile up. The feedback loop between version-store bloat and latch congestion accelerates resource exhaustion, leading to severe throughput degradation and potentially catastrophic wraparound or emergency autovacuum scenarios.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.7489402985074627,
+            "bm25_score": 30.765968847022698,
+            "lexical_score": 0.16313432835820896,
+            "matched_terms": [
+                "and",
+                "delay",
+                "for",
+                "index",
+                "longer",
+                "metadata",
+                "of",
+                "or",
+                "other",
+                "row",
+                "sessions",
+                "table",
+                "than",
+                "that",
+                "the",
+                "this",
+                "time",
+                "to",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 177,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

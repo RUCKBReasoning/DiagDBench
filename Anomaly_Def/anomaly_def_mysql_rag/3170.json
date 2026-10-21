@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Storage Space Capacity Anomaly + CPU Resource Anomaly",
+            "Description": "Storage Space Capacity Anomaly : Exhaustion of physical or logical free space for data, logs, or temporary areas, causing allocation failures and write stalls.\nCPU Resource Anomaly : Saturation of host CPU cycles by database processes, driving high run-queue waits and global latency.\n\nComposite phenomena: When space is running out while CPUs are already saturated, the database may exhibit a cascade of symptoms—DML, index builds, and temp-space operations first slow because the scheduler is starved, then fail outright with \"no space\" or \"cannot extend\" errors. Log writer, checkpoint, and archive processes contend for CPU at the same moment they are blocked on space, inflating commit latency and replica lag. Auto-extend attempts or space-reclaim jobs invoke additional background workers, spiking CPU even higher. From the client side the system appears intermittently hung, with query response times oscillating between CPU wait events and space-allocation errors, making the primary bottleneck hard to isolate.\n\nCausal chain and interaction: Space exhaustion forces the database to perform emergency tasks—auto-extension, space-reclamation, aggressive checkpointing, or archival moves—that themselves consume CPU. Conversely, heavy CPU saturation can delay or starve regular purge, compression, or backup jobs that would normally free space, allowing unused segments and logs to accumulate until the capacity threshold is hit. The two anomalies therefore reinforce each other: lack of CPU prevents space cleanup, while lack of space spawns more CPU-intensive exception handling, ultimately degrading throughput and raising the probability of a full outage.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.5553281762584698,
+            "bm25_score": 22.08020051115353,
+            "lexical_score": 0.17232558139534881,
+            "matched_terms": [
+                "additional",
+                "and",
+                "are",
+                "client",
+                "data",
+                "for",
+                "from",
+                "global",
+                "handling",
+                "is",
+                "latency",
+                "more",
+                "of",
+                "or",
+                "the",
+                "to",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 148,
+            "entry": {
+                "timeout_id": "mysql84_network_read_timeout",
+                "parameter_name": "net_read_timeout",
+                "timeout_category": "network_read_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for more data from a connection before aborting the read.",
+                "trigger_condition": "The server waits for additional data from a connection longer than net_read_timeout.",
+                "workload_impact": "The network read is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

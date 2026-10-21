@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Buffer Cache and Latch Contention Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Critical metadata about data distribution is stale, incomplete, or missing, causing the optimizer to misestimate cardinalities and choose sub-optimal execution plans.\nBuffer Cache and Latch Contention Anomaly : Heavy concurrent access to a small set of hot pages or an undersized buffer pool forces sessions to serialize on buffer latches and page pins, inflating wait times and CPU spin.\nOperating System Resource Limit Anomaly : Kernel-enforced ceilings on file descriptors, shared memory, semaphores, threads, or cgroup quotas are reached, preventing the database from allocating additional low-level resources.\n\nComposite definition: The database concurrently suffers from incorrect optimizer statistics, severe buffer-cache/latch contention, and exhaustion of critical OS-level resources. Poor plan choices amplify page hot spots, while latch storms and multiplied background activity consume kernel objects until hard limits are hit, jointly throttling throughput and raising latency.\n\nCombined anomalous phenomena: 1) Execution plans with grossly inaccurate row-count estimates repeatedly choose nested loops or index range scans that hammer the same root, inner-table, or index pages. 2) Buffer-busy and page-latch wait events surge; CPU utilization shows high spin without corresponding work completion. 3) As sessions accumulate in latch waits, new connections, parallel workers, or I/O requests start failing with \"too many open files,\" \"cannot allocate shared memory,\" or \"unable to create thread\" errors logged by both the engine and the OS. 4) Automatic statistics refresh jobs abort due to unavailable OS handles, keeping statistics stale and locking the system in a degradation loop. Diagnosis becomes difficult because symptoms oscillate between optimizer misestimates, latch waits, and sporadic OS allocation errors.\n\nCausal chain: Stale or low-quality statistics lead the optimizer to route a large fraction of queries through plans that over-concentrate activity on a narrow set of pages (e.g., small hash tables, root index pages, or hot partitions). The resulting hot-page pattern drives intense latch contention in the buffer manager. Prolonged latch waits inflate session counts, background I/O, and retry loops, which in turn consume additional file handles, semaphores, and thread slots. Once OS resource limits are breached, new workers and auto-statistics jobs fail, preventing corrective statistics collection and reinforcing misestimation. Simultaneously, limited OS resources slow checkpoint and flush operations, keeping hot pages resident and further intensifying latch storms—forming a self-reinforcing feedback loop that degrades both transactional and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.4270693438005103,
+            "bm25_score": 19.490648323237526,
+            "lexical_score": 0.13585470085470086,
+            "matched_terms": [
+                "activity",
+                "additional",
+                "and",
+                "are",
+                "data",
+                "from",
+                "is",
+                "latency",
+                "of",
+                "or",
+                "session",
+                "sessions",
+                "stale",
+                "the",
+                "to",
+                "wait",
+                "waits"
+            ],
+            "match_count": 37,
+            "entry": {
+                "timeout_id": "mysql84_network_read_timeout",
+                "parameter_name": "net_read_timeout",
+                "timeout_category": "network_read_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for more data from a connection before aborting the read.",
+                "trigger_condition": "The server waits for additional data from a connection longer than net_read_timeout.",
+                "workload_impact": "The network read is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Schema and Index Design Anomaly: Static mismatch between physical data model (tables, indexes, partitions, data types, constraints) and the workload’s access patterns, forcing the optimizer into inefficient scans, excessive look-ups, and costly maintenance work.\nOperating System Resource Limit Anomaly: Exhaustion of kernel-enforced resources (file descriptors, shared memory, semaphores, thread or process quotas, async-I/O contexts, cgroup limits) that prevents the database engine from creating or using required OS objects.\n\nWhen these two root causes exist simultaneously, the workload experiences compounded symptoms: queries already slowed by missing or poorly chosen indexes trigger many extra random I/O operations, file opens, and context switches, pushing the engine to allocate more file handles, buffer pages, and background workers. At the same time, restrictive OS limits throttle those very kernel objects, so the database starts emitting \"too many open files\", \"cannot allocate shared memory\", or \"failed to start worker\" errors in the middle of long-running scans. Execution plans show full-table scans combined with sudden plan fallbacks to serial execution because parallel workers cannot be spawned. End-users observe erratic latencies—some statements hang or error out while others complete slowly—and maintenance tasks such as index rebuilds or autovacuum may stall, causing further bloat and performance decay.\n\nCausally, poor schema and index design inflates the number and duration of low-level operations (file accesses, temporary spill files, sort runs, row fetches) that rely on OS resources. This raised demand accelerates the exhaustion of file descriptors, shared-memory segments, or thread quotas governed by the operating system. Conversely, once OS limits are hit, the optimizer’s ability to use whatever indexes do exist is undermined—parallel scans are disabled, temporary file creation fails, and statistics refresh jobs cannot complete—masking or exacerbating the original design flaw. The feedback loop between inefficient access paths (driving resource hunger) and OS-level throttling (starving the database of those resources) amplifies performance degradation, increases error rates, and makes root-cause isolation difficult because symptoms fluctuate between slow queries and outright resource allocation failures.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.36235075802923566,
+            "bm25_score": 20.5552633072167,
+            "lexical_score": 0.13271817868230423,
+            "matched_terms": [
+                "and",
+                "because",
+                "cannot",
+                "context",
+                "from",
+                "is",
+                "long",
+                "of",
+                "open",
+                "or",
+                "prevents",
+                "required",
+                "schema",
+                "that",
+                "the",
+                "this",
+                "time",
+                "when",
+                "while"
+            ],
+            "match_count": 274,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

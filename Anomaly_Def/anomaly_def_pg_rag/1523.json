@@ -1,0 +1,65 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Transaction Log Subsystem Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Inefficient or overly broad application-level SQL and transaction design that forces the engine to scan, lock, or return more data than the business case requires.\nTransaction Log Subsystem Anomaly : Contention or saturation in the write-ahead logging pipeline—buffer, file groups, flushing, archiving, or replication retention— that inflates commit latency and stalls write activity.\nNetwork and Connectivity Resource Anomaly : Insufficient or unstable network and connection-handling capacity that slows or interrupts client/server data transfer and session establishment.\n\nWhen all three root causes manifest concurrently, the database exhibits a mixed pattern of symptoms: long-running queries and transactions generate excess redo volume, driving up log-flush and commit waits; at the same time, clients experience intermittent connection timeouts, slow result streaming, and elevated retry storms. Engine wait statistics show both LOG FILE SYNC / LOG BUFFER SPACE and CLIENT READ/WRITE or SOCKET WAIT events rising together. Slow-query logs capture repetitive, heavy statements whose commit phases are further delayed by log I/O back-pressure, while monitoring tools report swollen log directories, archiver backlogs, growing transactional back-logs, and a spike in half-open connections. Application servers may exhaust connection pools as sessions remain tied up during prolonged commit and network send phases, amplifying perceived end-user latency and error rates.\n\nCausally, inefficient SQL inflates row-change volume and result-set size, which in turn increases redo generation and network payloads. The bloated redo stream overwhelms undersized or mis-configured log buffers and log devices, lengthening fsync cycles and extending transaction commit time. These longer commits keep server processes engaged, holding locks and consuming connection slots. Simultaneously, the enlarged result sets traverse congested or resource-starved network paths, further delaying session completion. Prolonged sessions prevent connection reuse and escalate pool exhaustion, which triggers more connection attempts and authentication overhead, feeding into the already stressed log and network subsystems. The feedback loop between chatty, over-fetching workload logic, log subsystem saturation, and degraded network throughput drives a compound degradation that is more severe and harder to diagnose than any individual anomaly alone.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.6691397243767017,
+            "bm25_score": 35.28952448053352,
+            "lexical_score": 0.21581996434937611,
+            "matched_terms": [
+                "activity",
+                "and",
+                "are",
+                "at",
+                "authentication",
+                "between",
+                "client",
+                "connection",
+                "during",
+                "establishment",
+                "handling",
+                "holding",
+                "is",
+                "latency",
+                "long",
+                "or",
+                "pools",
+                "queries",
+                "query",
+                "running",
+                "session",
+                "sessions",
+                "sets",
+                "socket",
+                "that",
+                "the",
+                "time",
+                "when",
+                "while"
+            ],
+            "match_count": 237,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

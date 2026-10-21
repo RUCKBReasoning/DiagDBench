@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Transaction Lock Contention Anomaly + Replication Synchronization Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level statements or transaction patterns that process or return more data, touch rows inefficiently, or hold transactions open longer than business logic requires. \nTransaction Lock Contention Anomaly : Concurrent transactions acquire incompatible locks on the same resources, leading to long blocking chains or deadlocks that stall commit progress. \nReplication Synchronization Anomaly : Standbys or downstream replicas cannot receive, persist, or apply the primary’s log stream fast enough, causing widening replay lag and retained logs on the primary. \n\nWhen these three root causes strike together, the database exhibits a compound failure mode: heavy, inefficient SQL keeps transactions open for extended durations and enlarges their lock footprints; this inflates lock-wait queues and deadlock frequency while simultaneously generating large volumes of redo. The resulting commit delays propagate to the replication layer, where already backlogged apply threads fall further behind, increasing replica lag, growing on-disk log retention, and degrading read-scalability and failover readiness. End-user sessions experience highly variable and often excessive latency, frequent timeouts or deadlock retries, and eventually encounter stale reads or read-only routing failures on replicas. Operations teams observe surging lock-wait metrics intertwined with escalating replication delay and disk-space alerts, making it difficult to attribute slowdowns to a single subsystem.\n\nCausally, inefficient workload logic expands the number of rows scanned or updated per transaction, which 1) locks more objects and for longer durations, intensifying lock contention, and 2) emits larger transaction logs that replicas must ship and apply. The prolonged blocking further postpones commits, causing bursts of log generation once locks are released; replicas receive these bursts in uneven waves they cannot keep up with, amplifying lag. Conversely, apply-side delays on replicas can hold replay locks that feed back into longer primary-side lock retention during synchronous or semi-synchronous commit protocols, reinforcing the contention. This feedback loop ties application-layer inefficiencies, lock-manager saturation, and replication pipeline overload into a single, self-amplifying composite anomaly that can spiral into severe throughput collapse and availability risk if not addressed.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.3711855678749932,
+            "bm25_score": 15.878880153402728,
+            "lexical_score": 0.13774509803921567,
+            "matched_terms": [
+                "and",
+                "are",
+                "can",
+                "failure",
+                "latency",
+                "not",
+                "number",
+                "of",
+                "on",
+                "or",
+                "progress",
+                "sessions",
+                "stale",
+                "that",
+                "the",
+                "this",
+                "to",
+                "when"
+            ],
+            "match_count": 282,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_count",
+                "parameter_name": "tcp_keepalives_count",
+                "timeout_category": "network_keepalive_failure_threshold",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the number of TCP keepalive messages that can be lost before the server connection to the client is considered dead.",
+                "trigger_condition": "The number of lost TCP keepalive probes reaches tcp_keepalives_count on systems supporting TCP_KEEPCNT.",
+                "workload_impact": "The server can consider the client connection dead after the configured keepalive failure threshold.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

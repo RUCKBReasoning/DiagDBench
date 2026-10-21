@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly : The write-ahead logging pipeline—covering in-memory log buffers, log file groups, flushing, switching, archiving, and replication retention—cannot keep pace with commit generation, making the log subsystem the primary bottleneck on the write path.\nStorage Space Capacity Anomaly : One or more storage areas (data, log, archive, temp, backup, diagnostic) reach or approach physical or logical space exhaustion, causing allocation failures and stalling operations that require additional space.\n\nWhen both anomalies are active, the database experiences compounding symptoms: commit latency and log-flush waits rise while free space in the online redo or archive destinations simultaneously plummets; log switches become abnormally frequent yet stall because the next log segment cannot be created; archiver or replication processes back up, filling remaining disk quickly; checkpoints and background writers thrash to reclaim space; DML sessions encounter \"cannot allocate log\", \"out of space\", or \"archive destination full\" errors; temporary-space and data-file growth operations may also fail, leading to widespread transaction timeouts, lock contention, and potential instance-wide freeze.\n\nCausally, an overloaded log subsystem emits log data faster than it can be flushed or archived, accelerating space consumption in the log and archive areas. As space dwindles, the storage capacity anomaly prevents new log segments or archives from being created, which in turn blocks log switches and commit processing, amplifying log-write latency. The stalled log pipeline then prolongs transaction hold times, increases in-memory pressure, and may force emergency checkpoints that further inflate I/O and space demand. Thus each root cause feeds the other: slow or stuck log handling hastens space exhaustion, while space exhaustion further degrades log throughput, spiraling the database into a hard stop unless both logging performance and free-space availability are simultaneously remediated.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.7437985948477751,
+            "bm25_score": 28.323016703420677,
+            "lexical_score": 0.14599531615925057,
+            "matched_terms": [
+                "an",
+                "and",
+                "because",
+                "cannot",
+                "database",
+                "lock",
+                "of",
+                "or",
+                "other",
+                "sessions",
+                "than",
+                "that",
+                "the",
+                "to",
+                "transaction",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 273,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,59 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Database Memory Allocation Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same rows, pages, or metadata, leading to wait chains or deadlocks that stall or abort user work. \nDatabase Memory Allocation Anomaly : The engine’s aggregate memory footprint grows beyond safe limits, provoking host-level pressure, paging, or OOM terminations as caches, work areas, and background heaps expand uncontrollably. \nBuffer Cache and Latch Contention Anomaly : Sessions serialize on hot buffer-cache pages, latches, or I/O slots, producing high latch and buffer-busy waits and CPU spin without useful progress. \n\nWhen all three anomalies coincide, the system experiences compounding symptoms: lock wait times and deadlock rates surge while CPU usage oscillates between spin-looping on latches and kernel scheduling delays caused by memory pressure. Throughput collapses as transactions queue behind both lock owners and latch holders, while memory overcommitment forces buffer evictions and paging, further inflating latch durations and lengthening lock hold times. Users observe erratic response times, frequent query cancellations or victim rollbacks, intermittent \"out of memory\" or node-eviction events, and sharp drops in cache hit ratios that aggravate I/O latency and extend blocking intervals.\n\nCausal interaction: excessive memory allocation shrinks true free memory, increasing buffer churn and forcing more frequent page replacement and flush activity; this elevates buffer-latch contention as many sessions compete for the same hot pages. Longer latch acquisition extends the time transactions keep logical locks, intensifying lock contention and enlarging blocker-waiter chains. Conversely, lock queues slow statement completion, allowing work areas, sort buffers, and session heaps to stay resident longer and inflate memory pressure. The resulting paging amplifies latch hold times, forming a positive feedback loop that escalates all three anomalies and can ultimately trigger deadlocks, OOM terminations, or engine restarts.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.5852908937376963,
+            "bm25_score": 27.71286536129416,
+            "lexical_score": 0.17536231884057973,
+            "matched_terms": [
+                "and",
+                "blocking",
+                "by",
+                "for",
+                "in",
+                "incompatible",
+                "lock",
+                "longer",
+                "metadata",
+                "of",
+                "or",
+                "scheduling",
+                "session",
+                "sessions",
+                "statement",
+                "the",
+                "this",
+                "time",
+                "transaction",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 46,
+            "entry": {
+                "timeout_id": "mysql84_innodb_row_lock_wait_timeout",
+                "parameter_name": "innodb_lock_wait_timeout",
+                "timeout_category": "innodb_row_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "The length of time in seconds an InnoDB transaction waits for a row lock before giving up.",
+                "trigger_condition": "An InnoDB transaction waits longer than innodb_lock_wait_timeout for a row lock.",
+                "workload_impact": "The lock wait gives up; by default only the current statement is rolled back unless innodb_rollback_on_timeout is enabled.",
+                "default_behavior": "Defined as an InnoDB system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

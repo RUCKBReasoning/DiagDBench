@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Replication Synchronization Anomaly + CPU Resource Anomaly",
+            "Description": "Replication Synchronization Anomaly : Remote replicas or subscribers cannot ingest or apply transaction-log records as fast as the primary emits them, creating widening replay lag and retention of log segments.\nCPU Resource Anomaly : Database host CPUs are saturated by sustained, abnormal compute demand, starving other activities of processor cycles and inflating latencies across the stack.\n\nWhen both conditions exist together, replication delay and CPU exhaustion compound. Observables include rapidly growing replica apply lag, swelling on-disk WAL/relay logs, prolonged commit latency on the primary as recyclable log files accumulate, near-100 % CPU utilization on either the primary or replicas, spikes in run-queue wait events, and system-wide query slow-downs. Catch-up workers on replicas may show extreme CPU times, while primary back-pressure mechanisms (throttled senders, longer commit waits) manifest concurrently. Failover readiness degrades as replicas drift further behind, and administrative queries to inspect replication or CPU state also slow, making diagnosis harder.\n\nCausally, CPU saturation can both cause and be exacerbated by replication lag: overworked replicas lack CPU to replay incoming WAL, which increases backlog size; the resulting surge of deferred apply work then drives even higher CPU usage when capacity briefly becomes available. Conversely, large replication backlogs force the primary to retain and occasionally re-transmit log segments, adding encoding and network CPU overhead that pushes the primary toward saturation. The feedback loop between compute starvation and log-shipping delay amplifies resource pressure on all nodes, risking transaction latency spikes, storage exhaustion from un-recycled logs, and potential replication collapse.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.48870256723298566,
+            "bm25_score": 18.008507144388258,
+            "lexical_score": 0.11170454545454545,
+            "matched_terms": [
+                "and",
+                "cannot",
+                "delay",
+                "in",
+                "inspect",
+                "longer",
+                "or",
+                "the",
+                "to",
+                "transaction",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 11,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

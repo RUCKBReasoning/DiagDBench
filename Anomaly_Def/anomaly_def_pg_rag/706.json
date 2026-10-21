@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Query Plan Selection Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Inaccurate, stale, or missing optimizer statistics lead to systematic cardinality misestimates.\nQuery Plan Selection Anomaly : The optimizer’s choice-of-plan logic produces a sub-optimal execution plan even when statistics are otherwise acceptable.\nStorage I/O Throughput Anomaly : The physical storage layer cannot supply reads or absorb writes at the rate demanded, saturating I/O bandwidth, IOPS, or latency budgets.\n\nComposite definition: The database simultaneously suffers from (1) misleading optimizer statistics, (2) poor plan-selection logic or plan reuse, and (3) a saturated storage subsystem. The combination yields execution plans that are both logically inappropriate and physically starved for I/O capacity, driving severe and unpredictable performance degradation.\n\nCombined phenomena: • Estimates versus actual row counts diverge wildly while the plan cache shows frequent plan flips, hinting at both statistics and decision-logic instability. • Queries oscillate between parallel-scan, serial full-scan, and poorly-parameterized index paths, each generating excessive physical I/O that collides with already maxed-out storage queues. • Wait profiles show a mix of optimizer-related recompiles, \"bad plan\" symptoms (nested-loop blow-outs, hash spill to temp), and chronic FILEIO/IO_COMPLETION waits; CPU stays moderate but response times spike. • Bulk-load or ETL windows trigger immediate plan regression followed by device-level read/write latency explosions, elongating both OLTP and analytics workloads. • DBA attempts to force plans or update statistics give only transient relief because the underlying storage saturation keeps inflating actual costs and invalidating cost assumptions.\n\nCausal chain: Stale or incomplete statistics mislead the cost model, while independent plan-selection weaknesses (e.g., bind-sensitive caching, version change) choose plans that under-estimate data volume or ignore selective access paths. These sub-optimal plans issue far more I/O than anticipated, quickly pushing the storage layer past its throughput ceiling. The resulting latency amplifies the original costing errors—longer I/O times further distort feedback loops, provoke additional re-compilations, and delay automatic statistics refreshes, which in turn perpetuate inaccurate estimates. Meanwhile, plan instability increases the diversity of I/O patterns (random versus sequential, temp spills), preventing the storage subsystem from stabilizing or caching effectively. The feedback loop between bad estimates, poor plans, and I/O saturation thus reinforces itself, worsening overall performance across both transactional and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.2670890418272626,
+            "bm25_score": 10.55280195620299,
+            "lexical_score": 0.10335046757911687,
+            "matched_terms": [
+                "and",
+                "are",
+                "but",
+                "for",
+                "latency",
+                "longer",
+                "of",
+                "or",
+                "stale",
+                "than",
+                "that",
+                "the",
+                "when",
+                "with"
+            ],
+            "match_count": 195,
+            "entry": {
+                "timeout_id": "pg16_idle_session_timeout",
+                "parameter_name": "idle_session_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle, but not within an open transaction, for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle and not inside an open transaction longer than the configured threshold.",
+                "workload_impact": "The session is terminated; the documentation warns about using this with connection pools or middleware.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

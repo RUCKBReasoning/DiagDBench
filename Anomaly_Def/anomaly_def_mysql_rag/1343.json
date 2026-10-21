@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + MVCC Version Maintenance Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Composite definition: The database is simultaneously burdened by (1) inefficient or over-broad SQL workload logic, (2) an overwhelmed MVCC cleanup subsystem that cannot reclaim obsolete versions fast enough, and (3) saturated physical storage whose read/write bandwidth and IOPS are already at or beyond capacity.\n\nSQL Workload Logic Anomaly: Application-level statements or transaction patterns fetch, scan, or modify far more data than business needs, keeping transactions open longer and inflating row-touch counts.\nMVCC Version Maintenance Anomaly: Obsolete row versions, undo records, and dead index entries accumulate faster than background vacuum/cleanup workers can remove them, expanding table and index size and lengthening visibility checks.\nStorage I/O Throughput Anomaly: Underlying volumes hit their throughput or latency ceiling, driving up I/O wait time for data, log, and temp files even though the database engine keeps submitting requests.\n\nCombined observable phenomena: \n• Very long statement and transaction latency with high variance.\n• Steadily growing table, index, and version-store size; bloat ratios far above normal.\n• Storage metrics showing queue depths pegged, read/write latencies multiples of baseline, and sustained log flush delays.\n• Autovacuum/vacuum, purge, or garbage-collection workers running constantly yet falling further behind.\n• Wait-profile dominated by buffer-I/O, data-file read, log-file write, and transaction visibility checks; CPU utilization remains moderate while sessions pile up on I/O and row-version scan waits.\n• Application timeouts, retry storms, and potential dead-tuple or transaction-ID wraparound alarms.\n\nCausal chain and reinforcement: Inefficient SQL patterns initiate large scans, wide updates, and long-lived transactions, immediately generating heavy I/O demand and a flood of new row versions. The surplus versions bloat heap and index pages, forcing subsequent queries—including the same flawed SQL—to read more pages and perform more visibility checks, further increasing I/O. As storage throughput becomes saturated, both foreground queries and background cleanup workers slow down; the throttled cleaners fall even further behind, allowing version bloat to accelerate. The enlarged on-disk structures amplify each read and write, which in turn deepens the storage backlog. This positive feedback loop ties the three root causes together, rapidly degrading OLTP responsiveness and threatening operational stability.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.6000530078874761,
+            "bm25_score": 25.754765093260545,
+            "lexical_score": 0.14937066529668636,
+            "matched_terms": [
+                "an",
+                "and",
+                "cannot",
+                "for",
+                "is",
+                "longer",
+                "of",
+                "or",
+                "retry",
+                "sessions",
+                "statement",
+                "than",
+                "the",
+                "this",
+                "to",
+                "transaction",
+                "wait",
+                "waits",
+                "while",
+                "write"
+            ],
+            "match_count": 64,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

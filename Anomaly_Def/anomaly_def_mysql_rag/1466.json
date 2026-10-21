@@ -1,0 +1,60 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level statement or transaction logic forces the engine to touch, scan, or move more data than the business task truly requires.\nStorage I/O Throughput Anomaly : Physical storage devices or virtualization layers are unable to supply the read/write bandwidth, IOPS, or latency the database engine requests.\n\nWhen both root causes are active, the database simultaneously issues an excessive volume of I/O operations and the storage subsystem cannot service them at the necessary speed. Observable effects include: runaway statement and transaction latency that increases non-linearly under load; buffer-cache miss rates and physical read counts spiking while device queue depths stay fully saturated; prolonged lock and latch hold times because sessions wait for pages to arrive from disk; log-flush, temp-spill, and checkpoint waits stretching far beyond normal windows; application timeouts and retry storms that further multiply I/O pressure; and monitoring dashboards showing high logical I/O inside the engine coupled with high physical wait percentages outside it.\n\nCausally, inefficient workload logic multiplies the number of pages that must be fetched, dirtied, and flushed. This inflates the I/O demand to a level that exhausts the storage throughput budget, driving up device latency. The elevated latency feeds back into the workload: long scans and large result sets stay open longer, holding locks, extending transaction lifetimes, and causing even more redo and undo to accumulate. As the storage layer falls further behind, the optimizer may switch to even more I/O-heavy plans (e.g., table scans instead of index probes) due to skewed statistics, aggravating the situation. The two anomalies therefore reinforce each other in a vicious cycle, turning what would be tolerable inefficiency or marginal storage saturation into a severe, system-wide performance degradation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.7417957921825438,
+            "bm25_score": 33.44291809170157,
+            "lexical_score": 0.17714646464646464,
+            "matched_terms": [
+                "an",
+                "and",
+                "back",
+                "because",
+                "cannot",
+                "for",
+                "holding",
+                "in",
+                "lock",
+                "longer",
+                "of",
+                "or",
+                "retry",
+                "sessions",
+                "statement",
+                "than",
+                "the",
+                "this",
+                "transaction",
+                "up",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 70,
+            "entry": {
+                "timeout_id": "mysql84_innodb_row_lock_wait_timeout",
+                "parameter_name": "innodb_lock_wait_timeout",
+                "timeout_category": "innodb_row_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "The length of time in seconds an InnoDB transaction waits for a row lock before giving up.",
+                "trigger_condition": "An InnoDB transaction waits longer than innodb_lock_wait_timeout for a row lock.",
+                "workload_impact": "The lock wait gives up; by default only the current statement is rolled back unless innodb_rollback_on_timeout is enabled.",
+                "default_behavior": "Defined as an InnoDB system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

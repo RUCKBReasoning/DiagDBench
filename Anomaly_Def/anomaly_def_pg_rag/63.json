@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Database Configuration Parameter Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Accumulation of obsolete row versions and rollback records outpaces background cleanup, inflating version stores, bloating storage, and slowing visibility checks.\nDatabase Configuration Parameter Anomaly : Mis-tuned engine settings for memory, checkpointing, logging, parallelism, or worker budgets cause resource-usage patterns that do not align with actual hardware capacity or workload demands.\n\nComposite definition: The database concurrently suffers from excessive MVCC version buildup while critical configuration parameters (e.g., autovacuum thresholds, maintenance work memory, checkpoint intervals, log and buffer sizes) are mis-aligned with the update-heavy workload. The twin conditions coexist, so version store growth is unchecked just as the subsystem meant to reclaim it is throttled or mistimed by sub-optimal settings.\n\nCombined anomalous phenomena:  • Rapid expansion of table and index sizes, soaring obsolete-to-live row ratios, and long sequential scans.  • Cleanup workers that appear active yet never reduce bloat because cost limits, memory quotas, or parallel-worker caps are too low.  • Repeated emergency checkpoints or log-file saturation despite under-utilised I/O bandwidth, coinciding with escalating visibility-check CPU time.  • Planner misestimates and query latency spikes intermixed with seemingly unexplained background I/O storms right after every forced checkpoint.  • Monitoring shows both version-store wraparound warnings and configuration-related wait events (e.g., excessive log flush waits while disks are idle).\n\nCausal interaction: Poorly chosen configuration parameters throttle or mis-schedule the very maintenance tasks needed to prune old versions, letting bloat compound. The swelling version store, in turn, inflates redo volume and dirty-page pressure, triggering more frequent checkpoints and log flushes—events whose impact is magnified by the same mis-tuned parameters governing log size, checkpoint cadence, and buffer pools. As each anomaly feeds the other, the database enters a feedback loop: growing MVCC debris raises I/O and memory demand, while configuration limits prevent timely cleanup, accelerating performance degradation and bringing the system closer to transaction-ID exhaustion or out-of-space failures.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.742564935064935,
+            "bm25_score": 33.51128705588742,
+            "lexical_score": 0.14188311688311686,
+            "matched_terms": [
+                "and",
+                "because",
+                "database",
+                "for",
+                "index",
+                "is",
+                "of",
+                "or",
+                "other",
+                "reduce",
+                "row",
+                "table",
+                "that",
+                "the",
+                "time",
+                "to",
+                "transaction",
+                "waits",
+                "while"
+            ],
+            "match_count": 167,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Transaction Log Subsystem Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Database Memory Allocation Anomaly: Excessive or poorly controlled growth of buffer caches, plan caches, work areas, and other engine heaps pushes total resident and swap usage beyond the safe limits of the host. \nTransaction Log Subsystem Anomaly: The generation, flushing, or archival of write-ahead log (WAL) records becomes the principal bottleneck on the write path, inflating commit latency and stalling writers. \nOperating System Resource Limit Anomaly: Kernel-enforced ceilings on file descriptors, shared-memory segments, semaphores, threads, or cgroup quotas are reached before database-level limits, preventing the engine from allocating additional OS objects that it needs to progress. \n\nWhen these three root causes co-exist, the database exhibits compound symptoms: rapidly growing process RSS, paging spikes, and NUMA or cgroup memory throttling coincide with surging log-flush waits and commit stalls. Archiver or replication lag amplifies, while the engine emits errors for exhausted file handles, shared-memory, or thread creation failures. Checkpoint storms and forced log switches appear alongside sudden process terminations or node reboots triggered by out-of-memory killers. Administrators may observe that despite sufficient raw I/O bandwidth, write performance collapses unpredictably, and new sessions, background workers, or parallel executions intermittently fail to start even though workload pressure persists. \n\nCausally, aggressive memory allocation fills buffer and work caches until the OS starts paging and tightening kernel limits; this heightens CPU queuing and elongates the path to persist log buffers, directly aggravating the Transaction Log Subsystem Anomaly. In turn, elevated commit latency encourages session buildup and longer retention of in-memory state, forcing the engine to request more memory, file descriptors, log segments, and IPC objects, which pushes it harder against OS limits. Once kernel caps are hit, log writers and archivers cannot open new files or allocate additional shared memory, freezing log progression and blocking all transactional work. The feedback loop between memory pressure, stalled log flushing, and OS resource exhaustion accelerates degradation, driving the database into cascading stalls, partial outages, or full instance failure.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.7417642102037689,
+            "bm25_score": 24.189774610917883,
+            "lexical_score": 0.1392140340125632,
+            "matched_terms": [
+                "and",
+                "by",
+                "engine",
+                "for",
+                "limit",
+                "or",
+                "other",
+                "path",
+                "resource",
+                "session",
+                "the",
+                "this",
+                "triggered",
+                "when",
+                "with",
+                "work",
+                "workload"
+            ],
+            "match_count": 31,
+            "entry": {
+                "timeout_id": "mysql84_regular_expression_time_limit",
+                "parameter_name": "regexp_time_limit",
+                "timeout_category": "expression_evaluation_time_limit",
+                "scope": "global/session",
+                "official_definition": "The time limit for regular expression matching operations performed by the regular expression engine.",
+                "trigger_condition": "A regular expression match operation exceeds regexp_time_limit.",
+                "workload_impact": "The regular expression operation is constrained by the configured time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

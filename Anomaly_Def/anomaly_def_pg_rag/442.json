@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Replication Synchronization Anomaly + CPU Resource Anomaly",
+            "Description": "Database Configuration Parameter Anomaly: Critical runtime settings (memory, checkpoint, parallelism, etc.) are mis-tuned relative to hardware capacity and workload, resulting in systemic inefficiencies that are not rooted in true resource exhaustion.\nReplication Synchronization Anomaly: Standby or subscriber nodes fail to receive, write, or apply WAL/redo fast enough, producing widening log-position gaps, retained segments, and stale replicas.\nCPU Resource Anomaly: Database processes consume or contend for nearly all available CPU cycles, driving run-queue pressure and global latency spikes.\n\nWhen these three root causes strike simultaneously, the system enters a feedback loop in which mis-configured parameters inflate CPU demand (e.g., overly aggressive parallel workers, undersized buffers forcing extra processing), the saturated CPUs starve both foreground queries and replication apply threads, and the throttled replicas in turn prevent WAL recycling, provoking more frequent checkpoints and log flush storms dictated by poorly chosen checkpoint and log-size settings. Operators observe conflicting signals: near-100 % CPU utilization alongside idle I/O devices, rapidly growing primary log storage, replication lag that oscillates or monotonically increases, sudden latency spikes at checkpoint boundaries, and runaway background-worker queues.\n\nCausally, bad configuration is the initiating factor—small checkpoint_segments or low shared_buffers force the engine to flush and generate WAL at a rate disproportionate to actual transactional throughput. The inflated redo stream drives higher CPU usage on the primary and demands faster apply on replicas. Because parallelism, work_mem, or autovacuum settings were also mis-tuned, CPU use on both primary and replicas climbs, lengthening replication apply times. The accumulating lag keeps log segments pinned, which the primary tries to purge via even more checkpoint activity, further stressing CPU loops. Thus, configuration errors ignite a chain reaction that both causes and magnifies CPU saturation, while the impaired CPU capacity directly degrades replication throughput, resulting in a self-reinforcing composite failure mode that is difficult to attribute to a single layer.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.5771015671635982,
+            "bm25_score": 10.88172762005497,
+            "lexical_score": 0.132487922705314,
+            "matched_terms": [
+                "activity",
+                "and",
+                "are",
+                "configured",
+                "failure",
+                "idle",
+                "is",
+                "latency",
+                "not",
+                "on",
+                "or",
+                "stale",
+                "system",
+                "that",
+                "the",
+                "to",
+                "when"
+            ],
+            "match_count": 179,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_count",
+                "parameter_name": "tcp_keepalives_count",
+                "timeout_category": "network_keepalive_failure_threshold",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the number of TCP keepalive messages that can be lost before the server connection to the client is considered dead.",
+                "trigger_condition": "The number of lost TCP keepalive probes reaches tcp_keepalives_count on systems supporting TCP_KEEPCNT.",
+                "workload_impact": "The server can consider the client connection dead after the configured keepalive failure threshold.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

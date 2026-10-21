@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Data Block and Index Integrity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Excessive accumulation of obsolete row versions and rollback records outpacing background cleanup, inflating the version store and slowing visibility checks.\nData Block and Index Integrity Anomaly : Physical pages, index key order, or page links become corrupted so that on-disk structures no longer faithfully represent logical contents.\nOperating System Resource Limit Anomaly : Kernel-enforced caps on file handles, shared-memory segments, threads, or other OS objects are reached, preventing the database from allocating additional resources.\n\nWhen all three root causes manifest simultaneously, the system exhibits a mixture of version-bloat symptoms (rapid table/index growth, long scans, autovacuum saturation), corruption symptoms (checksum errors, inconsistent index vs. heap counts, sudden planner fall-backs), and OS-level allocation failures (\"too many open files,\" inability to spawn workers, intermittent session starts). The overlap makes diagnosis harder: corruption errors may appear only intermittently when a scan that already struggles with MVCC bloat touches a damaged page, while background vacuums needed to control bloat terminate early because they cannot open additional file descriptors. Query latency spikes, some result sets are silently incomplete, and maintenance jobs or crash-recovery phases may hang or abort.\n\nCausally, heavy update/delete churn characteristic of MVCC bloat forces the engine to touch many pages and create more files (e.g., segment extensions, temp files for vacuum) which quickly consumes file descriptors and shared-memory slots, pushing the system against OS limits. Once limits are hit, vacuum or index-rebuild tasks exit prematurely, leaving even more obsolete versions and partially written pages. These incomplete writes increase the probability of physical corruption, especially if an abrupt worker termination leaves pages half-flushed. Conversely, existing block or index corruption can cause repeated vacuum restarts that leak handles or semaphores, accelerating exhaustion of OS resources. The three anomalies thus reinforce one another: OS limits throttle the cleanup needed to control MVCC growth, MVCC growth magnifies I/O and metadata pressure that reveals or induces corruption, and corruption further inflates bloat and resource leakage, leading to a rapid decline in overall database health.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1144,
+            "score": 0.41421322664328225,
+            "bm25_score": 41.495959529872984,
+            "lexical_score": 0.12433920704845815,
+            "matched_terms": [
+                "and",
+                "block",
+                "engine",
+                "in",
+                "level",
+                "of",
+                "once",
+                "only",
+                "or",
+                "pressure",
+                "query",
+                "resource",
+                "table",
+                "the",
+                "to",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "3577",
+                "error_name": "ER_CTE_RECURSIVE_REQUIRES_SINGLE_REFERENCE",
+                "official_description": "In recursive query block of Recursive Common Table Expression '%s', the recursive table must be referenced only once, and not in any subquery",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

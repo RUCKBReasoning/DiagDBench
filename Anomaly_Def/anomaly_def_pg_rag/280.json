@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Operating System Resource Limit Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Composite Definition:\nThe database is simultaneously suffering from MVCC version-store bloat, exhaustion of kernel-level resource limits, and saturation of network/connection handling capacity. Together these three root causes form a feedback loop in which the engine must manage an ever-growing number of row versions and background maintenance tasks while the host operating system can no longer provide sufficient file handles, shared-memory, or threads, and client endpoints experience connection backlogs, retransmissions, and authentication stalls.\n\nCombined Observable Phenomena:\n• Rapid growth of table and index size, high dead-to-live row ratios, and autovacuum or cleanup workers reported as permanently behind schedule.\n• Intermittent \"too many open files\", \"cannot allocate shared memory\", or \"could not create thread\" errors in database logs, often coinciding with peaks in autovacuum or check-point activity.\n• Rising counts of refused or timed-out client connections, half-open sockets in the OS WAIT/LISTEN queues, and sessions blocked on client-read/client-write waits even though the database itself is lightly loaded on CPU.\n• Sudden drops in parallel-worker availability, inability to start new background workers, and cascading plan misestimates because bloated tables inflate statistics yet maintenance cannot catch up.\n• End-user perception of a worsening but uneven slowdown: queries that complete run progressively slower, while new sessions sporadically fail to establish or hang during authentication.\n\nCausal Chain and Interaction:\n1. Heavy OLTP update/delete churn creates large numbers of obsolete row versions. Cleanup workers try to reclaim them, but the additional tables and indexes they must touch inflate the number of open file descriptors and worker threads required.\n2. The surge in background activity pushes the database process toward kernel limits on files, shared memory segments, and threads; once reached, new maintenance workers fail to spawn and version cleanup falls even further behind, accelerating heap bloat.\n3. Bloated tables lengthen query execution and result-set transfer times. Sessions stay open longer, increasing the total number of concurrent sockets and backend processes, which in turn consume even more kernel resources (FDs, stack, address space) and move the system deeper into limit exhaustion.\n4. Extended session lifetimes keep old snapshots alive, preventing MVCC garbage collection and directly reinforcing the version-maintenance problem.\n5. As OS limits tighten, the listener cannot accept new sockets fast enough; SYN backlog overflows and packet retransmissions appear. Connection retries from the application layer create burst traffic that further stretches both network queues and process/thread quotas, producing visible outages even though the engine has CPU and memory headroom.\n6. The three issues therefore reinforce one another: version bloat triggers more workers and file usage; OS limit exhaustion blocks those workers and new sessions; blocked or slow connections keep transactions open, freezing the undo horizon and compounding version bloat—leading to a spiraling degradation of throughput and availability.\n",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.5003798711361136,
+            "bm25_score": 32.086587299286464,
+            "lexical_score": 0.12478696741854636,
+            "matched_terms": [
+                "and",
+                "authentication",
+                "check",
+                "client",
+                "connection",
+                "is",
+                "limits",
+                "network",
+                "not",
+                "or",
+                "session",
+                "the",
+                "with"
+            ],
+            "match_count": 9,
+            "entry": {
+                "error_code": "08003",
+                "error_name": "connection_does_not_exist",
+                "official_description": "connection does not exist",
+                "error_class": "Class 08 - Connection Exception",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "connection_and_network",
+                "cause_analysis": "The failure is typically associated with connection establishment, authentication exchange, protocol correctness, network reachability, or client/server communication stability.",
+                "solution_guidance": "Check endpoint reachability, authentication flow, connection limits, protocol compatibility, transport stability, and client connection lifecycle management.",
+                "observable_symptoms": [
+                    "connection failure",
+                    "disconnect",
+                    "handshake failure",
+                    "unreachable session"
+                ]
+            }
+        }
+    }
+]

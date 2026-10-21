@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Optimizer input metadata (row counts, histograms, correlation data) is stale or incomplete, causing systematic cardinality misestimation and sub-optimal plan choices.\nStorage I/O Throughput Anomaly : The physical storage layer is saturated or degraded, so read/write latency, IOPS, or throughput no longer meet the database engine’s demand.\n\nWhen these two root causes coexist, the database may select plans that are already inefficient because of bad statistics (e.g., full table scans, merge joins, large hash spills) and then execute them on an I/O subsystem that cannot deliver the required bandwidth. Observable symptoms therefore include extreme divergence between estimated and actual rows, frequent plan re-compilations, bloated temp-space usage, AND prolonged wait events for data-file, log-file, and temp-I/O. CPU may stay low while wall-clock runtimes spike; batch windows overrun; ad-hoc queries oscillate between quick and pathological runtimes depending on cache warm-ness; emergency stats updates or index hints yield only partial relief because storage waits remain dominant.\n\nCausally, stale or missing statistics drive the optimizer toward data-hungry execution strategies that issue far more physical reads and writes than necessary. This amplifies load on an already constrained storage subsystem, quickly pushing it past its throughput or latency limits. Conversely, high I/O latency causes many plans to complete slowly, delaying automatic statistics refresh thresholds and making statistics staleness more likely. The two conditions thus reinforce each other in a feedback loop: poor statistics cause I/O-intensive plans, I/O saturation prolongs execution and data-change windows, which further postpones statistics collection and exacerbates misestimation, resulting in a compounded degradation of overall database performance.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.7490997409326424,
+            "bm25_score": 26.51217006712362,
+            "lexical_score": 0.1636658031088083,
+            "matched_terms": [
+                "an",
+                "and",
+                "because",
+                "cannot",
+                "change",
+                "for",
+                "in",
+                "is",
+                "longer",
+                "metadata",
+                "of",
+                "only",
+                "or",
+                "required",
+                "row",
+                "than",
+                "the",
+                "this",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 89,
+            "entry": {
+                "timeout_id": "mysql84_innodb_row_lock_wait_timeout",
+                "parameter_name": "innodb_lock_wait_timeout",
+                "timeout_category": "innodb_row_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "The length of time in seconds an InnoDB transaction waits for a row lock before giving up.",
+                "trigger_condition": "An InnoDB transaction waits longer than innodb_lock_wait_timeout for a row lock.",
+                "workload_impact": "The lock wait gives up; by default only the current statement is rolled back unless innodb_rollback_on_timeout is enabled.",
+                "default_behavior": "Defined as an InnoDB system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

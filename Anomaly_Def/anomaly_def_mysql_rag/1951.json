@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Data Block and Index Integrity Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Row-count, histogram, and correlation statistics are stale or missing, causing systematic cardinality misestimation during plan compilation.\nData Block and Index Integrity Anomaly : On-disk table or index pages are physically or logically corrupted, breaking key ordering, page links, or heap-to-index consistency.\nNetwork and Connectivity Resource Anomaly : The client/server communication layer is saturated or unstable, leading to connection churn, socket exhaustion, and elevated network waits.\n\nWhen all three root causes occur together, the database exhibits a multidimensional failure signature: queries may choose grossly sub-optimal plans because of bad statistics, then hit corrupted indexes that return wrong or duplicate rows, forcing fall-back full scans whose bloated result sets travel slowly across a congested network. Clients experience timeouts, authentication retries, and intermittent data inconsistencies; the server shows alternating spikes of CPU (from mischosen join methods), I/O (from full table scans after corruption detection), and network wait time. Integrity-check utilities and error logs report page or checksum failures at the same time that monitoring dashboards show widening gaps between estimated versus actual rows and rising counts of refused or aborted connections, making root-cause isolation difficult.\n\nCausal interaction: (1) Corrupted pages or mis-linked indexes invalidate existing statistics and prevent automatic statistics refresh, seeding cardinality errors. (2) These errors drive the optimizer toward plans that amplify touch patterns on damaged structures, triggering more corruption detections and expensive fall-back scans. (3) The resulting surge in data volume and latency stretches network bandwidth and connection pools; retransmissions and stalled sessions accumulate, leading to further connection churn that can starve maintenance tasks needed to repair corruption or update statistics. Conversely, network instability prolongs bulk data-load or rebuild operations, increasing the window during which pages can be partially written and become corrupt, and delays statistics-collection jobs, thus tightening the feedback loop that reinforces all three anomalies and exacerbates overall database degradation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 16,
+            "score": 0.49010234921160406,
+            "bm25_score": 17.139199156825384,
+            "lexical_score": 0.13020527859237535,
+            "matched_terms": [
+                "and",
+                "are",
+                "client",
+                "communication",
+                "data",
+                "is",
+                "latency",
+                "links",
+                "network",
+                "or",
+                "the",
+                "unstable",
+                "when",
+                "window",
+                "written"
+            ],
+            "match_count": 60,
+            "entry": {
+                "timeout_id": "mysql84_xplugin_write_timeout",
+                "parameter_name": "mysqlx_write_timeout",
+                "timeout_category": "x_protocol_network_write_timeout",
+                "scope": "global/session/X Plugin",
+                "official_definition": "Write timeout for X Plugin network communication.",
+                "trigger_condition": "A MySQL X Protocol write operation exceeds mysqlx_write_timeout.",
+                "workload_impact": "The X Protocol network write operation times out.",
+                "default_behavior": "Defined as a MySQL X Plugin system variable.",
+                "system_domain": "network_transport",
+                "cause_analysis": "This timeout is usually triggered when network data is not acknowledged, received, or written within the configured transport-level waiting window.",
+                "solution_guidance": "Inspect packet loss, transport latency, client responsiveness, proxy behavior, and whether slow consumers or unstable links are delaying network progress.",
+                "observable_symptoms": [
+                    "network timeout",
+                    "disconnect",
+                    "read/write interruption"
+                ]
+            }
+        }
+    }
+]

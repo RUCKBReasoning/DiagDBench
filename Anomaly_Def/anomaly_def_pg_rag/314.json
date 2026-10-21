@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Data Block and Index Integrity Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Database Memory Allocation Anomaly : Excessive or uncontrolled growth of buffer caches, plan caches, work areas, and other in-engine memory regions exhausts physical RAM or swap on the host, causing paging, OOM terminations, or node eviction.\nData Block and Index Integrity Anomaly : On-disk data pages or index structures become logically or physically corrupt, leading to missing/duplicated rows, checksum failures, and forced scan or recovery behavior.\nNetwork and Connectivity Resource Anomaly : Insufficient or unstable network, listener, or socket resources prevent timely establishment or servicing of client connections, producing timeouts, retries, and connection-slot exhaustion.\n\nWhen these three root causes manifest concurrently, the database displays a compounded failure pattern: memory pressure triggers frequent process restarts that interrupt active sessions, while latent or ongoing page/index corruptions cause queries to fall back to full table scans that inflate buffer allocations and prolong response times. The resulting sluggishness drives clients to exceed retry thresholds, flooding the listener with new connection attempts just as server memory is constrained, exhausting socket queues and backend slots. Administrators observe oscillating RSS growth, OOM kills, repeated crash-recovery cycles reporting page-checksum or index-link errors, surges in network retransmissions, and a rapid rise in refused or half-open connections. Diagnostic utilities show diverging row counts between scans, while monitoring stacks report simultaneous spikes in memory faults and network wait events, making it difficult to attribute slowdowns to any single layer.\n\nCausally, corrupted data structures can inflate memory demand by forcing table scans and generating large work areas, pushing the engine toward the memory-allocation cliff. Memory exhaustion, in turn, precipitates abrupt backend terminations or instance restarts that may interrupt in-flight writes, amplifying the risk of additional on-disk corruption. Each restart or stall disrupts active sessions, prompting application drivers to issue aggressive reconnect loops that saturate listener backlogs and network stacks. The clogged connection layer further delays transactional retries, lengthening query lifetimes and keeping oversized result sets and work buffers resident in memory. This feedback loop—corruption-induced memory bloat, memory-pressure crashes aggravating corruption, and connection storms intensifying memory and I/O churn—drives the database into an unstable state where availability, correctness, and performance are simultaneously degraded.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.44131286659455965,
+            "bm25_score": 15.512622716457802,
+            "lexical_score": 0.13601336422913185,
+            "matched_terms": [
+                "an",
+                "and",
+                "are",
+                "by",
+                "client",
+                "connection",
+                "connections",
+                "establishment",
+                "is",
+                "of",
+                "on",
+                "or",
+                "retry",
+                "sessions",
+                "socket",
+                "that",
+                "the",
+                "this",
+                "to",
+                "when"
+            ],
+            "match_count": 178,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_interval",
+                "parameter_name": "tcp_keepalives_interval",
+                "timeout_category": "network_keepalive_retry_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time after which a TCP keepalive message that has not been acknowledged by the client should be retransmitted.",
+                "trigger_condition": "A TCP keepalive probe is not acknowledged for tcp_keepalives_interval on systems supporting TCP_KEEPINTVL or an equivalent socket option.",
+                "workload_impact": "Controls retry timing for keepalive probes used to detect unresponsive client connections.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

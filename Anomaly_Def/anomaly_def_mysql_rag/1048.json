@@ -1,0 +1,59 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Storage Space Capacity Anomaly + CPU Resource Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Page-level serialization inside the buffer manager where sessions compete for latches, pins, or hot pages, stalling access even though memory is available.\nStorage Space Capacity Anomaly : Physical or logical free space reaches its hard limit, preventing further data-file, log, or temp-area growth and returning allocation-failed errors.\nCPU Resource Anomaly : Database processes consume nearly all host CPU cycles, pushing run-queue length and context-switch rates to saturation.\n\nWhen all three root causes arise together, the system exhibits a compound failure pattern: intense latch waits and buffer-busy events are interleaved with repeated allocation-failed errors while overall response time is further stretched by CPU starvation. Hot pages spin on latches yet cannot be evicted or flushed because datafiles or redo/archive destinations have no free space, causing dirty-page flush threads to loop futilely and burn CPU. Concurrent sessions observe a mixture of page-latch, space-allocation, and scheduler-related wait events, prolonged commit latency (logs cannot extend), surging spin CPU without throughput gain, and sudden statement failures once space or CPU is fully exhausted.\n\nCausally, space exhaustion blocks checkpoints and background writers from completing, keeping dirty pages resident. These pages amplify latch contention because they cannot be flushed and released, lengthening hold times on buffer latches. The extended latch hold times drive up CPU utilization as sessions spin or context-switch while waiting, pushing the host toward CPU saturation. In turn, a saturated CPU slows the very maintenance tasks (file growth, log archival, buffer flush) needed to resolve space shortages and clear dirty pages, completing a feedback loop that escalates all three anomalies and can lead to widespread throughput collapse or instance hang.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 4009,
+            "score": 0.5322227962088768,
+            "bm25_score": 59.36916154314939,
+            "lexical_score": 0.18130434782608695,
+            "matched_terms": [
+                "access",
+                "and",
+                "are",
+                "by",
+                "can",
+                "capacity",
+                "data",
+                "failure",
+                "failures",
+                "file",
+                "growth",
+                "have",
+                "in",
+                "is",
+                "latency",
+                "log",
+                "of",
+                "or",
+                "resolve",
+                "storage",
+                "the",
+                "though",
+                "with",
+                "without"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-012126",
+                "error_name": "ER_IB_MSG_UNEXPECTED_FILE_EXISTS",
+                "official_description": "The file '%s' already exists though the corresponding table did not exist. Have you moved InnoDB .ibd files around without using the SQL commands DISCARD TABLESPACE and IMPORT TABLESPACE, or did mysqld crash in the middle of CREATE TABLE? You can resolve the problem by removing the file '%s' under the 'datadir' of MySQL.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

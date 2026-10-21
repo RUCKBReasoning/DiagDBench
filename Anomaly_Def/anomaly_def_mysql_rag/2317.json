@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Database Memory Allocation Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Obsolete row versions and rollback data accumulate faster than background cleanup can reclaim them, inflating the version store and enlarging on-disk structures.\nDatabase Memory Allocation Anomaly : Total in-process memory for caches, work areas, and background structures outgrows physical limits, provoking OS-level pressure, paging, and OOM terminations.\nTransaction Log Subsystem Anomaly : Log generation and flushing lag behind workload demand or archiving throughput, driving up commit latency and stalling writes.\n\nWhen these three root causes strike together, the database simultaneously shows runaway memory usage, ballooning version stores and tables, and a saturated redo/commit path. Symptoms include: rapidly expanding data and log files, escalating checkpoint and log-flush waits, degraded cache hit ratios from eviction or swap, long-running VACUUM/cleanup workers perpetually behind, soaring commit times that induce application timeouts, and periodic instance restarts when memory or log space is exhausted. Performance diagnostics may reveal intertwined waits—sessions stuck on log syncs while also incurring excessive memory and I/O to scan bloated heaps—making isolation of any single culprit difficult.\n\nCausally, high update/delete churn inflates both the MVCC version store and the volume of redo records, driving up memory demand and log throughput concurrently. Memory overcommitment reduces effective buffer cache and can force dirty pages to be flushed more aggressively, increasing log write frequency. Log back-pressure slows commit completion, leaving transactions open longer; these lingering snapshots prevent garbage collection, which in turn enlarges the version store, further consuming memory and I/O. The expanding memory footprint competes with log buffers and background workers for resources, slowing log archiving and cleanup tasks, creating a self-reinforcing loop that degrades throughput and risks crash or data-loss scenarios if not addressed promptly.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3308,
+            "score": 0.36463096434365366,
+            "bm25_score": 35.55691497021031,
+            "lexical_score": 0.1451010101010101,
+            "matched_terms": [
+                "and",
+                "be",
+                "can",
+                "data",
+                "disk",
+                "if",
+                "in",
+                "is",
+                "latency",
+                "log",
+                "not",
+                "or",
+                "path",
+                "pressure",
+                "the",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-011424",
+                "error_name": "ER_KEYRING_AWS_FAILED_TO_ACCESS_DATA_FILE",
+                "official_description": "Could not access keyring_aws storage file in the path provided. Please check if the keyring_aws directory can be accessed by MySQL Server",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

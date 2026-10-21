@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Transaction Log Subsystem Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Optimizer Statistics Anomaly : The optimizer is fed with stale, incomplete, or misleading statistics, leading to systematic cardinality misestimates and sub-optimal execution plan choices.\nTransaction Log Subsystem Anomaly : The write-ahead log generation, flushing, or archiving path becomes the critical bottleneck, inflating commit latency and stalling write workloads.\nData Block and Index Integrity Anomaly : Physical pages or index structures on disk are corrupted or internally inconsistent, causing incorrect or failed row retrieval and forcing fallback access methods.\n\nWhen all three conditions coexist, the database may exhibit an erratic mix of severe symptoms:  • Queries oscillate between long-running full scans (chosen because of bad statistics or disabled indexes) and repeatedly aborted index scans (failing integrity checks).  • Commit operations intermittently freeze behind log-flush waits, causing application time-outs and holding locks that magnify contention.  • Emergency index rebuilds triggered by detected corruption generate bursts of redo that saturate the already constrained log subsystem, further delaying recovery operations and increasing checkpoint frequency.  • Repeated recompilations show wildly divergent cost estimates, and execution plans flip-flop after every statistics refresh or corruption-induced index disablement.  • Integrity-check utilities and alert logs report page verification errors alongside \"log file switch/archive required\" warnings, making it difficult to distinguish performance from correctness issues.\n\nCausal interaction: (1) Stale or skewed statistics drive the optimizer to prefer damaged indexes or overly aggressive join orders, which in turn surface latent corruption through run-time errors. (2) Detection of corruption prompts index rebuilds or table rewrites that emit large volumes of redo, rapidly filling and switching log files. (3) The already throttled transaction-log subsystem becomes saturated, extending checkpoint and commit times; these elongated transactions prevent timely automatic statistics refresh and keep locks active, producing more contention and blocking DML. (4) Elevated redo pressure increases the risk of incomplete flushes during failures, potentially widening the corruption footprint and perpetuating the statistics/plan instability cycle. Collectively, the intertwined failures in metadata accuracy, physical data integrity, and log throughput degrade both performance and reliability, making diagnosis and recovery substantially harder.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 32,
+            "score": 0.3674354534879233,
+            "bm25_score": 45.23754646076276,
+            "lexical_score": 0.17434291834885063,
+            "matched_terms": [
+                "access",
+                "and",
+                "are",
+                "check",
+                "data",
+                "disk",
+                "failures",
+                "file",
+                "incorrect",
+                "is",
+                "it",
+                "latency",
+                "log",
+                "or",
+                "pressure",
+                "table",
+                "the",
+                "to",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "1034",
+                "error_name": "ER_NOT_KEYFILE",
+                "official_description": "Incorrect key file for table '%-.200s'; try to repair it",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Data Block and Index Integrity Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Systematic cardinality misestimation caused by stale, incomplete, or missing optimizer statistics.\nData Block and Index Integrity Anomaly : Physical corruption or logical inconsistency inside on-disk data and index pages, causing unreliable access paths and incorrect result sets.\nStorage Space Capacity Anomaly : Exhaustion of allocated space for data files, logs, or temporary areas, leading to allocation failures and stalled background maintenance.\n\nComposite definition — The database simultaneously suffers from inaccurate optimizer statistics, latent corruption inside data/index pages, and critical depletion of free storage. Together, these root causes distort cost estimation, break logical consistency, and impede the engine’s ability to allocate space for corrective actions, forming a compound failure mode that degrades both query correctness and availability.\n\nCombined observable phenomena — Queries show extreme and erratic plan choices with grossly wrong cardinality estimates; some executions unexpectedly return missing or duplicate rows or switch to full table scans when indexes are flagged as suspect. Integrity-check utilities and engine logs intermittently report checksum or key-order errors but are unable to repair because REBUILD or DBCC commands abort on \"out of space\" conditions. Simultaneously, statistics-auto-update and index-rebuild tasks are skipped or cancelled due to space exhaustion, causing estimates to diverge further. End-user sessions experience a mix of slow response times, wrong results, and allocation-failed errors, while background processes flood the log with both corruption and no-space diagnostics, making the symptoms appear unrelated and hard to triage.\n\nCausal interaction — Corrupted pages or orphaned index entries can inflate apparent table size and fragment free space, accelerating storage consumption and triggering capacity exhaustion. Once space is scarce, automatic statistics collection, online index rebuilds, and corruption-repair utilities cannot acquire work space, so neither data integrity nor statistics accuracy can be restored. In turn, stale or inaccurate statistics mislead the optimizer into choosing index paths that touch corrupted structures more frequently or into preferring full scans that exacerbate I/O and space pressure via large spool or temp segments. The three anomalies therefore reinforce one another: corruption increases space use, space shortage blocks repair and stats refresh, and bad statistics drive workloads toward the very structures that are damaged, spiraling the system into deeper performance and reliability degradation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.47500469754845165,
+            "bm25_score": 15.222113059998664,
+            "lexical_score": 0.11630036630036629,
+            "matched_terms": [
+                "and",
+                "are",
+                "check",
+                "data",
+                "for",
+                "from",
+                "is",
+                "more",
+                "of",
+                "or",
+                "sessions",
+                "stale",
+                "the",
+                "to",
+                "when"
+            ],
+            "match_count": 143,
+            "entry": {
+                "timeout_id": "mysql84_replica_network_timeout",
+                "parameter_name": "replica_net_timeout",
+                "timeout_category": "replication_network_timeout",
+                "scope": "global/replication",
+                "official_definition": "The number of seconds to wait for more data from a source/replica connection before aborting the read.",
+                "trigger_condition": "A replica waits longer than replica_net_timeout for more data from the source connection.",
+                "workload_impact": "The replication network read is aborted and the replica considers the connection interrupted.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

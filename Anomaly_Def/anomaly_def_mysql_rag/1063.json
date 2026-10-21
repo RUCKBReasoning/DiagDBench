@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Database Memory Allocation Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer chooses a substantially sub-optimal execution plan even though statistics are sound, yielding overly expensive operators or inappropriate join methods.\nDatabase Memory Allocation Anomaly: Database components (buffer cache, work areas, plan cache, etc.) collectively consume more physical memory than the host can sustain, driving paging, OOM events, and cache churn.\nStorage Space Capacity Anomaly: Data files, temp areas, or log/backup destinations run out of free space, leading to allocation failures and stalled workload progress.\n\nWhen these three root causes strike together, the workload may oscillate between memory and storage crises: bad plans inflate work-area demand and fragment the buffer-pool, which in turn forces large sorts, hashes, or spill files into already constrained temporary or log spaces. Operators may start in memory, then spill to disk, rapidly depleting free space; once space is exhausted, the same statements abort with \"out of space\" or \"cannot allocate” errors, while concurrent sessions experience severe latency from swapping, frequent plan cache evictions, and erratic plan flips. Background processes struggle to extend datafiles or recycle logs, leading to checkpoint stalls, replication lag, and even instance terminations.\n\nCausally, a sub-optimal plan (1) amplifies memory consumption (e.g., choosing hash joins over indexed lookups, or requesting large sort buffers). The inflated work areas push the engine beyond physical RAM, activating the Database Memory Allocation Anomaly; paging and memory pressure then force operators to dump intermediate results to temporary storage. Those spills, plus bloated logs from long-running, poorly planned queries, quickly exhaust tablespace, temp, and archive destinations, triggering the Storage Space Capacity Anomaly. Conversely, once space fills, the optimizer may reject optimal index or parallel plans that require additional scratch or log space, defaulting to even heavier full scans or serial plans, further prolonging memory residency and perpetuating the vicious cycle. The intertwined feedback loops between bad plans, runaway memory growth, and space exhaustion dramatically degrade both transactional and analytical workloads and can culminate in service outages.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.5246115933302871,
+            "bm25_score": 20.81449240716087,
+            "lexical_score": 0.12057416267942583,
+            "matched_terms": [
+                "and",
+                "data",
+                "is",
+                "lag",
+                "long",
+                "or",
+                "out",
+                "progress",
+                "replication",
+                "stalled",
+                "than",
+                "the",
+                "to",
+                "when"
+            ],
+            "match_count": 51,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

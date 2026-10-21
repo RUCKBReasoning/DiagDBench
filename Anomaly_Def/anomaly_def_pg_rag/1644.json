@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Database Memory Allocation Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently chooses a markedly sub-optimal execution plan even though statistics are reasonably accurate, leading to inefficient access paths, incorrect join orders, or inappropriate parallelism settings.\nDatabase Memory Allocation Anomaly : The database engine allocates or leaks so much memory to caches, work areas, and background structures that the host experiences sustained RAM pressure, paging, or OOM events, degrading every component that depends on predictable memory availability.\nTransaction Log Subsystem Anomaly : The write-ahead logging machinery—log buffers, redo files, flush and archive operations—cannot keep pace with the workload’s commit rate, causing log-related waits and potential stalls on the write path.\n\nWhen these three root causes occur concurrently, the system exhibits a blended failure pattern: a poor query plan may trigger excessive logical and physical I/O, large hash or sort buffers, and elevated redo generation; the inflated memory footprint from those work areas—combined with uncontrolled plan and buffer cache growth—pushes the host into memory pressure and paging, which in turn slows log buffer flushes and data-file I/O. The log subsystem, already undersized or on a saturated device, now faces a spike in redo volume and longer flush times, driving commit latency higher and forcing additional waits inside sessions already executing inefficient plans. Symptoms therefore include: rapid oscillation between different bad plans, surge in memory reservations per session, abrupt drops in page-cache hit ratios, escalating log write/sync waits, frequent checkpoint or log-switch storms, and eventual process throttling or termination by the OS as swap fills—making it difficult to isolate a single culprit.\n\nCausally, an ill-chosen plan (e.g., nested loops on skewed data) multiplies row processing and generates large temporary structures, inflating per-query work memory. This accelerates memory exhaustion, which induces OS-level paging; the resulting I/O contention further degrades plan performance and extends transaction lifetimes, amplifying redo generation. The overtaxed log subsystem must now flush bigger, bursty redo streams while competing with paging and data reads, lengthening commit durations. Prolonged commits keep locks held longer, increasing concurrency and memory usage, which feeds back into higher cache bloat and additional sub-optimal plan selections as the optimizer misinterprets transient statistics. Thus, each anomaly intensifies the others, creating a self-reinforcing loop that can cripple an OLTP system.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 114,
+            "score": 0.24560616792948645,
+            "bm25_score": 18.311450987536336,
+            "lexical_score": 0.13984192037470725,
+            "matched_terms": [
+                "and",
+                "by",
+                "engine",
+                "execution",
+                "failure",
+                "in",
+                "level",
+                "must",
+                "or",
+                "pressure",
+                "termination",
+                "the",
+                "to",
+                "transaction",
+                "trigger",
+                "with",
+                "workload"
+            ],
+            "match_count": 12,
+            "entry": {
+                "error_code": "2D000",
+                "error_name": "invalid_transaction_termination",
+                "official_description": "invalid transaction termination",
+                "error_class": "Class 2D - Invalid Transaction Termination",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + CPU Resource Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Page-level serialization inside the buffer manager forces sessions to wait or spin on buffer pins, latches, and I/O slots, throttling access to hot data pages.\nCPU Resource Anomaly : Database processes collectively saturate host CPU cycles, inflating run-queue length, context switches, and statement latency across the workload.\nOperating System Resource Limit Anomaly : Kernel-enforced ceilings on file handles, threads, shared memory, or other OS objects are reached, preventing the database from allocating additional kernel resources.\n\nWhen these three issues strike together, the system exhibits an interleaved symptom set: extreme CPU utilisation with sizable spin-loop time on buffer latches, elevated buffer-busy and scheduler wait events, sudden spikes in failed thread or file-descriptor creations, and uneven but rising transaction latencies. Hot pages trapped in the buffer cache cause worker threads to spin, inflating CPU usage; simultaneous OS resource exhaustion stops new workers or I/O contexts from being created, so existing threads queue longer, amplifying latch contention. Performance views show both CPU-bound statements and waits for latches and kernel resources; error logs report \"too many open files\", \"cannot create thread\", or shared-memory allocation failures, while throughput plummets despite all CPUs appearing fully utilised.\n\nCausally, heavy latch spinning drives persistent CPU saturation. The high CPU load lengthens the time threads hold latches, further deepening buffer contention. Meanwhile, the large number of active threads created by the database to cope with queuing pushes the process toward OS limits on threads, file handles, or AIO contexts; once reached, new worker or I/O requests fail, forcing more work onto existing threads. This feedback loop—hot-page contention → CPU burn → thread proliferation → OS limit breaches → reduced parallelism → longer latch holds—causes a cascading degradation that is markedly worse than any single anomaly alone, culminating in widespread stalls, errors, and potential partial outage.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.43818196133140735,
+            "bm25_score": 21.793397599024864,
+            "lexical_score": 0.1578870354111794,
+            "matched_terms": [
+                "an",
+                "and",
+                "cannot",
+                "for",
+                "is",
+                "longer",
+                "number",
+                "of",
+                "or",
+                "sessions",
+                "statement",
+                "than",
+                "the",
+                "this",
+                "to",
+                "transaction",
+                "wait",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 142,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

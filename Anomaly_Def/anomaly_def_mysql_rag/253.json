@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Database Configuration Parameter Anomaly + Replication Synchronization Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same rows, pages, or metadata objects, forming blocking chains or deadlocks that stall commit progress.\nDatabase Configuration Parameter Anomaly : Engine-level settings for memory, log, checkpoint, parallelism, and worker limits are mis-tuned so that the instance behaves far from the hardware or workload sweet spot.\nReplication Synchronization Anomaly : Standbys or downstream subscribers cannot receive, write, or apply primary WAL fast enough, causing widening lag and retention of old log segments.\n\nWhen all three conditions coexist, the database experiences a compound failure pattern: lock waits and deadlocks inflate transaction runtimes, which in turn prolong WAL retention on the primary; mis-sized memory pools, lock-table limits, or checkpoint/replication parameters aggravate both the lock manager pressure and the replica’s ability to keep up; replication lag grows, consuming extra disk and amplifying checkpoint and flush bursts. Observable symptoms include exploding lock-wait time, deadlock-victim errors, plummeting TPS, surging WAL size on the primary, replay delay on replicas, uneven CPU and I/O utilization that does not match hardware capacity, and eventually application timeouts or failover unavailability.\n\nCausally, sub-optimal configuration (e.g., small lock memory, aggressive lock-timeout, oversized checkpoints, too few replication sender/receiver buffers) reduces headroom in the lock manager and replication pipeline. Elevated lock contention keeps transactions open, preventing WAL recycling and forcing replicas to chase an ever-growing log backlog. The replica’s delayed apply can hold access-exclusive locks longer, feeding additional contention on the primary during logical decoding or cascading writes. Checkpoint storms triggered by mis-tuned parameters further spike I/O, lengthening both commit latency and replica catch-up time. The three anomalies therefore reinforce each other in a feedback loop that magnifies throughput collapse and durability risk.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1612,
+            "score": 0.6595456664581505,
+            "bm25_score": 78.45218137703536,
+            "lexical_score": 0.18333333333333332,
+            "matched_terms": [
+                "and",
+                "blocking",
+                "by",
+                "chains",
+                "concurrent",
+                "engine",
+                "failure",
+                "for",
+                "incompatible",
+                "instance",
+                "lock",
+                "logical",
+                "not",
+                "or",
+                "same",
+                "that",
+                "the",
+                "to",
+                "transaction",
+                "transactions",
+                "wait",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "4082",
+                "error_name": "ER_CANNOT_PURGE_BINLOG_WITH_BACKUP_LOCK",
+                "official_description": "Could not purge binary logs since another session is executing LOCK INSTANCE FOR BACKUP. Wait for that session to release the lock.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "concurrency_and_transaction",
+                "cause_analysis": "The failure is typically associated with concurrent transactions contending for the same logical resources, incompatible lock acquisition order, or transaction-state conflicts surfaced by the engine.",
+                "solution_guidance": "Inspect blocking chains, reduce conflicting write overlap, shorten transaction lifetime, review lock acquisition order, and verify whether transaction scheduling or retry logic needs adjustment.",
+                "observable_symptoms": [
+                    "blocking",
+                    "rollback",
+                    "retry",
+                    "stalled transaction"
+                ]
+            }
+        }
+    }
+]

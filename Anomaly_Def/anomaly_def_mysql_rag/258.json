@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Obsolete row versions, rollback records, and logically-deleted index entries accumulate faster than background cleaners can reclaim them, inflating on-disk and in-memory structures and lengthening visibility checks.\nBuffer Cache and Latch Contention Anomaly : Concurrent sessions repeatedly fight for hot buffer pages, page pins, and latches, causing stalls, CPU spin, and prolonged waits in the buffer manager.\n\nWhen both root causes strike at once, the system experiences a compound failure mode in which bloated MVCC metadata increases the number and churn rate of buffer pages while those same pages become hotspots contended for by many sessions. Observable symptoms include: 1) rapidly growing table and index size that pushes the working set beyond the ideal buffer-pool footprint, 2) sharp rises in buffer-busy/latch wait events coinciding with background vacuum/cleaner activity, 3) CPU usage dominated by spin-loops and visibility scans rather than useful work, 4) escalating I/O as the cache thrashes between old and freshly dirtied versions, and 5) unstable query plans as the optimizer misjudges bloat-inflated statistics and fluctuating cache hit ratios.\n\nCausally, heavy update/delete churn generates excess MVCC garbage, swelling the number of distinct physical pages that must stay resident or be repeatedly fetched. This expansion dilutes buffer-pool effectiveness and forces more sessions to converge on the remaining truly hot root, index, and free-space pages, intensifying latch contention. At the same time, cleaners that try to prune dead versions issue additional reads and writes, further saturating the buffer manager and extending latch hold times. The longer latches are held, the more they delay other sessions, allowing even more obsolete versions to pile up. The feedback loop between version-store bloat and latch congestion accelerates resource exhaustion, leading to severe throughput degradation and potentially catastrophic wraparound or emergency autovacuum scenarios.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.639610881616678,
+            "bm25_score": 21.042547824780417,
+            "lexical_score": 0.13572139303482586,
+            "matched_terms": [
+                "and",
+                "be",
+                "by",
+                "contention",
+                "for",
+                "in",
+                "or",
+                "other",
+                "query",
+                "resource",
+                "the",
+                "this",
+                "time",
+                "when",
+                "with",
+                "work"
+            ],
+            "match_count": 13,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

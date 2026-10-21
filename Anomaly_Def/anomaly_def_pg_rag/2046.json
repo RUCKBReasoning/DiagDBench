@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Database Memory Allocation Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Composite Definition: The database concurrently suffers from (1) stale or inaccurate optimizer statistics that drive systematic cardinality misestimation, (2) runaway memory consumption that pushes the instance and host beyond safe memory limits, and (3) saturation of the transaction-log generation / flush path. Together, these three orthogonal yet interacting root causes form a compound failure state that degrades both query processing and commit throughput under OLTP workloads.\n\nCombined Observable Phenomena: Execution plans show severe row-estimate errors, often selecting hash or sort strategies that demand excessive work memory. The inflated work areas, plus bloated buffer and plan caches, exhaust physical RAM, leading to paging, memory pressure waits, or OOM terminations. At the same time, commit latency, LOG FLUSH/WRITE waits, and log-buffer stall events spike because log flushing competes with paging I/O, frequent checkpoints, and large redo bursts produced by mis-planned bulk or spill operations. Users see alternating patterns of slow queries, aborted transactions, and periods where the entire instance freezes or is force-restarted by the cluster manager.\n\nCausal Interaction: Stale statistics first mislead the optimizer into choosing memory-intensive plans (e.g., multi-GB hash joins, over-parallelized sorts). These plans inflate per-session work areas and swell the buffer cache with mispredicted read-ahead, pushing the engine into memory overcommit. The resulting OS paging and cache churn slow down datafile and log-file I/O alike, lengthening log flush times. Prolonged commits keep log buffers full, forcing back-pressure on application threads and increasing transaction duration; the longer transactions retain log segments, causing more frequent log switches and checkpoints, which in turn intensify both memory usage (dirty-page queues) and disk traffic. Memory pressure also impedes the archiver and replication workers, keeping log files active longer and exacerbating log-space shortages. Thus, cardinality misestimation fuels memory exhaustion, which magnifies log contention, and the stalled log subsystem further propagates memory retention—creating a feedback loop that drives the database into severe throughput collapse.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.49125847000673395,
+            "bm25_score": 18.218422349734837,
+            "lexical_score": 0.11244755244755245,
+            "matched_terms": [
+                "aborted",
+                "active",
+                "and",
+                "because",
+                "from",
+                "is",
+                "longer",
+                "of",
+                "or",
+                "query",
+                "session",
+                "that",
+                "the",
+                "time",
+                "transaction",
+                "transactions"
+            ],
+            "match_count": 262,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

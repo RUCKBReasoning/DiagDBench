@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Optimizer Statistics Anomaly + MVCC Version Maintenance Anomaly",
+            "Description": "Schema and Index Design Anomaly : Physical data-model structures and index layout do not match workload access patterns, forcing otherwise well-written SQL to take inherently inefficient access paths.\nOptimizer Statistics Anomaly : Catalog statistics describing row counts, distribution, and correlation are stale or incomplete, causing the optimizer to misestimate cardinalities and choose sub-optimal plans.\nMVCC Version Maintenance Anomaly : Obsolete row versions and rollback records accumulate faster than background cleaners can reclaim them, inflating on-disk structures and adding visibility-check overhead.\n\nWhen all three anomalies appear together, the system exhibits blended and mutually reinforcing symptoms: queries gravitate toward full-table or full-index scans not only because useful indexes are missing but also because bloated heaps and skewed statistics hide the selectivity of remaining indexes; estimated-vs-actual row counts diverge by orders of magnitude, leading to plan oscillation, excessive memory grants, and spill events; table and index sizes grow rapidly, lengthening I/O for any scan and delaying auto-vacuum or purge tasks, while DML latency rises due to both index-maintenance overhead and version-store pressure. Administrators may observe constantly busy cleanup workers, escalating table bloat and checkpoint sizes, rising write-amplification, and query plans that improve only temporarily after manual statistics refreshes or ad-hoc index creation.\n\nCausally, poor schema and index design increases the amount of data each statement must touch; that extra I/O bandwidth is further amplified by MVCC bloat, which multiplies physical page counts. The inflated structures corrupt the accuracy of existing statistics more quickly, while stale or low-quality statistics, in turn, mask the usefulness of any remaining selective indexes and stop the optimizer from preferring them, making the design flaw appear worse. Because inefficient plans prolong statement execution, long-running transactions hold old snapshots open, slowing version reclamation and deepening MVCC bloat. The version bloat then enlarges sample space for statistics collection, making automatic refreshes slower and less frequent, perpetuating the stale-statistics condition. The three root causes therefore reinforce one another in a feedback loop that degrades throughput and predictability on write-intensive workloads.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1496,
+            "score": 0.37363263335123803,
+            "bm25_score": 37.50756563113109,
+            "lexical_score": 0.15666940114848235,
+            "matched_terms": [
+                "access",
+                "and",
+                "are",
+                "because",
+                "check",
+                "creation",
+                "data",
+                "disk",
+                "is",
+                "latency",
+                "not",
+                "or",
+                "paths",
+                "pressure",
+                "the",
+                "to",
+                "version",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "3947",
+                "error_name": "ER_IMP_INCOMPATIBLE_CFG_VERSION",
+                "official_description": "Failed to import %s because the CFG file version (%u) is not compatible with the current version (%u)",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Database Configuration Parameter Anomaly: Engine-level settings such as buffer-pool size, work-memory, checkpoint cadence, log-buffer length, and parallelism are mis-tuned for the hardware or workload, creating artificial pressure that is not rooted in the underlying resources themselves.\nTransaction Log Subsystem Anomaly: The write-ahead logging path—log buffer, physical log files, flushing, switching, and archiving—cannot keep up with redo generation, causing commit stalls, checkpoint storms, or backlog in replication/archiving pipelines.\n\nWhen both conditions arise concurrently, the database exhibits compounding symptoms: sharp spikes in commit latency, bursts of log-flush and log-write waits while I/O devices appear under-utilised, repeated emergency checkpoints that evict hot pages from an undersized buffer pool, rapid growth of log and archive directories, and oscillations between CPU spin and I/O idle time. Sessions may pile up on \"log sync\" or \"flush\" waits, while background cleaners and recovery workers lag, leading to autovacuum/compaction debt, bloated tables, and unpredictable throughput. Monitoring may show paradoxical metrics—high wait times alongside low physical device utilisation—making diagnosis harder.\n\nCausally, mis-set configuration parameters often amplify inherent weaknesses in the log subsystem: a too-small log buffer or overly aggressive synchronous commit policy forces every transaction to flush, driving the already constrained log files and archiver into saturation. Conversely, when the log subsystem stalls, mis-configured checkpoint intervals shrink recovery windows, triggering emergency checkpoints that flood the log further and thrash the buffer pool. Oversized per-session work memory and excessive parallel workers increase concurrent redo generation, while inadequate connection or background-worker limits delay log archival, causing retention pressure. The feedback loop between mis-tuned parameters and a bottlenecked log path escalates latency, jeopardises durability guarantees, and can ultimately halt write processing.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.4092522289534893,
+            "bm25_score": 12.543734391354104,
+            "lexical_score": 0.16285066812534188,
+            "matched_terms": [
+                "an",
+                "and",
+                "are",
+                "configured",
+                "connection",
+                "for",
+                "idle",
+                "is",
+                "latency",
+                "not",
+                "of",
+                "or",
+                "session",
+                "sessions",
+                "that",
+                "the",
+                "time",
+                "transaction",
+                "when",
+                "with"
+            ],
+            "match_count": 225,
+            "entry": {
+                "timeout_id": "pg16_idle_session_timeout",
+                "parameter_name": "idle_session_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle, but not within an open transaction, for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle and not inside an open transaction longer than the configured threshold.",
+                "workload_impact": "The session is terminated; the documentation warns about using this with connection pools or middleware.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

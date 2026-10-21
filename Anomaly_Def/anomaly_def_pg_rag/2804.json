@@ -1,0 +1,44 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Buffer Cache and Latch Contention Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Engine-level settings (memory, checkpoint, parallelism, etc.) are mis-tuned relative to hardware and workload, so the bottleneck stems from the parameter choices themselves rather than true resource exhaustion.\nBuffer Cache and Latch Contention Anomaly : Sessions stall on buffer-pool page pins, latches, and other lightweight synchronization points because hot or churning pages force serialised access and CPU spin-waiting.\nOperating System Resource Limit Anomaly : The database process collides with kernel-enforced ceilings on file descriptors, shared memory, semaphores, aio contexts, processes/threads, or cgroup quotas, blocking further allocations even though database-level resources appear free.\n\nWhen these three root causes strike together, the system exhibits a tangled symptom set: 1) extreme and erratic wait-event mixes in which buffer-busy/latch waits, log-write waits, and kernel resource-allocation errors appear in the same time slices; 2) bursts of checkpoint-driven I/O that stall on both latch contention and OS aio/file-handle shortages, causing sharp latency spikes and temporary query freezes; 3) CPU saturation by spin loops despite low measured user throughput; 4) sudden connection or worker-spawn failures accompanied by kernel messages about ENFILE, EMFILE, or shared-memory limits, leading to partial outages while existing sessions themselves are trapped behind hot-page latches; 5) highly variable performance after configuration changes, instance restarts, or workload surges, making the individual anomalies hard to distinguish because each masks or amplifies the others.\n\nCausally, mis-sized engine parameters (e.g., an undersized buffer pool, overly aggressive checkpoint target, or excessive parallel-worker cap) increase buffer turnover, concentrate access on a small set of pages, and flood the I/O and logging paths, which in turn magnifies latch contention inside the buffer manager. As latch pressure rises, sessions hold internal resources longer and attempt to open more files, spawn more background workers, or allocate larger shared-memory segments to cope with the backlog, quickly bumping into restrictive OS limits. Conversely, once the kernel refuses new handles, shared memory, or threads, the database cannot expand buffer pools or I/O contexts, forcing even tighter reuse of the existing cache and further intensifying page churn and latch waits. The feedback loop between bad configuration, internal contention, and external resource caps can thus cascade into severe throughput collapse and erratic, hard-to-diagnose performance degradation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 124,
+            "score": 0.18977601899491242,
+            "bm25_score": 11.42311194523411,
+            "lexical_score": 0.09462915601023017,
+            "matched_terms": [
+                "and",
+                "as",
+                "cannot",
+                "engine",
+                "external",
+                "or",
+                "target",
+                "that",
+                "the",
+                "with"
+            ],
+            "match_count": 14,
+            "entry": {
+                "error_code": "38003",
+                "error_name": "prohibited_sql_statement_attempted",
+                "official_description": "prohibited sql statement attempted",
+                "error_class": "Class 38 - External Routine Exception",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "sql_and_parser",
+                "cause_analysis": "The failure is typically associated with unsupported syntax, invalid statement structure, or feature usage that the target engine version cannot execute as written.",
+                "solution_guidance": "Validate SQL syntax, target-engine compatibility, statement shape, and whether the feature is supported under the current engine version or execution context.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "syntax error",
+                    "feature rejection"
+                ]
+            }
+        }
+    }
+]

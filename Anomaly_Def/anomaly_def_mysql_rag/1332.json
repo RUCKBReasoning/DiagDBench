@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Storage Space Capacity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Sessions compete for hot or repeatedly-evicted buffer pages, latches, and in-flight I/O slots, causing stalls and spin-loops below the lock manager. \nStorage Space Capacity Anomaly : Physical or logical free space in data, log, temp, or backup areas reaches hard limits, producing allocation failures and halting growth-related operations. \nOperating System Resource Limit Anomaly : Kernel-enforced ceilings on file handles, shared memory, semaphores, thread counts, or cgroup quotas are exhausted, preventing the database from opening files, spawning workers, or allocating IPC objects.\n\nWhen these three root causes strike concurrently, the database exhibits a compound failure mode: massive buffer-busy and page-latch waits drive CPU usage upward while throughput collapses; simultaneous space exhaustion triggers data-file auto-extend errors, log-switch stalls, temp-space sort failures, and repeated retry I/O bursts; in parallel, the kernel refuses new file descriptors, shared memory segments, or threads, so checkpoints, background writers, and recovery processes abort or hang. Operators observe an explosive growth in wait events (buffer I/O, latch, space allocation, and OS resource errors), sessions freezing mid-transaction, orphaned processes that cannot exit cleanly, and mixed symptoms that obscure any single root cause.\n\nCausally, hot-page contention forces intense churn in the buffer pool, inflating dirty page counts and accelerating disk writes; this hastens the consumption of remaining free space, pushing the system toward storage exhaustion. As space fills, the engine repeatedly opens and closes files, allocates temporary segments, and spawns error-handling workers, rapidly consuming file handles, shared memory, and thread quotas until OS limits are hit. Conversely, once OS limits block new file or I/O allocations, checkpoints and flush threads back up, leaving dirty buffers pinned longer and amplifying latch contention. The three anomalies therefore reinforce one another, creating a feedback loop that degrades throughput, inflates latency, and can culminate in a full service outage unless all contributing layers—buffer management, storage capacity, and operating-system limits—are simultaneously relieved.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 4805,
+            "score": 0.5784536048974344,
+            "bm25_score": 62.48093013103477,
+            "lexical_score": 0.19566824644549763,
+            "matched_terms": [
+                "and",
+                "are",
+                "capacity",
+                "creating",
+                "data",
+                "disk",
+                "engine",
+                "error",
+                "failure",
+                "failures",
+                "file",
+                "for",
+                "growth",
+                "latency",
+                "log",
+                "management",
+                "or",
+                "shared",
+                "storage",
+                "temporary",
+                "the"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-012922",
+                "error_name": "ER_IB_MSG_1098",
+                "official_description": "Creating shared tablespace for temporary tables",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

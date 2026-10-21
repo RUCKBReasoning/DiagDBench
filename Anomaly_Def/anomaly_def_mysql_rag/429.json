@@ -1,0 +1,47 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + CPU Resource Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Obsolete row versions, rollback records, and logically-deleted index entries accumulate faster than background cleanup can reclaim them, inflating on-disk structures and lengthening visibility checks.\nCPU Resource Anomaly : Database processes collectively drive host CPU utilization to sustained saturation, creating run-queue backlogs and wide-spread latency inflation independent of any single query plan.\n\nWhen these two root causes strike at the same time, the database exhibits a compounded failure mode: bloated tables and indexes force more CPU-intensive visibility checks and larger memory copies during scans, while already maxed-out CPUs slow the very autovacuum, purge, or garbage-collection workers that should reclaim space. Observable effects therefore include (1) dramatic growth of version stores and table files, (2) steadily rising CPU usage that remains pegged at or near 100 %, (3) escalating query latencies that worsen faster than either anomaly alone would suggest, (4) cleanup workers falling further behind despite higher scheduling priority, and (5) misleading planner estimates as statistics age, causing even more CPU-heavy plans and feedback loops of overload.\n\nCausally, excessive version churn increases per-row visibility evaluation and page pruning efforts, directly inflating CPU demand; that heightened CPU demand pushes the host into saturation, lengthening every task’s runtime—including garbage-collection cycles—so obsolete versions persist even longer. In turn, the bloated heap and index pages amplify CPU consumption for both user statements and maintenance tasks, closing a vicious loop that accelerates performance degradation and risks transaction-ID or version-store exhaustion. The interplay therefore magnifies both space and compute pressure, making the composite anomaly more severe than the sum of its parts.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5579,
+            "score": 0.5285966070145752,
+            "bm25_score": 47.809545671606976,
+            "lexical_score": 0.11439163837770233,
+            "matched_terms": [
+                "already",
+                "and",
+                "at",
+                "checks",
+                "either",
+                "failure",
+                "for",
+                "id",
+                "or",
+                "same",
+                "the",
+                "time",
+                "user"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013722",
+                "error_name": "ER_NOTE_KEYRING_COMPONENT_STORE_FAILED",
+                "official_description": "Error writing data for Data ID: '%s', Auth ID: '%s'. Either data already exists with same identifier or keyring backend encountered an error.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "authentication_and_authorization",
+                "cause_analysis": "The failure is typically associated with user identity, privilege scope, object access checks, or credential validation at session establishment or statement execution time.",
+                "solution_guidance": "Verify account credentials, privilege grants, object ownership, role settings, and whether the execution context has sufficient access rights.",
+                "observable_symptoms": [
+                    "access denied",
+                    "authentication failure",
+                    "permission error"
+                ]
+            }
+        }
+    }
+]

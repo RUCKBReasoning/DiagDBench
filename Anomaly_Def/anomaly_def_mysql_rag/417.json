@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Transaction Log Subsystem Anomaly + CPU Resource Anomaly",
+            "Description": "Schema and Index Design Anomaly : Physical data-model structures, indexes, partitions, and data types do not match workload access patterns, forcing inefficient access paths.\nTransaction Log Subsystem Anomaly : The write-ahead logging pipeline—generation, buffering, flushing, archiving—cannot keep pace with redo volume, causing commit stalls and log-related waits.\nCPU Resource Anomaly : Database processes consume sustained, near-saturation CPU, leaving insufficient cycles for other work and inflating run-queue latency.\n\nWhen all three root causes co-exist, the database exhibits a blended symptom set: queries that already scan whole tables or fetch many rows because of missing or non-covering indexes amplify redo generation, which in turn overwhelms the log buffer and I/O band­width. As commits wait for log flushes, user sessions pile up, yet they remain CPU-hungry while looping on retries or scanning data, driving host utilization to saturation. Observers see mixed wait profiles—log-flush and CPU scheduler waits spike together—alongside escalating query latencies, checkpoint storms, and sharp drops in TPS. Monitoring dashboards may misleadingly attribute the slowdown to any one layer, while in reality lock contention, log stalls, and CPU thrashing are interleaved.\n\nCausally, inefficient schema and index design multiplies the amount of data each DML or SELECT touches, inflating both CPU cycles and redo bytes per transaction. The surplus redo intensifies pressure on the transaction-log subsystem; once log-flush latency lengthens, foreground sessions hold locks longer and re-execute scans, compounding CPU load. Elevated CPU utilization then slows background log writer and archive processes, further delaying flushes and creating a feedback loop. The synergy of these root causes therefore magnifies performance degradation far beyond what each would inflict in isolation, pushing an OLTP system into a cascading slowdown that is difficult to diagnose without recognizing their mutual reinforcement.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5619,
+            "score": 0.4309854210439762,
+            "bm25_score": 50.19176323231765,
+            "lexical_score": 0.15897435897435896,
+            "matched_terms": [
+                "access",
+                "and",
+                "are",
+                "data",
+                "flush",
+                "for",
+                "is",
+                "latency",
+                "log",
+                "logging",
+                "may",
+                "of",
+                "or",
+                "paths",
+                "pressure",
+                "the",
+                "to",
+                "when",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013767",
+                "error_name": "ER_LOG_COMPONENT_FLUSH_FAILED",
+                "official_description": "%d error logging component(s) failed to flush. For file-based logs this can happen when the path or permissions of the log-file have changed. Failure to flush filed-based logs may affect log-rotation.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

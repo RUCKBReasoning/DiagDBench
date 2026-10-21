@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + MVCC Version Maintenance Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same objects, producing long waiter chains or deadlocks that stall statement execution.\nMVCC Version Maintenance Anomaly : Obsolete row versions and undo records accumulate faster than background cleaners can reclaim them, inflating storage, scan cost, and snapshot–visibility work.\nTransaction Log Subsystem Anomaly : Generation, flush, or archival of write-ahead log records becomes a bottleneck, stretching commit latency and stalling writers.\n\nWhen these three root causes co-exist, the database exhibits a compound slowdown: transactions block each other at the lock manager, pile up in connection pools, and hold snapshots that prevent vacuum/garbage-collection from advancing. The unreclaimed version bloat enlarges tables and indexes, lengthening lock hold times for range or page locks and further stressing the lock manager. Meanwhile every stalled or rolled-back transaction generates additional redo; the growing version store and frequent deadlock retries inflate log volume, overwhelming the already saturated log buffer, checkpoint, and archiver paths. Observable symptoms include soaring lock-wait and deadlock counts, rapidly expanding table and index sizes, constantly active yet ineffective cleanup workers, exploding write-ahead log directories, prolonged commit and rollback times, and eventually global throughput collapse accompanied by application-level timeouts and storage-space alerts.\n\nCausally, intense lock contention causes sessions to stay open longer, freezing their MVCC snapshots and stopping version pruning; this fuels version-store growth. The bloated heap increases I/O per statement, extending transaction durations and the lifespan of locks, which in turn deepens contention. Both phenomena raise redo generation (due to repeated updates, rollbacks, and cleanup activity) just as prolonged commit waits tie up locks even longer, forming a feedback loop that strains the transaction-log subsystem. A saturated log path then delays commit acknowledgement and rollback processing, prolonging lock holds and snapshot lifetimes, amplifying version bloat, and perpetuating the cycle—ultimately producing a severe, intertwined availability and performance crisis.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.2604028366218437,
+            "bm25_score": 12.246039792249064,
+            "lexical_score": 0.13121199557766722,
+            "matched_terms": [
+                "activity",
+                "and",
+                "connection",
+                "for",
+                "latency",
+                "longer",
+                "of",
+                "open",
+                "or",
+                "pools",
+                "sessions",
+                "than",
+                "that",
+                "the",
+                "this",
+                "transaction",
+                "when"
+            ],
+            "match_count": 186,
+            "entry": {
+                "timeout_id": "pg16_idle_session_timeout",
+                "parameter_name": "idle_session_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle, but not within an open transaction, for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle and not inside an open transaction longer than the configured threshold.",
+                "workload_impact": "The session is terminated; the documentation warns about using this with connection pools or middleware.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

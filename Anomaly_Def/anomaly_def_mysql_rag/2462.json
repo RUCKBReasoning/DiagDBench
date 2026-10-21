@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Transaction Lock Contention Anomaly + Replication Synchronization Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level statements or transaction patterns that process or return more data, touch rows inefficiently, or hold transactions open longer than business logic requires. \nTransaction Lock Contention Anomaly : Concurrent transactions acquire incompatible locks on the same resources, leading to long blocking chains or deadlocks that stall commit progress. \nReplication Synchronization Anomaly : Standbys or downstream replicas cannot receive, persist, or apply the primary’s log stream fast enough, causing widening replay lag and retained logs on the primary. \n\nWhen these three root causes strike together, the database exhibits a compound failure mode: heavy, inefficient SQL keeps transactions open for extended durations and enlarges their lock footprints; this inflates lock-wait queues and deadlock frequency while simultaneously generating large volumes of redo. The resulting commit delays propagate to the replication layer, where already backlogged apply threads fall further behind, increasing replica lag, growing on-disk log retention, and degrading read-scalability and failover readiness. End-user sessions experience highly variable and often excessive latency, frequent timeouts or deadlock retries, and eventually encounter stale reads or read-only routing failures on replicas. Operations teams observe surging lock-wait metrics intertwined with escalating replication delay and disk-space alerts, making it difficult to attribute slowdowns to a single subsystem.\n\nCausally, inefficient workload logic expands the number of rows scanned or updated per transaction, which 1) locks more objects and for longer durations, intensifying lock contention, and 2) emits larger transaction logs that replicas must ship and apply. The prolonged blocking further postpones commits, causing bursts of log generation once locks are released; replicas receive these bursts in uneven waves they cannot keep up with, amplifying lag. Conversely, apply-side delays on replicas can hold replay locks that feed back into longer primary-side lock retention during synchronous or semi-synchronous commit protocols, reinforcing the contention. This feedback loop ties application-layer inefficiencies, lock-manager saturation, and replication pipeline overload into a single, self-amplifying composite anomaly that can spiral into severe throughput collapse and availability risk if not addressed.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.7494935897435897,
+            "bm25_score": 35.11655075167361,
+            "lexical_score": 0.16497863247863248,
+            "matched_terms": [
+                "acquire",
+                "and",
+                "blocking",
+                "cannot",
+                "delay",
+                "for",
+                "in",
+                "incompatible",
+                "lock",
+                "locks",
+                "longer",
+                "not",
+                "or",
+                "sessions",
+                "than",
+                "the",
+                "this",
+                "to",
+                "transaction",
+                "when",
+                "while"
+            ],
+            "match_count": 116,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

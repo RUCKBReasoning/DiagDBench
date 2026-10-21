@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Buffer Cache and Latch Contention Anomaly + Replication Synchronization Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Engine-level settings (memory, checkpoint cadence, parallelism, etc.) are mis-tuned relative to hardware and workload, causing secondary performance pathologies even though the physical resources are not inherently exhausted.\nBuffer Cache and Latch Contention Anomaly : Sessions serialize on hot buffer pages, latches, or I/O slots inside the buffer manager, producing buffer-busy waits, CPU spin, and latency spikes driven by page-level contention rather than total memory shortage.\nReplication Synchronization Anomaly : Standbys or downstream consumers cannot receive, persist, or apply redo at the rate generated on the primary, leading to widening log gaps, replay lag, and retention of un-recycled log segments.\n\nComposite behaviour: When mis-tuned configuration parameters simultaneously foster buffer-cache/latch hot spots and accelerate redo generation, the primary instance experiences both severe page-level contention and a surge in transaction-log traffic that replicas fail to keep up with. Observable symptoms include: 1) mixed wait-event spikes—buffer-busy, page-latch, log-flush, and replication-sender waits—cycling in unpredictable patterns; 2) CPU utilisation that oscillates between spin-loops on latches and idle periods while replication back-pressure throttles commit throughput; 3) bloating of the primary’s transaction log because replication prevents recycling while aggressive checkpoints keep forcing additional flushes; 4) replica-side apply workers falling further behind, showing elevated lock conflicts on the same hotspot pages once they finally replay, and 5) end-user latency outliers that are hard to attribute to a single tier because stalls propagate from buffer manager to commit path to replication pipeline.\n\nCausal chain: Poor configuration—for example an undersized buffer pool, overly aggressive checkpoint interval, or improper work-memory/granule sizing—magnifies page churn and concentrates traffic on a limited set of cache lines. This intensifies latch contention, which lengthens commit time and inflates the volume and burstiness of redo writes. The heavier, more bursty log stream in turn overwhelms replicas, introducing apply lag that blocks log truncation on the primary. Retained log segments consume more cache and I/O bandwidth, further shrinking effective buffer space and prolonging dirty-page residence, which feeds back into even higher latch contention cycles. Thus, each anomaly amplifies the others: mis-tuned parameters create the hot pages, latch contention slows commit, slow commits inflate log backlog, and replication drag prevents cleanup, together degrading both primary and replica performance far beyond what any single issue would cause.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.4618940794286258,
+            "bm25_score": 17.760921464980697,
+            "lexical_score": 0.15553612689689628,
+            "matched_terms": [
+                "an",
+                "and",
+                "any",
+                "are",
+                "for",
+                "idle",
+                "inside",
+                "latency",
+                "not",
+                "of",
+                "or",
+                "sessions",
+                "than",
+                "that",
+                "the",
+                "this",
+                "time",
+                "transaction",
+                "user",
+                "when",
+                "with"
+            ],
+            "match_count": 248,
+            "entry": {
+                "timeout_id": "pg16_idle_session_timeout",
+                "parameter_name": "idle_session_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle, but not within an open transaction, for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle and not inside an open transaction longer than the configured threshold.",
+                "workload_impact": "The session is terminated; the documentation warns about using this with connection pools or middleware.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

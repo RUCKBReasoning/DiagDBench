@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Replication Synchronization Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Composite Definition: The database simultaneously suffers from (1) stale or missing optimizer statistics that drive systematic cardinality misestimates, (2) replication channels that cannot receive or apply the primary’s change stream in real time, and (3) on-disk data or index corruption that compromises physical page and key integrity. Together these three independent root causes create a multi-layer failure in which the optimizer, the replication pipeline, and the storage layer are all impaired at once.\n\nCombined Observable Phenomena: Queries on the primary may flip unpredictably between long-running full-table scans and erroneous index probes, showing extreme plan regressions and wildly inaccurate row-count estimates. These inefficient plans inflate I/O, CPU, and transaction-log generation, which in turn floods the replication queue; standbys display rapidly widening replay lag, swollen relay / retained log segments, and intermittent apply errors or pauses. Corrupted pages or index structures can surface first on replicas during redo-apply, manifesting as replication-side checksum failures, apply-phase panics, or forced replica restarts, while the primary reports page-verification warnings and begins discarding corrupted indexes, triggering further plan shifts and emergency full scans. Application symptoms range from time-outs and stale read results on replicas to inconsistent row counts or silent data errors on the primary.\n\nCausal Interaction: Stale or incomplete statistics mislead the optimizer into choosing plans that generate excessive I/O and large batched modifications, expanding the volume and burstiness of redo traffic. The inflated and irregular log stream overstresses an already bandwidth- or CPU-constrained replica set, deepening replication lag and increasing the window during which un-recycled log segments must be retained. Simultaneously, latent data or index corruption causes additional I/O retries and error handling on the primary and may corrupt log records that must be shipped. When these damaged blocks reach the replica, apply failures force repeated retries or pauses, compounding lag. The stalled or broken replication prevents off-host integrity checks and hampers failover options, while the corruption itself can block automatic statistics refreshes, perpetuating the optimizer’s misinformation. Thus each anomaly feeds the others: bad statistics create heavy workloads, heavy workloads overload replication, and corruption both triggers and is masked by the other two issues, driving the system into a spiraling degradation of performance, consistency, and availability.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.7373798627002288,
+            "bm25_score": 26.903639125388647,
+            "lexical_score": 0.12459954233409609,
+            "matched_terms": [
+                "and",
+                "apply",
+                "be",
+                "data",
+                "is",
+                "lag",
+                "long",
+                "or",
+                "replica",
+                "replication",
+                "stalled",
+                "the",
+                "to",
+                "when",
+                "window"
+            ],
+            "match_count": 47,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

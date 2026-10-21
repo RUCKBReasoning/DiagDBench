@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Replication Synchronization Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Replication Synchronization Anomaly: Standbys, read replicas, or downstream consumers cannot receive, persist, or apply WAL/redo records as fast as the primary produces them, causing widening log-position gaps and replay lag.\nStorage I/O Throughput Anomaly: The physical devices that host data, temp, and log files are saturated in bandwidth, IOPS, or latency, driving up read/write wait times and elongating database operations.\n\nWhen both root causes strike together, the system exhibits extreme and intertwined symptoms: commit latency on the primary increases as log flushes queue behind a congested storage layer, while replicas fall increasingly behind because their own disks cannot ingest or replay the incoming log stream. WAL segments pile up on the primary and relay logs balloon on replicas, accelerating disk-space consumption and triggering emergency retention policies. Monitoring shows simultaneous spikes in storage wait events (data-file, log-file, durability flush) and replication metrics (send/receive/replay lag). Failover readiness rapidly degrades, read-only workload freshness collapses, and maintenance windows overrun as both I/O stalls and replication gaps reinforce each other.\n\nCausally, inadequate storage throughput throttles the very I/O operations—log writes on the primary and log reads/writes on replicas—needed for timely replication. As disks struggle, primary commit flushes slow, lengthening the log queue to replicas; the larger backlog forces replicas to perform bursty catch-up replays that in turn spike their own I/O demand on already saturated volumes, further delaying apply. The growing backlog prevents log recycling, inflating disk usage and deepening the storage bottleneck on the primary, while replica lag perpetuates retention of old segments. This feedback loop magnifies both anomalies, making the overall database increasingly unstable and at risk of outage.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2468,
+            "score": 0.5353935478207028,
+            "bm25_score": 55.217863475252486,
+            "lexical_score": 0.16227218934911242,
+            "matched_terms": [
+                "and",
+                "apply",
+                "at",
+                "downstream",
+                "in",
+                "lag",
+                "log",
+                "needed",
+                "or",
+                "position",
+                "relay",
+                "replica",
+                "replication",
+                "retention",
+                "the",
+                "to"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010581",
+                "error_name": "ER_RPL_REPLICA_SQL_THREAD_STARTING",
+                "official_description": "Replica SQL thread%s initialized, starting replication in log '%s' at position %s, relay log '%s' position: %s",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

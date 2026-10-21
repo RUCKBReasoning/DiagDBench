@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Data Block and Index Integrity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Transaction Lock Contention Anomaly: Concurrent transactions request mutually incompatible locks on the same data or metadata objects, creating long blocking chains or deadlocks that the lock-manager must resolve.\nData Block and Index Integrity Anomaly: On-disk pages or index structures are physically or logically corrupted, causing mismatches between stored and expected row or key order and triggering engine-level consistency errors.\nOperating System Resource Limit Anomaly: The database process exhausts kernel-enforced resources such as file descriptors, shared-memory segments, semaphores, or thread quotas, leading to allocation failures visible to the engine.\n\nWhen these three root causes strike simultaneously, the database can exhibit a compound failure pattern: sessions pile up in lock-wait states while corrupted pages or indexes provoke repeated statement retries, forced rollbacks, or emergency consistency checks. Each retry or rollback spawns new transactions and background workers that contend for already maxed-out OS resources, so some connection attempts or parallel workers fail immediately with kernel allocation errors while others stall behind ungranted locks. Administrators may observe a mix of symptoms—deadlock victim messages interleaved with page-verification failures and sporadic \"too many open files\" or \"cannot allocate shared memory\" errors—making it difficult to attribute the slowdown to any single layer. Overall throughput collapses, latency becomes bimodal, and automated recovery actions (e.g., index rebuilds, crash-recovery restarts) may themselves be throttled by OS limits, prolonging the outage.\n\nCausally, corruption in data or index pages can trigger abnormal lock behavior: inconsistent key orders or orphaned index entries cause queries to scan wider ranges or fall back to table locks, increasing the likelihood of contention. The resulting surge in blocked or rolled-back transactions inflates the number of simultaneous sessions, lock objects, and background processes, quickly consuming kernel resources such as file handles, semaphore sets, and thread slots. Once OS limits are reached, the engine cannot create new locks, threads, or I/O contexts, which in turn prevents it from resolving existing lock queues or completing corruption-recovery tasks. This feedback loop—corruption forcing heavier locking, locking multiplying process and handle usage, and OS limits preventing progress—amplifies each individual anomaly into a severe, self-reinforcing outage that is far more disruptive than any of the root causes in isolation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.39365855673541017,
+            "bm25_score": 22.06255667646652,
+            "lexical_score": 0.1526470588235294,
+            "matched_terms": [
+                "and",
+                "are",
+                "be",
+                "can",
+                "connection",
+                "failure",
+                "is",
+                "latency",
+                "messages",
+                "number",
+                "of",
+                "on",
+                "or",
+                "progress",
+                "sessions",
+                "system",
+                "that",
+                "the",
+                "this",
+                "to",
+                "when"
+            ],
+            "match_count": 267,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_count",
+                "parameter_name": "tcp_keepalives_count",
+                "timeout_category": "network_keepalive_failure_threshold",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the number of TCP keepalive messages that can be lost before the server connection to the client is considered dead.",
+                "trigger_condition": "The number of lost TCP keepalive probes reaches tcp_keepalives_count on systems supporting TCP_KEEPCNT.",
+                "workload_impact": "The server can consider the client connection dead after the configured keepalive failure threshold.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

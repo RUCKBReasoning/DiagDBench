@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Database Configuration Parameter Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Composite Definition: The database concurrently suffers from a sub-optimal execution-plan selection by the optimizer, mis-tuned engine configuration parameters, and restrictive operating-system resource limits. Although each factor alone can cause performance degradation, their simultaneous presence creates a multifaceted failure in which query plans are poor, engine subsystems are ill-provisioned, and the host kernel blocks further resource allocation.\n\nCombined Observable Phenomena: Workloads exhibit erratic performance with the same SQL sometimes using efficient index probes and other times reverting to table scans or serial plans. CPU and I/O utilization metrics look inconsistent with wait-event reports—sessions show long log-write or memory allocation waits while disks and CPUs are under-utilized. Sudden bursts of checkpoints or background-writer activity coincide with spikes of \"cannot allocate shared memory,\" \"too many open files,\" or \"failed to create thread\" errors coming from the OS. Parallel queries intermittently fall back to single-threaded execution because worker pools cannot grow, causing unpredictable query runtimes. Plan cache churn grows as failed worker creation or memory shortages force frequent recompilations, and overall throughput collapses in waves rather than gradually.\n\nCausal Chain and Interaction: Mis-set database parameters (e.g., undersized buffer pool, aggressive work-memory limits, or overly frequent checkpoints) inflate true execution costs, but the optimizer—already prone to selecting borderline plans—may overestimate or underestimate those costs and choose plans that rely on resources the engine cannot effectively supply. When such a plan attempts to allocate additional memory, workers, or I/O contexts, it collides with tight operating-system limits on file handles, shared memory, or threads, resulting in run-time errors or implicit plan downgrades. These failures invalidate or evict plans, prompting fresh compilations that again suffer from the same flawed cost model and parameter landscape, creating a feedback loop. Meanwhile, engine background tasks triggered by the mis-configuration (e.g., checkpoint storms) consume the very kernel resources that user queries lack, amplifying contention and making the overall performance regression sharper and harder to diagnose.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.51471988601874,
+            "bm25_score": 21.666534173930884,
+            "lexical_score": 0.14190213203185204,
+            "matched_terms": [
+                "activity",
+                "and",
+                "are",
+                "can",
+                "kernel",
+                "long",
+                "or",
+                "pools",
+                "queries",
+                "query",
+                "reports",
+                "sessions",
+                "system",
+                "that",
+                "the",
+                "time",
+                "triggered",
+                "when",
+                "while"
+            ],
+            "match_count": 277,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

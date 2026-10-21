@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Replication Synchronization Anomaly + CPU Resource Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level statements or transaction design force the engine to scan, join, or hold more data than the business case actually requires.\nReplication Synchronization Anomaly : Downstream replicas or change-data consumers fall behind because they cannot receive, persist, or apply log records at the rate the primary generates them.\nCPU Resource Anomaly : Database processes saturate host CPU, leaving insufficient compute cycles for the rest of the workload.\n\nWhen these three root causes manifest together, the primary node executes inefficient queries that drive high CPU usage while simultaneously emitting an oversized, bursty stream of redo that replicas struggle to consume. Observable symptoms converge across layers: 1) primary-side CPU consistently runs near 100 %, with run-queue wait events dominating wait-class views; 2) statement and transaction latency on the primary shows long tails, accompanied by frequent slow-query log entries for the same application patterns; 3) replication monitoring reports widening receive, write, and replay lag, growing retained log segments, and increasingly stale read-only traffic; 4) failover readiness degrades as replicas fall further behind, and 5) both primary and replica hosts exhibit load-average spikes, context-switch storms, and apply-side lock conflicts, making it difficult to distinguish whether performance pain originates at the application, engine, or replication tier.\n\nCausal chain: inefficient workload logic inflates row counts, intermediate result sets, and transaction size, which directly amplifies CPU consumption on the primary. The elevated CPU load lengthens commit paths and enlarges each transaction’s redo payload. The replication subsystem must now ship and apply a hotter, heavier log stream, but the replicas are already CPU-constrained from replaying previous backlog; as lag grows, their own apply threads run more intensely, further saturating their CPUs and slowing them down even more. High CPU on both sides increases scheduling latency for network and I/O threads, worsening throughput and inducing exponential replica delay. In turn, the primary cannot recycle log segments because replicas hold retention pointers, inflating disk usage and causing additional I/O and CPU overhead for checkpoint and log-management tasks. The three anomalies thus reinforce one another in a feedback loop that degrades overall database performance and resiliency.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.6076277948928691,
+            "bm25_score": 30.286908272295385,
+            "lexical_score": 0.14526806526806527,
+            "matched_terms": [
+                "an",
+                "and",
+                "another",
+                "because",
+                "cannot",
+                "change",
+                "delay",
+                "for",
+                "in",
+                "lock",
+                "or",
+                "scheduling",
+                "statement",
+                "than",
+                "the",
+                "to",
+                "transaction",
+                "when",
+                "while"
+            ],
+            "match_count": 78,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

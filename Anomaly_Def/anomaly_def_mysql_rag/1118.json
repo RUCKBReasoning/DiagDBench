@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Data Block and Index Integrity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly : Saturation or stalling of the write-ahead logging pipeline (log buffer, log files, flush/sync, archival or replication) that delays commit processing and other write activity.\nData Block and Index Integrity Anomaly : Physical or logical corruption of on-disk data pages or index structures that causes inconsistencies between stored bytes and the logical contents expected by the database engine.\nOperating System Resource Limit Anomaly : Exhaustion of kernel-managed resources (file descriptors, shared-memory segments, semaphores, threads, AIO contexts, cgroup quotas, etc.) that prevents the database from performing normal I/O and process management.\n\nWhen these three root causes strike simultaneously, the database exhibits a compounded failure pattern: commit latency and log-flush waits rise sharply while the engine intermittently fails to open or extend log and data files due to depleted file handles or address space. Archive or redo-shipping workers throttle or abort, causing log directories to balloon and checkpoints to storm. Concurrently, corrupted pages or indexes surface as checksum errors, duplicate or missing rows, and emergency plan fall-backs to full scans; recovery attempts may repeatedly fail or loop because required log segments cannot be written, read, or archived. Administrators observe a mixture of engine corruption panics, \"unable to allocate shared memory / file handle\" errors from the kernel, and prolonged application write stalls, making root-cause isolation difficult.\n\nCausally, tight OS resource limits can starve the log subsystem of file descriptors, AIO slots, or thread quotas, slowing or blocking log writes and archives; prolonged stalls increase the window during which partially flushed or torn pages may be exposed, heightening the risk of data and index corruption if a crash or timeout forces an abort. Conversely, existing page or index corruption triggers extra recovery, verification, and redo activity, inflating log generation and magnifying pressure on the already constrained log pipeline and OS resources. The mutual reinforcement between log congestion, kernel-level resource starvation, and structural corruption can drive the database into cascading failures, escalating from performance degradation to systemic outage and data-loss risk.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 15,
+            "score": 0.3759166392380051,
+            "bm25_score": 16.45034584719111,
+            "lexical_score": 0.1146590909090909,
+            "matched_terms": [
+                "and",
+                "data",
+                "latency",
+                "level",
+                "loss",
+                "or",
+                "read",
+                "the",
+                "timeout",
+                "when",
+                "window",
+                "write",
+                "written"
+            ],
+            "match_count": 22,
+            "entry": {
+                "timeout_id": "mysql84_xplugin_read_timeout",
+                "parameter_name": "mysqlx_read_timeout",
+                "timeout_category": "x_protocol_network_read_timeout",
+                "scope": "global/session/X Plugin",
+                "official_definition": "Read timeout for X Plugin network communication.",
+                "trigger_condition": "A MySQL X Protocol read operation exceeds mysqlx_read_timeout.",
+                "workload_impact": "The X Protocol network read operation times out.",
+                "default_behavior": "Defined as a MySQL X Plugin system variable.",
+                "system_domain": "network_transport",
+                "cause_analysis": "This timeout is usually triggered when network data is not acknowledged, received, or written within the configured transport-level waiting window.",
+                "solution_guidance": "Inspect packet loss, transport latency, client responsiveness, proxy behavior, and whether slow consumers or unstable links are delaying network progress.",
+                "observable_symptoms": [
+                    "network timeout",
+                    "disconnect",
+                    "read/write interruption"
+                ]
+            }
+        }
+    }
+]

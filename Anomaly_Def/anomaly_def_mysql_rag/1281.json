@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Database Memory Allocation Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Transaction Lock Contention Anomaly: Concurrent transactions request incompatible locks on the same resource, creating blocking chains or deadlocks that stall forward progress.\nDatabase Memory Allocation Anomaly: Aggregate memory consumed by caches, work areas, and session heaps surpasses the safe capacity of the host, provoking paging or out-of-memory pressure.\nTransaction Log Subsystem Anomaly: Commit processing is throttled because log buffers, log files, or archiving pipelines cannot absorb the volume of redo being generated.\n\nWhen these three root causes strike together, the database exhibits an intertwined symptom set: lock-wait time and deadlock frequency rise while commit latency simultaneously elongates; worker threads pile up in both lock-manager wait queues and OS run queues starved for memory; RSS and swap usage climb until the operating system steals cache pages, further degrading buffer-cache hit ratios; log-flush and log-write waits spike, exaggerating the apparent duration of locks held during COMMIT; connection pools saturate, application timeouts increase, and recovery/instance restarts may occur when memory exhaustion or stalled log archival triggers fault-management logic.\n\nCausally, each anomaly amplifies the others. Memory pressure slows SQL execution (extra paging, reduced cache efficiency), lengthening transaction lifetimes and thereby prolonging lock holds that intensify contention. The enlarged lock backlog inflates per-session memory footprints (lock structures, row versions, private work areas), deepening the memory shortfall. Prolonged transactions also generate more redo per unit of business work and keep old log segments active, causing log files to fill faster; in turn, delayed log flushes extend commit duration so locks remain held even longer, feeding the contention loop. Finally, frequent flushes and checkpoint storms consume additional CPU and memory buffer space, tightening the memory bottleneck and creating a self-reinforcing triad that can bring an OLTP system to a near standstill if not addressed holistically.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2117,
+            "score": 0.27755680377383607,
+            "bm25_score": 40.01471048941751,
+            "lexical_score": 0.14422399783315276,
+            "matched_terms": [
+                "and",
+                "by",
+                "commit",
+                "execution",
+                "in",
+                "is",
+                "logic",
+                "more",
+                "not",
+                "on",
+                "or",
+                "pressure",
+                "recovery",
+                "resource",
+                "safe",
+                "sql",
+                "the",
+                "to",
+                "together"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010230",
+                "error_name": "ER_XA_NO_MULTI_2PC_HEURISTIC_RECOVER",
+                "official_description": "--tc-heuristic-recover rollback strategy is not safe on systems with more than one 2-phase-commit-capable storage engine. Aborting crash recovery.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

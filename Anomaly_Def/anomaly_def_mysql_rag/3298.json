@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Transaction Log Subsystem Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same data or metadata resources, creating blocking chains or deadlocks inside the lock-manager layer.\nTransaction Log Subsystem Anomaly : The write-ahead logging path (log buffer, log file, archiver, or sync pipeline) becomes the primary bottleneck, stretching commit latency and stalling write activity.\nStorage Space Capacity Anomaly : Free space for data, log, or archive destinations falls to (or below) critical thresholds, causing allocation failures and preventing log or data growth.\n\nWhen all three root causes surface simultaneously, the database can enter a cascade of reinforcing symptoms: commits slow down because log flushes wait on saturated log devices or on archiver/replication lag created by space shortages; transactions keep their locks for much longer, inflating lock-wait time, expanding blocking chains, and multiplying deadlock incidents. Blocked sessions accumulate in connection pools, while error logs alternate among lock timeouts, \"log write stall\", and \"no space left\" messages. Checkpoint storms, repeated log-switch attempts, and emergency autogrowth retries further increase I/O contention, amplifying both log and lock delays. Overall throughput collapses and application timeouts spike, yet the overlapping symptoms obscure which layer is the primary trigger.\n\nCausally, dwindling storage space throttles the archiver or prevents log segment recycling, forcing the transaction log subsystem to pause commits until space frees up. These elongated commit phases keep transactional locks active far beyond their normal duration, igniting severe lock contention. In turn, the growing queue of blocked and retried transactions inflates redo generation and temp usage, accelerating space exhaustion and putting even more pressure on the log subsystem. The feedback loop between space starvation, log stall, and prolonged lock holding drives the system into a self-reinforcing degradation spiral that can culminate in widespread transaction aborts or a full outage.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.41200393394036294,
+            "bm25_score": 18.597182396929945,
+            "lexical_score": 0.10668121079901825,
+            "matched_terms": [
+                "and",
+                "causing",
+                "data",
+                "is",
+                "lag",
+                "longer",
+                "or",
+                "preventing",
+                "replication",
+                "the",
+                "to",
+                "when"
+            ],
+            "match_count": 152,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

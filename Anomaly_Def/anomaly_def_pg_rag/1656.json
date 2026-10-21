@@ -1,0 +1,45 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Buffer Cache and Latch Contention Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer keeps selecting or re-using an execution plan whose estimated cost is low but whose actual runtime is high, despite reasonably accurate statistics.\nBuffer Cache and Latch Contention Anomaly : Concurrent sessions serialize on hot buffer pages and their protecting latches, causing excessive buffer-busy and page-latch waits rather than outright memory shortage.\nOperating System Resource Limit Anomaly : Database processes hit kernel-enforced ceilings such as file-descriptor, shared-memory, semaphore, or thread limits, restricting the engine’s ability to allocate or grow critical resources.\n\nWhen these three root causes manifest together, symptoms appear in multiple layers: 1) unstable plans suddenly flip from index to full table scans or from parallel to serial execution; 2) the sub-optimal plan amplifies touch rates on a few index or table pages, so latch and buffer-busy waits surge and CPU spins without throughput gain; 3) as the engine tries to spawn extra workers, open more files, or enlarge shared memory to compensate, it is blocked by OS limits, resulting in errors for new sessions, failures to start parallel workers, and bursts of \"cannot allocate resource\" messages in system logs. Overall latency oscillates unpredictably, with apparent optimizer issues, internal latch storms, and sporadic OS-level allocation failures all visible yet hard to disentangle.\n\nCausally, a poor plan (e.g., full scan or nested-loop with high outer cardinality) dramatically increases buffer-cache pressure and concentrates access on a narrow set of pages. This fuels latch contention, prolonging critical-section hold times and driving up request queues. The prolonged waits expand task runtimes, which in turn prolongs plan age and keeps the hot pages in constant circulation, reinforcing contention. As the engine reacts—attempting more parallelism, larger I/O queues, or additional background flushers—it consumes extra file handles, threads, and shared-memory segments, quickly exhausting kernel quotas. Once OS ceilings are hit, the database cannot spawn the very workers or I/O contexts that could alleviate contention, so both plan inefficiency and buffer hot-spotting persist, creating a vicious loop that degrades overall throughput and stability.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.2733855478727464,
+            "bm25_score": 15.492123142530296,
+            "lexical_score": 0.11048387096774193,
+            "matched_terms": [
+                "and",
+                "as",
+                "cannot",
+                "engine",
+                "execution",
+                "is",
+                "or",
+                "that",
+                "the",
+                "with",
+                "yet"
+            ],
+            "match_count": 12,
+            "entry": {
+                "error_code": "03000",
+                "error_name": "sql_statement_not_yet_complete",
+                "official_description": "sql statement not yet complete",
+                "error_class": "Class 03 - SQL Statement Not Yet Complete",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "sql_and_parser",
+                "cause_analysis": "The failure is typically associated with unsupported syntax, invalid statement structure, or feature usage that the target engine version cannot execute as written.",
+                "solution_guidance": "Validate SQL syntax, target-engine compatibility, statement shape, and whether the feature is supported under the current engine version or execution context.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "syntax error",
+                    "feature rejection"
+                ]
+            }
+        }
+    }
+]

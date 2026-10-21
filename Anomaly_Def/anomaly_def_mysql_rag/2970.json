@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Replication Synchronization Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Composite Definition: The database concurrently suffers from stale or incomplete optimizer statistics, a replication pipeline that cannot keep up with primary redo generation, and impending or actual exhaustion of allocated storage space. The intersection of these three root causes causes a compound failure mode where poor cardinality estimates drive inefficient execution plans that inflate write-amplification, which in turn overwhelms both replication apply capacity and on-disk free space, precipitating log-retention and allocation failures across the cluster.\n\nOptimizer Statistics Anomaly: Critical metadata about row counts, value distributions, and correlations is outdated or missing, leading the optimizer to systematically misestimate cardinalities and choose sub-optimal plans.\nReplication Synchronization Anomaly: Standby or subscriber nodes lag in receiving or applying WAL/redo, widening log position gaps and preventing timely log recycling on the primary.\nStorage Space Capacity Anomaly: Physical or logical free space in data, temp, or log areas approaches exhaustion, threatening allocation failures and halting workload progress.\n\nCombined Phenomena:  • Query plans suddenly shift to full scans, large hash joins, or bloated sort/hash spill operations, driving up data-file growth, temp usage, and redo volume.  • Replication lag accelerates; relay logs or retained primary log segments balloon because space-starved replicas replay changes ever more slowly.  • Free space drops in multiple segments (data, temp, WAL, archive) leading to auto-extend failures, checkpoint stalls, and \"disk full\" errors that propagate to both primary and replicas.  • Monitoring shows simultaneous spikes in buffer cache churn, background statistics auto-update retries, replication retransmissions, and space-management alarms, making it hard to pinpoint a single culprit.\n\nCausal Chain: Stale or absent statistics trigger inefficient, I/O-heavy execution plans that inflate the volume of modified pages and generated redo. The surge in redo must traverse the replication channel; limited apply throughput on replicas widens lag windows and forces the primary to retain log segments longer, consuming additional disk space. As data and log files grow, storage free space dwindles; once thresholds are crossed, auto-stats jobs may be skipped, temp spills fail to allocate space, and replication may halt when it cannot write relay or archive logs—each feedback loop worsening the others. Ultimately, the trio of misestimation, replication backlog, and space exhaustion creates a self-amplifying degradation that threatens both performance and availability across the database ecosystem.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.7425689775098538,
+            "bm25_score": 30.727147490397847,
+            "lexical_score": 0.14189659169951307,
+            "matched_terms": [
+                "and",
+                "apply",
+                "applying",
+                "be",
+                "channel",
+                "data",
+                "is",
+                "lag",
+                "longer",
+                "or",
+                "preventing",
+                "progress",
+                "replication",
+                "the",
+                "timely",
+                "to",
+                "when"
+            ],
+            "match_count": 140,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

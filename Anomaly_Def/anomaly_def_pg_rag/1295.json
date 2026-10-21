@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Storage I/O Throughput Anomaly + Storage Space Capacity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Storage I/O Throughput Anomaly : Sustained physical read- and write-volume overruns the bandwidth or latency capability of the underlying storage devices.\nStorage Space Capacity Anomaly : Critical database volumes run out of free space, preventing further allocation to data, log, temp, or backup files.\nOperating System Resource Limit Anomaly : Kernel-enforced ceilings on file handles, shared memory, threads, or AIO contexts are reached by database processes.\n\nWhen all three root causes strike simultaneously, the database experiences a compound failure mode: rising I/O queue depths and latency slow every read and write, just as space-allocation operations and background writers begin to fail, while the engine is intermittently denied new file handles, shared-memory segments, or AIO slots needed to continue processing. Observable symptoms co-exist and amplify one another—high I/O wait time alongside space-exhaustion or auto-extend errors, cascading log-archive stalls, sudden \"too many open files\" or \"cannot allocate shared memory\" errors, checkpoints that cannot complete, and sessions hanging in both I/O and kernel wait states. Batch windows stretch, OLTP requests time out, and portions of the engine may appear up yet accept no new work.\n\nCausally, storage-bandwidth saturation elongates every write, delaying checkpointing, archiving, and space-reclaim tasks, which accelerates space consumption. As free space dwindles, emergency auto-extension, log-switch, and purge operations raise the number of concurrent file opens and asynchronous I/O requests, pushing the process toward kernel limits. Once OS resource ceilings are hit, the engine is unable to create new files or I/O contexts, further throttling throughput and blocking the very maintenance needed to relieve space pressure. In parallel, failure to create or extend files feeds back into higher I/O retry traffic and excessive log buildup, worsening both throughput saturation and space exhaustion. The intertwined feedback loops of bandwidth starvation, capacity depletion, and kernel denials drive the database into a progressively deeper stall or partial outage until at least one of the constraints is lifted.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.6745077256812365,
+            "bm25_score": 16.7256745843285,
+            "lexical_score": 0.11714285714285713,
+            "matched_terms": [
+                "and",
+                "are",
+                "is",
+                "latency",
+                "no",
+                "of",
+                "on",
+                "operating",
+                "or",
+                "sessions",
+                "system",
+                "the",
+                "time",
+                "to",
+                "when",
+                "which"
+            ],
+            "match_count": 225,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_idle",
+                "parameter_name": "tcp_keepalives_idle",
+                "timeout_category": "network_idle_keepalive_probe_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time with no network activity after which the operating system should send a TCP keepalive message to the client.",
+                "trigger_condition": "A TCP client connection has no network activity longer than tcp_keepalives_idle on systems supporting TCP_KEEPIDLE or an equivalent socket option.",
+                "workload_impact": "Starts TCP keepalive probing for an otherwise idle client connection; together with interval and count settings this can lead to dead connection detection.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Transaction Lock Contention Anomaly + Database Memory Allocation Anomaly",
+            "Description": "Composite definition: The database simultaneously suffers from sub-optimal physical schema/index design, heavy transaction lock contention, and excessive or poorly managed memory allocation. Together they create a feedback loop in which inefficient access paths inflate lock footprints and execution time, while bloated memory structures contend for limited RAM, all under a concurrency-intensive workload.\n\nCombined observable phenomena: 1) Queries that should be index-efficient instead scan large portions of tables or non-covering indexes, holding row/page/table locks far longer than expected. 2) Lock-wait graphs and deadlock reports show long chains and frequent victim rollbacks, accompanied by application timeouts and retry storms. 3) Overall memory consumption of buffer pools, work areas, and plan cache rises sharply as full scans flood the buffer cache and ad-hoc plans accumulate; the OS may exhibit paging, swap activity, or OOM kills that further lengthen lock-hold times. 4) Throughput decays and latency becomes highly variable; short transactions occasionally stall for seconds or minutes, and node restarts or failovers can occur under sustained memory pressure.\n\nCausal chain and interaction: Missing or misaligned indexes force even selective OLTP statements into full-table or wide index scans. These scans not only read more pages, bloating the buffer cache and plan cache, but also acquire more and coarser locks, enlarging the lock footprint. The longer I/O and CPU time of each statement increases the interval during which locks are held, escalating the probability of concurrent conflicts and deadlocks. Simultaneously, the excess pages and work memory consumed by the scans drive the system toward memory pressure; when physical RAM is exhausted and the OS starts paging, query execution slows further, extending lock durations and deepening blocking chains. Conversely, lock buildup stalls transactions that would normally release buffers, causing more sessions to accumulate private work areas and pinned pages, aggravating memory exhaustion. Thus, poor schema/index design multiplies lock contention, lock contention amplifies memory residency, and memory pressure feeds back to slow execution, forming a self-reinforcing cycle that degrades OLTP performance and stability.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1465,
+            "score": 0.31725352255223604,
+            "bm25_score": 35.51670124553954,
+            "lexical_score": 0.1528176229508197,
+            "matched_terms": [
+                "and",
+                "be",
+                "but",
+                "by",
+                "during",
+                "execution",
+                "in",
+                "is",
+                "or",
+                "pressure",
+                "query",
+                "statement",
+                "system",
+                "table",
+                "the",
+                "to",
+                "together",
+                "variable",
+                "workload"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "3915",
+                "error_name": "ER_SYSVAR_CHANGE_DURING_QUERY",
+                "official_description": "A plugin was loaded or unloaded during a query, a system variable table was changed.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

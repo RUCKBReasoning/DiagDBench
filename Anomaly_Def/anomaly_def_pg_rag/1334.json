@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Storage Space Capacity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Sessions compete for hot or repeatedly-evicted buffer pages, latches, and in-flight I/O slots, causing stalls and spin-loops below the lock manager. \nStorage Space Capacity Anomaly : Physical or logical free space in data, log, temp, or backup areas reaches hard limits, producing allocation failures and halting growth-related operations. \nOperating System Resource Limit Anomaly : Kernel-enforced ceilings on file handles, shared memory, semaphores, thread counts, or cgroup quotas are exhausted, preventing the database from opening files, spawning workers, or allocating IPC objects.\n\nWhen these three root causes strike concurrently, the database exhibits a compound failure mode: massive buffer-busy and page-latch waits drive CPU usage upward while throughput collapses; simultaneous space exhaustion triggers data-file auto-extend errors, log-switch stalls, temp-space sort failures, and repeated retry I/O bursts; in parallel, the kernel refuses new file descriptors, shared memory segments, or threads, so checkpoints, background writers, and recovery processes abort or hang. Operators observe an explosive growth in wait events (buffer I/O, latch, space allocation, and OS resource errors), sessions freezing mid-transaction, orphaned processes that cannot exit cleanly, and mixed symptoms that obscure any single root cause.\n\nCausally, hot-page contention forces intense churn in the buffer pool, inflating dirty page counts and accelerating disk writes; this hastens the consumption of remaining free space, pushing the system toward storage exhaustion. As space fills, the engine repeatedly opens and closes files, allocates temporary segments, and spawns error-handling workers, rapidly consuming file handles, shared memory, and thread quotas until OS limits are hit. Conversely, once OS limits block new file or I/O allocations, checkpoints and flush threads back up, leaving dirty buffers pinned longer and amplifying latch contention. The three anomalies therefore reinforce one another, creating a feedback loop that degrades throughput, inflates latency, and can culminate in a full service outage unless all contributing layers—buffer management, storage capacity, and operating-system limits—are simultaneously relieved.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.3330796867018747,
+            "bm25_score": 12.600376511851968,
+            "lexical_score": 0.11644549763033174,
+            "matched_terms": [
+                "and",
+                "are",
+                "closes",
+                "from",
+                "handling",
+                "in",
+                "latency",
+                "of",
+                "or",
+                "preventing",
+                "sessions",
+                "the",
+                "this",
+                "when"
+            ],
+            "match_count": 92,
+            "entry": {
+                "timeout_id": "pg16_authentication_timeout",
+                "parameter_name": "authentication_timeout",
+                "timeout_category": "connection_authentication_timeout",
+                "scope": "server",
+                "official_definition": "Maximum amount of time allowed to complete client authentication; if not completed in time, the server closes the connection.",
+                "trigger_condition": "A would-be client does not complete the authentication protocol within authentication_timeout.",
+                "workload_impact": "The server closes the connection attempt, preventing hung clients from occupying a connection indefinitely.",
+                "default_behavior": "Default value is one minute.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

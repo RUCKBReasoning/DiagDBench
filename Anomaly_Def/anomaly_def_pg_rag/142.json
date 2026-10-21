@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + MVCC Version Maintenance Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently picks or re-uses an execution plan whose estimated cost is far lower than its real runtime cost, even though statistics are adequate.\nMVCC Version Maintenance Anomaly : Obsolete row versions and logically deleted index entries accumulate faster than background cleaners can reclaim them, inflating table and index size and adding visibility-check overhead.\nTransaction Log Subsystem Anomaly : Redo/commit log generation, flushing, or archival becomes the primary bottleneck, driving up commit latency and stalling write activity.\n\nComposite definition: The database simultaneously suffers from sub-optimal plan selection, runaway MVCC version buildup, and saturation of the transaction-log path. All three root causes are active at the same time, creating a compound performance and stability issue that spans the optimizer, storage engine, and durability layer.\n\nCombined phenomena: 1) Queries that once completed quickly now switch between table scans and poorly parameterized index paths, inflating row touch counts. 2) The excess row touches manifest as a surge of UPDATE/DELETE and vacuum traffic, causing the version store and on-disk heap to grow rapidly. 3) Checkpoints, log-flush waits, and archive-lag alerts appear alongside rising commit latency; long-running queries held open by bad plans keep old snapshots alive, preventing cleanup and forcing the log manager to retain older segments. 4) Planner misestimates grow worse because bloat skews statistics, leading to even heavier scans, more undo/redo generation, and longer transaction lifetimes, making it increasingly difficult to isolate any single symptom from the others.\n\nCausal chain: Sub-optimal plans amplify row accesses and modification volume, which explodes MVCC version creation. The inflated version store increases physical I/O and statistics drift, feeding back into even poorer plan choices. The heightened DML throughput and prolonged transactions generate large bursts of redo; simultaneously, the MVCC cleanup lag forces the log subsystem to retain old segments for snapshot visibility, pushing log buffers, disk groups, and archivers past capacity. Log-flush delays lengthen commit times, extending transaction lifespans, which further pins row versions and perpetuates the cycle. The intertwined feedback loops among the optimizer, MVCC cleaner, and log manager thus escalate latency, resource consumption, and risk of outage far beyond what any of the individual anomalies would cause in isolation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.393601522686745,
+            "bm25_score": 17.50191353460299,
+            "lexical_score": 0.12552845528455286,
+            "matched_terms": [
+                "activity",
+                "and",
+                "are",
+                "check",
+                "completed",
+                "from",
+                "in",
+                "is",
+                "latency",
+                "of",
+                "or",
+                "preventing",
+                "the",
+                "time",
+                "to",
+                "would"
+            ],
+            "match_count": 73,
+            "entry": {
+                "timeout_id": "pg16_authentication_timeout",
+                "parameter_name": "authentication_timeout",
+                "timeout_category": "connection_authentication_timeout",
+                "scope": "server",
+                "official_definition": "Maximum amount of time allowed to complete client authentication; if not completed in time, the server closes the connection.",
+                "trigger_condition": "A would-be client does not complete the authentication protocol within authentication_timeout.",
+                "workload_impact": "The server closes the connection attempt, preventing hung clients from occupying a connection indefinitely.",
+                "default_behavior": "Default value is one minute.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Storage Space Capacity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Excessive accumulation of obsolete row versions and index entries because background cleanup cannot keep pace with update/delete churn, inflating the version store and scan/visibility overhead.\nStorage Space Capacity Anomaly : Physical or logical free space in data, log, archive, temp, or backup areas falls to critical levels, causing allocation failures and write stalls.\nOperating System Resource Limit Anomaly : Kernel-enforced ceilings on file descriptors, shared-memory segments, semaphores, threads, or similar objects are reached, preventing the database from creating or accessing required OS resources.\n\nWhen all three anomalies co-exist, the database exhibits compounding symptoms: rapid growth of data files, rollback segments, and indexes consumes remaining disk space, while the engine’s attempts to extend files, write WAL/redo, build temp objects, or create new version segments start to fail with no-space errors. Simultaneously, the profusion of version and temp files inflates the number of open file handles and shared-memory allocations, driving the system into kernel-level limit breaches that manifest as sporadic session failures, inability to fork background or parallel workers, and repeated \"too many open files\" or \"cannot allocate shared memory\" messages in both database and system logs. Autovacuum/cleanup workers run constantly yet make little progress because they cannot allocate additional disk or OS resources, leading to escalating transaction-ID wraparound warnings, runaway checkpoint and archive backlogs, deteriorating query latency, and eventual cluster-wide freeze.\n\nCausally, heavy update/delete activity generates large volumes of dead tuples; if cleanup workers are throttled or blocked by long-running snapshots, the version store swells. The bloated heap and indexes rapidly deplete free storage, pushing the system into space-pressure territory. Near-full filesystems force frequent, fragmented auto-extensions and generate many small segment files, multiplying the number of file descriptors the engine must keep open. This surge, combined with intensified cleanup and retry logic, drives consumption of kernel objects (FDs, semaphores, threads) until OS limits are hit. Once either space or OS resources are exhausted, cleanup workers fail to start or complete, further accelerating MVCC bloat and space consumption in a vicious feedback loop that culminates in service outages, data-modification failures, and degraded read performance.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.5753961116328676,
+            "bm25_score": 23.05386807369698,
+            "lexical_score": 0.11548627583869875,
+            "matched_terms": [
+                "and",
+                "attempts",
+                "because",
+                "cannot",
+                "in",
+                "or",
+                "required",
+                "retry",
+                "session",
+                "the",
+                "this",
+                "to",
+                "transaction",
+                "when",
+                "while"
+            ],
+            "match_count": 146,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

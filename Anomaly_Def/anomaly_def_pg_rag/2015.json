@@ -1,0 +1,59 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + CPU Resource Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level statement or transaction design forces the engine to process far more data or rows than the true business need. \nCPU Resource Anomaly : Database-related processes saturate host CPU cycles, creating system-wide compute contention. \nOperating System Resource Limit Anomaly : Kernel-enforced limits on file handles, threads, shared memory, or similar objects are reached, preventing the database from acquiring additional OS resources. \n\nWhen all three root causes coexist, the database exhibits a layered failure pattern: statement latencies grow long and variable; CPU utilization hovers at or above core capacity with high run-queue lengths; meanwhile, new sessions, parallel workers, or I/O requests intermittently fail with \"too many open files,\" \"cannot create thread,\" or shared-memory errors. Slow-query logs and performance views show repeated, bloated SQL with extreme CPU time, while the error log and system journal simultaneously record kernel resource-limit denials. End-user symptoms range from sporadic timeouts and retries to partial outages where existing sessions crawl while new connections are rejected.\n\nCausally, inefficient SQL constructs (wide scans, Cartesian joins, long-lived transactions) drive excessive CPU demand. The resulting saturation lengthens task runtimes and escalates context switches, increasing the number of concurrent threads, open file descriptors, and asynchronous I/O contexts the database tries to allocate. As CPU pressure rises, the engine spawns more background or parallel workers in an attempt to keep up, rapidly depleting kernel-level quotas. Once an OS limit is hit, the database cannot create additional execution or I/O resources, which forces even well-written queries to queue behind stuck tasks, further extending transaction lifetimes and compounding CPU consumption. The feedback loop—inefficient SQL → CPU exhaustion → kernel limit exhaustion → wider systemic slowdown—amplifies each individual anomaly and can culminate in cascading service degradation or outage.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.4895676586957647,
+            "bm25_score": 28.15801027334586,
+            "lexical_score": 0.16010558069381597,
+            "matched_terms": [
+                "an",
+                "and",
+                "cannot",
+                "context",
+                "from",
+                "is",
+                "long",
+                "of",
+                "open",
+                "or",
+                "preventing",
+                "query",
+                "sessions",
+                "statement",
+                "than",
+                "the",
+                "time",
+                "transaction",
+                "transactions",
+                "user",
+                "when",
+                "while"
+            ],
+            "match_count": 261,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

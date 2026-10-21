@@ -1,0 +1,63 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Database Memory Allocation Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Obsolete row versions, rollback records and dead index entries accumulate faster than background cleanup can reclaim them, inflating on-disk structures and visibility-check overhead.\nDatabase Memory Allocation Anomaly : The database process allocates more RAM and swap than the host can safely supply, driving paging, OOM events, and cache-turnover stalls.\nNetwork and Connectivity Resource Anomaly : Listener, socket, or network-path resources become saturated, leading to slow or failed connection establishment and stalled result transmission.\n\nWhen all three anomalies manifest together the system exhibits a tangled symptom set: bloated tables enlarge I/O and memory footprints, pushing the buffer cache and worker arenas beyond physical limits; the ensuing memory pressure causes aggressive eviction, swap-outs, and stalled backends whose result buffers cannot be flushed because client networks are congested. Clients experience timeouts both while connecting and while awaiting results; the server side shows growing numbers of idle-in-transaction sessions holding old snapshots, high background-writer and vacuum duty cycles, runaway resident-set growth, frequent OOM kills or NUMA rebalancing spikes, and a swelling backlog of half-open sockets. Monitoring may report simultaneously dropping cache-hit ratios, escalating disk reads, and elevated round-trip times, making it hard to attribute performance collapse to any single layer.\n\nCausally, heavy update/delete churn creates MVCC bloat that inflates the buffer cache requirement; this in turn accelerates memory exhaustion, which triggers kernel paging and prolongs every I/O. Memory stress delays background cleanup workers, letting version stores grow still faster—a positive feedback loop. Concurrently, memory-starved backends take longer to produce and transmit result sets; these longer-lived sessions monopolize network sockets and max out connection pools, which increases connection retries and amplifies network congestion. The congested network then slows snapshot-holding clients, further preventing cleanup of old versions. Thus, MVCC debris drives memory overcommit, memory pressure hampers cleanup, and impaired connectivity locks sessions in place, collectively deepening resource depletion and pushing the OLTP system toward cascading latency and availability failures.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.674069113985298,
+            "bm25_score": 24.570730865699943,
+            "lexical_score": 0.18201923076923077,
+            "matched_terms": [
+                "and",
+                "are",
+                "can",
+                "check",
+                "client",
+                "connection",
+                "dead",
+                "establishment",
+                "holding",
+                "idle",
+                "latency",
+                "longer",
+                "network",
+                "of",
+                "on",
+                "or",
+                "pools",
+                "sessions",
+                "socket",
+                "system",
+                "than",
+                "the",
+                "this",
+                "to",
+                "together",
+                "when",
+                "which"
+            ],
+            "match_count": 212,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_idle",
+                "parameter_name": "tcp_keepalives_idle",
+                "timeout_category": "network_idle_keepalive_probe_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time with no network activity after which the operating system should send a TCP keepalive message to the client.",
+                "trigger_condition": "A TCP client connection has no network activity longer than tcp_keepalives_idle on systems supporting TCP_KEEPIDLE or an equivalent socket option.",
+                "workload_impact": "Starts TCP keepalive probing for an otherwise idle client connection; together with interval and count settings this can lead to dead connection detection.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

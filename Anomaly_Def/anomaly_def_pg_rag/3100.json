@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Data Block and Index Integrity Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently chooses a substantially sub-optimal execution plan even though statistics are acceptable.\nData Block and Index Integrity Anomaly : Physical pages or index structures are internally inconsistent with the logical contents of the database, leading to unreliable access paths and data retrieval.\nStorage Space Capacity Anomaly : A hard limit is reached on data files, temp areas, logs, or backup destinations, preventing further space allocation.\n\nComposite definition: This anomaly represents the database instance in which (1) the optimizer is selecting poor plans, (2) underlying data and index pages are corrupted or inconsistent, and (3) the storage layer is at or beyond its space capacity—all at the same time while the workload is executing.\n\nCombined anomalous phenomena: • Identical SQL statements oscillate between radically different plans; many fall back to full table scans because damaged indexes are marked unusable or return incorrect results. • Full scans, bad join orders, and loss of parallelism inflate I/O volume, temp-space usage, and redo generation, rapidly consuming the last free blocks in data, temp, and log areas. • Queries that do find and use corrupt indexes may return wrong or duplicate rows, causing application retries that drive even more log growth and temp spills. • Space-exhaustion errors (\"cannot allocate extent\", \"log full\", \"temp space exhausted\") interleave with corruption messages (checksum failures, key-order violations) and plan-cache invalidations, making the root cause set hard to distinguish. • Recovery or repair utilities abort mid-run because the required work space or logs cannot be extended, leaving additional orphaned segments and further plan instability.\n\nCausal chain and interaction: Corrupted indexes mislead the optimizer, producing drastic mis-estimates that trigger sub-optimal plans and heavy resource usage. The inflated I/O, sort, and redo volume quickly depletes the already scarce storage, converting latent space pressure into hard allocation failures. In turn, space exhaustion prevents index rebuilds, online repair, or even clean checkpointing, allowing corruption to persist and spread. The sudden invalidation of unusable indexes forces the optimizer to re-optimize and often choose even less efficient plans, which further accelerates space growth, creating a vicious feedback loop that degrades both performance and data reliability.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 218,
+            "score": 0.25032079287591047,
+            "bm25_score": 14.163424504854083,
+            "lexical_score": 0.1460588367392769,
+            "matched_terms": [
+                "and",
+                "be",
+                "data",
+                "execution",
+                "in",
+                "inconsistent",
+                "instability",
+                "is",
+                "its",
+                "or",
+                "pressure",
+                "resource",
+                "sql",
+                "the",
+                "to",
+                "trigger",
+                "with",
+                "workload"
+            ],
+            "match_count": 15,
+            "entry": {
+                "error_code": "HV021",
+                "error_name": "fdw_inconsistent_descriptor_information",
+                "official_description": "fdw inconsistent descriptor information",
+                "error_class": "Class HV - Foreign Data Wrapper Error (SQL/MED)",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

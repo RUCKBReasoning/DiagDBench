@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Database Configuration Parameter Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent sessions compete for incompatible locks on the same data or metadata resources, causing waits, blocking chains, and potential deadlocks.\nDatabase Configuration Parameter Anomaly : Engine-level settings for memory, logging, checkpointing, parallelism, or worker limits are mis-tuned relative to hardware capacity and workload demands, leading to secondary bottlenecks despite apparently idle resources.\nStorage Space Capacity Anomaly : Data files, log segments, temp areas, or archive destinations run out of free space, producing allocation failures and halting write activity.\n\nWhen all three root causes surface simultaneously, the system exhibits intertwined symptoms: lock wait time and deadlock frequency rise sharply while transaction commit latency unpredictably spikes; background checkpoints or log flushes thrash yet disks show uneven utilization; sudden \"out of space\" or \"cannot extend\" errors abort long-held transactions, leaving other sessions blocked behind locks that cannot be released; connection pools back up as new requests wait both for locks and for space-related retries; monitoring shows memory pools oscillating because mis-sized buffers amplify checkpoint storms that collide with lock-held pages, and automatic retry storms enlarge temp and log usage until capacity thresholds are breached.\n\nCausally, misconfigured parameters can lengthen transaction lifetimes (e.g., too-slow checkpoints or oversized work_mem prompting large spills), thereby keeping locks active longer and intensifying contention. Prolonged blocking inflates undo and redo growth, accelerating consumption of data-file, log, and temp space. As free space dwindles, allocation failures trigger rollbacks or force log-flush pauses, which in turn hold critical locks even longer and push more sessions into the wait queues, feeding back into lock contention. Each anomaly thus magnifies the others: poor configuration creates the conditions for lock buildup; lock buildup drives explosive space usage; space exhaustion stalls writes and rollbacks, freezing locks in place and deepening the overall performance crisis.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 140,
+            "score": 0.7493269230769231,
+            "bm25_score": 63.218855395246536,
+            "lexical_score": 0.1644230769230769,
+            "matched_terms": [
+                "and",
+                "blocking",
+                "chains",
+                "concurrent",
+                "deadlock",
+                "engine",
+                "for",
+                "incompatible",
+                "lock",
+                "or",
+                "resources",
+                "retry",
+                "same",
+                "the",
+                "transaction",
+                "transactions",
+                "with",
+                "write"
+            ],
+            "match_count": 9,
+            "entry": {
+                "error_code": "40P01",
+                "error_name": "deadlock_detected",
+                "official_description": "deadlock detected",
+                "error_class": "Class 40 - Transaction Rollback",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "concurrency_and_transaction",
+                "cause_analysis": "The failure is typically associated with concurrent transactions contending for the same logical resources, incompatible lock acquisition order, or transaction-state conflicts surfaced by the engine.",
+                "solution_guidance": "Inspect blocking chains, reduce conflicting write overlap, shorten transaction lifetime, review lock acquisition order, and verify whether transaction scheduling or retry logic needs adjustment.",
+                "observable_symptoms": [
+                    "blocking",
+                    "rollback",
+                    "retry",
+                    "stalled transaction"
+                ]
+            }
+        }
+    }
+]

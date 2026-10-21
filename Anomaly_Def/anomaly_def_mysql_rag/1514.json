@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Replication Synchronization Anomaly + CPU Resource Anomaly",
+            "Description": "Database Memory Allocation Anomaly : Excessive growth of buffer caches, work areas, or other engine heaps drives the host into sustained memory pressure.\nReplication Synchronization Anomaly : Stand-by or downstream replicas cannot receive or apply the primary’s transaction log fast enough, causing widening replication lag.\nCPU Resource Anomaly : Database processes consume most or all available CPU cycles, saturating the host scheduler.\n\nWhen all three root causes occur together the system exhibits an intertwined failure pattern: memory pressure triggers paging and stalls, while CPU saturation lengthens every critical path—foreground queries, background check-pointers, and replica receiver / applier threads alike. Replica apply lag widens rapidly, retaining ever-larger log segments on the primary; these segments increase both disk and in-memory metadata footprints, aggravating the already tight memory envelope. Operators may observe \"run-queue\" and \"memory-pressure\" wait events simultaneously, soaring context-switch rates, growing WAL/redo queues, expanding plan and buffer eviction churn, and replicas drifting so far behind that read scalability and fail-over readiness collapse.\n\nCausal chain: (1) Heavy workload or run-away operations inflate per-session work areas and caches, pushing the engine beyond safe RAM limits and causing OS paging; (2) paging and cache churn escalate CPU demand as the engine repeatedly faults and re-loads pages; (3) with CPU now saturated, replication receiver and applier threads are de-scheduled more frequently and replay throughput drops; (4) falling replay throughput forces the primary to retain more log segments and in-memory replication state, further swelling memory usage and intensifying pressure; (5) this positive feedback loop amplifies latency across the whole workload and risks OOM kills, primary node eviction, or replica divergence. The mutual reinforcement of memory exhaustion, CPU starvation, and replication backlog makes the composite anomaly harder to diagnose than any single component defect.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.525477527704758,
+            "bm25_score": 21.100390766107182,
+            "lexical_score": 0.14045238095238094,
+            "matched_terms": [
+                "and",
+                "are",
+                "check",
+                "latency",
+                "more",
+                "of",
+                "or",
+                "read",
+                "replica",
+                "replication",
+                "session",
+                "than",
+                "the",
+                "this",
+                "to",
+                "wait",
+                "when"
+            ],
+            "match_count": 72,
+            "entry": {
+                "timeout_id": "mysql84_replica_network_timeout",
+                "parameter_name": "replica_net_timeout",
+                "timeout_category": "replication_network_timeout",
+                "scope": "global/replication",
+                "official_definition": "The number of seconds to wait for more data from a source/replica connection before aborting the read.",
+                "trigger_condition": "A replica waits longer than replica_net_timeout for more data from the source connection.",
+                "workload_impact": "The replication network read is aborted and the replica considers the connection interrupted.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

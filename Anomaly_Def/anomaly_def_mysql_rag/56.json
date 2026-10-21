@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions request conflicting locks on the same rows, pages, or metadata, producing long blocker-waiter chains or deadlocks that suspend or abort work until locks are released.\nStorage I/O Throughput Anomaly : The physical storage layer cannot supply the needed read/write bandwidth or IOPS, driving up I/O latency and queue depths for data, log, and temp files.\n\nComposite anomaly definition: The database simultaneously suffers from severe lock-manager contention while the underlying storage subsystem is saturated, so that blocking waits and deadlock retries are compounded by prolonged physical I/O delays, creating a feedback loop that cripples transactional throughput.\n\nCombined observable phenomena: Lock-wait and deadlock graphs lengthen and recur more frequently; sessions stay in lock-wait states far longer than usual because the holders of critical locks are themselves stalled on slow disk reads or log flushes. Overall response times and commit latency spike, CPU usage remains modest, and connection pools back up as both lock and I/O wait classes dominate performance monitors. Deadlock victims may rise, yet retries often re-encounter the same blocked resources because the underlying I/O bottleneck prevents rapid forward progress. Batch windows stretch, and application timeouts increase even for read-only workloads due to lock queues behind long-running write transactions.\n\nCausal chain interaction: Storage saturation lengthens the execution and commit duration of transactions, extending the lifetime of their locks and increasing the probability that other sessions will conflict with them. Those blocked sessions accumulate, enlarge lock queues, and may form deadlock cycles that force rollbacks and retries, which in turn generate additional I/O and further stress the already constrained storage subsystem. Conversely, the surge of retried or piled-up transactions multiplies random I/O requests, exacerbating device queue depths and widening latency, creating a vicious circle where lock contention and I/O bottlenecks reinforce each other and jointly deteriorate overall OLTP system performance.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1035,
+            "score": 0.7545902267694766,
+            "bm25_score": 91.53763127281161,
+            "lexical_score": 0.18712284482758618,
+            "matched_terms": [
+                "and",
+                "because",
+                "blocking",
+                "by",
+                "chains",
+                "concurrent",
+                "conflicting",
+                "deadlock",
+                "for",
+                "is",
+                "lifetime",
+                "lock",
+                "may",
+                "on",
+                "or",
+                "resources",
+                "same",
+                "stalled",
+                "the",
+                "transaction",
+                "transactions",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "3199",
+                "error_name": "ER_BINLOG_UNSAFE_XA",
+                "official_description": "Statement is unsafe because it is being used inside a XA transaction. Concurrent XA transactions may deadlock on replicas when replicated using statements.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "concurrency_and_transaction",
+                "cause_analysis": "The failure is typically associated with concurrent transactions contending for the same logical resources, incompatible lock acquisition order, or transaction-state conflicts surfaced by the engine.",
+                "solution_guidance": "Inspect blocking chains, reduce conflicting write overlap, shorten transaction lifetime, review lock acquisition order, and verify whether transaction scheduling or retry logic needs adjustment.",
+                "observable_symptoms": [
+                    "blocking",
+                    "rollback",
+                    "retry",
+                    "stalled transaction"
+                ]
+            }
+        }
+    }
+]

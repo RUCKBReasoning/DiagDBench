@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + MVCC Version Maintenance Anomaly + Database Memory Allocation Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions hold or request mutually incompatible locks on the same rows, pages, or metadata, forming long blocking chains or deadlocks that stall progress until victims are rolled back.\nMVCC Version Maintenance Anomaly : Obsolete row versions and undo records accumulate faster than background cleaners can reclaim them, inflating the version store and degrading visibility checks.\nDatabase Memory Allocation Anomaly : Buffer caches, work areas, and other in-memory structures grow beyond the host’s safe capacity, provoking paging, OOM kills, or instance restarts.\n\nWhen these three root causes strike at once, the database exhibits a toxic mix of symptoms:  \n• Sessions pile up in lock-wait or deadlock retry loops while overall transaction throughput and application responsiveness collapse.  \n• Heap and index footprints balloon because cleanup workers are prevented from advancing the snapshot horizon, inflating on-disk size, slowing sequential scans, and further stressing shared buffers.  \n• The surging version store and proliferating lock objects consume large amounts of shared memory; combined with unbounded per-query work areas and buffer-cache churn, this tips the host into heavy paging or OOM events.  \n• Monitoring shows simultaneous spikes in lock-wait time, deadlock detections, bloat and vacuum/autovacuum lag, rapidly growing memory RSS, and degraded cache hit ratios; emergency restarts may occur, wiping in-flight work and masking the underlying dual/triple interaction.\n\nCausal interaction: Hot rows or long-running transactions first create lock contention. Blocked or orphaned transactions hold snapshots open, freezing the MVCC cleanup horizon and causing rapid version accumulation. The expanding version store must be cached or paged, driving up shared-memory and OS memory consumption. Rising memory pressure slows background cleaners, which further delays version reclamation, while paging elongates lock-hold durations as transactions struggle to read bloated pages. This positive feedback loop tightens lock contention, accelerates bloat, and amplifies memory exhaustion, ultimately threatening database availability through deadlocks, timeouts, and process termination.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1608,
+            "score": 0.6447743039947996,
+            "bm25_score": 74.54840662885648,
+            "lexical_score": 0.13947551959827031,
+            "matched_terms": [
+                "and",
+                "blocking",
+                "chains",
+                "concurrent",
+                "incompatible",
+                "lock",
+                "or",
+                "other",
+                "retry",
+                "same",
+                "the",
+                "this",
+                "to",
+                "transaction",
+                "transactions",
+                "wait",
+                "when",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "4077",
+                "error_name": "ER_CONCURRENT_PROCEDURE_USAGE",
+                "official_description": "The %s was called when there was already another concurrent call to this procedure. No action was taken. Wait for other calls to %s to finish before retrying.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "concurrency_and_transaction",
+                "cause_analysis": "The failure is typically associated with concurrent transactions contending for the same logical resources, incompatible lock acquisition order, or transaction-state conflicts surfaced by the engine.",
+                "solution_guidance": "Inspect blocking chains, reduce conflicting write overlap, shorten transaction lifetime, review lock acquisition order, and verify whether transaction scheduling or retry logic needs adjustment.",
+                "observable_symptoms": [
+                    "blocking",
+                    "rollback",
+                    "retry",
+                    "stalled transaction"
+                ]
+            }
+        }
+    }
+]

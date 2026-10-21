@@ -1,0 +1,47 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + MVCC Version Maintenance Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently chooses a sub-optimal execution plan despite having reasonably accurate statistics, leading to inefficient access paths, poor parallelism choices, or pathological join orders.\nMVCC Version Maintenance Anomaly : Obsolete row versions and rollback records accumulate faster than background cleaners can reclaim them, inflating table and index size and lengthening visibility checks.\nBuffer Cache and Latch Contention Anomaly : Concurrent sessions compete for hot buffer pages and their latches, causing wait events, spinning, and throughput collapse.\n\nWhen all three faults coexist, the workload exhibits cascading performance degradation: execution plans flip between selective index probes and full scans over bloated base tables; scans and joins touch far more pages because of MVCC bloat, which in turn overpopulates the buffer cache and keeps hot root and visibility-map pages under heavy latch pressure. Operators that the optimizer mistakenly favored (e.g., nested loops on underestimated row counts) encounter massive I/O and latch waits, producing sharp latency spikes, CPU spin, and stall chains that are hard to attribute to any single layer. Autovacuum or cleanup workers may run continuously yet fail to catch up, while query plans churn in the cache as statistics drift due to the bloated heap, further destabilizing performance.\n\nThe causal loop is self-reinforcing: sub-optimal plans increase I/O volume and prolong statement execution, which delays transaction completion and lengthens the lifespan of old snapshots, thereby slowing MVCC cleanup and enlarging the version store. The growing heap and index bloat enlarge the working-set footprint, forcing more pages through a limited buffer pool and creating hot-page hotspots where many sessions contend for latches. Elevated latch waits extend query runtimes, giving the optimizer more chances to mis-select plans based on stale or skewed runtime feedback, and stretching transactions even further. This spiraling interaction among poor plan choice, MVCC bloat, and buffer contention can push an OLTP system into a persistent low-throughput, high-latency state until all three issues are addressed in concert.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1518,
+            "score": 0.3269967923747036,
+            "bm25_score": 36.56307442996032,
+            "lexical_score": 0.12095547309833024,
+            "matched_terms": [
+                "and",
+                "as",
+                "execution",
+                "is",
+                "or",
+                "select",
+                "statement",
+                "table",
+                "that",
+                "the",
+                "transaction",
+                "under",
+                "version"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "3976",
+                "error_name": "ER_FOREIGN_KEY_WITH_ATOMIC_CREATE_SELECT",
+                "official_description": "Foreign key creation is not allowed with CREATE TABLE as SELECT and CREATE TABLE with START TRANSACTION statement.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "sql_and_parser",
+                "cause_analysis": "The failure is typically associated with unsupported syntax, invalid statement structure, or feature usage that the target engine version cannot execute as written.",
+                "solution_guidance": "Validate SQL syntax, target-engine compatibility, statement shape, and whether the feature is supported under the current engine version or execution context.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "syntax error",
+                    "feature rejection"
+                ]
+            }
+        }
+    }
+]

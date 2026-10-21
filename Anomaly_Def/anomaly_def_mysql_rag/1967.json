@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Storage Space Capacity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly: Redo generation, buffering, flushing, or archiving becomes the bottleneck on the write path.\nStorage Space Capacity Anomaly: Critical free-space exhaustion anywhere in the database storage hierarchy, causing allocation failures rather than pure latency problems.\nOperating System Resource Limit Anomaly: Kernel-enforced limits on file handles, shared memory, semaphores, threads, or similar objects are reached, preventing the database from acquiring additional OS resources.\n\nWhen these three root causes strike simultaneously, the database experiences a multi-layer blockage on every path needed to persist and manage redo. Commits begin to queue behind long log-flush waits; alert logs show rapid log-file switches that cannot complete; archiver and backup processes report \"device full\" or \"cannot open file\" errors; free space in both active log and archive destinations plummets; and parallel workers or new client sessions intermittently fail because the engine cannot obtain additional file descriptors, shm segments, or threads. The overlapping symptoms make it appear as a generic \"database hang,\" but metrics reveal concurrent spikes in commit latency, space-usage alarms, and kernel denials.\n\nCausal chain: Heavy transactional load pushes the log subsystem to create and switch log segments at a high rate. This accelerates space consumption; once archive or log destinations near capacity, switches stall, trapping active transactions in \"log file switch (checkpoint incomplete)\" waits. Meanwhile, the same churn inflates the number of open log files, archive handles, and background workers, quickly exhausting per-process or cgroup file-handle and thread limits. Hitting OS limits causes archiver and checkpoint processes to fail at opening new files, which in turn prevents log recycling and releases no space, pushing the storage tier to full even faster. Conversely, storage exhaustion forces the engine to keep more log files open and retry writes, further leaking kernel objects and accelerating the breach of OS quotas. The feedback loop between log bottlenecks, space exhaustion, and OS resource starvation amplifies latency, precipitates commit freezes, and can culminate in a full outage that persists until all three constraints—log throughput, free space, and OS limits—are relieved together.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.7418235294117647,
+            "bm25_score": 21.441070078671117,
+            "lexical_score": 0.13941176470588235,
+            "matched_terms": [
+                "and",
+                "because",
+                "cannot",
+                "client",
+                "number",
+                "obtain",
+                "of",
+                "or",
+                "retry",
+                "sessions",
+                "than",
+                "the",
+                "this",
+                "to",
+                "transaction",
+                "waits",
+                "when",
+                "write"
+            ],
+            "match_count": 93,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

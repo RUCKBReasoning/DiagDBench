@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly: The write-ahead logging path—log buffer, log files, archiver, or replication-retention pipeline—cannot persist or advance redo fast enough, stalling commits and checkpoints.\nNetwork and Connectivity Resource Anomaly: Client/server communication or connection-handling facilities—network links, listeners, socket queues, authentication threads—are saturated or unstable, delaying session establishment and data transfer.\n\nWhen both anomalies manifest concurrently, users experience a mixture of severe commit latency, intermittent session timeouts, and sudden pauses in workload progress. Commit, log-flush, and log-sync waits rise sharply while, at the same time, new or idle sessions encounter long TLS handshakes, SYN backlog drops, or \"too many connections\" errors. Queued transactions hold locks and pins, causing cascading contention that further lengthens response times. Archive and replication lag grows because log files cannot be shipped over an already congested network, leading to log-file directory bloat and eventual log-space exhaustion; once log switches stall, write workloads freeze and a surge of client retries floods the overstressed listener.\n\nCausally, packet loss, high round-trip times, or exhausted connection workers slow archive/replica transport, which in turn prevents timely log segment clearance; retained segments fill the log device, throttling new log writes and elongating commit paths. Conversely, prolonged commit latency forces application threads to remain in open transactions longer, inflating connection counts and data queued for client delivery, thereby intensifying network socket pressure and retransmissions. The positive feedback loop between an overwhelmed log subsystem and degraded connectivity accelerates resource exhaustion on both fronts, making the composite failure mode harder to diagnose and more disruptive than either anomaly in isolation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.6360679200383805,
+            "bm25_score": 24.11873568104413,
+            "lexical_score": 0.1459389441254726,
+            "matched_terms": [
+                "and",
+                "be",
+                "because",
+                "contention",
+                "long",
+                "longer",
+                "more",
+                "of",
+                "or",
+                "path",
+                "resource",
+                "session",
+                "than",
+                "that",
+                "the",
+                "time",
+                "too",
+                "when",
+                "workload"
+            ],
+            "match_count": 225,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,47 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Transaction Log Subsystem Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Concurrent sessions serialize on hot buffer-cache pages, page pins, or latches, stalling foreground work and consuming CPU in spin or sleep loops.\nTransaction Log Subsystem Anomaly : Commit processing and write-ahead logging are throttled by slow or saturated log buffers, files, or archiver/replication pipelines, inflating log-related wait events and commit latency.\nOperating System Resource Limit Anomaly : Kernel-enforced ceilings on file descriptors, shared memory, semaphores, threads, or AIO contexts are reached, preventing the database from allocating required OS objects.\n\nWhen these three root causes strike together the database exhibits a tangled symptom set: \n• Sharp spikes in buffer-busy, page-latch, log-flush, and log-sync waits, with foreground sessions oscillating between CPU spin on latches and sleeps on log writes.\n• Commit latency and overall transaction response times become highly erratic; small transactions pile up behind log flushes while also contending for hot index or sequence pages.\n• System and engine alert logs show failures to open files, allocate shared memory, or start background workers (e.g., archivers, checkpoint or buffer-flush helpers), and may report \"too many open files\" or semaphore exhaustion.\n• Throughput collapses as latch spin amplifies CPU usage, while log files fill faster than they can be archived, leading to log-switch storms and potential \"out of space\" or \"cannot allocate log buffer\" errors.\n• Performance tools reveal overlapping plateaus of CPU saturation, I/O queue buildup on the log device, and kernel resource allocation errors, making it difficult to attribute the slowdown to any single layer.\n\nCausal chain and interaction: Intense OLTP activity concentrates reads and writes on a few hot pages, extending latch hold times and inflating redo generation. The surge in commit requests drives the transaction-log subsystem to its throughput limits; prolonged log flushes keep transactions open longer, which in turn keeps latches and buffer pins held, deepening buffer-cache contention. As sessions and background processes retry I/O and spawn additional helper threads, they consume extra file handles, AIO contexts, and semaphores. If OS resource limits are already tight, these retries quickly exhaust kernel quotas, causing further failures to allocate log files, buffer I/O slots, or worker threads. The three anomalies therefore reinforce one another in a positive feedback loop—buffer contention prolongs transactions, inflated commit volume stresses the log, log stall increases latch hold duration, and both layers drive up kernel object usage until OS limits impose a hard stop—culminating in severe, workload-wide stalls or outages.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 86,
+            "score": 0.19558669552136523,
+            "bm25_score": 9.73500172664965,
+            "lexical_score": 0.11241379310344828,
+            "matched_terms": [
+                "and",
+                "be",
+                "by",
+                "engine",
+                "in",
+                "its",
+                "or",
+                "required",
+                "resource",
+                "the",
+                "to",
+                "together",
+                "with",
+                "workload"
+            ],
+            "match_count": 9,
+            "entry": {
+                "error_code": "2203F",
+                "error_name": "sql_json_scalar_required",
+                "official_description": "sql json scalar required",
+                "error_class": "Class 22 - Data Exception",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

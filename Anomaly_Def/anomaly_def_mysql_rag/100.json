@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Storage Space Capacity Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Excessive serialization while acquiring buffer-cache pages, page pins, or latches, causing CPU spin and inflated buffer-busy waits.\nStorage Space Capacity Anomaly : Exhaustion of free space in data, log, temp, or backup areas, leading to allocation failures, stalled checkpoints, or log switches.\nNetwork and Connectivity Resource Anomaly : Saturation or instability in the client/server network or connection pool, producing connection timeouts, refused sessions, and socket-level backlog.\n\nCombined anomalous phenomena: When all three root causes strike together, sessions that finally obtain a connection experience erratic response times dominated by buffer-busy and page-latch waits, only to hit \"no space left\" or \"cannot extend\" errors mid-statement. Concurrently, stalled checkpoints and blocked log switches—caused by full filesystems or tablespaces—hold dirty buffers in memory longer, enlarging latch hold times and raising CPU spin. The prolonged execution makes back-end processes occupy network sockets for extended periods, filling listener backlogs and depleting connection slots; new clients see escalating connection latency, retransmissions, and authentication failures. Monitoring views show a mélange of symptoms: soaring latch and buffer busy wait counts, near-zero storage free space with frequent auto-extend attempts, growing queues of idle-in-transaction sessions, and spikes in aborted or half-open TCP connections.\n\nCausal interaction: Space exhaustion slows or blocks checkpoint, log archive, and background flush activity, preventing dirty pages from being evicted; this forces active sessions to compete longer for the same hot buffers, amplifying latch contention. The resulting execution slow-downs lengthen transaction lifetimes and increase the number of simultaneously active back-end processes, pushing the server toward its connection and socket limits. As connections pile up and clients retry after timeouts, network and listener resources become congested, feeding back additional latency that further stretches transaction duration and buffer residency. The intertwined feedback loops between storage stalls, in-engine contention, and network overload create a cascading degradation that can rapidly incapacitate both transactional and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5185,
+            "score": 0.7471016483516483,
+            "bm25_score": 68.89772721727226,
+            "lexical_score": 0.1570054945054945,
+            "matched_terms": [
+                "all",
+                "and",
+                "being",
+                "contention",
+                "extended",
+                "for",
+                "from",
+                "limits",
+                "network",
+                "or",
+                "prolonged",
+                "queues",
+                "resource",
+                "the",
+                "to",
+                "transaction",
+                "wait",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013306",
+                "error_name": "ER_GRP_RPL_REGISTER_TRX_TO_WAIT_FOR_GROUP_PREPARE_FAILED",
+                "official_description": "Error registering transaction '%s:%lld' from session '%u' to wait for being prepared on all group members.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "timeout_and_waiting",
+                "cause_analysis": "The failure is typically associated with extended waiting, resource queues, unresponsive peers, or configured time limits being exceeded before the requested operation completes.",
+                "solution_guidance": "Check wait sources, blocking chains, network responsiveness, timeout settings, and whether resource contention is prolonging operation completion.",
+                "observable_symptoms": [
+                    "timeout",
+                    "prolonged waiting",
+                    "interrupted operation"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,62 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Data Block and Index Integrity Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "SQL Workload Logic Anomaly: Inefficient or incorrect application-level SQL and transaction design that causes the engine to process, move, or lock more data than business logic truly requires.\nData Block and Index Integrity Anomaly: Physical corruption or logical inconsistency inside on-disk data pages or index structures that makes storage structures unreliable and forces corrective or fallback behaviour.\nNetwork and Connectivity Resource Anomaly: Insufficient or unstable network, listener, authentication, or socket resources that throttle connection establishment and data transfer between client and server.\n\nWhen all three root causes co-exist, the system exhibits a blended fault pattern: expensive statements generate very large scans and result sets that traverse damaged pages or mis-linked indexes, triggering error conditions, retries, or full table scans. These bloated operations keep transactions and server backends open for longer, inflating memory use and holding locks while the engine re-reads or re-checks suspect pages. The oversized result sets then contend for limited network bandwidth and connection slots, causing client-side timeouts, increased round-trip latency, rising counts of aborted or half-open sessions, and retry storms. Concurrently, corruption-induced plan fallbacks replace index probes with full scans, further multiplying data volume sent across an already constrained network. Monitoring may therefore show an interleaving of slow-query log explosions, integrity check failures, connection queue buildup, and oscillating throughput that can be mis-attributed to any single layer.\n\nCausally, inefficient workload design amplifies the impact of underlying corruption by touching more pages and indices, increasing the likelihood of encountering bad blocks and forcing expensive recovery or verification paths. Each corruption-triggered retry or full scan magnifies the data transferred, which, in turn, saturates network and connection resources. Network congestion then prolongs transaction lifetimes, raising the window during which further corrupt pages can be read and additional retries spawned. Extended sessions also increase the probability of abrupt client disconnects, and these ungraceful terminations—especially under heavy load—can interrupt in-flight writes, potentially deepening physical corruption. The feedback loop among excessive workload demand, structural corruption, and network exhaustion degrades overall database availability and complicates diagnosis because symptoms at one layer mask or imitate failures in the others.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.5322428008363741,
+            "bm25_score": 25.122665222790275,
+            "lexical_score": 0.17333333333333334,
+            "matched_terms": [
+                "an",
+                "and",
+                "authentication",
+                "can",
+                "check",
+                "client",
+                "connection",
+                "establishment",
+                "for",
+                "holding",
+                "latency",
+                "longer",
+                "network",
+                "of",
+                "on",
+                "or",
+                "sessions",
+                "socket",
+                "system",
+                "than",
+                "the",
+                "to",
+                "triggered",
+                "when",
+                "which",
+                "with"
+            ],
+            "match_count": 176,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_idle",
+                "parameter_name": "tcp_keepalives_idle",
+                "timeout_category": "network_idle_keepalive_probe_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time with no network activity after which the operating system should send a TCP keepalive message to the client.",
+                "trigger_condition": "A TCP client connection has no network activity longer than tcp_keepalives_idle on systems supporting TCP_KEEPIDLE or an equivalent socket option.",
+                "workload_impact": "Starts TCP keepalive probing for an otherwise idle client connection; together with interval and count settings this can lead to dead connection detection.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Transaction Log Subsystem Anomaly + CPU Resource Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Costing metadata no longer matches the real data distribution, producing systematic cardinality errors and sub-optimal execution plans.\nTransaction Log Subsystem Anomaly : The write-ahead logging path—log buffer, log file, archiver, or replication retention—cannot persist or recycle redo fast enough, throttling commit throughput.\nCPU Resource Anomaly : Database processes saturate host CPU cycles, keeping runnable queues permanently full and inflating latency across all operations.\n\nWhen these three root causes strike together, the system shows a confused mixture of symptoms: queries exhibit wildly inaccurate cardinality estimates and choose plan shapes that scan or join far more rows than intended; the excessive row processing amplifies redo generation, quickly filling log buffers and exhausting log file bandwidth. As log flush and sync waits climb, user transactions stall at commit time, while foreground sessions already burdened by poor plans consume ever more CPU in longer execution paths. Log-writer and archiver processes compete for the same CPU cores now saturated by query workers, so both data processing and log persistence slow further. The database reports simultaneous spikes in CPU-bound wait events, log write-related waits, and optimizer recompile events, making isolation of any single culprit difficult.\n\nCausally, stale or incomplete statistics produce execution plans that scan and update large data volumes, inflating CPU demand and redo generation. The surge of log records overwhelms an already constrained transaction-log subsystem, lengthening commit times and forcing foreground processes to linger in log-related waits where they still hold latches and locks. These blocked or looping sessions keep consuming scheduler time slices, pushing CPU utilization toward saturation. In turn, CPU saturation starves the log-writer and statistics-gathering tasks, preventing timely statistics refresh and slowing log flushes, which feeds back into even poorer plans and deeper commit stalls. The intertwined feedback loop of bad plans → high CPU & redo → log bottleneck → more CPU pressure → deferred statistics refresh creates a self-reinforcing degradation spiral that can cripple OLTP throughput and inflate end-to-end response times.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.664266845488604,
+            "bm25_score": 25.016629811284247,
+            "lexical_score": 0.1330486944248412,
+            "matched_terms": [
+                "an",
+                "and",
+                "cannot",
+                "for",
+                "in",
+                "locks",
+                "longer",
+                "metadata",
+                "or",
+                "sessions",
+                "than",
+                "the",
+                "to",
+                "transaction",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 118,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

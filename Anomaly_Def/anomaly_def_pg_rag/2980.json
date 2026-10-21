@@ -1,0 +1,45 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Replication Synchronization Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions block or deadlock each other by requesting incompatible locks on the same rows, pages, or metadata, stalling foreground work on the primary. \nReplication Synchronization Anomaly : Stand-by or subscriber nodes fall behind because they cannot receive, write, or apply the primary’s change stream at the pace it is generated. \nData Block and Index Integrity Anomaly : On-disk table or index pages become corrupt or internally inconsistent, breaking the logical mapping between physical storage and relational contents.\n\nWhen all three anomalies co-exist, the database exhibits a compound symptom set: long-running or hung foreground transactions accumulate lock-wait time, while replication lag grows uncontrollably; replicas may repeatedly stop applying or go into error due to checksum or key-order failures encountered in the corrupted pages they read from the primary’s log stream. On the primary, blocked or victim-aborted transactions exaggerate log generation bursts (due to rollbacks and retries) that widen the replica’s delay. Application observers see timeouts, duplicate or missing rows across read replicas, and sudden failover incapability because secondaries are both far behind and possibly carrying physical corruption. Administrators find bloated transaction logs retained for replay, deadlock reports, extended lock-wait graphs, and integrity-check failures on both primary and replicas, making it hard to attribute errors to a single layer.\n\nCausally, page or index corruption can initiate lock contention by forcing query plans to devolve into full scans or by causing index rebuilds that hold long-lived locks; these long locks block other writers, inflating lock chains and deadlock probability. The resulting transactional back-pressure amplifies write-volume spikes (commits, rollbacks, and retries), which pushes more redo into the replication pipeline just as replicas are already struggling to apply corrupted pages, compounding replay lag. Conversely, a heavily backlogged replica may request missing segments or restart apply loops, increasing I/O load on the primary’s storage layer and lengthening the time locks are held during crash-safe page rewrites, thereby feeding further contention. Thus, corruption, lock contention, and replication lag form a reinforcing feedback loop that degrades both data integrity and availability in an OLTP environment.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 99,
+            "score": 0.25228032139890844,
+            "bm25_score": 18.06461142820444,
+            "lexical_score": 0.09906976744186047,
+            "matched_terms": [
+                "and",
+                "by",
+                "error",
+                "held",
+                "in",
+                "is",
+                "or",
+                "pressure",
+                "same",
+                "the",
+                "to",
+                "transaction"
+            ],
+            "match_count": 15,
+            "entry": {
+                "error_code": "25008",
+                "error_name": "held_cursor_requires_same_isolation_level",
+                "official_description": "held cursor requires same isolation level",
+                "error_class": "Class 25 - Invalid Transaction State",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

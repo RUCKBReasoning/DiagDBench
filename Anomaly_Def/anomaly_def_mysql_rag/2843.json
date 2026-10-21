@@ -1,0 +1,69 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Transaction Lock Contention Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Schema and Index Design Anomaly: The physical data model lacks the indexes, partitions, or correct data types required by the workload, forcing otherwise well-written statements into wide scans and row-by-row lookups.\nTransaction Lock Contention Anomaly: Concurrent transactions request incompatible locks on the same rows, pages, or tables and are blocked or dead-locked while the lock manager resolves the conflict.\nNetwork and Connectivity Resource Anomaly: The transport path between clients and the database is saturated or connection slots are exhausted, slowing or aborting session establishment and data transfer.\n\nWhen these three root causes strike at once, the database exhibits an intertwined symptom set: full-table or non-covering index scans take longer and touch more rows, magnifying the number and duration of row and page locks they hold. Those prolonged locks create deeper blocker-waiter chains and more frequent deadlocks, which in turn keep backend sessions open and idle while they wait on locks or perform rollbacks. The inflated session count pushes the listener or process pool toward its limit; new client connections stall in handshake or are refused, and existing sessions pile up in client-read/client-write waits as network queues back up. Application layers experience a mix of slow query responses, lock-timeout or deadlock errors, and connection-establishment failures that are hard to attribute to a single layer because they surface concurrently.\n\nCausally, the missing or mis-shaped indexes expand the lock footprint and execution time of each statement, directly increasing the probability of lock contention. Blocked transactions then occupy server processes and hold TCP sockets open longer, consuming connection slots and filling the listener backlog. As the connection pool reaches its ceiling and network latency grows, clients retry and open additional sessions, further pressuring the listener and leaving even more idle sessions that still retain locks. This feedback loop amplifies both lock contention and network exhaustion, degrading throughput and making recovery difficult until all three design, concurrency, and connectivity issues are addressed together.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.774201282408698,
+            "bm25_score": 44.19907216726226,
+            "lexical_score": 0.24733760802899357,
+            "matched_terms": [
+                "aborting",
+                "an",
+                "and",
+                "because",
+                "client",
+                "connection",
+                "incompatible",
+                "is",
+                "lock",
+                "longer",
+                "network",
+                "number",
+                "of",
+                "or",
+                "required",
+                "retry",
+                "schema",
+                "server",
+                "session",
+                "sessions",
+                "statement",
+                "the",
+                "this",
+                "timeout",
+                "to",
+                "transaction",
+                "wait",
+                "waits",
+                "when",
+                "while",
+                "write",
+                "written"
+            ],
+            "match_count": 135,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

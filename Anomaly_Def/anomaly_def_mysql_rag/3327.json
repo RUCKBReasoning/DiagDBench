@@ -1,0 +1,61 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Transaction Lock Contention Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Schema and Index Design Anomaly : Static mismatch between the physical data model (table layout, indexes, partitions, data types, constraints) and the workload’s access patterns, forcing inefficient access paths regardless of optimizer or statistics quality.\nTransaction Lock Contention Anomaly : Excessive or conflicting lock acquisition by concurrent transactions, producing long blocking chains or deadlocks that stall or abort OLTP statements.\nOperating System Resource Limit Anomaly : Exhaustion of kernel-enforced resources (file descriptors, shared memory, semaphores, threads, etc.) that prevents the database from opening additional objects or spawning workers even though in-engine capacity remains.\n\nWhen all three root causes coexist, the system shows a blended symptom set:  \n• Queries that should be selective devolve into full scans, inflating the number and duration of row/page locks they hold.  \n• Lock-wait time, deadlock frequency, and transaction retries climb sharply; application sessions pile up in connection pools or remain idle in transaction.  \n• As blocking lengthens, background processes and new sessions attempt to open more files, allocate shared buffers, or spawn additional lock-manager and I/O workers, quickly reaching OS limits.  \n• The engine begins emitting \"cannot open file/too many open files\", \"cannot create thread\", or \"out of shared memory\" errors, compounding the perceived outage.  \n• Performance troubleshooting is complicated because lock-wait views, execution-plan analysis, and operating-system logs all surface critical alerts simultaneously, making it hard to isolate any single culprit.\n\nCausal interaction: Poor schema and indexing enlarge the footprint and duration of each statement, increasing the volume and granularity of locks requested. The swollen lock set exacerbates contention among concurrent transactions, producing longer blocker chains and more deadlocks. Prolonged blocking encourages session buildup and retries, which inflate the number of active connections, held locks, open file handles, and background helper threads. This surge in kernel object usage pushes the database toward operating-system resource limits; once those limits are reached, the engine cannot create additional locks, files, or worker threads, further stalling lock acquisition and query execution. In turn, transactions hold locks even longer while waiting for scarce OS resources, reinforcing the lock contention and creating a feedback loop that degrades overall throughput and can precipitate a partial or full service outage.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.6996762999390052,
+            "bm25_score": 40.98898851741308,
+            "lexical_score": 0.19970520563704341,
+            "matched_terms": [
+                "access",
+                "and",
+                "be",
+                "because",
+                "by",
+                "contention",
+                "engine",
+                "execution",
+                "for",
+                "is",
+                "limit",
+                "long",
+                "or",
+                "quality",
+                "query",
+                "resource",
+                "session",
+                "should",
+                "statement",
+                "the",
+                "this",
+                "time",
+                "too",
+                "when",
+                "workload"
+            ],
+            "match_count": 156,
+            "entry": {
+                "timeout_id": "mysql84_regular_expression_time_limit",
+                "parameter_name": "regexp_time_limit",
+                "timeout_category": "expression_evaluation_time_limit",
+                "scope": "global/session",
+                "official_definition": "The time limit for regular expression matching operations performed by the regular expression engine.",
+                "trigger_condition": "A regular expression match operation exceeds regexp_time_limit.",
+                "workload_impact": "The regular expression operation is constrained by the configured time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + MVCC Version Maintenance Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Optimizer Statistics Anomaly: Optimizer inputs (row counts, histograms, correlation data) are stale or incomplete, leading the planner to choose systematically mis-costed execution plans.\nMVCC Version Maintenance Anomaly: Obsolete row versions and rollback records accumulate because background cleanup is throttled or blocked, inflating on-disk objects and visibility-check overhead.\nTransaction Log Subsystem Anomaly: The write-ahead log path (generation, flush, switch, archive, retention) becomes a bottleneck, stretching commit latency and stalling writers.\n\nWhen these three root causes coincide, the system exhibits a multi-layer performance collapse:  \n• Queries adopt inefficient plans—e.g., index probes where true cardinalities demand scans, or vice-versa—because statistics reflect the pre-bloat data shape rather than the current, heavily versioned heap.  \n• Table and index bloat from unreclaimed versions drastically lengthens I/O paths; the mischosen plans amplify I/O and CPU consumption, further stressing the buffer pool and cache hierarchy.  \n• Concurrently, surging redo from update/delete churn and from the faulty plans’ extra work overwhelms the log buffer and log device, inflating commit latency, causing frequent log-flush waits, and delaying checkpoints and archival.  \n• Long-running transactions that keep version snapshots open also prevent log segment recycling, so log directories and version stores grow together, consuming space and triggering emergency autovacuum or checkpoint storms.  \n• Background statistics jobs, vacuum/cleanup workers, and log archivers all contend for I/O and CPU, falling further behind and creating a feedback loop where stale statistics, bloat, and log pressure reinforce each other.  \n\nCausally, excessive MVCC bloat inflates table sizes and redo generation, which in turn magnifies transaction-log throughput requirements. Log subsystem saturation slows commits and prolongs active snapshots, blocking vacuum from pruning dead tuples and perpetuating version accumulation. The expanding heap and skewed dead/live row ratios render existing statistics obsolete; suppressed or delayed statistics refreshes (due to long transactions or choking maintenance workers) lock the optimizer into poor plans that intensify CPU and I/O demand, generating even more undo/redo. This vicious cycle can escalate to severe space exhaustion, widespread query slowdowns, and potential outage if log or transaction-ID horizons are reached.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.31571103450091753,
+            "bm25_score": 14.703638817574104,
+            "lexical_score": 0.12765486725663716,
+            "matched_terms": [
+                "and",
+                "are",
+                "can",
+                "check",
+                "dead",
+                "is",
+                "latency",
+                "on",
+                "or",
+                "probes",
+                "stale",
+                "system",
+                "that",
+                "the",
+                "this",
+                "to",
+                "when"
+            ],
+            "match_count": 233,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_count",
+                "parameter_name": "tcp_keepalives_count",
+                "timeout_category": "network_keepalive_failure_threshold",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the number of TCP keepalive messages that can be lost before the server connection to the client is considered dead.",
+                "trigger_condition": "The number of lost TCP keepalive probes reaches tcp_keepalives_count on systems supporting TCP_KEEPCNT.",
+                "workload_impact": "The server can consider the client connection dead after the configured keepalive failure threshold.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

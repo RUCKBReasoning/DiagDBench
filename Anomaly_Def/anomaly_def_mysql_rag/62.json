@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Database Configuration Parameter Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Accumulation of obsolete row versions and rollback records outpaces background cleanup, inflating version stores, bloating storage, and slowing visibility checks.\nDatabase Configuration Parameter Anomaly : Mis-tuned engine settings for memory, checkpointing, logging, parallelism, or worker budgets cause resource-usage patterns that do not align with actual hardware capacity or workload demands.\n\nComposite definition: The database concurrently suffers from excessive MVCC version buildup while critical configuration parameters (e.g., autovacuum thresholds, maintenance work memory, checkpoint intervals, log and buffer sizes) are mis-aligned with the update-heavy workload. The twin conditions coexist, so version store growth is unchecked just as the subsystem meant to reclaim it is throttled or mistimed by sub-optimal settings.\n\nCombined anomalous phenomena:  • Rapid expansion of table and index sizes, soaring obsolete-to-live row ratios, and long sequential scans.  • Cleanup workers that appear active yet never reduce bloat because cost limits, memory quotas, or parallel-worker caps are too low.  • Repeated emergency checkpoints or log-file saturation despite under-utilised I/O bandwidth, coinciding with escalating visibility-check CPU time.  • Planner misestimates and query latency spikes intermixed with seemingly unexplained background I/O storms right after every forced checkpoint.  • Monitoring shows both version-store wraparound warnings and configuration-related wait events (e.g., excessive log flush waits while disks are idle).\n\nCausal interaction: Poorly chosen configuration parameters throttle or mis-schedule the very maintenance tasks needed to prune old versions, letting bloat compound. The swelling version store, in turn, inflates redo volume and dirty-page pressure, triggering more frequent checkpoints and log flushes—events whose impact is magnified by the same mis-tuned parameters governing log size, checkpoint cadence, and buffer pools. As each anomaly feeds the other, the database enters a feedback loop: growing MVCC debris raises I/O and memory demand, while configuration limits prevent timely cleanup, accelerating performance degradation and bringing the system closer to transaction-ID exhaustion or out-of-space failures.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.47543121941743327,
+            "bm25_score": 18.07984000669763,
+            "lexical_score": 0.14727272727272728,
+            "matched_terms": [
+                "and",
+                "are",
+                "check",
+                "for",
+                "from",
+                "idle",
+                "is",
+                "latency",
+                "more",
+                "not",
+                "of",
+                "or",
+                "pools",
+                "the",
+                "time",
+                "to",
+                "wait",
+                "waits"
+            ],
+            "match_count": 3,
+            "entry": {
+                "timeout_id": "mysql84_network_read_timeout",
+                "parameter_name": "net_read_timeout",
+                "timeout_category": "network_read_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for more data from a connection before aborting the read.",
+                "trigger_condition": "The server waits for additional data from a connection longer than net_read_timeout.",
+                "workload_impact": "The network read is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

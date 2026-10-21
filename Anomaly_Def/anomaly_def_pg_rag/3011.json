@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Storage I/O Throughput Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Storage I/O Throughput Anomaly : Physical read/write bandwidth, IOPS, or latency limits of the underlying storage stack are saturated, making the device—not the DB engine—the performance bottleneck.\nStorage Space Capacity Anomaly : Physical or logical free space on data, log, temp, or backup volumes falls to-or below-minimum thresholds, triggering allocation failures or growth stalls.\n\nWhen both anomalies surface together, the database experiences prolonged and highly variable I/O latencies, escalating wait events, and near-continuous auto-extend or checkpoint activity while simultaneously running out of space. Back-end devices show long queue depths and service-time inflation, while foreground sessions report slow response, \"out of space\" or \"cannot allocate extent\" errors, log switch hangs, paused DML, aborted ETL/loads, and backup failures. Space-reclamation tasks, log archiving, and purge jobs slow or halt due to the I/O bottleneck, further accelerating space depletion. Maintenance windows and recovery time objectives are breached as both performance and availability degrade in tandem.\n\nCausally, space exhaustion and throughput saturation reinforce one another: 1) As free space dwindles, the engine issues more frequent auto-extend, file growth, and log switch operations, spiking random and sequential I/O that pushes already-constrained storage beyond its throughput limits. 2) The elevated I/O latency slows background tasks such as log archiving, snapshot merges, purges, and index rebuilds, delaying space release and causing the free-space curve to fall even faster. 3) Checkpoint and flush operations contend with emergency space-management writes on the same saturated devices, risking dead-end stalls where neither throughput nor space can recover without external intervention (adding capacity, throttling workload, or moving data). The intertwined failures therefore create a feedback loop that magnifies both response-time slowdowns and the probability of hard allocation outages.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.7354563579973415,
+            "bm25_score": 21.35280206455718,
+            "lexical_score": 0.11818785999113868,
+            "matched_terms": [
+                "aborted",
+                "and",
+                "long",
+                "more",
+                "of",
+                "or",
+                "out",
+                "running",
+                "that",
+                "the",
+                "time",
+                "together",
+                "when",
+                "with",
+                "workload"
+            ],
+            "match_count": 310,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

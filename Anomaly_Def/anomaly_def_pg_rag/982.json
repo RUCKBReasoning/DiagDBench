@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Storage I/O Throughput Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Composite definition: The database concurrently suffers from (1) a physical schema-and-index layout that forces excessive random and non-selective access, (2) saturation of the underlying storage layer’s throughput/IOPS capacity, and (3) exhaustion of kernel-enforced process, file-handle, and asynchronous-I/O limits. Acting together, these three root causes create a self-reinforcing performance and stability collapse that is not attributable to any single layer alone.\n\nCombined observable phenomena: Queries that should be index seeks devolve into full scans, driving abnormally high physical read and write volumes. Storage latencies, device queue depths, and database I/O wait events spike, yet database CPU utilisation remains uneven because workers stall on I/O. As latency stretches, sessions, parallel workers, and background tasks linger, inflating the count of open files, AIO contexts, and threads until operating-system limits are hit. At that point the database emits \"cannot open file\", \"cannot allocate shared memory\", or \"failed to start worker\" errors, new connections hang or fail, checkpoints prolong, and log flush times grow, increasing recovery-point exposure. Performance troubleshooting becomes difficult because symptoms oscillate between classic I/O bottlenecks and sudden OS-level allocation failures.\n\nCausal chain and interaction: Inefficient schema and missing or non-covering indexes multiply the number of blocks each query must touch. The resultant surge in physical I/O drives the storage subsystem to its throughput ceiling, raising service times and leaving requests queued. Prolonged I/O wait elongates transaction lifetimes and inflates the number of concurrently active sessions, each holding file descriptors, AIO handles, shared-memory latches, and threads. As these kernel objects accumulate, they collide with conservative per-process or cgroup limits. Once limits are reached, further I/O submission or session creation fails, causing retries, partial task aborts, and even more backlog against the already saturated storage. Conversely, kernel rejections of I/O contexts or file handles force the database to fall back to less efficient synchronous or serial paths, which put additional pressure on both the storage layer and the poorly indexed schema. The feedback loop of excessive logical I/O → storage saturation → longer runtimes → kernel resource exhaustion compounds latency, jeopardises throughput, and can precipitate cascading outages.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.39520260351559977,
+            "bm25_score": 15.118250197310276,
+            "lexical_score": 0.13213142997784888,
+            "matched_terms": [
+                "and",
+                "are",
+                "be",
+                "can",
+                "holding",
+                "is",
+                "latency",
+                "not",
+                "number",
+                "of",
+                "on",
+                "or",
+                "session",
+                "sessions",
+                "system",
+                "that",
+                "the",
+                "to"
+            ],
+            "match_count": 206,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_count",
+                "parameter_name": "tcp_keepalives_count",
+                "timeout_category": "network_keepalive_failure_threshold",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the number of TCP keepalive messages that can be lost before the server connection to the client is considered dead.",
+                "trigger_condition": "The number of lost TCP keepalive probes reaches tcp_keepalives_count on systems supporting TCP_KEEPCNT.",
+                "workload_impact": "The server can consider the client connection dead after the configured keepalive failure threshold.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

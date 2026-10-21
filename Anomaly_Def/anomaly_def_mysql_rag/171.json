@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Composite definition: The database is simultaneously affected by unchecked growth of obsolete MVCC row versions/rollback records and by depletion of available disk or tablespace capacity; the version store inflates faster than it can be cleaned while free space shrinks toward a hard boundary.\n\nCombined observable phenomena: free-space monitoring shows a steep, unexplained drop that coincides with sharply rising counts of dead tuples and rollback segments; data-file auto-extension or tablespace growth requests begin to fail, while VACUUM/PURGE workers run constantly yet report little progress. Sequential scans, index range scans, and visibility checks take longer because of page bloat, and the query planner misestimates row counts. Users may first see \"no space left\" or \"cannot allocate version record\" errors, stalled DML statements waiting for space, log-archive back-pressure, and emergency wraparound warnings all at once, making the root cause appear as a generalized outage rather than two specific issues.\n\nCausal interaction: heavy update/delete churn produces a flood of obsolete versions that inflate heap and index pages; this ballooning rapidly consumes remaining disk space and pushes the system into a storage-capacity crisis. Conversely, once free space is scarce, background cleanup cannot allocate the working space it needs to rewrite pages or extend rollback areas, so it falls further behind, allowing even more obsolete versions to accumulate. As space approaches exhaustion, checkpoints and log archiving stall, which in turn prolongs active snapshots and prevents version pruning—creating a positive feedback loop that amplifies both anomalies and accelerates system degradation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.5641598061778892,
+            "bm25_score": 15.152991381034056,
+            "lexical_score": 0.11702180172768407,
+            "matched_terms": [
+                "and",
+                "because",
+                "cannot",
+                "for",
+                "in",
+                "is",
+                "longer",
+                "or",
+                "than",
+                "the",
+                "this",
+                "to",
+                "waiting",
+                "while"
+            ],
+            "match_count": 9,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Sessions serialize on hot or frequently churned buffer-cache pages and their associated latches, causing CPU spin, buffer-busy/page-latch waits, and stalled logical I/O despite adequate total memory.\nNetwork and Connectivity Resource Anomaly : The client–server communication path or connection-handling layer cannot accept, authenticate, or move data at the offered rate, producing connection timeouts, socket backlog growth, and elevated client-read/client-write waits.\n\nWhen both anomalies strike together, users see erratic but severe end-to-end slowdowns: connection attempts hang or are rejected, established sessions pause on network I/O waits, and those that do reach the executor frequently block on page latches. CPU utilisation oscillates between spin-loops inside the engine and kernel time in network interrupts, while transaction latency and abort rates surge. Monitoring views show simultaneous spikes in buffer busy/page latch waits and client-read/client-write waits, with an inflated count of active back-end processes holding latches yet unable to flush or return result sets because network throughput is impaired. Application servers exhaust connection pools, triggering retry storms that further amplify both latch pressure and network congestion.\n\nCausal interaction: Impaired network throughput lengthens the time each backend spends streaming result sets, prolonging the interval during which it keeps buffer pages pinned or dirty-flush slots allocated, thereby heightening latch contention for other sessions. In the opposite direction, heavy buffer contention slows query completion, so sessions occupy network connections longer and increase concurrent socket demand, which pushes the listener and OS queues toward their limits and raises the probability of connection errors. The feedback loop between prolonged in-engine critical-section holding and saturated network resources escalates queuing at both layers, degrading overall throughput and making the individual root causes harder to isolate.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.598671032658882,
+            "bm25_score": 25.15582151164394,
+            "lexical_score": 0.15660422479075328,
+            "matched_terms": [
+                "an",
+                "and",
+                "attempts",
+                "because",
+                "cannot",
+                "for",
+                "holding",
+                "in",
+                "is",
+                "longer",
+                "or",
+                "retry",
+                "sessions",
+                "the",
+                "to",
+                "transaction",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 99,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

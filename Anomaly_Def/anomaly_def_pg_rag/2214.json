@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Data Block and Index Integrity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level statement or transaction design forces the engine to process far more data or hold resources much longer than business logic requires.\nData Block and Index Integrity Anomaly : Physical corruption or logical inconsistency inside on-disk pages or index structures makes stored data and access paths unreliable.\nOperating System Resource Limit Anomaly : Kernel-enforced ceilings on file handles, shared memory, semaphores, threads, or similar objects prevent the database from obtaining required OS resources.\n\nWhen all three root causes occur concurrently, the system experiences a multi-layer failure mode in which excessive or inefficient SQL drives high I/O, memory, and worker-thread demand; corrupted pages or indexes introduce unpredictable access-path fallbacks, retries, or error storms; and exhausted kernel resources prevent new file opens, buffer allocations, or background-worker spawns needed for recovery or normal execution. Observable symptoms converge and amplify: the same slow or timing-out statements repeatedly hit corrupted pages, triggering checksum or logical-consistency errors; automatic plan fallbacks to full table scans magnify the already bloated workload, pushing file-handle and shared-memory usage to hard OS limits; connection spikes caused by application retries encounter \"too many open files,\" \"cannot map shared memory,\" or \"failed to start worker\" errors, while index versus heap row counts diverge and integrity-check utilities cannot allocate the resources required to repair. Admins may see alternating patterns of statement-level timeouts, corruption warnings in engine logs, and kernel messages denying resource allocations, making root-cause isolation difficult.\n\nCausal chain: Inefficient SQL amplifies resource consumption, bringing the process close to OS quotas. Near the saturation point, any additional overhead—such as the engine switching from index seeks to full scans because of corrupted structures—rapidly exhausts remaining kernel objects and memory. Simultaneously, resource denials can interrupt checkpointing, index rebuilds, or page flushes, causing partial writes or failed recovery steps that deepen on-disk corruption. Each anomaly therefore reinforces the others: logic-level overwork accelerates resource exhaustion; resource exhaustion hinders I/O and recovery, increasing corruption risk; corruption forces heavier access patterns, which in turn magnify both workload inefficiency and OS-level pressure, culminating in cascading performance degradation and potential service outage.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.31344757997365236,
+            "bm25_score": 16.55583283444744,
+            "lexical_score": 0.11301570748875708,
+            "matched_terms": [
+                "and",
+                "any",
+                "check",
+                "connection",
+                "for",
+                "inside",
+                "longer",
+                "of",
+                "open",
+                "or",
+                "than",
+                "that",
+                "the",
+                "transaction",
+                "when"
+            ],
+            "match_count": 269,
+            "entry": {
+                "timeout_id": "pg16_idle_session_timeout",
+                "parameter_name": "idle_session_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle, but not within an open transaction, for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle and not inside an open transaction longer than the configured threshold.",
+                "workload_impact": "The session is terminated; the documentation warns about using this with connection pools or middleware.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

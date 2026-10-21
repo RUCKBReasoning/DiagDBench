@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Transaction Lock Contention Anomaly + Database Memory Allocation Anomaly",
+            "Description": "Composite definition: The database simultaneously suffers from sub-optimal physical schema/index design, heavy transaction lock contention, and excessive or poorly managed memory allocation. Together they create a feedback loop in which inefficient access paths inflate lock footprints and execution time, while bloated memory structures contend for limited RAM, all under a concurrency-intensive workload.\n\nCombined observable phenomena: 1) Queries that should be index-efficient instead scan large portions of tables or non-covering indexes, holding row/page/table locks far longer than expected. 2) Lock-wait graphs and deadlock reports show long chains and frequent victim rollbacks, accompanied by application timeouts and retry storms. 3) Overall memory consumption of buffer pools, work areas, and plan cache rises sharply as full scans flood the buffer cache and ad-hoc plans accumulate; the OS may exhibit paging, swap activity, or OOM kills that further lengthen lock-hold times. 4) Throughput decays and latency becomes highly variable; short transactions occasionally stall for seconds or minutes, and node restarts or failovers can occur under sustained memory pressure.\n\nCausal chain and interaction: Missing or misaligned indexes force even selective OLTP statements into full-table or wide index scans. These scans not only read more pages, bloating the buffer cache and plan cache, but also acquire more and coarser locks, enlarging the lock footprint. The longer I/O and CPU time of each statement increases the interval during which locks are held, escalating the probability of concurrent conflicts and deadlocks. Simultaneously, the excess pages and work memory consumed by the scans drive the system toward memory pressure; when physical RAM is exhausted and the OS starts paging, query execution slows further, extending lock durations and deepening blocking chains. Conversely, lock buildup stalls transactions that would normally release buffers, causing more sessions to accumulate private work areas and pinned pages, aggravating memory exhaustion. Thus, poor schema/index design multiplies lock contention, lock contention amplifies memory residency, and memory pressure feeds back to slow execution, forming a self-reinforcing cycle that degrades OLTP performance and stability.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.36016890453193046,
+            "bm25_score": 19.246530311935103,
+            "lexical_score": 0.159375,
+            "matched_terms": [
+                "activity",
+                "and",
+                "are",
+                "for",
+                "holding",
+                "in",
+                "instead",
+                "is",
+                "latency",
+                "not",
+                "of",
+                "or",
+                "pools",
+                "seconds",
+                "sessions",
+                "the",
+                "time",
+                "wait",
+                "when"
+            ],
+            "match_count": 209,
+            "entry": {
+                "timeout_id": "pg16_libpq_connection_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "client_connection_establishment_timeout",
+                "scope": "libpq/client connection parameter",
+                "official_definition": "Maximum wait for connection, in seconds; zero or not specified means wait indefinitely.",
+                "trigger_condition": "A libpq client connection attempt exceeds connect_timeout seconds.",
+                "workload_impact": "The client connection attempt fails instead of waiting indefinitely.",
+                "default_behavior": "Zero or absent value means wait indefinitely.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

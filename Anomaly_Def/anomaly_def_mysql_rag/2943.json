@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Replication Synchronization Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Hot or churned buffer-cache pages and their associated latches become a serialization point, forcing sessions to spin or wait while trying to pin, read, or modify pages.\nReplication Synchronization Anomaly : Downstream replicas cannot receive, persist, or apply WAL/redo at the rate the primary generates it, leading to growing log gaps and retention of old log segments.\n\nWhen both root causes are active, the primary experiences elevated page-latch waits and CPU spin loops that inflate commit latency and throughput variance, while at the same time replication lag widens because the standby must re-read or re-apply the same hot pages under contention. Observable symptoms include: 1) extreme and uneven latency spikes on the primary for statements that touch hot index root or sequence pages, 2) sustained \"buffer busy\" or \"page latch\" wait events co-occurring with escalating replication receive/replay delay, 3) rapidly growing on-disk log retention because replay cannot advance, and 4) replicas showing intermittent apply stalls coupled with their own buffer-pin or latch waits as large batches of redo hit the same contended pages.\n\nCausal chain: hot-page contention on the primary lengthens transaction commit and increases WAL generation bursts (dirty pages flushed multiple times, frequent full-page images), producing larger or more clustered redo packets that replicas must ship, write, and apply. The replicas in turn encounter the same page-level hot spots during redo, which slows their apply speed, further enlarging the replication gap. The growing gap prevents log recycling on the primary, keeping more dirty and historical pages resident and intensifying buffer churn; meanwhile, backpressure from replication retention can raise checkpoint frequency, putting additional write and latch pressure on the already contended buffer cache. Thus, each anomaly amplifies the other, creating a feedback loop that degrades both local performance and replication health.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.7181256365631418,
+            "bm25_score": 21.192945107887997,
+            "lexical_score": 0.149738508120011,
+            "matched_terms": [
+                "and",
+                "are",
+                "for",
+                "from",
+                "latency",
+                "more",
+                "of",
+                "or",
+                "read",
+                "replication",
+                "sessions",
+                "the",
+                "time",
+                "to",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 139,
+            "entry": {
+                "timeout_id": "mysql84_replica_network_timeout",
+                "parameter_name": "replica_net_timeout",
+                "timeout_category": "replication_network_timeout",
+                "scope": "global/replication",
+                "official_definition": "The number of seconds to wait for more data from a source/replica connection before aborting the read.",
+                "trigger_condition": "A replica waits longer than replica_net_timeout for more data from the source connection.",
+                "workload_impact": "The replication network read is aborted and the replica considers the connection interrupted.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Optimizer Statistics Anomaly + Database Memory Allocation Anomaly",
+            "Description": "Schema and Index Design Anomaly : Table structures, indexes, partitioning, or data types are mismatched to workload access patterns, forcing inefficient access paths even when SQL is well written.\nOptimizer Statistics Anomaly : Catalog statistics are stale, incomplete, or misleading, causing the optimizer to misestimate cardinalities and pick sub-optimal plans.\nDatabase Memory Allocation Anomaly : The database engine allocates more memory to caches and work areas than the host can safely supply, triggering OS pressure, paging, and cache churn.\n\nWhen all three root causes coexist, the system shows a blend of symptoms: queries that should be index-seek driven are compiled into full scans because the needed indexes are missing or non-covering, while inaccurate statistics further mislead the optimizer into believing those scans are cheap. The resulting plans read far more pages than necessary, bloating buffer pools and spilling large hash and sort operations. Memory consumption rises rapidly, eroding cache hit ratios and provoking paging, temporary spill files, or out-of-memory terminations. Execution times become highly volatile: some requests stall on I/O, others throttle on memory grants, and background processes compete with the OS for RAM, causing node-level instability. Because each anomaly obscures the others, traditional tuning signals—such as adding an index or refreshing statistics—yield only partial relief and regress again under load.\n\nCausal chain: Poor schema and index design creates inherently heavy I/O plans; stale or incomplete statistics hide their true cost and steer the optimizer toward even heavier plans; these bloated plans inflate memory grants and enlarge the working-set size of buffer and work areas. The swollen memory footprint pushes the host into sustained pressure, which in turn degrades cache efficiency and amplifies the I/O impact of the original design flaw. Meanwhile, memory pressure may delay or cancel automatic statistics collection, keeping statistics stale and completing a feedback loop that reinforces all three anomalies. The combined effect is a self-perpetuating degradation cycle that progressively worsens both latency and stability across OLTP and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.635303319934223,
+            "bm25_score": 25.048595920603468,
+            "lexical_score": 0.1352073732718894,
+            "matched_terms": [
+                "an",
+                "and",
+                "because",
+                "database",
+                "delay",
+                "for",
+                "index",
+                "is",
+                "of",
+                "or",
+                "schema",
+                "table",
+                "than",
+                "that",
+                "the",
+                "to",
+                "when",
+                "while"
+            ],
+            "match_count": 199,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

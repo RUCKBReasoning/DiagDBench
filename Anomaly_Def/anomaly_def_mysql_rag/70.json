@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Replication Synchronization Anomaly + Storage Space Capacity Anomaly",
+            "Description": "SQL Workload Logic Anomaly: Application-level statement or transaction design forces the engine to process or retain far more data and rows than business logic requires.\nReplication Synchronization Anomaly: Downstream replicas or subscribers fall behind because they cannot receive or apply primary-generated log records at the production rate.\nStorage Space Capacity Anomaly: Allocated physical or logical storage for data, logs, or temporary areas reaches exhaustion, impeding normal allocation and recycling.\n\nWhen all three exist concurrently, the system exhibits extreme and widening replica lag, growing on-disk log backlogs, and escalating disk-space consumption on both primary and replicas. Long-running or chatty transactions produced by inefficient SQL inflate the volume of redo, generate oversized result sets that spill to temp space, and keep locks open longer. Replicas struggling to apply these bloated change batches accumulate ever larger relay or archive logs; the primary cannot purge its own logs, and free space plummets. Users observe increasing statement latency, frequent timeouts, stalled or cancelled writes when log destinations fill, stale read-only traffic on replicas, and emergency auto-extend or out-of-space errors in data, temp, or log areas.\n\nCausally, sub-optimal workload logic produces excessive data modifications and prolonged transactions, which directly amplifies the replication stream. The overwhelmed replication path slows, causing unapplied logs to pile up. Because those retained logs occupy the same filesystems or object stores as data, they accelerate space consumption and can eventually exhaust capacity. Imminent space exhaustion further degrades replica apply throughput (due to I/O contention and pause-on-error behavior) and can halt primary DML when log writes or temp allocations fail. Thus, each anomaly reinforces the others in a feedback loop: inefficient SQL inflates log volume, replication delay prevents log recycling, accumulated logs and temporary spill exceed storage limits, and storage pressure in turn magnifies both latency and replication backlog, culminating in a compound performance and availability crisis.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.7447818037556202,
+            "bm25_score": 33.50071159897474,
+            "lexical_score": 0.14927267918540066,
+            "matched_terms": [
+                "and",
+                "apply",
+                "causing",
+                "data",
+                "downstream",
+                "lag",
+                "long",
+                "longer",
+                "or",
+                "out",
+                "replica",
+                "replication",
+                "stalled",
+                "than",
+                "the",
+                "to",
+                "when"
+            ],
+            "match_count": 4,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

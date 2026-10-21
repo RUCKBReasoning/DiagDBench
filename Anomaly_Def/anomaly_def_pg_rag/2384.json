@@ -1,0 +1,45 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Data Block and Index Integrity Anomaly + CPU Resource Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions compete for mutually incompatible locks, producing long blocking chains or deadlocks that stall forward progress.\nData Block and Index Integrity Anomaly : On-disk pages or index structures are physically or logically corrupted, so read or write operations encounter checksum, linkage, or key-order errors.\nCPU Resource Anomaly : Database processes consume nearly all available CPU cycles, leaving little headroom for other sessions or background tasks.\n\nWhen these three root causes coincide, the system exhibits a multi-layer crisis: 1) sessions accumulate in lock wait queues and deadlock detectors fire; 2) queries that finally obtain a lock may fail with corruption or page-verification errors, triggering repeated retries and rollbacks; 3) the surge of retries, deadlock detection sweeps, and corruption checks drives sustained CPU saturation. Observable symptoms therefore span long transaction latency, victim-abort errors, corruption messages in logs, spikes in lock-wait and CPU wait events, runaway run-queue length at the OS level, and rapidly shrinking throughput despite high thread activity.\n\nCausal chain: corrupted pages or mis-linked index nodes can force the optimizer or storage engine to abandon efficient index probes and fall back to broader scans or page-level recovery logic, greatly extending the time each transaction holds locks. Prolonged lock tenure intensifies blocking, deadlocks, and exponential retry storms. Every retry, deadlock cycle, or corruption re-read translates into additional CPU work—deadlock detection graph walks, lock hash-table manipulation, checksum recalculations, and error-handling logic—that further consumes CPU. CPU saturation in turn slows lock acquisition and flush pacing, lengthening critical sections and making it even harder for waiting transactions to progress, while the persisting corruption continually re-injects failures. The three anomalies therefore reinforce one another to create a self-amplifying degradation that can cripple an OLTP system until corruption is repaired, contention relieved, or compute resources expanded.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 91,
+            "score": 0.3033003708870715,
+            "bm25_score": 27.62992529550847,
+            "lexical_score": 0.1028421052631579,
+            "matched_terms": [
+                "and",
+                "corruption",
+                "data",
+                "index",
+                "integrity",
+                "is",
+                "key",
+                "or",
+                "storage",
+                "the",
+                "with"
+            ],
+            "match_count": 14,
+            "entry": {
+                "error_code": "23503",
+                "error_name": "foreign_key_violation",
+                "official_description": "foreign key violation",
+                "error_class": "Class 23 - Integrity Constraint Violation",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "integrity_and_constraints",
+                "cause_analysis": "The failure is typically associated with logical data inconsistency, structural corruption, uniqueness conflicts, or referential-integrity rules being violated by the workload or storage state.",
+                "solution_guidance": "Validate data consistency, inspect constraints and index integrity, and check whether data-cleaning, repair, or workload correction is required before retrying.",
+                "observable_symptoms": [
+                    "constraint failure",
+                    "duplicate data rejection",
+                    "corruption warning"
+                ]
+            }
+        }
+    }
+]

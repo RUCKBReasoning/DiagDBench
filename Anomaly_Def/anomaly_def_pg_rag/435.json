@@ -1,0 +1,65 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Buffer Cache and Latch Contention Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Composite Definition: The database is simultaneously suffering from (1) mis-tuned engine parameters that misalign memory, checkpoint, logging, worker, or connection limits with actual workload and hardware characteristics; (2) intense buffer-cache and latch contention that serializes page access inside the buffer manager; and (3) saturation or instability in the network / connection-handling layer that throttles session establishment and data transfer. The overlap of these three root causes creates a multi-layer bottleneck in which configuration errors, internal synchronization stalls, and external connectivity pressure reinforce each other. \n\nCombined Observable Phenomena: • Highly variable response times where some calls time out at the client side while others hang inside the engine on buffer_busy or page-latch waits. • Low overall throughput despite modest CPU, memory, or storage utilization, accompanied by spikes in log-write or checkpoint waits. • Surges of refused or aborted connections, large pools of sessions stuck in client-read/write wait events, and operating-system socket queues filling. • Periodic storms of dirty-page flushes and redo generation triggered by aggressive or mis-set checkpoint parameters, coinciding with latch hotspots on index root or sequence pages. • CPU spin-loops in backend processes holding latches while simultaneously being slow to release them because outbound network buffers are blocked, making traditional single-layer diagnostics misleading.\n\nCausal Interaction: Undersized or overly aggressive configuration parameters (small buffer pool, low shared memory per backend, or tight checkpoint intervals) force frequent page evictions and checkpoint activity, driving up latch acquisition and buffer churn. The resulting latch contention prolongs critical sections, keeping backends active longer and inflating their connection lifetimes. As session counts rise and data packets stall on an already congested or under-provisioned network/listener stack, authentication and I/O paths slow further, causing more client-read/write waits. These prolonged waits keep latches and buffer pins held, which in turn amplifies buffer contention and magnifies the impact of the misconfiguration. Conversely, network-induced back pressure masks true hardware capacity, leading administrators to mis-tune memory and checkpoint parameters even further, completing a feedback loop that degrades both throughput and latency across the entire system.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.6682373974564818,
+            "bm25_score": 26.664638979510304,
+            "lexical_score": 0.19701086956521738,
+            "matched_terms": [
+                "activity",
+                "an",
+                "and",
+                "are",
+                "authentication",
+                "client",
+                "connection",
+                "establishment",
+                "handling",
+                "holding",
+                "is",
+                "latency",
+                "longer",
+                "network",
+                "of",
+                "on",
+                "operating",
+                "or",
+                "pools",
+                "session",
+                "sessions",
+                "socket",
+                "system",
+                "the",
+                "time",
+                "to",
+                "triggered",
+                "which",
+                "with"
+            ],
+            "match_count": 184,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_idle",
+                "parameter_name": "tcp_keepalives_idle",
+                "timeout_category": "network_idle_keepalive_probe_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time with no network activity after which the operating system should send a TCP keepalive message to the client.",
+                "trigger_condition": "A TCP client connection has no network activity longer than tcp_keepalives_idle on systems supporting TCP_KEEPIDLE or an equivalent socket option.",
+                "workload_impact": "Starts TCP keepalive probing for an otherwise idle client connection; together with interval and count settings this can lead to dead connection detection.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

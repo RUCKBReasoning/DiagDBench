@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Database Configuration Parameter Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Transaction Lock Contention Anomaly: Concurrent transactions request mutually incompatible locks on the same data items, resulting in blocking chains or deadlocks that stall or abort sessions.\nDatabase Configuration Parameter Anomaly: Engine-level settings such as buffer-pool size, checkpoint frequency, work-memory limits, or parallelism are mis-tuned, so performance degrades even though raw hardware resources are not fully utilized.\nBuffer Cache and Latch Contention Anomaly: Sessions repeatedly collide on hot buffer pages, page pins, or internal latches, causing excessive wait or spin time inside the buffer manager.\n\nWhen all three root causes surface together, the workload experiences a cascading slowdown: lock-wait and deadlock events coincide with surges in page-latch and buffer-busy waits, while system-wide performance counters show CPU saturation alternating with idle gaps and erratic I/O bursts. Transactions queue in the application layer, connection pools fill, and user-visible response times spike unpredictably. Deadlock reports, lock-timeout errors, and long semaphore/latch hold times appear in close temporal proximity, making it hard to attribute the primary bottleneck. Checkpoints or background writers may trigger sudden storms of dirty-page flushes that amplify both lock and latch durations, further depressing throughput.\n\nCausally, mis-sized or mis-timed configuration parameters (e.g., undersized buffer pool, aggressive checkpoint intervals, or excessive per-session work memory) force hot pages to be evicted and reloaded, inflating latch acquisition and I/O latency. Longer page-level contention extends the time locks are held, heightening the probability of blocking chains and deadlocks. In turn, lock contention prolongs transaction lifetimes, keeping pages pinned and latches occupied, which feeds back into buffer-cache contention. The intertwined feedback loops between poor configuration, latch pressure, and lock waits reinforce each other, producing a severe concurrency bottleneck characteristic of this composite anomaly.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.44448571726275016,
+            "bm25_score": 16.641015677333673,
+            "lexical_score": 0.17661290322580644,
+            "matched_terms": [
+                "and",
+                "are",
+                "connection",
+                "data",
+                "idle",
+                "latency",
+                "long",
+                "longer",
+                "may",
+                "not",
+                "on",
+                "or",
+                "pools",
+                "session",
+                "sessions",
+                "system",
+                "the",
+                "this",
+                "time",
+                "timeout",
+                "when"
+            ],
+            "match_count": 271,
+            "entry": {
+                "timeout_id": "pg16_tcp_user_timeout",
+                "parameter_name": "tcp_user_timeout",
+                "timeout_category": "network_unacknowledged_data_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies how long transmitted data may remain unacknowledged before the TCP connection is forcibly closed.",
+                "trigger_condition": "TCP data sent by PostgreSQL remains unacknowledged longer than tcp_user_timeout on systems supporting TCP_USER_TIMEOUT.",
+                "workload_impact": "The TCP connection is forcibly closed.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Optimizer Statistics Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-layer statements or transaction boundaries are written in a way that forces the engine to process more data or hold resources longer than the business logic actually requires.\nOptimizer Statistics Anomaly : The optimizer relies on stale, incomplete, or misleading statistics, causing systematic misestimation of cardinalities and selection of sub-optimal execution plans.\nOperating System Resource Limit Anomaly : Kernel-level quotas on file handles, shared memory, threads, or similar objects are exhausted, preventing the database from allocating the OS resources it needs.\n\nWhen these three root causes occur together, the database exhibits amplified performance degradation and intermittent failures:  • Queries already bloated by poor workload design are further misplanned because of bad statistics, resulting in massive full scans, spill-to-disk sorts, and runaway parallelism.  • The excessive I/O, memory, and worker-thread demand drives the process toward OS-enforced ceilings; once limits are hit, new sessions, parallel workers, or I/O contexts fail to start, causing sudden spikes of errors, timeouts, and transaction rollbacks.  • Monitoring shows chronic long-tail latency, repeated slow-query entries, wide gaps between estimated and actual rows, frequent plan recompiles, and concurrent kernel messages about resource-allocation failures.  • Symptoms can be mistaken for pure workload, optimizer, or system issues in isolation, obscuring the intertwined nature of the problem.\n\nCausal chain: inefficient SQL logic inflates data volume and resource consumption, magnifying the impact of any cardinality misestimates produced by stale or inadequate statistics. The misestimates lead the optimizer to pick plans that consume even more CPU, memory, and I/O than the inflated workload already demands. This burst of resource pressure accelerates exhaustion of kernel-level quotas; once OS limits are reached, the database can no longer grow its worker or I/O pools, which in turn feeds back into longer queue times and more application retries, keeping transactions open even longer and compounding the statistics staleness. Thus each root cause reinforces the others, creating a self-amplifying loop that degrades performance and availability across both transactional and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.389741017569737,
+            "bm25_score": 16.816913416825034,
+            "lexical_score": 0.11863833896668276,
+            "matched_terms": [
+                "and",
+                "be",
+                "causing",
+                "data",
+                "long",
+                "longer",
+                "or",
+                "preventing",
+                "than",
+                "the",
+                "this",
+                "times",
+                "to",
+                "when"
+            ],
+            "match_count": 151,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

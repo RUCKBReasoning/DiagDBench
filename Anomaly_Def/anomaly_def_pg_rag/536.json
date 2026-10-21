@@ -1,0 +1,46 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + MVCC Version Maintenance Anomaly + Replication Synchronization Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently chooses or reuses an execution plan that is substantially sub-optimal even though statistics are reasonably accurate.\nMVCC Version Maintenance Anomaly : Obsolete row versions and logically deleted index entries accumulate faster than background cleanup can reclaim them, inflating table size and visibility-check cost.\nReplication Synchronization Anomaly : Downstream replicas cannot receive, persist, or apply transaction-log records as fast as the primary generates them, causing replay lag and log-retention growth.\n\nWhen these three root causes strike together, the system shows a blend of symptoms: 1) query plans alternate between index probes and full scans or stick to a poor plan, yet execution times lengthen regardless because heaps and indexes are bloated with dead rows; 2) long-running or repeatedly re-planned queries emit far more I/O and WAL, which rapidly widens replica write/flush/replay lag; 3) replication lag, in turn, keeps old snapshots open on standbys, preventing garbage collection on the primary, so the version store and table bloat swell further; 4) statistics collected on the enlarged tables exaggerate row counts, confusing the optimizer and prompting additional mis-plans; 5) the primary’s pg_wal / redo or archive area grows because segments cannot be recycled until replicas catch up, exacerbating storage pressure already heightened by MVCC bloat.\n\nCausal chain: heavy OLTP churn creates many dead versions; delayed vacuum leads to bloated relations and skewed cost estimates, encouraging the optimizer to switch to full table scans or poorly chosen join orders, which inflate execution time and emit more WAL. The surge in WAL overwhelms replicas whose apply threads are already slowed by replaying large, poorly batched updates, so replication lag increases. That lag holds replication snapshots open, preventing further vacuum progress on the primary and locking in the version bloat that triggered the plan regression. This feedback loop steadily degrades query performance, bloats storage, and erodes recovery point objectives, making the composite anomaly significantly more damaging than any individual root cause alone.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 61,
+            "score": 0.24249281570914788,
+            "bm25_score": 11.75156844513725,
+            "lexical_score": 0.11114405732641461,
+            "matched_terms": [
+                "and",
+                "be",
+                "by",
+                "execution",
+                "in",
+                "is",
+                "or",
+                "point",
+                "pressure",
+                "the",
+                "to",
+                "together",
+                "with"
+            ],
+            "match_count": 9,
+            "entry": {
+                "error_code": "22P01",
+                "error_name": "floating_point_exception",
+                "official_description": "floating point exception",
+                "error_class": "Class 22 - Data Exception",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

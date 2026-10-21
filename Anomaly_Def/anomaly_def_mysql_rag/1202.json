@@ -1,0 +1,62 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Transaction Lock Contention Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Schema and Index Design Anomaly: Physical data-model or indexing choices do not align with workload access patterns, forcing inefficient scans, wide lock footprints, and excess I/O regardless of optimizer decisions.\nTransaction Lock Contention Anomaly: Concurrent transactions demand incompatible locks on the same rows, pages, or metadata, creating long blocking chains or deadlocks that throttle throughput and trigger rollbacks.\nBuffer Cache and Latch Contention Anomaly: Sessions fight for hot buffer pages, page-latch structures, or flush slots inside the buffer manager, leading to wait events and CPU spin without progress.\n\nWhen all three conditions exist together, the system exhibits compounded symptoms: frequent full-table or non-covering index scans inflate the number and size of locked and latched pages; simultaneous transactions pile up behind both user-level locks and low-level latches, producing mixed \"lock wait\" and \"buffer latch\" wait spikes, CPU burn, erratic query latencies, and degraded TPS. Deadlock detector logs intermingle with buffer busy statistics, while adding or modifying indexes unpredictably shifts the pressure between lock manager and buffer manager, making the root problems appear transient or workload-dependent.\n\nCausal interaction: Poor schema and index design widens each statement’s physical footprint, touching many more rows and pages than necessary. The surplus page visits not only enlarge lock scopes—escalating row locks to page or table locks—but also drive up buffer-page churn, keeping hot root and leaf pages in constant reuse. These oversized critical pages become latch hotspots; the resulting latch waits extend statement execution time, which in turn prolongs lock hold time. Longer lock durations heighten the probability of conflicting lock requests, deepening blocking chains and deadlock frequency. Meanwhile, lock contention forces some sessions to wait, while others spin on latches for the same pages, amplifying CPU usage and eroding throughput. Thus, flawed physical design, elevated lock contention, and buffer/latch thrashing reinforce one another, producing a severe, self-sustaining performance collapse in write-intensive transactional workloads.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.756859756097561,
+            "bm25_score": 41.8166766485344,
+            "lexical_score": 0.18953252032520324,
+            "matched_terms": [
+                "and",
+                "another",
+                "blocking",
+                "conflicting",
+                "for",
+                "in",
+                "incompatible",
+                "lock",
+                "longer",
+                "metadata",
+                "of",
+                "only",
+                "or",
+                "row",
+                "schema",
+                "sessions",
+                "statement",
+                "than",
+                "the",
+                "time",
+                "transaction",
+                "up",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 58,
+            "entry": {
+                "timeout_id": "mysql84_innodb_row_lock_wait_timeout",
+                "parameter_name": "innodb_lock_wait_timeout",
+                "timeout_category": "innodb_row_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "The length of time in seconds an InnoDB transaction waits for a row lock before giving up.",
+                "trigger_condition": "An InnoDB transaction waits longer than innodb_lock_wait_timeout for a row lock.",
+                "workload_impact": "The lock wait gives up; by default only the current statement is rolled back unless innodb_rollback_on_timeout is enabled.",
+                "default_behavior": "Defined as an InnoDB system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

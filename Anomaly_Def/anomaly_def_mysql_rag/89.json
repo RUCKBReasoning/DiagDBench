@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Buffer Cache and Latch Contention Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions block or deadlock each other while competing for mutually incompatible locks managed by the lock manager.\nBuffer Cache and Latch Contention Anomaly : Sessions serialize on hot buffer pages, latches or I/O-slot structures inside the buffer manager, stalling while trying to read, pin, or flush pages.\nData Block and Index Integrity Anomaly : On-disk data or index pages are physically or logically corrupted, breaking key ordering, page links, or checksum verification.\n\nWhen all three root causes surface together, the system exhibits an intertwined failure pattern: blocking chains, deadlock victim rollbacks and application timeouts coexist with elevated buffer-busy/latch waits, CPU spin without progress, and corruption-related scan or checksum errors. Queries that finally acquire locks may still stall on latch waits; once latch access is granted, they can encounter corrupted pages that trigger retried I/O, forced page eviction, or error propagation back into the transaction layer—re-opening locks and widening wait chains. Monitoring views show simultaneous growth in lock-wait seconds, latch-wait seconds, and corruption or page-verification error counts; throughput collapses and latency becomes highly erratic.\n\nCausal interaction: a damaged data or index page can become a persistent hot spot because repeated access attempts force reloads and verification retries, driving up buffer-cache pinning and latch pressure. The resultant latch contention prolongs critical-section time, extending the period during which locks are held and thus intensifying transaction blocking and deadlock probability. Conversely, long lock waits keep pages pinned longer, reducing buffer turnover and making it harder for the engine to evict or rebuild corrupted pages, which perpetuates integrity faults. The three anomalies therefore reinforce each other in a feedback loop where corruption induces latch contention, latch contention magnifies lock contention, and lock contention prevents timely repair or page replacement, collectively degrading OLTP workload performance and reliability far beyond the impact of any single anomaly.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2244,
+            "score": 0.6149751484172251,
+            "bm25_score": 70.61735701617677,
+            "lexical_score": 0.18177966101694915,
+            "matched_terms": [
+                "and",
+                "blocking",
+                "by",
+                "can",
+                "chains",
+                "concurrent",
+                "engine",
+                "failure",
+                "for",
+                "incompatible",
+                "is",
+                "lock",
+                "or",
+                "the",
+                "time",
+                "to",
+                "transaction",
+                "transactions",
+                "trying",
+                "with",
+                "without"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010357",
+                "error_name": "ER_TZ_CANT_OPEN_AND_LOCK_TIME_ZONE_TABLE",
+                "official_description": "Can't open and lock time zone table: %s trying to live without them",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "concurrency_and_transaction",
+                "cause_analysis": "The failure is typically associated with concurrent transactions contending for the same logical resources, incompatible lock acquisition order, or transaction-state conflicts surfaced by the engine.",
+                "solution_guidance": "Inspect blocking chains, reduce conflicting write overlap, shorten transaction lifetime, review lock acquisition order, and verify whether transaction scheduling or retry logic needs adjustment.",
+                "observable_symptoms": [
+                    "blocking",
+                    "rollback",
+                    "retry",
+                    "stalled transaction"
+                ]
+            }
+        }
+    }
+]

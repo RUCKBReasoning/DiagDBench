@@ -1,0 +1,47 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + MVCC Version Maintenance Anomaly",
+            "Description": "Schema and Index Design Anomaly : Table, partition, and index structures do not match workload access patterns, forcing the optimizer into wide scans, non-covering lookups, and excessive index maintenance work.\nMVCC Version Maintenance Anomaly : Obsolete row versions and logically deleted index entries pile up faster than background cleaners can reclaim them, inflating on-disk structures and visibility-check overhead.\n\nCombined anomalous phenomena: 1) Table and index files grow rapidly because bloat from dead MVCC versions is layered on top of redundant or poorly chosen indexes, driving up I/O volume for every scan. 2) Queries that should be selective are executed as full-table or full-index scans; the scans now traverse many more pages than the live data actually needs, so latency and buffer churn escalate. 3) Autovacuum or similar cleanup workers run almost constantly yet fail to catch up, their work slowed by the oversized and mis-aligned index set they must walk. 4) Statistics drift as the live-row density drops, further skewing the optimizer toward the already expensive plans. 5) Write throughput degrades because every UPDATE/DELETE must touch multiple unnecessary indexes and append more row versions, while also contending with long-running cleanup tasks.\n\nCausal interaction: Sub-optimal schema and indexing choices increase the number and size of index entries that must be maintained for every data change, directly lengthening MVCC undo/redo chains and the work that vacuum processes must perform. As cleaners fall behind, version bloat expands the physical tables, magnifying the cost of the original design flaw by making sequential scans even heavier and rendering existing indexes less selective. The two root causes therefore reinforce each other: bad design slows version cleanup; delayed cleanup enlarges data structures and statistics errors, making the design mismatch more harmful. The feedback loop can quickly push an OLTP system into a state where both read and write performance deteriorate sharply and maintenance windows cannot recover in time.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 55,
+            "score": 0.2725655985210549,
+            "bm25_score": 11.6079758876526,
+            "lexical_score": 0.11885929073378004,
+            "matched_terms": [
+                "and",
+                "be",
+                "by",
+                "data",
+                "in",
+                "is",
+                "mismatch",
+                "must",
+                "or",
+                "state",
+                "the",
+                "to",
+                "with",
+                "workload"
+            ],
+            "match_count": 12,
+            "entry": {
+                "error_code": "22026",
+                "error_name": "string_data_length_mismatch",
+                "official_description": "string data length mismatch",
+                "error_class": "Class 22 - Data Exception",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

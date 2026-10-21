@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + MVCC Version Maintenance Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Transaction Lock Contention Anomaly: concurrent transactions block or deadlock each other while competing for incompatible locks on the same rows, pages, or metadata. \nMVCC Version Maintenance Anomaly: obsolete row versions and undo records accumulate faster than background cleaners can reclaim them, inflating on-disk/ in-memory version stores and slowing visibility checks. \nBuffer Cache and Latch Contention Anomaly: sessions stall on buffer-pool page pins, latches, or I/O slots when many workers hammer the same hot pages or when dirty-page flushes back up.\n\nComposite definition: The system simultaneously suffers from excessive lock conflicts, runaway MVCC version buildup, and intense buffer-pool/latch contention. Blocking and deadlocked transactions hold locks for long periods; their uncommitted updates leave large trails of undo/row versions that must be tracked in a crowded buffer cache whose pages are themselves hotly contested. \n\nCombined observable phenomena: 1) Steep increases in lock-wait time, deadlock victim errors, and cascading application retries; 2) Rapid growth of undo segments or version stores, falling live-row density, and autovacuum/cleaner processes perpetually active yet ineffective; 3) Surging buffer_busy, page_latch_x/sh waits, high CPU spin, and prolonged checkpoint or flush cycles; 4) Multiplicative slowdown where blocked or rolled-back transactions re-execute, further flooding the buffer cache and version store, while latch waits mask underlying lock wait statistics, making diagnosis harder.\n\nCausal reinforcement: Long-lived or repeatedly aborted transactions caused by lock contention delay the advancement of the MVCC vacuum horizon, preventing cleanup and letting obsolete versions balloon. The bloated relation size and heavier visibility map scans increase buffer-pool pressure, forcing frequent page replacements and dirty flushes that intensify latch contention. Conversely, latch and I/O stalls lengthen the time each transaction holds its locks, deepening blocking chains and raising deadlock probability. The swollen version store also forces additional page reads and writes, amplifying buffer contention. Together, these feedback loops degrade throughput, exhaust memory and I/O bandwidth, and can precipitate systemic thrashing or emergency shutdown due to space exhaustion or wraparound risk.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.2179089135699765,
+            "bm25_score": 11.077908921604818,
+            "lexical_score": 0.10727876774388402,
+            "matched_terms": [
+                "and",
+                "are",
+                "be",
+                "by",
+                "for",
+                "of",
+                "on",
+                "or",
+                "sessions",
+                "system",
+                "that",
+                "the",
+                "time",
+                "to",
+                "when"
+            ],
+            "match_count": 170,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_interval",
+                "parameter_name": "tcp_keepalives_interval",
+                "timeout_category": "network_keepalive_retry_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time after which a TCP keepalive message that has not been acknowledged by the client should be retransmitted.",
+                "trigger_condition": "A TCP keepalive probe is not acknowledged for tcp_keepalives_interval on systems supporting TCP_KEEPINTVL or an equivalent socket option.",
+                "workload_impact": "Controls retry timing for keepalive probes used to detect unresponsive client connections.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

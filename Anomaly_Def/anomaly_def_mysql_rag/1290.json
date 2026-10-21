@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly: The write-ahead logging path—log buffer, log files, archiver, or replication-retention pipeline—cannot persist or advance redo fast enough, stalling commits and checkpoints.\nNetwork and Connectivity Resource Anomaly: Client/server communication or connection-handling facilities—network links, listeners, socket queues, authentication threads—are saturated or unstable, delaying session establishment and data transfer.\n\nWhen both anomalies manifest concurrently, users experience a mixture of severe commit latency, intermittent session timeouts, and sudden pauses in workload progress. Commit, log-flush, and log-sync waits rise sharply while, at the same time, new or idle sessions encounter long TLS handshakes, SYN backlog drops, or \"too many connections\" errors. Queued transactions hold locks and pins, causing cascading contention that further lengthens response times. Archive and replication lag grows because log files cannot be shipped over an already congested network, leading to log-file directory bloat and eventual log-space exhaustion; once log switches stall, write workloads freeze and a surge of client retries floods the overstressed listener.\n\nCausally, packet loss, high round-trip times, or exhausted connection workers slow archive/replica transport, which in turn prevents timely log segment clearance; retained segments fill the log device, throttling new log writes and elongating commit paths. Conversely, prolonged commit latency forces application threads to remain in open transactions longer, inflating connection counts and data queued for client delivery, thereby intensifying network socket pressure and retransmissions. The positive feedback loop between an overwhelmed log subsystem and degraded connectivity accelerates resource exhaustion on both fronts, making the composite failure mode harder to diagnose and more disruptive than either anomaly in isolation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 15,
+            "score": 0.6839663061593355,
+            "bm25_score": 29.98020136719391,
+            "lexical_score": 0.19979274611398962,
+            "matched_terms": [
+                "and",
+                "are",
+                "client",
+                "communication",
+                "data",
+                "delaying",
+                "for",
+                "latency",
+                "links",
+                "loss",
+                "network",
+                "or",
+                "packet",
+                "progress",
+                "session",
+                "slow",
+                "the",
+                "times",
+                "transport",
+                "unstable",
+                "when",
+                "write"
+            ],
+            "match_count": 26,
+            "entry": {
+                "timeout_id": "mysql84_xplugin_read_timeout",
+                "parameter_name": "mysqlx_read_timeout",
+                "timeout_category": "x_protocol_network_read_timeout",
+                "scope": "global/session/X Plugin",
+                "official_definition": "Read timeout for X Plugin network communication.",
+                "trigger_condition": "A MySQL X Protocol read operation exceeds mysqlx_read_timeout.",
+                "workload_impact": "The X Protocol network read operation times out.",
+                "default_behavior": "Defined as a MySQL X Plugin system variable.",
+                "system_domain": "network_transport",
+                "cause_analysis": "This timeout is usually triggered when network data is not acknowledged, received, or written within the configured transport-level waiting window.",
+                "solution_guidance": "Inspect packet loss, transport latency, client responsiveness, proxy behavior, and whether slow consumers or unstable links are delaying network progress.",
+                "observable_symptoms": [
+                    "network timeout",
+                    "disconnect",
+                    "read/write interruption"
+                ]
+            }
+        }
+    }
+]

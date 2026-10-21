@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Buffer Cache and Latch Contention Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Database Memory Allocation Anomaly: Excessive or uncontrolled growth of database memory regions (buffer caches, work areas, plan cache, etc.) pushes the host beyond its safe physical- or virtual-memory envelope.\nBuffer Cache and Latch Contention Anomaly: Hot buffer pages and their protecting latches become serialization points, forcing sessions to wait, spin, or stall while competing for page access rather than for higher-level locks.\nOperating System Resource Limit Anomaly: The database engine or its worker processes exhaust kernel-enforced limits such as file descriptors, shared-memory segments, semaphores, or thread quotas, preventing new allocations or spawns.\n\nWhen all three root causes arise concurrently, the system exhibits a blended failure pattern: 1) memory-pressure symptoms such as paging, rising RSS, or OOM kills; 2) escalating buffer-busy and latch wait events accompanied by CPU spin and latency spikes; and 3) intermittent \"cannot allocate resource\" errors, failed connection attempts, or stalled background workers as kernel limits are hit. Swapping amplifies latch hold times, making contention metrics surge, while blocked or crashed auxiliary processes (e.g., check-pointers, log writers, or parallel workers) further starve the buffer pool and inflate both wait and memory footprints. The overall effect is sharp throughput collapse, erratic response times, and partial outages that can be difficult to attribute to a single layer.\n\nCausal chain: unbounded memory allocation enlarges the buffer cache and per-session work areas, increasing the absolute number of dirty pages and active latches; longer flush cycles and greater page churn intensify latch contention. The prolonged waits keep transactions open and memory pinned, which in turn accelerates memory consumption. As memory pressure mounts, the kernel begins paging and elevates the likelihood of hitting process limits for address space, file handles, or worker threads. Once OS limits are breached, essential database helpers fail to start or crash, reducing the system’s ability to recycle or flush buffers and releasing latches even more slowly. The three anomalies therefore reinforce one another in a positive feedback loop—memory bloat fuels contention, contention prolongs memory residency, and both drive the engine into kernel resource exhaustion—culminating in severe, workload-agnostic instability.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.5017995512521899,
+            "bm25_score": 16.597008494712167,
+            "lexical_score": 0.14241383778180874,
+            "matched_terms": [
+                "and",
+                "are",
+                "be",
+                "can",
+                "check",
+                "connection",
+                "failure",
+                "is",
+                "latency",
+                "number",
+                "of",
+                "or",
+                "session",
+                "sessions",
+                "system",
+                "that",
+                "the",
+                "to",
+                "when"
+            ],
+            "match_count": 263,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_count",
+                "parameter_name": "tcp_keepalives_count",
+                "timeout_category": "network_keepalive_failure_threshold",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the number of TCP keepalive messages that can be lost before the server connection to the client is considered dead.",
+                "trigger_condition": "The number of lost TCP keepalive probes reaches tcp_keepalives_count on systems supporting TCP_KEEPCNT.",
+                "workload_impact": "The server can consider the client connection dead after the configured keepalive failure threshold.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

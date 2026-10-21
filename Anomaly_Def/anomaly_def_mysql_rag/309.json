@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "CPU Resource Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "CPU Resource Anomaly: Database-related processes saturate host CPU capacity, driving run-queue growth and system-wide latency.\nOperating System Resource Limit Anomaly: Database processes exhaust kernel-enforced quotas such as file descriptors, threads, or shared-memory segments, blocking further allocations.\n\nComposite definition:\nThe system simultaneously suffers from severe CPU saturation and the exhaustion of one or more operating-system resource limits, creating a multi-layer bottleneck where compute cycles are scarce and new kernel objects cannot be obtained. \n\nCombined anomalous phenomena:\n• Sustained 90-100 % CPU utilization, long run queues, and increased context switches coincide with frequent engine or kernel errors about \"unable to create thread\", \"cannot allocate shared memory\", or \"too many open files\".\n• Session creation, parallel-worker spawning, or I/O submission intermittently fails; surviving sessions run slowly because every task competes both for CPU time-slices and for scarce kernel objects.\n• Wait-event views show a mix of CPU run-queue waits and kernel-resource waits; application logs show unexplained timeouts alongside low-level allocation failures.\n• Latency spikes and throughput collapse spread across otherwise unrelated queries, making performance degradation appear chaotic and difficult to attribute to a single layer.\n\nCausal chain and interaction:\nHigh CPU demand causes threads to execute longer and context-switch more frequently, accelerating consumption of per-process file descriptors, async-I/O contexts, and thread IDs. As these kernel limits are approached or reached, the database attempts to spawn additional workers or open more files to cope with the workload, but the kernel denies the requests, forcing retries and idle waits that further extend CPU hold times. The longer each thread sits runnable but unscheduled, the more the run queue grows, intensifying CPU saturation. Conversely, when kernel limits block thread or I/O creation, existing threads must shoulder more work, increasing CPU load even further. This feedback loop amplifies both anomalies, rapidly degrading overall throughput and potentially leading to partial or complete service outage.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5586,
+            "score": 0.7235501844934374,
+            "bm25_score": 58.07822588960125,
+            "lexical_score": 0.13303769401330376,
+            "matched_terms": [
+                "and",
+                "blocking",
+                "for",
+                "idle",
+                "limits",
+                "long",
+                "of",
+                "or",
+                "queues",
+                "resource",
+                "the",
+                "time",
+                "too",
+                "wait",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013729",
+                "error_name": "ER_NET_WAIT_ERROR2",
+                "official_description": "'wait_timeout' period of %s seconds was exceeded for %s. The idle time since last command was too long.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "timeout_and_waiting",
+                "cause_analysis": "The failure is typically associated with extended waiting, resource queues, unresponsive peers, or configured time limits being exceeded before the requested operation completes.",
+                "solution_guidance": "Check wait sources, blocking chains, network responsiveness, timeout settings, and whether resource contention is prolonging operation completion.",
+                "observable_symptoms": [
+                    "timeout",
+                    "prolonged waiting",
+                    "interrupted operation"
+                ]
+            }
+        }
+    }
+]

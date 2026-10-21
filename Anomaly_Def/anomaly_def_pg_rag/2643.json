@@ -1,0 +1,60 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Storage I/O Throughput Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Storage I/O Throughput Anomaly: Sustained physical read and write demand overruns the available throughput, IOPS, or latency capacity of the underlying storage volumes, making the disk subsystem the primary bottleneck.\nNetwork and Connectivity Resource Anomaly: Network transport, listener, authentication, or socket-handling resources are unable to service incoming connections and data transfers at the required rate, producing client-side timeouts, retransmissions, and connection refusals.\n\nWhen both conditions coexist, the database experiences a multilayer performance collapse. Disk queues, read/write latencies, and durability flush waits soar while, in parallel, connection-establishment times lengthen, sockets pile up in wait states, and application pools flood the listener with retries. End-users observe highly variable query response times, periodic stalls, and sporadic disconnects. Server metrics show moderate CPU, but extreme I/O wait, swollen session counts, backlog and accept queue saturation, increased network round-trip times, and surges of aborted transactions. Because slow storage elongates statement execution and commit phases, each session holds its network resources longer, further exhausting socket and process limits, while network retransmissions and throttling delay log shipping, replication, or backup traffic, worsening storage congestion.\n\nCausally, saturated storage inflates I/O waits, extending transaction and result-set lifetimes; this keeps connections open, grows the active session population, and drives the listener toward exhaustion. Simultaneously, network slowdowns or connection churn force the server to buffer more result data and maintain idle backends, increasing memory pressure and dirty-page accumulation that must eventually be flushed to already overtaxed disks. The feedback loop between elongated disk operations and protracted network interactions amplifies latency at both layers, obscuring which tier is primary and pushing the database into a compounded resource starvation state.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.7513076923076922,
+            "bm25_score": 29.681643347493402,
+            "lexical_score": 0.17102564102564102,
+            "matched_terms": [
+                "aborted",
+                "active",
+                "and",
+                "because",
+                "client",
+                "delay",
+                "idle",
+                "is",
+                "longer",
+                "of",
+                "open",
+                "or",
+                "query",
+                "required",
+                "session",
+                "statement",
+                "that",
+                "the",
+                "this",
+                "transaction",
+                "transactions",
+                "when",
+                "while"
+            ],
+            "match_count": 292,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

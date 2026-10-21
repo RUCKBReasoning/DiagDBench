@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Transaction Log Subsystem Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Composite definition: The database simultaneously suffers from (1) a physical data-model and indexing layout that forces excessive or non-selective data access and heavy index maintenance, (2) a transaction-log subsystem that cannot absorb or flush the resulting surge of redo records, and (3) storage that is approaching or has reached its free-space limits. Together, these three root causes create a feedback loop in which inefficient data access multiplies write volume, overwhelms log handling, and rapidly exhausts available space, crippling both query execution and commit processing.\n\nCombined anomalous phenomena: • Queries that should be index-efficient devolve into full scans, row-by-row lookups, or repeated non-covering index probes, causing inflated I/O and redo generation. • Concurrent DML shows rising commit and checkpoint latency, with spikes in LOG_WRITE / LOG_FLUSH waits, frequent log switches, and archiver backlogs. • Free space in data, temp, and especially log or archive destinations plummets; auto-extend and allocation failures, \"out of space\" errors, and emergency space reclamation events appear. • Application sessions observe a mixture of slow query response, stalled commits, temporary-space errors, and, in extreme cases, database‐wide hang as log segments cannot be created or recycled. The overlapping symptom set can obscure diagnosis because performance waits (from design flaws) and hard space errors (from storage pressure) manifest simultaneously with log-related stalls.\n\nCausal interaction: Suboptimal schema and missing/oversized indexes inflate the amount and size of data modified per transaction and multiply index maintenance work. This drives up redo generation and forces the transaction-log subsystem to flush larger volumes more frequently. As the log subsystem approaches its throughput ceiling, commits queue and log switches accelerate, generating even more archived segments. The elevated churn, combined with space-wasting indexes and fragmented tables, rapidly consumes disk capacity. Shrinking free space further slows both data and log I/O, while full archive or data destinations prevent log recycling, amplifying commit stalls. The inability to rebuild or drop problematic indexes due to space scarcity locks the system in a self-reinforcing degradation loop that severely impacts OLTP workload throughput and availability.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.6569033109034458,
+            "bm25_score": 25.12360324353549,
+            "lexical_score": 0.13151871326940923,
+            "matched_terms": [
+                "access",
+                "and",
+                "be",
+                "because",
+                "by",
+                "execution",
+                "is",
+                "or",
+                "query",
+                "should",
+                "the",
+                "this",
+                "together",
+                "with",
+                "work",
+                "workload"
+            ],
+            "match_count": 124,
+            "entry": {
+                "timeout_id": "mysql84_regular_expression_time_limit",
+                "parameter_name": "regexp_time_limit",
+                "timeout_category": "expression_evaluation_time_limit",
+                "scope": "global/session",
+                "official_definition": "The time limit for regular expression matching operations performed by the regular expression engine.",
+                "trigger_condition": "A regular expression match operation exceeds regexp_time_limit.",
+                "workload_impact": "The regular expression operation is constrained by the configured time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

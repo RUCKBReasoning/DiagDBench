@@ -1,0 +1,44 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Replication Synchronization Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly: The local write-ahead logging path on the primary instance is saturated or stalled while generating, flushing, switching, or archiving redo. \nReplication Synchronization Anomaly: Downstream replicas or change-data consumers cannot receive, persist, or apply the primary’s log stream fast enough, causing replication lag and retention of log segments. \nStorage I/O Throughput Anomaly: The underlying storage volumes for data, temp, and log files are bandwidth- or IOPS-constrained, creating elevated read/write latency and long device queues.\n\nWhen all three root causes co-exist, the database experiences a compound slow-commit and replication-backpressure scenario. Commit latency rises sharply as the log buffer waits both for slow physical flushes and for replication–safe acknowledgement. Log-write, log-sync, and durability wait events dominate, while storage wait events for data and log files simultaneously surge. Checkpoints and log-file switches occur more frequently yet clear space slowly, archive and relay log directories grow unchecked, and replica replay lag widens. The primary’s disk usage escalates because retained log segments cannot be recycled, further increasing I/O pressure. Application symptoms include stalled write transactions, timeouts, and degraded read-only replica freshness; maintenance windows and analytic reporting that touch large data ranges also slow because they compete for the already saturated storage bandwidth.\n\nCausally, limited storage throughput lengthens every physical write, throttling the log subsystem first; the bloated log path then compounds storage pressure by generating large sequential writes that the device cannot serve promptly. Because log recycling waits on downstream replay, any delay in replication— itself hampered by the same storage or network bottlenecks—forces the primary to retain additional log segments, inflating I/O volume and metadata churn. In turn, the growing backlog keeps replicas further behind, reinforcing retention pressure on the primary and amplifying the storage bottleneck. This positive feedback loop between slow device I/O, log-flush stalls, and replication lag escalates until the system exhausts commit latency budgets or runs out of disk space, producing a severe OLTP availability and performance crisis.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 208,
+            "score": 0.16717827215738063,
+            "bm25_score": 10.544212426585725,
+            "lexical_score": 0.09482109227871939,
+            "matched_terms": [
+                "and",
+                "be",
+                "by",
+                "in",
+                "is",
+                "itself",
+                "or",
+                "pressure",
+                "system",
+                "the",
+                "to"
+            ],
+            "match_count": 12,
+            "entry": {
+                "error_code": "58030",
+                "error_name": "io_error",
+                "official_description": "io error",
+                "error_class": "Class 58 - System Error (errors external to PostgreSQL itself)",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

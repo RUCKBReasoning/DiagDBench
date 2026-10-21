@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Buffer Cache and Latch Contention Anomaly + Replication Synchronization Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer repeatedly chooses sub-optimal execution plans even though statistics are sound, leading to excessive I/O, CPU, or parallel-execution misuse.\nBuffer Cache and Latch Contention Anomaly: Hot buffer pages and their protecting latches become points of serialization, stalling sessions that compete for page access or page-state changes.\nReplication Synchronization Anomaly: Standbys cannot receive, write, or apply primary log records fast enough, producing widening replication lag and preventing log recycling.\n\nWhen these three root causes manifest together, the database shows an explosive mix of symptoms: single statements oscillate between fast and extremely slow runtimes, while system-wide wait profiles are dominated by buffer-busy and page-latch waits. Concurrently, replication dashboards report growing receive/write/replay lag, swollen relay or retained log segments, and stale read-only replicas. Primary nodes exhibit CPU spin and erratic throughput as queries hammer hot pages; replicas inherit both the sub-optimal plans (through statement shipping or view routing) and the same latch hotspots during redo-apply or read traffic, amplifying their own delay. Checkpoints lengthen, dirty-page queues build up, and storage I/O saturates, further inflating query latency and replica catch-up times.\n\nCausally, a bad plan that favors full scans or high-fan-out nested loops generates a flood of logical reads, concentrating activity on a narrow set of root or data pages. This magnifies latch contention in the buffer manager, slowing every session—including the background processes that flush dirty buffers and ship or apply WAL/redo. The prolonged execution times inflate transaction size and log volume, causing the primary to outpace replica apply rates. The ensuing replication lag prevents log-segment recycling, keeping more pages dirty for longer and extending checkpoint cycles, which in turn deepens buffer churn and latch pressure. The feedback loop between poor plan choice, buffer-cache contention, and replication backlog progressively degrades both primary and replica performance until all tiers are simultaneously bottlenecked.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.7436817279046672,
+            "bm25_score": 30.12400348342486,
+            "lexical_score": 0.14560575968222442,
+            "matched_terms": [
+                "and",
+                "apply",
+                "causing",
+                "data",
+                "lag",
+                "longer",
+                "or",
+                "out",
+                "preventing",
+                "replica",
+                "replication",
+                "the",
+                "this",
+                "times",
+                "to",
+                "waits",
+                "when"
+            ],
+            "match_count": 123,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

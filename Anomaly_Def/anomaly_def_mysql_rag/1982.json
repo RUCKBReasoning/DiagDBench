@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Buffer Cache and Latch Contention Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level statement or transaction design that forces the engine to touch more rows, pages, or time than the business need requires.\nBuffer Cache and Latch Contention Anomaly : Hot pages or undersized cache cause sessions to serialize on buffer-pool latches and page pins rather than progress in parallel.\nTransaction Log Subsystem Anomaly : The log buffer, log files, or archiver cannot keep pace with redo generation, so commits stall waiting for log I/O or space.\n\nComposite definition: The database is concurrently stressed by chatty or over-broad SQL, by latch congestion inside the buffer pool, and by an overloaded transaction-log path. All three root causes manifest at the same time, producing a multi-layer bottleneck chain that spans application logic, in-memory page access, and durable write-ahead logging.\n\nCombined anomalous phenomena:  • End-user calls experience highly variable latency, with both statement execution time and commit time spiking.  • Engine wait views show a mixed profile of buffer-busy waits, page-latch spins, and log-flush or log-sync waits.  • CPU utilisation oscillates between spin-loops on hot latches and idle periods while sessions sleep on log-related events.  • Slow-query logs are flooded with the same wide-scan or chatty statements, and those statements frequently appear at the top of latch-contention reports.  • Checkpoints and archive processes run more often as the log grows rapidly, amplifying I/O pressure and extending latch hold times on dirty pages.  • Overall throughput collapses earlier than expected as concurrency rises because each layer feeds back into the others.\n\nCausal interaction: Verbose or non-set-oriented SQL produces excess logical reads and redo; the surplus page touches concentrate access on a limited set of index roots and data hotspots, escalating latch contention. While sessions wait or spin on those latches, they continue to generate redo for partial work, further increasing the log generation rate. The congested log subsystem then delays commit acknowledgement, lengthening transaction duration and keeping buffers and latches pinned for longer, which intensifies buffer-cache pressure and widens the latch hotspot window. This feedback loop—over-broad SQL → latch contention → prolonged commit → extended latch hold—propagates across many sessions, causing a systemic throughput cliff and severe tail latency even though no single resource is fully exhausted in isolation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.5221915979832025,
+            "bm25_score": 24.814524778230112,
+            "lexical_score": 0.15213675213675215,
+            "matched_terms": [
+                "an",
+                "and",
+                "because",
+                "cannot",
+                "for",
+                "in",
+                "is",
+                "longer",
+                "or",
+                "sessions",
+                "statement",
+                "than",
+                "the",
+                "this",
+                "to",
+                "transaction",
+                "waiting",
+                "waits",
+                "while",
+                "window"
+            ],
+            "match_count": 93,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

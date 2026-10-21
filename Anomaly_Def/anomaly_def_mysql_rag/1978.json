@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Storage Space Capacity Anomaly + CPU Resource Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Optimizer input metadata (row counts, histograms, correlations) is stale or incomplete, causing systematic cardinality misestimates and mis-costed execution plans.\nStorage Space Capacity Anomaly : Available space for data, indexes, logs, temp, or backup areas falls to critical levels or is exhausted, producing allocation failures and blocking I/O activity.\nCPU Resource Anomaly : Database or co-located processes drive host CPU utilization to sustained saturation, starving other work of compute cycles and inflating run-queue waits.\n\nWhen these three root causes co-exist, the system exhibits a compound failure mode: poorly costed plans spawn inefficient, CPU-intensive scans, joins, and sorts that try to spill to temporary or redo space that is already near full, while global CPU saturation lengthens every I/O, log flush, and space-management operation. Observed symptoms include: wildly inaccurate row-count estimates in plans that nevertheless keep reusing bad cache entries; sudden spikes of CPU and context-switch waits; temp-segment or log-file space errors mid-query; aborted DML due to \"no space left\" conditions; slow or failed statistics jobs; and an escalating pattern of lock contention, statement timeouts, and instance-wide latency as both compute and storage headroom disappear.\n\nCausal interaction: Stale or absent statistics provoke the optimizer to choose plan shapes that scan or sort much more data than expected, inflating CPU consumption and generating excess temp and redo usage. The resulting CPU saturation slows background tasks responsible for automatic statistics refresh, file auto-extension, log archival, and space reclamation, allowing space to deplete even faster. In parallel, shrinking free space limits the ability of queries to create temp segments or extend data/log files, causing repeated retries and latch contention that further burn CPU. Each anomaly therefore reinforces the others: bad statistics drive CPU and space demand upward; CPU exhaustion throttles corrective maintenance and inflates I/O wait times; space pressure blocks the very operations (statistics refresh, sorts, index builds) needed to restore plan quality—creating a vicious feedback loop that can culminate in widespread query failures or a complete database outage.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.7430741313406338,
+            "bm25_score": 28.20922400231122,
+            "lexical_score": 0.15308387855620084,
+            "matched_terms": [
+                "aborted",
+                "and",
+                "contention",
+                "execution",
+                "for",
+                "global",
+                "is",
+                "operation",
+                "operations",
+                "or",
+                "other",
+                "pattern",
+                "quality",
+                "query",
+                "resource",
+                "statement",
+                "the",
+                "when",
+                "work"
+            ],
+            "match_count": 93,
+            "entry": {
+                "timeout_id": "mysql84_regular_expression_time_limit",
+                "parameter_name": "regexp_time_limit",
+                "timeout_category": "expression_evaluation_time_limit",
+                "scope": "global/session",
+                "official_definition": "The time limit for regular expression matching operations performed by the regular expression engine.",
+                "trigger_condition": "A regular expression match operation exceeds regexp_time_limit.",
+                "workload_impact": "The regular expression operation is constrained by the configured time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

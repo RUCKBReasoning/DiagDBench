@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Database Memory Allocation Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Schema and Index Design Anomaly : Table, index, partition, and data-type choices do not match workload access patterns, forcing queries into inefficient and excessively large data access paths.\nDatabase Memory Allocation Anomaly : Cumulative buffer cache, work-area, plan cache, and background allocations grow beyond the host’s physical memory envelope, triggering paging, allocation churn, and OOM events.\nTransaction Log Subsystem Anomaly : Generation, flush, switching, or archival of write-ahead logs cannot keep pace with redo production, inflating commit latency and stalling write activity.\n\nWhen these three root causes coexist, the database exhibits a compounded failure pattern: 1) poorly indexed tables drive full-table scans, wide nested-loop lookups, and large batch modifications that explode redo volume; 2) the oversized intermediate result sets and hash/sort operations inflate per-session work memory and thrash the buffer cache, pushing the server into sustained memory pressure; 3) under pressure, the log buffer flushes more frequently yet still backs up behind a saturated log device or slow archiver, so commits stall and sessions linger while still hoarding memory and latches. Observable symptoms include dramatic and erratic response times, simultaneous spikes in physical I/O, paging, and log-flush waits, sudden drops in cache hit ratios, frequent checkpoint storms, and cascaded connection timeouts or node evictions.\n\nCausal chain: Inefficient schema and indexing multiply the amount of data each write or read touches, inflating both memory demand and redo generation. The bloated working set competes for limited RAM, causing cache churn and forcing dirty buffers to be flushed more aggressively—actions that funnel yet more traffic into the already stressed transaction-log subsystem. As log flushes lag, commit latency rises; longer-running transactions accumulate and hold even more memory, further intensifying allocation pressure. Meanwhile, memory pressure can shrink log buffers and increase write fragmentation, worsening log I/O throughput. The feedback loop between design-induced workload amplification, runaway memory usage, and log subsystem saturation quickly degrades overall system stability and throughput in write-intensive OLTP workloads.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.3840407709910038,
+            "bm25_score": 14.429467605455539,
+            "lexical_score": 0.13829026937877953,
+            "matched_terms": [
+                "activity",
+                "and",
+                "be",
+                "can",
+                "connection",
+                "failure",
+                "latency",
+                "not",
+                "of",
+                "or",
+                "server",
+                "session",
+                "sessions",
+                "system",
+                "that",
+                "the",
+                "to",
+                "when"
+            ],
+            "match_count": 174,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_count",
+                "parameter_name": "tcp_keepalives_count",
+                "timeout_category": "network_keepalive_failure_threshold",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the number of TCP keepalive messages that can be lost before the server connection to the client is considered dead.",
+                "trigger_condition": "The number of lost TCP keepalive probes reaches tcp_keepalives_count on systems supporting TCP_KEEPCNT.",
+                "workload_impact": "The server can consider the client connection dead after the configured keepalive failure threshold.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

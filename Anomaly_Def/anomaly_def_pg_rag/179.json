@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Optimizer Statistics Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Schema and Index Design Anomaly : Tables, indexes, partitions, constraints, or data types are not aligned with workload access patterns, forcing inefficient physical access paths.\nOptimizer Statistics Anomaly : Catalog statistics are stale or insufficient, causing systematic misestimation of row counts and selectivity during plan generation.\nOperating System Resource Limit Anomaly : Kernel-enforced quotas on files, memory segments, processes, or other OS objects cap the database’s ability to allocate required resources.\n\nWhen these three root causes coincide, the database exhibits a compound failure pattern: queries choose and execute sub-optimal plans (e.g., full scans, non-covering index probes) that already over-consume I/O and CPU; estimation errors hide or exacerbate the bad physical design, leading the optimizer to deploy even more I/O-intensive or parallel plans; meanwhile, the surge in physical work and connection retries pushes the instance against OS-level ceilings, triggering sporadic \"cannot open file\", \"cannot create thread\", or \"shared memory exhausted\" errors. Auto-stats jobs, index rebuilds, and plan compilation may intermittently fail due to insufficient OS resources, while query latency becomes wildly unstable—sometimes stalling not only on data access but also on the inability to spawn workers or allocate I/O contexts.\n\nCausally, the poor schema/index design increases the cost of every logical request, inflating resource consumption (handles, memory, parallel workers). This heavier footprint accelerates exhaustion of kernel limits. Once limits are hit, essential background tasks such as statistics collection or index maintenance abort, keeping statistics perpetually stale and preventing corrective indexing actions—thereby reinforcing both the statistics and design anomalies. In turn, the optimizer, deprived of accurate statistics and constrained by disabled parallelism, produces even more resource-hungry plans, which further stress the already saturated OS resources. This feedback loop magnifies latency, raises failure rates, and can culminate in partial or full service degradation despite no single anomaly appearing catastrophic in isolation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.7368033126293996,
+            "bm25_score": 24.251795374452158,
+            "lexical_score": 0.12267770876466527,
+            "matched_terms": [
+                "and",
+                "cannot",
+                "database",
+                "index",
+                "of",
+                "or",
+                "other",
+                "required",
+                "row",
+                "schema",
+                "that",
+                "the",
+                "this",
+                "to",
+                "when",
+                "while"
+            ],
+            "match_count": 173,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Transaction Log Subsystem Anomaly + CPU Resource Anomaly",
+            "Description": "Composite definition: The database instance is simultaneously mis-configured at the parameter level, constrained by an overstressed transaction-log subsystem, and suffering from host CPU saturation. The three root causes coexist and interact, so the platform is neither tuned for the hardware nor able to absorb the log-write volume it produces, while CPU time is exhausted trying to keep up with both normal workload processing and log-related background activity.\n\nCombined observable phenomena: 1) Commit latency and log-flush waits rise sharply even when underlying storage metrics show spare IOPS; 2) Checkpoint storms, frequent log-file switches, and growing archive backlogs coincide with OS run-queue spikes and near-100 % CPU utilization; 3) Wait-event views show an interleaving of log-write, CPU scheduler, and configuration-driven background worker waits; 4) After a parameter change or version upgrade, throughput falls off cliff-like, with application threads alternately spinning on CPU and blocking on log-sync, while monitoring tools report buffer pools or per-session work memory either overcommitted or too small; 5) Secondary symptoms such as replication lag, autovacuum/cleanup backlog, and plan-cache thrashing become harder to attribute to a single layer because every mitigation attempt (e.g., raising parallelism or lowering checkpoint frequency) quickly pushes the system into a different but equally constrained state.\n\nCausal chain and interaction: Poorly chosen configuration parameters (e.g., undersized log buffer, aggressive synchronous-commit, or checkpoint-completion target set too low) increase the frequency and immediacy of log flushes. This drives the transaction-log subsystem toward its throughput limit; once the log path slows, foreground sessions hold latches longer and CPU spin-time rises, inflating overall CPU utilization. The elevated CPU demand further delays log-writer and archiver threads, deepening log congestion. Meanwhile, CPU saturation prevents background processes from performing adaptive tuning or deferred I/O, so configuration mis-matches (such as small buffer pools or excessive parallel workers) cannot self-correct and instead generate even more redo. The feedback loop—mis-configuration → log pressure → CPU thrashing → slower log processing—amplifies each individual anomaly, producing a compounded failure mode that is more severe and harder to diagnose than any of the three issues in isolation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.4716487356719934,
+            "bm25_score": 19.551981737008376,
+            "lexical_score": 0.15450819672131147,
+            "matched_terms": [
+                "activity",
+                "and",
+                "attempt",
+                "for",
+                "in",
+                "instead",
+                "is",
+                "latency",
+                "of",
+                "or",
+                "parameter",
+                "pools",
+                "session",
+                "sessions",
+                "the",
+                "this",
+                "time",
+                "wait",
+                "when"
+            ],
+            "match_count": 211,
+            "entry": {
+                "timeout_id": "pg16_libpq_connection_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "client_connection_establishment_timeout",
+                "scope": "libpq/client connection parameter",
+                "official_definition": "Maximum wait for connection, in seconds; zero or not specified means wait indefinitely.",
+                "trigger_condition": "A libpq client connection attempt exceeds connect_timeout seconds.",
+                "workload_impact": "The client connection attempt fails instead of waiting indefinitely.",
+                "default_behavior": "Zero or absent value means wait indefinitely.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Replication Synchronization Anomaly + Data Block and Index Integrity Anomaly + CPU Resource Anomaly",
+            "Description": "Composite Definition: The database cluster is simultaneously suffering from (1) replication pipelines that cannot keep up with primary-side log generation, (2) physical corruption or logical inconsistency inside on-disk data and index pages, and (3) host-level CPU saturation that deprives all engine components of compute cycles. The three conditions interact so that neither the primary nor its replicas can progress, recover, or serve workload in a timely and reliable manner.\n\nReplication Synchronization Anomaly: Standbys or downstream consumers lag behind because they cannot receive, persist, or apply WAL/redo at the rate it is produced.\nData Block and Index Integrity Anomaly: Disk pages or index structures are corrupted or inconsistent, making storage contents untrustworthy and triggering verification or access failures.\nCPU Resource Anomaly: Database processes consume the available CPU to the point of saturation, inflating run-queue time and global response latency.\n\nCombined Phenomena:  • Replication views show rapidly widening receive, write, and replay lag while replica error logs emit page-checksum or index-consistency errors.  • Apply workers on replicas spin on repeated redo-apply retries or corruption-handling routines, driving CPU usage to 100 % on affected cores.  • On the primary, accumulating unrecycled WAL segments inflate disk usage because replicas cannot confirm receipt.  • Queries served from replicas return stale or inconsistent results, and corruption-induced full-table scans or forced rechecks further intensify CPU demand on both primary and replica nodes.  • Cluster-wide latency spikes, failover eligibility drops, and maintenance utilities such as CHECKDB or VACUUM/ANALYZE stall or abort due to lack of idle CPU and inaccessible pages.\n\nCausal Chain: Corrupted data pages arriving through the replication stream—or already present on the replica—cause apply workers to encounter errors, forcing retries, validation passes, and potentially single-threaded corruption-repair logic. These loops monopolize CPU, leaving fewer cycles for normal redo apply and query execution, which in turn widens replication lag even further. The growing lag prevents WAL recycling, bloating storage on the primary and lengthening crash-recovery times. Elevated CPU utilization also slows any background index-rebuild or corruption-repair jobs, prolonging the period during which bad pages remain in the active dataset. Conversely, CPU starvation on the primary can lengthen transaction commit times and enlarge transactions, generating burstier WAL that replicas—already throttled by corruption handling—cannot absorb, completing a feedback loop that magnifies both replication backlog and corruption exposure across the cluster.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2574,
+            "score": 0.4678599514323014,
+            "bm25_score": 51.88090590376596,
+            "lexical_score": 0.15482142857142855,
+            "matched_terms": [
+                "and",
+                "apply",
+                "at",
+                "cluster",
+                "downstream",
+                "for",
+                "is",
+                "keep",
+                "lag",
+                "log",
+                "or",
+                "replica",
+                "replication",
+                "stale",
+                "the",
+                "to",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010687",
+                "error_name": "OBSOLETE_ER_NDB_BINLOG_CLUSTER_FAILURE",
+                "official_description": "NDB Binlog: cluster failure for %s at epoch %u/%u.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

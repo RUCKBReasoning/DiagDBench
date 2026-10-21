@@ -1,0 +1,60 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Storage I/O Throughput Anomaly + CPU Resource Anomaly",
+            "Description": "Schema and Index Design Anomaly : Table structure, partitioning, and index choices do not align with workload access patterns, forcing inefficient access paths that inflate logical and physical I/O.\nStorage I/O Throughput Anomaly : The physical storage layer is unable to deliver the read/write bandwidth, IOPS, or latency required, so I/O queues back up and wait times dominate execution.\nCPU Resource Anomaly : Host CPU cores are saturated by database processes, leaving insufficient compute capacity for the workload and elongating run-queue waits.\n\nWhen all three root causes manifest together the database simultaneously suffers from excessive data access, stalled disk subsystems, and maxed-out CPU. Execution plans show full-table scans or non-covering index probes that issue huge I/O volumes; storage latency and queue depth spike, producing long data-file, log-write, and buffer-I/O waits; meanwhile CPU usage remains near 100 %, with high context-switch rates and scheduler waits. Application response times lengthen unpredictably, batch jobs overrun maintenance windows, and even lightweight queries experience both I/O and CPU contention, making symptoms appear systemic rather than query-specific.\n\nCausally, the physical design mismatch is the primer: missing or ineffective indexes force scans that flood the buffer cache and drive large, random and sequential I/O. The extra traffic pushes the storage array beyond its throughput envelope, so each read or write takes longer, further prolonging query execution. Longer runtimes keep worker threads active and multiply the number of concurrent sessions, which in turn intensifies CPU consumption for predicate evaluation, sorting, and context switching. The saturated CPU then slows the I/O submission threads and background flusher processes, amplifying the storage backlog. This feedback loop between poor schema design, storage saturation, and CPU exhaustion rapidly degrades overall database performance and obscures the original design flaw behind cascading resource bottlenecks.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.7545158223550184,
+            "bm25_score": 36.63084656846453,
+            "lexical_score": 0.18171940785006113,
+            "matched_terms": [
+                "access",
+                "and",
+                "behind",
+                "contention",
+                "context",
+                "execution",
+                "from",
+                "is",
+                "long",
+                "longer",
+                "of",
+                "or",
+                "out",
+                "query",
+                "resource",
+                "takes",
+                "than",
+                "that",
+                "the",
+                "this",
+                "together",
+                "when",
+                "with",
+                "workload"
+            ],
+            "match_count": 255,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

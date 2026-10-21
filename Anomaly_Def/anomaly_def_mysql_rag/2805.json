@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Buffer Cache and Latch Contention Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Engine-level settings (memory, checkpoint, parallelism, etc.) are mis-tuned relative to hardware and workload, so the bottleneck stems from the parameter choices themselves rather than true resource exhaustion.\nBuffer Cache and Latch Contention Anomaly : Sessions stall on buffer-pool page pins, latches, and other lightweight synchronization points because hot or churning pages force serialised access and CPU spin-waiting.\nOperating System Resource Limit Anomaly : The database process collides with kernel-enforced ceilings on file descriptors, shared memory, semaphores, aio contexts, processes/threads, or cgroup quotas, blocking further allocations even though database-level resources appear free.\n\nWhen these three root causes strike together, the system exhibits a tangled symptom set: 1) extreme and erratic wait-event mixes in which buffer-busy/latch waits, log-write waits, and kernel resource-allocation errors appear in the same time slices; 2) bursts of checkpoint-driven I/O that stall on both latch contention and OS aio/file-handle shortages, causing sharp latency spikes and temporary query freezes; 3) CPU saturation by spin loops despite low measured user throughput; 4) sudden connection or worker-spawn failures accompanied by kernel messages about ENFILE, EMFILE, or shared-memory limits, leading to partial outages while existing sessions themselves are trapped behind hot-page latches; 5) highly variable performance after configuration changes, instance restarts, or workload surges, making the individual anomalies hard to distinguish because each masks or amplifies the others.\n\nCausally, mis-sized engine parameters (e.g., an undersized buffer pool, overly aggressive checkpoint target, or excessive parallel-worker cap) increase buffer turnover, concentrate access on a small set of pages, and flood the I/O and logging paths, which in turn magnifies latch contention inside the buffer manager. As latch pressure rises, sessions hold internal resources longer and attempt to open more files, spawn more background workers, or allocate larger shared-memory segments to cope with the backlog, quickly bumping into restrictive OS limits. Conversely, once the kernel refuses new handles, shared memory, or threads, the database cannot expand buffer pools or I/O contexts, forcing even tighter reuse of the existing cache and further intensifying page churn and latch waits. The feedback loop between bad configuration, internal contention, and external resource caps can thus cascade into severe throughput collapse and erratic, hard-to-diagnose performance degradation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3307,
+            "score": 0.3808474430276065,
+            "bm25_score": 38.603578897066626,
+            "lexical_score": 0.13731617647058822,
+            "matched_terms": [
+                "and",
+                "by",
+                "configuration",
+                "engine",
+                "in",
+                "internal",
+                "level",
+                "or",
+                "os",
+                "pressure",
+                "resource",
+                "synchronization",
+                "the",
+                "to",
+                "together",
+                "when",
+                "with",
+                "workload"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-011423",
+                "error_name": "ER_KEYRING_AWS_FAILED_TO_INIT_DUE_TO_INTERNAL_ERROR",
+                "official_description": "keyring_aws initialization failed due to internal error when initializing synchronization primitive - %s. OS returned this error: %s:",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

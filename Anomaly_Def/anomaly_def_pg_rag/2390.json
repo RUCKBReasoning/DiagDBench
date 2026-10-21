@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Buffer Cache and Latch Contention Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Composite Definition: The database simultaneously suffers from runaway accumulation of obsolete MVCC versions, severe buffer-cache/latch contention, and impending exhaustion of allocated storage space. These three root causes coexist and interact, leading to compounded performance degradation, space shortages, and amplified concurrency stalls.\n\nMVCC Version Maintenance Anomaly: Obsolete row versions and rollback records outpace background cleanup, bloating data structures and lengthening visibility checks.\nBuffer Cache and Latch Contention Anomaly: Hot or rapidly churning pages cause sessions to compete for buffer pins and latches, inflating CPU spin time and wait events.\nStorage Space Capacity Anomaly: Data, log, or temp areas approach hard size limits, provoking allocation failures, log-switch stalls, and emergency space conservation behaviors by the engine.\n\nCombined Phenomena: While version churn expands tables and indexes, the working-set footprint in the buffer pool swells, forcing more pages to be loaded, dirtied, and flushed. The oversized version store and growing data files accelerate buffer turnover, increasing buffer-busy and page-latch waits. As space fills, background checkpoints and auto-extension attempts intensify, causing longer write-back stalls that hold latches even longer and block foreground operations. Clients may observe escalating latency spikes, frequent \"out of space\" or \"cannot extend\" errors, sudden slowdown of both reads and writes, and erratic query plans due to inaccurate statistics on the bloated heap. Cleanup workers, throttled by latch waits and lack of free disk space for new segment allocation, fall further behind, causing a positive feedback loop of storage growth, contention, and stalled transactions.\n\nCausal Interaction: Heavy update/delete workloads create large version chains that inflate on-disk structures, rapidly consuming storage and enlarging the hot set of pages. The swollen data footprint forces more frequent page replacements, increasing the probability that many sessions converge on the same root or index pages, which amplifies latch contention. Simultaneously, shrinking free space lengthens and serializes checkpoints and dirty-page evictions, because each flush now competes for scarce allocation units and log space. These prolonged I/O and latch holds slow down autovacuum/cleanup tasks, allowing even more dead versions to pile up, thereby accelerating space exhaustion. The three anomalies hence reinforce one another: MVCC bloat drives space consumption and hot-page pressure; latch contention throttles cleanup and I/O; and near-full disks further delay writes and cleanup, culminating in widespread throughput collapse and potential service outages.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.2886016797944555,
+            "bm25_score": 11.476674775874232,
+            "lexical_score": 0.0945679012345679,
+            "matched_terms": [
+                "and",
+                "be",
+                "clients",
+                "from",
+                "in",
+                "latency",
+                "of",
+                "or",
+                "sessions",
+                "the",
+                "time",
+                "to"
+            ],
+            "match_count": 114,
+            "entry": {
+                "timeout_id": "pg16_authentication_timeout",
+                "parameter_name": "authentication_timeout",
+                "timeout_category": "connection_authentication_timeout",
+                "scope": "server",
+                "official_definition": "Maximum amount of time allowed to complete client authentication; if not completed in time, the server closes the connection.",
+                "trigger_condition": "A would-be client does not complete the authentication protocol within authentication_timeout.",
+                "workload_impact": "The server closes the connection attempt, preventing hung clients from occupying a connection indefinitely.",
+                "default_behavior": "Default value is one minute.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

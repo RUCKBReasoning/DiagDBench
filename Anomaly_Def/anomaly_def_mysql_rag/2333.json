@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + MVCC Version Maintenance Anomaly + Database Memory Allocation Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Row-count and data-distribution metadata are outdated or incomplete, causing systematic cardinality misestimation during cost-based planning.\nMVCC Version Maintenance Anomaly : Obsolete row versions and logically deleted index entries accumulate faster than background cleanup, bloating tables and indexes and increasing visibility-check overhead.\nDatabase Memory Allocation Anomaly : Total memory reserved by buffer caches, work areas, and background structures grows beyond the host’s safe limits, driving OS-level pressure, paging, and potential OOM events.\n\nWhen these three root causes strike simultaneously, the engine exhibits compound symptoms: execution plans are chosen on the basis of stale statistics that underestimate the now-bloated relation sizes, producing pathologically sub-optimal strategies such as nested-loop joins that iterate over swollen heaps or sequential scans that spill to disk because inflated memory footprints have triggered global memory pressure. Concurrently, vacuum/cleanup workers compete for scarce memory and I/O while struggling to reclaim runaway version stores, and their backlog further enlarges table and index sizes. Operators report wildly divergent estimated versus actual row counts, steadily declining cache hit ratios, sudden bursts of swap activity, and erratic query latencies punctuated by out-of-memory terminations or instance restarts.\n\nCausally, heavy update/delete churn creates surplus row versions; if automatic statistics refresh is suppressed by that same churn or by long-running snapshots, the optimizer’s view of table cardinalities lags behind reality. The resulting mischosen plans often scan far more pages than expected, escalating buffer-pool turnover and prompting the engine to allocate additional work memory for spills and re-reads, which in turn aggravates global memory pressure. Heightened memory stress slows background cleaners and may throttle their work via cost-based back-off, allowing even more dead tuples to pile up. The enlarged storage footprint feeds back into further cardinality drift and memory consumption, forming a vicious cycle that degrades transactional throughput and endangers system stability.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5024,
+            "score": 0.36480879776495156,
+            "bm25_score": 36.789102746851015,
+            "lexical_score": 0.12121212121212122,
+            "matched_terms": [
+                "and",
+                "by",
+                "count",
+                "engine",
+                "execution",
+                "expected",
+                "in",
+                "is",
+                "level",
+                "now",
+                "of",
+                "or",
+                "pressure",
+                "running",
+                "the",
+                "to"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013141",
+                "error_name": "ER_SERVER_COL_COUNT_DOESNT_MATCH_PLEASE_UPDATE_V2",
+                "official_description": "The column count of %s.%s is wrong. Expected %d, found %d. Created with MySQL %d, now running %d. Please perform the MySQL upgrade procedure.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

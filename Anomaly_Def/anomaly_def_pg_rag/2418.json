@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Storage Space Capacity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Critical engine-level settings (memory pools, checkpoint cadence, log sizing, worker counts, etc.) are mis-tuned for the hardware, workload, or version, creating artificial pressure on internal resources.\nStorage Space Capacity Anomaly : Physical or logical free space for data, logs, temp, or backup areas is exhausted, triggering allocation failures and blocking growth-related operations.\nOperating System Resource Limit Anomaly : Kernel-enforced ceilings on file handles, shared memory, semaphores, threads, or cgroup quotas are reached, preventing the database from creating or accessing required OS objects.\n\nWhen all three root causes strike simultaneously, the system exhibits compound symptoms: rapid log-file growth from aggressive checkpointing collides with insufficient disk space, producing log-write stalls, checkpoint storms, and frozen commit processing. Concurrently, the engine’s attempts to auto-extend files, spawn extra background or parallel workers, or allocate additional shared memory are denied by the OS, surfacing as \"cannot allocate file descriptor / shared memory / thread\" errors in both database and system logs. Sessions may hang in log-related waits while CPU usage oscillates between idle gaps (due to write throttling) and spin loops (from failed worker creation). Maintenance tasks meant to reclaim space or clean orphaned resources cannot launch, causing temp-space bloat and runaway diagnostic logs that further consume the dwindling disk. Overall, the workload experiences cascading slowdowns, sporadic transaction failures, and eventual instance-wide freeze or crash recovery cycles.\n\nCausally, mis-set configuration parameters often increase churn: undersized redo logs force frequent checkpoints; small work-memory settings inflate temp spill volume; overly high connection or parallelism caps multiply file and semaphore consumption. These behaviors accelerate space consumption and inflate the count of kernel objects, pushing the system toward its storage and OS-limit ceilings sooner than normal. Once disk fills, the database cannot archive or recycle logs, prolonging checkpoints and inflating the number of open file handles; simultaneous OS denials of new handles or shared memory prevent the engine from adapting (e.g., creating new log segments or spawning cleanup workers). Each anomaly thus amplifies the others: configuration mis-tuning drives resource churn, space exhaustion blocks I/O progress, and OS limit saturation starves the engine of critical handles and memory, jointly intensifying contention, stalling recovery mechanisms, and precipitating full service outages.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.7407984420642648,
+            "bm25_score": 25.694886714094167,
+            "lexical_score": 0.1359948068808828,
+            "matched_terms": [
+                "and",
+                "blocking",
+                "cannot",
+                "cleanup",
+                "for",
+                "from",
+                "idle",
+                "is",
+                "of",
+                "open",
+                "or",
+                "preventing",
+                "required",
+                "sessions",
+                "than",
+                "that",
+                "the",
+                "transaction",
+                "when",
+                "while"
+            ],
+            "match_count": 281,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Query Plan Selection Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Composite definition: The database is simultaneously affected by (1) inefficient or over-broad SQL issued by the application, (2) the optimizer selecting sub-optimal execution plans for those statements, and (3) the operating-system denying additional kernel-level resources required by the database processes. The co-existence of these three layers of faults forms a single composite anomaly that magnifies latency, resource contention, and outright failures far beyond what any individual anomaly would cause in isolation.\n\nCombined anomalous phenomena: End-user requests frequently time out or are retried; slow-query logs and statement-statistics views show the same statements with wildly fluctuating execution times and alternating plans (e.g., index seeks vs. full scans). Transactions stay open longer, holding locks and blocking others, while parallel workers or new sessions sporadically fail to start with kernel error messages about exhausted file descriptors, shared-memory segments, or thread quotas. Monitoring shows escalating CPU and I/O demand from bad plans, but throughput plateaus as the engine hits OS-imposed limits, leading to queue build-up, lock waits, and partial service outages. Plan changes intended to alleviate workload pressure appear ineffective or revert unpredictably because the plan cache is being continuously invalidated by resource-related errors.\n\nCausal chain and interaction: Poorly written SQL forces the optimizer to consider large search spaces and high-cost alternatives; when the optimizer misjudges this workload, the resulting plans amplify row and page touch counts, inflating CPU, memory, and parallel-worker demand. The inflated demand accelerates consumption of kernel objects (file handles, threads, AIO contexts, shared memory), pushing the system over OS resource ceilings. Once those ceilings are reached, the operating system rejects new allocations, causing the database engine to drop or retry workers, invalidate plans, and reparse statements, which in turn increases parse and planning overhead. The feedback loop intensifies: every OS denial forces more plan churn and longer transactional hold times, which exacerbate lock contention and widen the performance tail. Thus the three root causes reinforce each other, producing a complex, self-perpetuating performance and stability degradation that is harder to diagnose than any single anomaly alone.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 192,
+            "score": 0.36145175766457804,
+            "bm25_score": 19.469137509516134,
+            "lexical_score": 0.1413945516868122,
+            "matched_terms": [
+                "and",
+                "as",
+                "complex",
+                "engine",
+                "error",
+                "execution",
+                "is",
+                "limit",
+                "or",
+                "sql",
+                "statement",
+                "that",
+                "the",
+                "with",
+                "written"
+            ],
+            "match_count": 11,
+            "entry": {
+                "error_code": "54001",
+                "error_name": "statement_too_complex",
+                "official_description": "statement too complex",
+                "error_class": "Class 54 - Program Limit Exceeded",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "sql_and_parser",
+                "cause_analysis": "The failure is typically associated with unsupported syntax, invalid statement structure, or feature usage that the target engine version cannot execute as written.",
+                "solution_guidance": "Validate SQL syntax, target-engine compatibility, statement shape, and whether the feature is supported under the current engine version or execution context.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "syntax error",
+                    "feature rejection"
+                ]
+            }
+        }
+    }
+]

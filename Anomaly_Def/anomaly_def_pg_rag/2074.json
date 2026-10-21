@@ -1,0 +1,60 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Transaction Log Subsystem Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Row-count, histogram, correlation, or partition statistics are stale or incomplete, so the optimizer systematically misestimates cardinalities and chooses sub-optimal execution plans.\nTransaction Log Subsystem Anomaly : The write-ahead log buffer, files, or archiver become a throughput or latency bottleneck, inflating commit time and stalling write-intensive operations.\nNetwork and Connectivity Resource Anomaly : Client-to-server transport, listener, socket, or authentication resources are saturated or unstable, causing connection failures, retransmissions, and session stalls.\n\nWhen these three root causes coincide, the system exhibits a blended symptom set: queries compile into inefficient, row-hungry plans that generate excessive data modifications, undo, and temporary spill, inflating redo volume exactly when the log subsystem is least able to absorb it. Commit latency and log-flush waits rise, provoking application time-outs and an explosion of concurrent sessions as connection pools retry. The overloaded network layer meanwhile amplifies perceived database slowness—handshakes, result-set transfers, and commit acknowledgements linger in TCP queues—so client connections pile up, OS socket tables fill, and listener backlog overflows. Monitoring shows severe cardinality error warnings, surging log I/O waits, and escalating client-side timeouts all in the same window, making it difficult to attribute the slowdown to a single tier.\n\nCausal chain: stale or missing statistics mislead the optimizer into choosing plans that scan or update far more rows than expected, producing a spike in redo generation. The bloated redo stream overruns undersized or contended log groups, stretching commit durations. Prolonged commits hold transactions open, extending lock lifetimes and keeping network connections busy while clients wait, which in turn consumes socket descriptors and increases traffic bursts when retries fire. Concurrently, network congestion or listener saturation slows log-flush acknowledgements for synchronous commits, further throttling the log writer. The feedback loop—poor statistics → heavier logging → slower commits → longer-lived connections → network saturation → even slower commit acks—drives compound degradation, making the overall database state markedly worse than any single anomaly would cause alone.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.40543716105045824,
+            "bm25_score": 16.907180779046584,
+            "lexical_score": 0.18246268656716416,
+            "matched_terms": [
+                "an",
+                "and",
+                "any",
+                "are",
+                "authentication",
+                "client",
+                "connection",
+                "for",
+                "is",
+                "latency",
+                "longer",
+                "of",
+                "open",
+                "or",
+                "pools",
+                "session",
+                "sessions",
+                "stale",
+                "than",
+                "that",
+                "the",
+                "time",
+                "transaction",
+                "when"
+            ],
+            "match_count": 261,
+            "entry": {
+                "timeout_id": "pg16_idle_session_timeout",
+                "parameter_name": "idle_session_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle, but not within an open transaction, for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle and not inside an open transaction longer than the configured threshold.",
+                "workload_impact": "The session is terminated; the documentation warns about using this with connection pools or middleware.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

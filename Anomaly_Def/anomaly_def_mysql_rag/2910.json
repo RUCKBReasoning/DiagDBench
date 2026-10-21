@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Data Block and Index Integrity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Sessions serialize on hot or churn-heavy buffer pages, latches, or page-pin slots, spending CPU cycles on spin loops or waiting on buffer-busy / page-latch events.\nData Block and Index Integrity Anomaly : On-disk table or index pages are physically or logically corrupt, causing mismatched keys, broken links, or checksum failures that render storage structures unreliable.\nOperating System Resource Limit Anomaly : The database engine hits kernel-enforced ceilings on file descriptors, shared memory, semaphores, threads, or AIO contexts, blocking new I/O or background tasks even though database-level resources remain.\n\nWhen these three root causes strike at once, the workload encounters a tangled failure signature: 1) queries intermittently stall on buffer-busy and latch waits that grow longer as corrupted pages force repeated rereads, retries, or full-table scans; 2) integrity check errors, checksum failures, or sudden plan shifts to full scans appear in logs, yet attempts to rebuild or validate objects are throttled by OS resource denials; 3) background writers, checkpointers, and recovery or validation workers fail to obtain kernel handles or shared-memory slots, leaving dirty or suspect pages in cache longer, which in turn amplifies latch contention and elevates CPU spin; 4) sessions already holding scarce latches may be unable to spawn helper threads, so foreground statement latency spikes and throughput collapses in both transactional and analytical paths while the instance remains partially alive.\n\nCausally, physical corruption (Data Block and Index Integrity) triggers extra I/O and page replacement as the engine retries reads or forces page eviction, concentrating demand on specific buffer frames. This magnifies Buffer Cache and Latch Contention, extending latch-hold times and multiplying concurrent waiters. Prolonged contention keeps pages and I/O slots occupied, inflating the number of open file handles, AIO requests, and background tasks. These surges drive the system past Operating System Resource Limits, which then block new buffers, threads, or I/O contexts, preventing timely page flushes and integrity-repair operations. The OS denials further lengthen latch hold durations and impede corrective actions, while unresolved corruption perpetuates reaccess of the same hot pages—creating a feedback loop that steadily degrades performance, increases error rates, and risks a cascading partial outage or crash recovery failure.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.3550199087887605,
+            "bm25_score": 12.610193507615676,
+            "lexical_score": 0.1357142857142857,
+            "matched_terms": [
+                "and",
+                "are",
+                "check",
+                "holding",
+                "latency",
+                "longer",
+                "number",
+                "of",
+                "on",
+                "or",
+                "remains",
+                "sessions",
+                "the",
+                "this",
+                "waits",
+                "when"
+            ],
+            "match_count": 27,
+            "entry": {
+                "timeout_id": "mysql84_idle_noninteractive_session_timeout",
+                "parameter_name": "wait_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds the server waits for activity on a noninteractive connection before closing it.",
+                "trigger_condition": "A noninteractive session remains idle longer than wait_timeout.",
+                "workload_impact": "The server closes the idle connection.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

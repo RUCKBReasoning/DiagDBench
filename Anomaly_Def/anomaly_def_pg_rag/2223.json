@@ -1,0 +1,61 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Data Block and Index Integrity Anomaly + Operating System Resource Limit Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Data Block and Index Integrity Anomaly : Persistent on-disk table or index pages contain logical or physical corruption, breaking key order, page links, or heap–index correspondence.\nOperating System Resource Limit Anomaly : The database’s processes hit kernel-enforced ceilings for file descriptors, shared-memory segments, semaphores, threads, address space, or cgroup quotas, independent of database-level limits.\nNetwork and Connectivity Resource Anomaly : Server-side listener, socket, or transport resources are insufficient, or network path quality is poor, causing connection establishment failures, stalled sessions, or retransmissions.\n\nWhen all three root causes manifest concurrently, failure signals overlap and amplify: corrupted indexes force full table scans that open far more data files and consume extra buffer, handle, and I/O contexts, hastening exhaustion of per-process file-descriptor or asynchronous-I/O limits. Stalled or repeatedly failing queries remain active longer, holding backend processes and sockets; meanwhile new clients encounter connection-handshake timeouts, too-many-connections errors, or kernel-level \"cannot create socket / thread\" denials. Integrity check errors, page-checksum failures, or sudden plan fallbacks coincide with spikes in operating-system alerts about EMFILE, ENOMEM, or semaphore limits, plus rising counts of half-open TCP connections, retransmissions, and authentication drops. These interleaved symptoms complicate diagnosis because each layer reports distinct yet causally related errors.\n\nCausal chain: latent or newly introduced page/index corruption triggers heavier I/O and longer-running statements, inflating the number and lifetime of file handles, buffer pins, background workers, and client sockets. The inflated footprint collides with tight OS limits, producing resource allocation failures that block new sessions and recovery tasks, leaving corruption unrepaired and forcing additional client retries. Simultaneously, resource exhaustion in the kernel (e.g., depleted sockets, shared memory, or threads) degrades listener throughput and amplifies network wait times, causing application-side reconnection storms that further flood the already limited socket and process pools. The feedback loop between structural corruption–induced workload inflation, OS limit saturation, and deteriorating connectivity accelerates service degradation, risking partial or full outage and complicating both detection and remediation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.7514583333333333,
+            "bm25_score": 25.397486349491505,
+            "lexical_score": 0.17152777777777778,
+            "matched_terms": [
+                "and",
+                "are",
+                "authentication",
+                "check",
+                "client",
+                "connection",
+                "detection",
+                "establishment",
+                "for",
+                "holding",
+                "is",
+                "longer",
+                "network",
+                "of",
+                "on",
+                "operating",
+                "or",
+                "pools",
+                "sessions",
+                "socket",
+                "system",
+                "tcp",
+                "the",
+                "when",
+                "with"
+            ],
+            "match_count": 271,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_idle",
+                "parameter_name": "tcp_keepalives_idle",
+                "timeout_category": "network_idle_keepalive_probe_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time with no network activity after which the operating system should send a TCP keepalive message to the client.",
+                "trigger_condition": "A TCP client connection has no network activity longer than tcp_keepalives_idle on systems supporting TCP_KEEPIDLE or an equivalent socket option.",
+                "workload_impact": "Starts TCP keepalive probing for an otherwise idle client connection; together with interval and count settings this can lead to dead connection detection.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

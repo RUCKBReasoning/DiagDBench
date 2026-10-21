@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Replication Synchronization Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Critical metadata about data distribution is stale or incomplete, causing the optimizer to systematically misestimate cardinalities and choose sub-optimal execution plans.\nReplication Synchronization Anomaly : Standby or subscriber nodes fall behind because they cannot receive, write, or apply the primary’s change stream at production speed, enlarging log-position and apply lags.\nStorage I/O Throughput Anomaly : The physical volumes hosting data, log, or temp spaces are saturated for bandwidth, IOPS, or latency, driving up I/O wait times across the engine.\n\nWhen all three conditions coexist, the database exhibits a multilayered performance collapse: the optimizer generates plans that unexpectedly scan or sort far more (or fewer) rows than anticipated, inflating I/O demand on already saturated storage. The excess physical reads and writes amplify device queue depths and latency, which in turn slows both local transaction processing and the replica’s redo apply. As the replica struggles to fetch and replay bloated redo streams, replication lag widens, primary log segments accumulate, and long-running queries or batch jobs on the primary experience escalating wait events for I/O, buffer access, and log-space reclamation. Monitoring tools simultaneously report severe cardinality-estimation errors, soaring physical-I/O waits, and rapidly growing replication delay, making root-cause isolation difficult.\n\nCausally, stale or poor-quality statistics mislead the optimizer into favoring plans with large table scans, excessive hashing, or inappropriate join orders, dramatically increasing physical I/O. The inflated I/O volume saturates the storage subsystem, elevating latency for both data access and log flushes. Higher log-flush latency reduces the rate at which the primary can recycle or ship WAL/redo, forcing replicas to ingest bigger batches less frequently and fall further behind. The growing replication backlog, in turn, prolongs retention of old log segments on the primary, compounding storage pressure and perpetuating the I/O bottleneck. Together, the three anomalies create a feedback loop where bad plans generate surplus I/O, storage saturation throttles both query execution and log shipping, and replication lag increases disk usage and operational risk, severely degrading overall system performance and availability.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.7384904019599632,
+            "bm25_score": 28.091215251230516,
+            "lexical_score": 0.13535207882720499,
+            "matched_terms": [
+                "and",
+                "apply",
+                "causing",
+                "data",
+                "is",
+                "lag",
+                "long",
+                "or",
+                "replica",
+                "replication",
+                "than",
+                "the",
+                "times",
+                "to",
+                "waits",
+                "when"
+            ],
+            "match_count": 117,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

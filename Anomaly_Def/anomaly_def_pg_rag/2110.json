@@ -1,0 +1,59 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Database Memory Allocation Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Optimizer Statistics Anomaly: Cardinality-estimation inputs are stale or incomplete, so the optimizer chooses plans on wrong row-count and data-distribution assumptions.\nDatabase Memory Allocation Anomaly: Aggregate buffer-cache, work-area, and background allocations grow beyond physical limits, provoking paging, OOM events, or cache thrashing.\nNetwork and Connectivity Resource Anomaly: Listener, socket, or transport capacity is saturated, delaying connection establishment and slowing result transmission between server and clients.\n\nWhen these three root causes co-exist, symptoms overlap and intensify: queries compile into sub-optimal, memory-hungry hash joins or sorts that immediately inflate per-query work areas; the swollen memory footprint pushes the host into swap, dropping cache hit ratios and lengthening CPU scheduling gaps. Degraded execution speed means sessions stay open longer, holding memory and result buffers while simultaneously occupying network sockets that trickle data to slow or intermittently stalled clients. Connection pools fill, new sessions face authentication delays or refusals, and retry storms multiply backend processes, further inflating memory demand. Execution-plan reports show severe estimate-to-actual row count divergence, high physical I/O from spilled workfiles, increasing \"client read/write\" or \"socket wait\" times, rising OS swap and retransmission counters, and abrupt process terminations or node failovers.\n\nCausal chain: stale or missing statistics mislead the optimizer into selecting execution strategies that require large in-memory structures. These oversized allocations accelerate memory exhaustion; under memory pressure, the engine evicts buffers and spills to disk, increasing latency. Longer runtimes and blocking expand the active connection footprint, while network congestion slows result delivery, holding server memory and worker threads hostage. Prolonged network handshakes and half-open sockets raise the number of simultaneously connected backends, which, in turn, allocate additional memory for session state and plan caches, amplifying the memory-allocation anomaly. The resulting swap thrashing slows automatic statistics collection and exacerbates statistic staleness, completing a feedback loop that perpetuates poor plans, memory overload, and connection saturation.\n",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.5619598168323665,
+            "bm25_score": 18.152244758252174,
+            "lexical_score": 0.1891935483870968,
+            "matched_terms": [
+                "and",
+                "are",
+                "authentication",
+                "client",
+                "clients",
+                "connection",
+                "establishment",
+                "from",
+                "holding",
+                "in",
+                "is",
+                "latency",
+                "occupying",
+                "of",
+                "or",
+                "pools",
+                "server",
+                "session",
+                "sessions",
+                "stale",
+                "the",
+                "to",
+                "when"
+            ],
+            "match_count": 108,
+            "entry": {
+                "timeout_id": "pg16_authentication_timeout",
+                "parameter_name": "authentication_timeout",
+                "timeout_category": "connection_authentication_timeout",
+                "scope": "server",
+                "official_definition": "Maximum amount of time allowed to complete client authentication; if not completed in time, the server closes the connection.",
+                "trigger_condition": "A would-be client does not complete the authentication protocol within authentication_timeout.",
+                "workload_impact": "The server closes the connection attempt, preventing hung clients from occupying a connection indefinitely.",
+                "default_behavior": "Default value is one minute.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

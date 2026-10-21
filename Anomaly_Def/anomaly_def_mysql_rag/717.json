@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Transaction Lock Contention Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer chooses a markedly inefficient execution plan even though statistics are adequate.\nTransaction Lock Contention Anomaly: Concurrent transactions request conflicting locks, leading to prolonged blocking or deadlocks.\nBuffer Cache and Latch Contention Anomaly: Sessions compete for hot buffer-cache pages and latches, stalling on low-level synchronization primitives.\n\nWhen all three conditions co-exist, the database exhibits a compound failure pattern: an ill-chosen execution plan triggers large scans or explosive join fan-outs that touch many more rows and pages than necessary; these bloated data accesses demand numerous locks and repeated buffer pin/latch operations. As a result, lock-wait queues grow, deadlock reports surge, CPU time is consumed by latch spin/sleep cycles, and overall response times and throughput degrade erratically. Performance counters may simultaneously show optimizer plan churn, escalating lock-wait and deadlock statistics, plus spikes in buffer busy or page-latch waits, making single-root-cause isolation difficult.\n\nCausally, the sub-optimal plan is the spark: by scanning or joining far more rows, it expands the lock footprint and lengthens transaction duration, increasing the window for conflicting lock requests. These prolonged holds, in turn, keep buffer pages pinned and their associated latches occupied, propagating latch contention to other sessions that need the same pages. The resulting latch stalls slow query execution even further, extending lock lifetimes and intensifying lock contention—a feedback loop that can culminate in systemic throughput collapse, widespread deadlocks, and severe latency spikes for transactional workloads.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 97,
+            "score": 0.4518032823064437,
+            "bm25_score": 48.503771347563514,
+            "lexical_score": 0.15238095238095234,
+            "matched_terms": [
+                "and",
+                "associated",
+                "blocking",
+                "by",
+                "can",
+                "concurrent",
+                "conflicting",
+                "failure",
+                "for",
+                "is",
+                "lock",
+                "or",
+                "same",
+                "the",
+                "transaction",
+                "transactions"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "1099",
+                "error_name": "ER_TABLE_NOT_LOCKED_FOR_WRITE",
+                "official_description": "Table '%-.192s' was locked with a READ lock and can't be updated",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "concurrency_and_transaction",
+                "cause_analysis": "The failure is typically associated with concurrent transactions contending for the same logical resources, incompatible lock acquisition order, or transaction-state conflicts surfaced by the engine.",
+                "solution_guidance": "Inspect blocking chains, reduce conflicting write overlap, shorten transaction lifetime, review lock acquisition order, and verify whether transaction scheduling or retry logic needs adjustment.",
+                "observable_symptoms": [
+                    "blocking",
+                    "rollback",
+                    "retry",
+                    "stalled transaction"
+                ]
+            }
+        }
+    }
+]

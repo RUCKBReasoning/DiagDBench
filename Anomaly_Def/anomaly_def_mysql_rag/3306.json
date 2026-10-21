@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Replication Synchronization Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level query or transaction design forces the engine to process far more data, rows, or time than business logic requires.\nReplication Synchronization Anomaly : The cross-node log shipping and apply path falls behind, creating widening gaps between primary and replica positions.\nData Block and Index Integrity Anomaly : On-disk pages or index structures are internally inconsistent, leading to corrupt or unreliable access paths.\n\nWhen all three root causes coexist, the system exhibits an intertwined failure pattern: expensive or chatty statements generate voluminous redo that must be shipped to replicas; the overwhelmed replication pipeline accumulates unapplied log segments whose contents include corrupt pages or malformed index changes; replicas show rapidly growing apply lag, intermittent apply failures, repeated retry loops, and may abruptly switch to full table scans because their local indexes are flagged unusable. On the primary, the same heavyweight statements suffer from inconsistent execution plans and erratic runtimes as corrupted indexes intermittently omit or duplicate rows, triggering application-level retries that further inflate workload volume. Monitoring dashboards simultaneously report chronic slow queries, soaring replication delay, rising disk space consumption from unrecycled logs, page-checksum errors on both primary and replica, and divergent result sets between nodes, making diagnosis difficult.\n\nCausally, inefficient SQL inflates data change volume and transaction size, amplifying the byte rate the primary emits and extending transaction lifetimes so that unrecycled log segments pile up. The swollen log stream increases replica I/O and CPU pressure, lengthening the window during which any latent page or index corruption can surface during apply or query execution. Corrupt data blocks encountered by the replica can stall or abort replay, which in turn exacerbates replication lag and forces the primary to retain even more log data. Meanwhile, corruption on the primary can propagate downstream, causing replay errors that cascade into replica downtime. The resulting feedback loop—inefficient workload producing excess log traffic, replication backlog magnifying the impact of corruption, and corruption causing further replication failures—drives escalating latency, data divergence risks, and potential loss of high-availability guarantees.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.6624266157940644,
+            "bm25_score": 28.130689892799836,
+            "lexical_score": 0.12689257390050468,
+            "matched_terms": [
+                "and",
+                "apply",
+                "be",
+                "causing",
+                "data",
+                "downstream",
+                "lag",
+                "or",
+                "replica",
+                "replication",
+                "than",
+                "the",
+                "to",
+                "when",
+                "window"
+            ],
+            "match_count": 154,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

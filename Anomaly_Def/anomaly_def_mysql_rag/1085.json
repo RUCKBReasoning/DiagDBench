@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Database Memory Allocation Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same objects, forming blocking chains or deadlocks that stall progress until a victim is chosen or the blocking clears.\nDatabase Memory Allocation Anomaly : Database processes collectively consume more RAM than the host can safely supply, provoking paging, OOM terminations, or cache churn that slows every operation.\nStorage Space Capacity Anomaly : Growth of data, log, temp, or backup areas exhausts allotted disk space, leading to allocation failures, halted checkpoints, or inability to persist new data.\n\nWhen all three root causes strike together, the system exhibits a layered failure pattern: long-running lock waits accumulate sessions that continue to hold memory grants; the pinned buffers, work areas, and unreleased cursor state inflate physical memory usage, pushing the host into swap. As memory pressure rises, sort and hash operations spill to TEMP, and frozen transactions prevent log truncation, rapidly consuming remaining disk space. The resulting space exhaustion then blocks further writes and checkpoints, which in turn prolongs lock retention and forces even more sessions into wait queues. Observable symptoms include explosive growth of lock-wait time, escalating resident-set size, heavy paging, TEMP and log files auto-extending until full, aborted transactions due to deadlock, OOM, or \"no space left\" errors, and cluster failover or crash-recovery storms that make diagnosis difficult.\n\nCausally, initial lock contention lengthens transaction lifetimes, keeping their memory allocations and unflushed log segments open. This sustained resource hold amplifies memory pressure and temp-space use. As RAM becomes scarce, the engine spills work to disk, accelerating space consumption; once disk fills, checkpoints and log archiving stall, so lock-holding transactions cannot commit or roll back, deepening the contention. Each anomaly therefore feeds the others in a reinforcing loop that can drive the database into a cascading outage if not interrupted.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5558,
+            "score": 0.4633612812121177,
+            "bm25_score": 50.10398579476186,
+            "lexical_score": 0.17545696877380043,
+            "matched_terms": [
+                "and",
+                "capacity",
+                "data",
+                "disk",
+                "engine",
+                "failure",
+                "failures",
+                "growth",
+                "is",
+                "log",
+                "more",
+                "of",
+                "operation",
+                "or",
+                "pressure",
+                "size",
+                "storage",
+                "than",
+                "the"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013699",
+                "error_name": "ER_IB_INNODB_TBSP_OUT_OF_SPACE",
+                "official_description": "InnoDB: Size of tablespace %s is more than the maximum size allowed.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

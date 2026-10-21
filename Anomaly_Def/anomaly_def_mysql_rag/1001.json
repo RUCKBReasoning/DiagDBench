@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Buffer Cache and Latch Contention Anomaly + Replication Synchronization Anomaly",
+            "Description": "Schema and Index Design Anomaly : The physical data model does not align with workload access patterns, forcing queries into inefficient full-scan or non-covering-index paths and creating write hot-spots.\nBuffer Cache and Latch Contention Anomaly : Concurrent sessions serialize on hot buffer pages, latches, or I/O slots, causing CPU spin and wait spikes even when total memory is sufficient.\nReplication Synchronization Anomaly : Downstream replicas cannot ingest or apply primary-side log traffic fast enough, leading to widening log-position gaps and retention of un-recycled log segments.\n\nWhen these three root causes strike simultaneously, the system exhibits compounded symptoms: 1) queries and DML repeatedly hammer a small set of ill-designed tables or index root pages, inflating buffer-busy and page-latch waits; 2) the resulting stall and retry behaviour increases transaction duration and the volume of generated redo, so the primary’s log grows faster while flush cycles are lengthened by buffer contention; 3) replicas fall further behind because they must replay the same inefficient access patterns and also compete for their own buffer latches, showing escalating replay lag and ballooning relay-log or retained WAL storage. End-user latency oscillates with both local latch storms and downstream back-pressure, and administrative alarms may simultaneously report buffer-cache hotspots, high WAL retention, and replication lag, making the root cause hard to pinpoint.\n\nCausally, the sub-optimal schema design creates concentrated page accesses that become latch hot-spots; this latch contention slows foreground DML and prolongs checkpoints, generating bursts of dirty pages and large transaction logs. The enlarged and sustained log volume overloads the replication pipeline, whose own apply threads are further hampered by the same poor index layout, re-creating latch contention on the replica side and reducing catch-up throughput. As replicas lag, the primary is forced to retain additional log segments, keeping more pages dirty and resident, which intensifies buffer churn and latch pressure—forming a reinforcing loop that degrades both primary performance and replica freshness.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2050,
+            "score": 0.5496192713034338,
+            "bm25_score": 61.067732274503015,
+            "lexical_score": 0.15652797704447632,
+            "matched_terms": [
+                "and",
+                "apply",
+                "as",
+                "downstream",
+                "index",
+                "is",
+                "lag",
+                "log",
+                "may",
+                "not",
+                "or",
+                "replica",
+                "replication",
+                "retention",
+                "so",
+                "the",
+                "this",
+                "to",
+                "when",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010163",
+                "error_name": "ER_LOG_BIN_BETTER_WITH_NAME",
+                "official_description": "No argument was provided to --log-bin, and --log-bin-index was not used; so replication may break when this MySQL server acts as a source and has his hostname changed!! Please use '--log-bin=%s' to avoid this problem.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

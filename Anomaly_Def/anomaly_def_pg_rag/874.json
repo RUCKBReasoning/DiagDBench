@@ -1,0 +1,60 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer consistently chooses a sub-optimal execution plan even though statistics are credible, leading to excessive CPU, I/O, or memory consumption per statement.\nNetwork and Connectivity Resource Anomaly : Client-to-server transport, listener, or session resources are saturated or unstable, producing connection delays, socket backlogs, and data-transfer stalls.\n\nWhen both root causes are present, the database shows a mixture of intra-engine and external latency signals: queries oscillate between different plans or stick to an inefficient plan that produces large intermediate result sets; those result sets linger in memory and on the wire while network throughput is constrained, causing back-end sessions to accumulate in client-read waits. Application servers observe longer connect times, sporadic authentication failures, and wide variability in statement latency, with some executions timing out during planning, others during result shipping. Plan changes may appear random because plan recompilations coincide with bursts of connection retries, while connection pool exhaustion masks whether the slowness originates in the optimizer or the network.\n\nThe causal chain often starts with a poor plan that executes for much longer and returns far more rows than necessary, inflating payload size and holding server processes and sockets open. The extended lifespan of each session amplifies pressure on the listener backlog and OS socket queues, pushing the network layer into congestion and raising round-trip times. Elevated network latency, in turn, delays completion feedback to the optimizer and exacerbates bind-sensitive plan instability; frequent reconnect attempts triggered by client timeouts further churn the plan cache, encouraging additional sub-optimal plan compilations. The two anomalies thus reinforce each other, multiplying concurrency, skewing resource estimates, and degrading overall throughput far beyond what either issue would cause in isolation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.6797001087881138,
+            "bm25_score": 26.516410866947286,
+            "lexical_score": 0.17988455988455987,
+            "matched_terms": [
+                "an",
+                "and",
+                "because",
+                "database",
+                "for",
+                "holding",
+                "is",
+                "longer",
+                "of",
+                "or",
+                "other",
+                "session",
+                "sessions",
+                "statement",
+                "than",
+                "that",
+                "the",
+                "timing",
+                "to",
+                "triggered",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 205,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,60 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Replication Synchronization Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Database Memory Allocation Anomaly : Excessive or uncontrolled growth of buffer caches, plan caches, work areas, or auxiliary memory regions that pushes the database process and host beyond safe physical-memory limits, triggering paging, OOM events, or node eviction.\nReplication Synchronization Anomaly : Replicas, subscribers, or downstream consumers are unable to receive, persist, or apply primary transaction-log records at the rate they are generated, causing widening log-position gaps, replay lag, and retention of old log segments.\nData Block and Index Integrity Anomaly : On-disk data pages or index structures become internally inconsistent—checksum failures, broken page links, key ordering errors—leading to wrong or missing results and corruption-related engine errors.\n\nWhen these three root causes are concurrent, the system exhibits a compounded failure profile: memory pressure on the primary and replicas grows as bloated buffer/plan caches coexist with ever-expanding retained WAL / redo segments held for lagging replicas; intensive retry loops and corruption checks amplify CPU usage and stall foreground queries. Replication delay masks or propagates latent page and index corruptions, so stale replicas may serve inconsistent reads or, upon catch-up, replay corrupt blocks that trigger crash-recovery cycles, further bloating memory with repeated recovery allocations. Operators observe erratic throughput, sharp drops in cache hit ratios, frequent OOM killer or instance restarts, rapidly filling disks due to unrecycled logs, replica apply processes stuck on corrupt pages, and divergence between primary and replica query results that is hard to attribute to any single layer.\n\nCausally, runaway memory allocation on the primary inflates per-process RSS and can throttle background tasks that recycle log segments, causing prolonged WAL retention exactly when replicas are already behind. The swelling log backlog forces replicas to allocate large relay buffers and extend on-disk log stores, exacerbating their own memory and I/O pressure and slowing apply latency further. As replicas eventually replay large bursts of changes, latent data-block or index corruption—possibly originating from earlier memory-pressured writes or storage faults—surfaces during redo or validation, halting apply threads and freezing replication. The primary, unable to recycle logs because of stalled replicas, accumulates even more un-flushed cache and log pages, increasing the probability of additional memory exhaustion and corruption events. This feedback loop tightens the coupling between allocation pressure, replication lag, and structural corruption, driving the cluster toward cascading failures and data-availability risks.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 1366,
+            "score": 0.6953184696546977,
+            "bm25_score": 82.21602862799493,
+            "lexical_score": 0.17113821138211383,
+            "matched_terms": [
+                "and",
+                "apply",
+                "as",
+                "auxiliary",
+                "between",
+                "downstream",
+                "failure",
+                "from",
+                "instance",
+                "is",
+                "key",
+                "lag",
+                "log",
+                "node",
+                "of",
+                "or",
+                "process",
+                "replica",
+                "replication",
+                "retention",
+                "stale",
+                "the",
+                "to",
+                "upon",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "3810",
+                "error_name": "ER_BINLOG_MASTER_KEY_ROTATION_FAIL_TO_CLEANUP_AUX_KEY",
+                "official_description": "Failed to remove auxiliary binary log encryption key from keyring, please check if keyring is loaded. The cleanup of the binary log master key rotation process did not finish as expected and the cleanup will take place upon server restart or next 'ALTER INSTANCE ROTATE BINLOG MASTER KEY' execution.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

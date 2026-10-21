@@ -1,0 +1,62 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Transaction Log Subsystem Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Inefficient or overly broad application-level SQL and transaction design that forces the engine to scan, lock, or return more data than the business case requires.\nTransaction Log Subsystem Anomaly : Contention or saturation in the write-ahead logging pipeline—buffer, file groups, flushing, archiving, or replication retention— that inflates commit latency and stalls write activity.\nNetwork and Connectivity Resource Anomaly : Insufficient or unstable network and connection-handling capacity that slows or interrupts client/server data transfer and session establishment.\n\nWhen all three root causes manifest concurrently, the database exhibits a mixed pattern of symptoms: long-running queries and transactions generate excess redo volume, driving up log-flush and commit waits; at the same time, clients experience intermittent connection timeouts, slow result streaming, and elevated retry storms. Engine wait statistics show both LOG FILE SYNC / LOG BUFFER SPACE and CLIENT READ/WRITE or SOCKET WAIT events rising together. Slow-query logs capture repetitive, heavy statements whose commit phases are further delayed by log I/O back-pressure, while monitoring tools report swollen log directories, archiver backlogs, growing transactional back-logs, and a spike in half-open connections. Application servers may exhaust connection pools as sessions remain tied up during prolonged commit and network send phases, amplifying perceived end-user latency and error rates.\n\nCausally, inefficient SQL inflates row-change volume and result-set size, which in turn increases redo generation and network payloads. The bloated redo stream overwhelms undersized or mis-configured log buffers and log devices, lengthening fsync cycles and extending transaction commit time. These longer commits keep server processes engaged, holding locks and consuming connection slots. Simultaneously, the enlarged result sets traverse congested or resource-starved network paths, further delaying session completion. Prolonged sessions prevent connection reuse and escalate pool exhaustion, which triggers more connection attempts and authentication overhead, feeding into the already stressed log and network subsystems. The feedback loop between chatty, over-fetching workload logic, log subsystem saturation, and degraded network throughput drives a compound degradation that is more severe and harder to diagnose than any individual anomaly alone.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.6701334713132581,
+            "bm25_score": 30.865445985145854,
+            "lexical_score": 0.18605169340463457,
+            "matched_terms": [
+                "and",
+                "change",
+                "client",
+                "configured",
+                "connection",
+                "holding",
+                "is",
+                "lock",
+                "longer",
+                "network",
+                "of",
+                "or",
+                "retry",
+                "server",
+                "session",
+                "sessions",
+                "than",
+                "the",
+                "to",
+                "transaction",
+                "wait",
+                "waits",
+                "when",
+                "while",
+                "write"
+            ],
+            "match_count": 73,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

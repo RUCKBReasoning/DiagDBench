@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + CPU Resource Anomaly",
+            "Description": "Transaction Lock Contention Anomaly: Concurrent transactions block or deadlock on mutually incompatible locks, forcing sessions to wait or be aborted by the lock manager.\nCPU Resource Anomaly: Database processes consume an abnormally high share of CPU, driving the host to sustained compute saturation.\n\nComposite definition: This anomaly denotes a workload state in which severe lock blocking/deadlocks and host-level CPU saturation arise at the same time, each rooted in its own layer yet jointly degrading throughput and latency.\n\nCombined observable phenomena: Lock-wait queues, deadlock reports, and victim rollbacks appear together with OS run-queue inflation, near-100 % CPU utilization, and pervasive scheduler wait events. Queries and transactions stall both on locks and on CPU scheduling, causing erratic response times, sharp drops in TPS, rapid growth of connection-pool backlogs, and surges of application-side timeouts or retried statements. Deadlock victims and retry loops can inflate statement counts, while blocked sessions hold locks longer, inflating both wait chains and CPU consumption once they resume, making the overall performance picture noisy and harder to diagnose.\n\nCausal chain and interaction: Heavy lock contention lengthens transaction lifetimes; the sessions that finally obtain locks often perform their work in CPU-starved conditions, extending lock hold times and propagating blocking to more sessions. Simultaneously, deadlock victim retries, spin-loops, and repeated lock acquisition attempts add extra CPU load, feeding the saturation. The saturated CPU, in turn, slows lock-manager bookkeeping, prolongs detection of deadlocks, and delays the execution and commit phases that would release locks, thereby intensifying contention. This positive feedback loop between prolonged locking and depleted CPU cycles amplifies both anomalies, accelerating performance collapse unless one of the root causes is relieved.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5876,
+            "score": 0.5468337185251606,
+            "bm25_score": 73.79068967275377,
+            "lexical_score": 0.1813982137357561,
+            "matched_terms": [
+                "acquisition",
+                "and",
+                "at",
+                "blocking",
+                "by",
+                "chains",
+                "concurrent",
+                "incompatible",
+                "is",
+                "lock",
+                "or",
+                "retry",
+                "same",
+                "scheduling",
+                "state",
+                "the",
+                "transaction",
+                "transactions",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-014038",
+                "error_name": "ER_COMPONENT_LOCK",
+                "official_description": "Lock failed at %s : %u.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "concurrency_and_transaction",
+                "cause_analysis": "The failure is typically associated with concurrent transactions contending for the same logical resources, incompatible lock acquisition order, or transaction-state conflicts surfaced by the engine.",
+                "solution_guidance": "Inspect blocking chains, reduce conflicting write overlap, shorten transaction lifetime, review lock acquisition order, and verify whether transaction scheduling or retry logic needs adjustment.",
+                "observable_symptoms": [
+                    "blocking",
+                    "rollback",
+                    "retry",
+                    "stalled transaction"
+                ]
+            }
+        }
+    }
+]

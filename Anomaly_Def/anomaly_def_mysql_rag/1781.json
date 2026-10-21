@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Replication Synchronization Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly: The local write-ahead logging path on the primary instance is saturated or stalled while generating, flushing, switching, or archiving redo. \nReplication Synchronization Anomaly: Downstream replicas or change-data consumers cannot receive, persist, or apply the primary’s log stream fast enough, causing replication lag and retention of log segments. \nStorage I/O Throughput Anomaly: The underlying storage volumes for data, temp, and log files are bandwidth- or IOPS-constrained, creating elevated read/write latency and long device queues.\n\nWhen all three root causes co-exist, the database experiences a compound slow-commit and replication-backpressure scenario. Commit latency rises sharply as the log buffer waits both for slow physical flushes and for replication–safe acknowledgement. Log-write, log-sync, and durability wait events dominate, while storage wait events for data and log files simultaneously surge. Checkpoints and log-file switches occur more frequently yet clear space slowly, archive and relay log directories grow unchecked, and replica replay lag widens. The primary’s disk usage escalates because retained log segments cannot be recycled, further increasing I/O pressure. Application symptoms include stalled write transactions, timeouts, and degraded read-only replica freshness; maintenance windows and analytic reporting that touch large data ranges also slow because they compete for the already saturated storage bandwidth.\n\nCausally, limited storage throughput lengthens every physical write, throttling the log subsystem first; the bloated log path then compounds storage pressure by generating large sequential writes that the device cannot serve promptly. Because log recycling waits on downstream replay, any delay in replication— itself hampered by the same storage or network bottlenecks—forces the primary to retain additional log segments, inflating I/O volume and metadata churn. In turn, the growing backlog keeps replicas further behind, reinforcing retention pressure on the primary and amplifying the storage bottleneck. This positive feedback loop between slow device I/O, log-flush stalls, and replication lag escalates until the system exhausts commit latency budgets or runs out of disk space, producing a severe OLTP availability and performance crisis.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3443,
+            "score": 0.5545165005160615,
+            "bm25_score": 55.532540046633876,
+            "lexical_score": 0.17272727272727273,
+            "matched_terms": [
+                "and",
+                "apply",
+                "between",
+                "change",
+                "downstream",
+                "in",
+                "is",
+                "lag",
+                "log",
+                "logging",
+                "network",
+                "of",
+                "or",
+                "replica",
+                "replication",
+                "retention",
+                "the",
+                "to",
+                "when"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-011559",
+                "error_name": "OBSOLETE_ER_GRP_RPL_CONTACT_WITH_SRV_FAILED",
+                "official_description": "Error when contacting the server to ensure the proper logging of a group change in the binlog",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

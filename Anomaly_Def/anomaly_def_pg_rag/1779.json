@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Transaction Log Subsystem Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Composite Definition: The database is concurrently affected by (1) sub-optimal or erroneous application SQL and transaction design, (2) saturation or mis-configuration of the write-ahead logging path, and (3) latent corruption or structural inconsistency inside persistent data and index pages. Together they create a multi-layer fault that spans the workload, the log write pipeline, and the on-disk structures themselves.\n\nCombined Observable Phenomena: End-user operations and background jobs show extreme and highly variable latency; some sessions wait on log flush or sync events while others hang on full-table or full-index scans that return incorrect or duplicated rows. Slow-query and deadlock logs grow rapidly, intermixed with engine messages about log switch storms, archive backlog, page-checksum failures, and forced plan fallbacks from indexed probes to sequential scans. Commit times spike, replication lags, checkpoints lengthen, and recovery/consistency verification utilities intermittently detect corruption, prompting automatic page repairs or instance restarts. The overlapping symptoms obscure clear attribution because each layer (application, log, storage) both masks and amplifies the others.\n\nCausal Interaction: Inefficient SQL patterns (wide scans, large batch INSERT/UPDATE, long-lived transactions) generate excessive redo, driving the transaction-log subsystem to its throughput limits. Log buffer pressure and prolonged flush cycles extend transaction lifetimes, increasing lock hold times and exposure windows for any latent data-block flaws. Simultaneously, existing page or index corruptions force the optimizer to abandon efficient access paths, inflating I/O and redo volume further and triggering still more log activity. Log bottlenecks delay checkpoints and recovery, which in turn defer detection and repair of structural corruptions, allowing them to propagate. The feedback loop between heavy, poorly scoped workload operations, stressed log infrastructure, and damaged on-disk structures culminates in cascading slowdowns, elevated risk of transaction timeouts or rollbacks, and potential data loss on crash recovery.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.44698919127392395,
+            "bm25_score": 18.270778976498,
+            "lexical_score": 0.10671883432271992,
+            "matched_terms": [
+                "activity",
+                "and",
+                "between",
+                "detect",
+                "is",
+                "latency",
+                "long",
+                "or",
+                "query",
+                "sessions",
+                "still",
+                "that",
+                "the",
+                "while"
+            ],
+            "match_count": 249,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

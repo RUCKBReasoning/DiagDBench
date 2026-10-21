@@ -1,0 +1,62 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Database Configuration Parameter Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Composite Definition: The database concurrently suffers from runaway MVCC version-store bloat, mis-tuned engine parameters that distort internal housekeeping cadence, and hard ceilings imposed by operating-system resource limits. The result is a compound failure mode where version cleanup cannot catch up, engine subsystems are configured in ways that mask or worsen the backlog, and the kernel refuses additional resources just when the database tries to recover.\n\nCombined Observable Phenomena: Administrators observe steep growth of obsolete row versions and rollback records while autovacuum/cleanup workers stay permanently busy yet ineffective. Checkpoint, log-flush, or background-worker waits spike despite storage and CPU still showing spare capacity; at the same time, new parallel workers, back-end processes, or I/O contexts intermittently fail to start with kernel-level \"too many open files\", \"cannot allocate shared memory\", or \"resource temporarily unavailable\" errors. Page and index sizes expand quickly, sequential scans slow down, and the planner misestimates row counts, all while wait-event samples oscillate between engine-level maintenance waits and kernel-level allocation failures. After manual restarts or configuration tweaks, short periods of relief are followed by even faster deterioration because workers launched to catch up immediately collide with OS quotas.\n\nCausal Chain and Interaction: Heavy update/delete churn produces large numbers of dead versions (MVCC anomaly). Misaligned configuration parameters—such as an undersized buffer pool, too-low autovacuum cost limits, or overly aggressive parallel-worker settings—delay cleanup and inflate the number of background workers the engine tries to spawn (configuration anomaly). These extra workers demand more file descriptors, shared memory segments, and threads; when host-level limits are set conservatively or have been exhausted by lingering handles from earlier crashes, the kernel denies the requests (OS-limit anomaly). Each denial prevents cleanup or checkpoint activity from scaling, causing further version buildup, larger tables, longer checkpoints, and yet more worker spawn attempts, forming a positive feedback loop that rapidly degrades transactional throughput and risks complete stall.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 4855,
+            "score": 0.7372399505657455,
+            "bm25_score": 73.75312728006902,
+            "lexical_score": 0.18566433566433566,
+            "matched_terms": [
+                "an",
+                "and",
+                "are",
+                "cannot",
+                "capacity",
+                "database",
+                "engine",
+                "failure",
+                "failures",
+                "file",
+                "files",
+                "from",
+                "growth",
+                "have",
+                "in",
+                "is",
+                "log",
+                "of",
+                "or",
+                "recover",
+                "set",
+                "start",
+                "storage",
+                "system",
+                "the",
+                "to",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-012972",
+                "error_name": "ER_IB_MSG_1148",
+                "official_description": "Cannot start InnoDB. The tail of the system tablespace is missing. Have you edited innodb_data_file_path in my.cnf in an inappropriate way, removing ibdata files from there? You can set innodb_force_recovery=1 in my.cnf to force a startup if you are trying to recover a badly corrupt database.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

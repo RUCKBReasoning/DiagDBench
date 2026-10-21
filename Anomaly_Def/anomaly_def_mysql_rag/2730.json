@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Replication Synchronization Anomaly + CPU Resource Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Replication Synchronization Anomaly : Standbys or downstream consumers cannot receive, persist, or apply transaction-log records at the rate the primary emits them, causing widening log-position gaps and retained WAL segments.\nCPU Resource Anomaly : Database processes saturate host CPU, exhausting compute cycles and inflating run-queue and scheduler waits across all workload components.\nNetwork and Connectivity Resource Anomaly : Transport, listener, socket, or connection-slot resources between clients/replicas and the server are unable to sustain the offered throughput, yielding timeouts, retransmissions, and refused sessions.\n\nWhen these three root causes strike simultaneously, symptoms compound: replication lag grows rapidly while both primary and replica CPUs remain pegged, yet neither side can clear backlogs because network throughput and connection-handling capacity are throttled. Clients observe slow or failed connections, rising statement latency, and stale read-only replica data. Primary disk usage surges as unrecycled WAL accumulates; OS metrics reveal high context-switch rates, swollen socket queues, retransmissions, and long run queues. Monitoring views show replication replay delay, CPU-bound wait events, and client-read/client-write waits intertwined, making it difficult to attribute latency to a single layer.\n\nCausally, network congestion or listener exhaustion first restricts log streaming and client traffic, causing the primary to retain WAL. The replica, receiving data in bursts, spikes its apply workers and saturates CPU, further delaying catch-up. Concurrently, CPU saturation on the primary slows both query processing and the network stack, amplifying packet loss and connection backlog, which in turn worsens replication lag. Each layer therefore reinforces the other: network bottlenecks throttle replication, replication lag inflates CPU bursts during catch-up, and CPU exhaustion degrades network I/O handling. The feedback loop drives escalating lag, widespread latency, and degraded failover readiness until at least one resource pressure is relieved.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 15,
+            "score": 0.6212352605944069,
+            "bm25_score": 25.229708478178882,
+            "lexical_score": 0.1621412090447623,
+            "matched_terms": [
+                "and",
+                "are",
+                "client",
+                "consumers",
+                "data",
+                "delaying",
+                "is",
+                "latency",
+                "loss",
+                "network",
+                "or",
+                "packet",
+                "read",
+                "slow",
+                "the",
+                "transport",
+                "when",
+                "write"
+            ],
+            "match_count": 64,
+            "entry": {
+                "timeout_id": "mysql84_xplugin_read_timeout",
+                "parameter_name": "mysqlx_read_timeout",
+                "timeout_category": "x_protocol_network_read_timeout",
+                "scope": "global/session/X Plugin",
+                "official_definition": "Read timeout for X Plugin network communication.",
+                "trigger_condition": "A MySQL X Protocol read operation exceeds mysqlx_read_timeout.",
+                "workload_impact": "The X Protocol network read operation times out.",
+                "default_behavior": "Defined as a MySQL X Plugin system variable.",
+                "system_domain": "network_transport",
+                "cause_analysis": "This timeout is usually triggered when network data is not acknowledged, received, or written within the configured transport-level waiting window.",
+                "solution_guidance": "Inspect packet loss, transport latency, client responsiveness, proxy behavior, and whether slow consumers or unstable links are delaying network progress.",
+                "observable_symptoms": [
+                    "network timeout",
+                    "disconnect",
+                    "read/write interruption"
+                ]
+            }
+        }
+    }
+]

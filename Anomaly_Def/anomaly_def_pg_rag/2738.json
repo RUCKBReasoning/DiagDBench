@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Engine-level knobs such as log-buffer size, checkpoint cadence, and background-writer limits are mis-tuned relative to hardware capacity and workload characteristics.\nTransaction Log Subsystem Anomaly : The write-ahead logging path itself—log buffer, files, flush/sync operations, archiver, and retention pipeline—becomes the primary bottleneck on commit-intensive activity.\n\nWhen both root causes are present, the instance shows a compound failure pattern: commit latency, LOG_WRITE/LOG_SYNC waits, and checkpoint storms spike at the same time that CPU, IOPS, or memory remain oddly under-utilised. Log segments switch or fill far faster than they can be flushed or archived, causing cascading stalls that propagate to foreground sessions. Monitoring dashboards report contradictory signals—threads spinning on log mutexes while disks appear idle, or sudden surges in dirty-page flushes that evict useful cache. Application symptoms include intermittent but severe slowdowns, dead-letter queues growing on synchronous replication links, and runaway log-directory growth that forces emergency space-reclaim operations.\n\nThe causal chain is self-reinforcing: undersized log buffers, too-frequent checkpoints, or minimal log-file sizes (configuration anomaly) drive an excessive rate of flushes and file switches, exposing any latent throughput limits in the transaction-log subsystem. Each forced flush stalls user commits, which in turn increases concurrency and amplifies redo generation, further saturating the log path and triggering even more aggressive checkpoint activity. Conversely, once the log subsystem begins to lag—due to device placement, limited log groups, or slow archiving—the engine’s adaptive algorithms may shorten checkpoint intervals or throttle background writers, making the earlier mis-tuned parameters even more harmful. The interaction locks the system into a feedback loop where neither adjusting workload pace nor adding raw hardware helps until both the misconfiguration and the log bottleneck are addressed together.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.5099638545686808,
+            "bm25_score": 16.950488766280852,
+            "lexical_score": 0.15275142314990514,
+            "matched_terms": [
+                "activity",
+                "and",
+                "are",
+                "be",
+                "can",
+                "dead",
+                "failure",
+                "idle",
+                "is",
+                "latency",
+                "of",
+                "on",
+                "or",
+                "sessions",
+                "system",
+                "that",
+                "the",
+                "time",
+                "to",
+                "when"
+            ],
+            "match_count": 292,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_count",
+                "parameter_name": "tcp_keepalives_count",
+                "timeout_category": "network_keepalive_failure_threshold",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the number of TCP keepalive messages that can be lost before the server connection to the client is considered dead.",
+                "trigger_condition": "The number of lost TCP keepalive probes reaches tcp_keepalives_count on systems supporting TCP_KEEPCNT.",
+                "workload_impact": "The server can consider the client connection dead after the configured keepalive failure threshold.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

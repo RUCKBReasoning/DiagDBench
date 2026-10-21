@@ -1,0 +1,67 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Storage I/O Throughput Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Transaction Lock Contention Anomaly: Concurrent transactions request incompatible locks on the same data or metadata objects, leading to long blocking chains or deadlocks that stall foreground work until a waiter times out or a victim is aborted.\nStorage I/O Throughput Anomaly: The physical devices or storage fabric cannot deliver the read/write bandwidth, IOPS, or latency required by the database, causing prolonged page-in, log-write, and temp-space waits despite adequate CPU and memory.\nNetwork and Connectivity Resource Anomaly: Client/server links, listeners, authentication paths, or socket resources are saturated or unstable, inflating connection-setup time, stalling result streaming, and exhausting backend connection slots.\n\nWhen all three root causes are active, symptoms intertwine: transactions hold locks longer because disk reads, writes, or fsyncs are sluggish, lengthening the lifespan of critical sections. The extended lock tenure propagates deeper blocker-waiter trees, raising lock-wait timeouts, deadlock frequency, and application retries. At the same time, slow or dropped network interactions delay transaction commit/rollback acknowledgements and result-set drains, further prolonging lock ownership and holding server backends occupied. Connection pools fill with sessions stuck in lock or I/O waits, while new clients experience connection refusals or handshake stalls. Overall throughput collapses, CPU appears under-utilised relative to response-time explosions, and monitoring shows simultaneous spikes in lock-manager waits, storage read/write latency, and network retransmissions or connection-queue depth.\n\nCausally, inadequate storage bandwidth forces foreground operations to wait for pages and log flushes, stretching transaction duration and keeping locks active. These prolonged locks exacerbate contention, causing more sessions to block and pile up. Blocked or aborted transactions trigger bursts of application-side retries that open fresh connections, amplifying pressure on listener sockets and backend process pools already strained by network slowdowns. Conversely, network latency and dropped packets slow client request arrival and response draining, inflating server-side idle-in-transaction time and further delaying lock release. The mutual reinforcement between slow I/O, prolonged locking, and congested connectivity thus creates a feedback loop that severely degrades OLTP workload performance and stability.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.7637820512820512,
+            "bm25_score": 42.770873996791536,
+            "lexical_score": 0.21260683760683763,
+            "matched_terms": [
+                "aborted",
+                "active",
+                "and",
+                "because",
+                "blocking",
+                "cannot",
+                "client",
+                "delay",
+                "for",
+                "holding",
+                "idle",
+                "incompatible",
+                "is",
+                "lock",
+                "locks",
+                "long",
+                "longer",
+                "metadata",
+                "of",
+                "open",
+                "or",
+                "required",
+                "sessions",
+                "that",
+                "the",
+                "time",
+                "transaction",
+                "transactions",
+                "when",
+                "while"
+            ],
+            "match_count": 195,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

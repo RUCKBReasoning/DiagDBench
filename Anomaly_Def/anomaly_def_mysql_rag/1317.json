@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Transaction Log Subsystem Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Transaction Lock Contention Anomaly: Concurrent transactions contend for mutually incompatible locks on the same rows, pages, or metadata, leading to wait chains or deadlocks that stall forward progress.\nTransaction Log Subsystem Anomaly: The write-ahead logging pipeline (log buffer, log file, archiver, replication retention) cannot keep pace with redo generation, inflating commit latency and pausing writers.\nData Block and Index Integrity Anomaly: On-disk pages or index structures are physically or logically corrupt, so look-ups, scans, or modifications encounter checksum, linkage, or key-order violations.\n\nWhen these three root causes strike at once, the database experiences a multilayered slowdown and instability: lock wait times and deadlock victim errors rise while commits stall on log flushes, stretching the duration that locks are held and enlarging blocking trees. Corrupted pages or indexes trigger automatic verification retries, forced page rereads, or error-driven transaction rollbacks, further prolonging lock holds and generating bursts of redo that exacerbate log-flush congestion. Applications observe erratic response times, timeouts, and repeated failures; monitoring shows simultaneous spikes in lock waits, log-related waits, deadlock detections, and corruption or checksum error reports. Performance tuning in one layer appears ineffective because pressure simply resurfaces in another, masking the true intertwined nature of the outage.\n\nCausally, page or index corruption can provoke long-running consistency checks, table scans, or error-handling rollbacks that hold locks far longer than usual, amplifying lock contention. These extended transactions in turn generate excessive undo/redo as they are retried or rolled back, driving up log volume and stressing the log subsystem. Conversely, a saturated log device delays commit processing, lengthening the period that locks remain acquired and increasing the likelihood of deadlock cycles. Prolonged recovery or repeated crash restarts initiated by corruption can also intensify log traffic and re-acquire locks, while log backlog may postpone the writing of page images needed to repair corruption. The feedback loop among corrupted structures, lock retention, and log flush bottlenecks deepens the outage and complicates diagnosis, as symptoms from each layer propagate and obscure the original triggers.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5396,
+            "score": 0.4748213877627014,
+            "bm25_score": 54.44840437068633,
+            "lexical_score": 0.17366493744278302,
+            "matched_terms": [
+                "and",
+                "are",
+                "can",
+                "cannot",
+                "corrupt",
+                "data",
+                "database",
+                "disk",
+                "error",
+                "failures",
+                "file",
+                "in",
+                "latency",
+                "log",
+                "or",
+                "page",
+                "pressure",
+                "the",
+                "to",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013534",
+                "error_name": "ER_IB_MSG_DBLWR_1290",
+                "official_description": "The page in the doublewrite file is corrupt. Cannot continue operation. You can try to recover the database with innodb_force_recovery=6",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

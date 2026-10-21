@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Replication Synchronization Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Database Memory Allocation Anomaly: Excessive growth of buffer caches, work areas, or background heaps drives the database process beyond the safe physical-memory envelope of the host.\nReplication Synchronization Anomaly: The replication pipeline cannot receive, persist, or apply transaction-log records at the pace the primary produces them, causing widening log-position gaps and retained log segments.\nOperating System Resource Limit Anomaly: The database or its auxiliary processes exhaust kernel-enforced quotas such as file handles, shared-memory segments, semaphores, or thread counts, leading to allocation denials and partial outages.\n\nWhen all three root causes surface together, the system exhibits an interwoven symptom set: sustained host memory pressure and paging; abrupt failures to spawn new sessions, background, or replication apply workers due to kernel quota exhaustion; accelerating replication lag accompanied by ballooning retained WAL/relay logs; growing resident-set sizes on both primary and replicas; intermittent \"cannot allocate shared memory/file descriptor\" errors in engine and system logs; and, in clustered deployments, heightened risk of node eviction or unviable failover targets because replicas fall ever further behind.\n\nCausal interaction: Runaway in-memory structures on the primary inflate its RSS, pushing the process toward kernel limits (e.g., shmmax, memlock, thread count). Allocation denials stall or kill parallel and replication sender processes, immediately throttling the log-shipping rate. The resulting backlog forces the primary to retain additional log segments, which in turn grow memory and file-descriptor usage, amplifying both the memory bloat and OS-limit pressure. On replicas, the same retention enlarges apply queues; added work must be handled by workers that may already be starved for shared memory or threads, deepening lag. The feedback loop—memory over-consumption → OS limit breaches → replication slowdown → further memory and handle accumulation—quickly degrades overall throughput and jeopardizes data-protection objectives.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.7263211793438961,
+            "bm25_score": 22.040533195510005,
+            "lexical_score": 0.10760233918128653,
+            "matched_terms": [
+                "and",
+                "apply",
+                "be",
+                "causing",
+                "data",
+                "lag",
+                "or",
+                "replication",
+                "sender",
+                "the",
+                "to",
+                "when"
+            ],
+            "match_count": 96,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

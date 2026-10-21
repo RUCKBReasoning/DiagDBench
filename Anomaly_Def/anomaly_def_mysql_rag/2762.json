@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Buffer Cache and Latch Contention Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions request mutually incompatible locks and block or deadlock each other, stalling progress at the lock-manager layer. \nBuffer Cache and Latch Contention Anomaly : Sessions compete for hot buffer-cache pages, latches, or I/O slots, forcing serialization below the lock layer. \nOperating System Resource Limit Anomaly : The database process exhausts kernel-enforced limits such as file handles, shared-memory segments, semaphores, or thread quotas, preventing new allocations.\n\nWhen all three root causes arise together, the system exhibits compound symptoms: long lock-wait chains mixed with high buffer-busy/latch wait events, CPU spin with no throughput gain, spikes of deadlock victim rollbacks, and surging connection-pool backlogs. Simultaneously, the engine begins to log failures to create threads, allocate shared memory, or open files; new sessions, background workers, or parallel tasks are intermittently rejected even as existing ones hang on locks or latches. Latency becomes unpredictable, throughput collapses, and monitoring views show ballooning lock queues, latch waits, and kernel-level allocation errors, making it difficult to isolate any single bottleneck.\n\nCausal chain: intense lock contention leaves transactions open longer, multiplying the number of concurrent sessions and pinned buffer pages. The enlarged session count and page churn amplify hot-page and latch competition inside the buffer manager. As workers spin or wait, they consume additional kernel objects—threads, file descriptors, async-I/O contexts—which pushes the process toward or beyond operating-system limits. Once limits are hit, the engine fails to spawn the very background tasks (e.g., deadlock detectors, checkpointers, flushers) needed to relieve lock and buffer pressure, further prolonging locks and latches and causing positive feedback that rapidly degrades the entire workload.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.4831015403602823,
+            "bm25_score": 14.661852592134288,
+            "lexical_score": 0.15681728492501973,
+            "matched_terms": [
+                "and",
+                "are",
+                "connection",
+                "for",
+                "it",
+                "latency",
+                "longer",
+                "number",
+                "of",
+                "on",
+                "or",
+                "progress",
+                "session",
+                "sessions",
+                "the",
+                "waits",
+                "when"
+            ],
+            "match_count": 26,
+            "entry": {
+                "timeout_id": "mysql84_idle_noninteractive_session_timeout",
+                "parameter_name": "wait_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds the server waits for activity on a noninteractive connection before closing it.",
+                "trigger_condition": "A noninteractive session remains idle longer than wait_timeout.",
+                "workload_impact": "The server closes the idle connection.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Database Memory Allocation Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Transaction Lock Contention Anomaly: Concurrent sessions hold or request mutually incompatible locks on the same resources, leading to long blocking chains or deadlocks that stall forward progress. \nDatabase Memory Allocation Anomaly: Database components (buffer/cache, work areas, background heaps) collectively grow beyond safe physical limits, provoking host-level memory pressure and paging. \nOperating System Resource Limit Anomaly: The database process exhausts kernel-enforced quotas for objects such as file descriptors, shared-memory segments, semaphores, or process IDs, preventing new allocations.\n\nWhen these three root causes coincide, symptoms overlap and magnify: lock-wait time and deadlock frequency surge while overall throughput and connection acceptance plunge; meanwhile the database’s resident-set size climbs until the kernel begins paging or refuses further memory, leading to sporadic \"cannot allocate memory\" or \"too many open files\" errors. Stalled or killed transactions repeatedly reconnect and retry, inflating connection bursts that generate more processes/threads and file handles, which in turn collide with OS limits. Administrators observe alternating lock-wait spikes, sudden session failures, escalating swap usage, growing wait queues in the connection pool, and flurries of engine and kernel log messages about lock timeouts, out-of-memory kills, and resource-limit denials—all without a single clear chokepoint.\n\nCausally, intensive lock contention lengthens transaction lifetimes, inflating the number of concurrent sessions that stay resident and each one’s memory/work-area footprint. The bloated memory demand brings the host to the brink of physical exhaustion; once paging starts, transaction execution slows further, prolonging locks and amplifying contention—a feedback loop. Simultaneously, the surge in waiting sessions and frequent reconnection attempts multiply process/thread and file-descriptor usage, quickly breaching OS quotas. Hitting those limits causes some sessions or background workers to crash, which roll back their locks and force other transactions to restart, re-enter queues, and allocate fresh memory, perpetuating the instability. Thus, the interplay of lock contention, runaway memory growth, and kernel resource exhaustion creates a self-reinforcing spiral that can culminate in partial or total service outage.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.29567006718456845,
+            "bm25_score": 13.36136123972019,
+            "lexical_score": 0.11959370904325033,
+            "matched_terms": [
+                "and",
+                "connection",
+                "for",
+                "more",
+                "number",
+                "of",
+                "or",
+                "progress",
+                "session",
+                "sessions",
+                "the",
+                "time",
+                "to",
+                "wait",
+                "when"
+            ],
+            "match_count": 65,
+            "entry": {
+                "timeout_id": "mysql84_replica_network_timeout",
+                "parameter_name": "replica_net_timeout",
+                "timeout_category": "replication_network_timeout",
+                "scope": "global/replication",
+                "official_definition": "The number of seconds to wait for more data from a source/replica connection before aborting the read.",
+                "trigger_condition": "A replica waits longer than replica_net_timeout for more data from the source connection.",
+                "workload_impact": "The replication network read is aborted and the replica considers the connection interrupted.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

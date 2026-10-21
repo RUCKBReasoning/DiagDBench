@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Database Configuration Parameter Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Schema and Index Design Anomaly : A static physical-model mismatch that forces queries and DML to use inefficient access paths because tables, indexes, or partitions are not aligned with workload access patterns.\nDatabase Configuration Parameter Anomaly : Mis-tuned engine parameters (memory pools, checkpoint cadence, parallelism, etc.) that make the runtime environment unsuitable for the hardware and workload, creating throttling or storms despite adequate raw resources.\nBuffer Cache and Latch Contention Anomaly : Page-level serialization inside the buffer manager where many sessions compete for the same cache pages, latches, or I/O slots, stalling while buffers are pinned, dirtied, or flushed.\n\nComposite anomaly definition: The system simultaneously suffers from a poor physical schema/index design, sub-optimal instance configuration, and intensified buffer-cache/latch contention. Ill-suited data structures generate excessive or hotspot-focused page activity; misconfigured memory, checkpoint, or parallelism settings prevent the engine from absorbing that activity smoothly; together they create severe page-level contention and resource thrashing.\n\nCombined anomalous phenomena: 1) Queries that should be selective degrade into full scans, inflating logical and physical I/O. 2) Undersized or over-committed buffer pools, work memory, or checkpoint parameters cause constant cache eviction or flush storms, visible as alternating periods of I/O idleness and bursty write spikes. 3) Buffer-busy/latch waits and CPU spin events surge on hot index root pages or monotonically growing tables; at the same time, storage and CPU utilization appear paradoxically low or oscillatory because sessions are stalled on synchronization rather than raw resource limits. 4) Adding an index or changing a parameter in isolation yields only marginal or short-lived relief, and the interplay of symptoms makes plan analysis, wait-event interpretation, and conventional tuning misleading.\n\nCausal chain and mutual reinforcement: Sub-optimal schema/index design amplifies page reuse on a small set of blocks (e.g., a missing composite index funnels all lookups through one non-covering index), creating hot pages. Misconfigured memory or checkpoint cadence reduces the residence time of those pages, forcing frequent re-latching and dirty-page flushes. Each flush evicts useful pages and triggers additional I/O and latch acquisition, lengthening critical sections and spreading contention to other objects. Conversely, excessive latch waits elongate statement runtimes, increasing concurrent session counts, which in turn exceed the memory or worker limits set by faulty parameters, triggering even more cache churn and background activity. The feedback loop between design flaws, configuration mis-sizing, and buffer-manager choke points culminates in unpredictable throughput, erratic latency, and difficulty isolating the primary performance inhibitor.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.7214740603974954,
+            "bm25_score": 30.567162537047484,
+            "lexical_score": 0.15384615384615385,
+            "matched_terms": [
+                "access",
+                "and",
+                "be",
+                "because",
+                "by",
+                "contention",
+                "for",
+                "in",
+                "or",
+                "other",
+                "resource",
+                "session",
+                "should",
+                "statement",
+                "the",
+                "time",
+                "together",
+                "with",
+                "work",
+                "workload"
+            ],
+            "match_count": 150,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

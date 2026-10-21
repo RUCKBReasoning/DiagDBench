@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Excess accumulation of obsolete row versions and index entries overwhelms background cleanup, inflating the version store and visibility-check costs.\nBuffer Cache and Latch Contention Anomaly : Hot pages and limited buffer-manager synchronization resources force sessions to serialize on latches or spin on buffer pins.\n\nWhen both root causes strike together, the system exhibits a mixture of version-store bloat symptoms and severe buffer-level waits. Dirty, bloated data pages churn through a constrained buffer pool, so every logical read or cleanup pass contends for already-hot pages and their latches. Wait-event dashboards show a blend of long MVCC visibility checks, buffer-busy waits, and latch spin time; checkpoint and auto-vacuum workers stay active yet fall behind, while foreground transactions report rising latency, especially on UPDATE/DELETE-heavy tables whose root index pages are constantly reloaded or latched. Disk usage and I/O grow rapidly, yet CPU idle time shrinks because sessions alternate between spinning on latches and scanning oversized heaps.\n\nCausally, unchecked MVCC bloat multiplies the number of pages that must reside in or cycle through the buffer cache, inflating pressure on limited buffer frames and the latches that guard them. Each cleanup, scan, or index probe must touch more pages, increasing the frequency with which many sessions converge on the same hot root or visibility map page, intensifying latch contention. In turn, heavy latch waits delay autovacuum or cleaning workers, allowing even more obsolete versions to accumulate and perpetuating the vicious cycle. The two anomalies therefore reinforce each other: version bloat amplifies buffer contention, and buffer contention slows the very tasks needed to remove the bloat, driving the database into progressive performance degradation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.7514310344827586,
+            "bm25_score": 19.836255145259223,
+            "lexical_score": 0.1714367816091954,
+            "matched_terms": [
+                "and",
+                "are",
+                "check",
+                "data",
+                "for",
+                "idle",
+                "latency",
+                "more",
+                "number",
+                "of",
+                "or",
+                "read",
+                "sessions",
+                "the",
+                "time",
+                "to",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 12,
+            "entry": {
+                "timeout_id": "mysql84_network_read_timeout",
+                "parameter_name": "net_read_timeout",
+                "timeout_category": "network_read_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for more data from a connection before aborting the read.",
+                "trigger_condition": "The server waits for additional data from a connection longer than net_read_timeout.",
+                "workload_impact": "The network read is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

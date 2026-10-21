@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer repeatedly chooses a sub-optimal execution plan despite accurate statistics, yielding excessive logical work, wrong join methods, or missing index usage.\nTransaction Log Subsystem Anomaly: The write-ahead logging path—generation, buffering, flushing, or archiving—becomes the primary bottleneck, inflating commit latency and stalling writers even though general storage I/O may appear adequate.\n\nWhen both root causes manifest concurrently, statements may oscillate between poor plans that create unusually large modification workloads and a log layer unable to absorb the resulting redo volume. Symptoms include: 1) sharp, unpredictable spikes in transaction latency where CPU time, logical I/O, and log-flush waits all surge in the same timeframe; 2) frequent plan changes from efficient index probes to wide table or hash scans that multiply row touches and redo generation, exhausting log buffer space; 3) bursts of log-related wait events (LOG_FLUSH, LOG_WRITE, commit waits) coinciding with dramatic increases in physical I/O and buffer churn driven by the bad plans; 4) checkpoint storms, rapid log-file switches, and archiver backlog triggered immediately after plan regressions; 5) erratic throughput where some executions sail through on good plans while others stall behind saturated log flushes, complicating performance diagnosis.\n\nCausally, a sub-optimal plan that amplifies row updates or causes large sort/insert loops escalates redo generation, directly stressing an already constrained log subsystem. The swollen write volume fills the log buffer faster than it can be flushed or archived, extending commit latency and forcing user sessions to wait. The prolonged transaction durations increase row and log contention, which in turn can influence the optimizer’s adaptive decisions, fostering further plan instability—a feedback loop that compounds both anomalies. Conversely, elevated commit latency from log saturation can delay statistics updates and cause plan cache invalidations, provoking additional plan recompilations and increasing the likelihood of selecting poor plans. The intertwined effects magnify resource contention, leading to severe and erratic slowdowns in high-write OLTP workloads.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.6440072850340715,
+            "bm25_score": 26.762851457721393,
+            "lexical_score": 0.13947510197798813,
+            "matched_terms": [
+                "and",
+                "be",
+                "behind",
+                "by",
+                "constrained",
+                "contention",
+                "execution",
+                "or",
+                "path",
+                "query",
+                "resource",
+                "the",
+                "time",
+                "triggered",
+                "when",
+                "with",
+                "work"
+            ],
+            "match_count": 129,
+            "entry": {
+                "timeout_id": "mysql84_regular_expression_time_limit",
+                "parameter_name": "regexp_time_limit",
+                "timeout_category": "expression_evaluation_time_limit",
+                "scope": "global/session",
+                "official_definition": "The time limit for regular expression matching operations performed by the regular expression engine.",
+                "trigger_condition": "A regular expression match operation exceeds regexp_time_limit.",
+                "workload_impact": "The regular expression operation is constrained by the configured time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

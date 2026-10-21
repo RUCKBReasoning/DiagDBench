@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Buffer Cache and Latch Contention Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Schema and Index Design Anomaly : The physical data model (tables, indexes, partitions, datatypes, constraints) is mis-aligned with workload access patterns, forcing plans into full scans, non-covering lookups, and other inefficient paths.\nBuffer Cache and Latch Contention Anomaly : Concurrent sessions serialize on hot buffer pages, latches, or I/O slots, causing prolonged buffer-busy and page-latch waits and CPU spin without throughput gain.\nTransaction Log Subsystem Anomaly : Commit processing is throttled by log buffer, log file, or archiver saturation, elevating log-flush and log-sync waits and stalling write workloads.\n\nComposite anomaly definition: All three root causes are active at the same time in an OLTP system: sub-optimal schema/index design amplifies logical I/O and redo generation, the resulting surge of page accesses leads to acute buffer-cache and latch contention, and the elevated redo stream overwhelms the transaction-log subsystem, forming a multi-layer bottleneck that spans from SQL access path to memory management to durable logging.\n\nCombined observable phenomena: 1) Queries show full scans or non-covering index probes with many logical reads; 2) wait-event views report simultaneous spikes in buffer_busy/page_latch, log_flush/log_sync, and physical I/O; 3) CPU usage oscillates between spin loops and idle while commit latency climbs; 4) hotspot pages such as index roots, monotonically growing tables, or sequence blocks exhibit latch contention and rapid dirtying, while log files switch frequently and archivers fall behind; 5) adding extra buffer cache reduces but does not eliminate symptoms, and adding an index or enlarging log files alone yields only partial relief, signaling intertwined root causes.\n\nCausal chain and interaction: Poor schema and indexing force each transaction to touch more pages, inflate row versioning, and emit excessive redo. The enlarged working set churns through a limited buffer pool, so the same root or data pages become hot, intensifying latch competition. Dirty hot pages in turn prolong checkpoint and flush activity, keeping latches held longer and enlarging the log buffer. The heightened redo rate pushes the log writer to its throughput limits; when log flushes slow, transactions hold locks and keep pages pinned even longer, exacerbating buffer contention. Meanwhile, the latch stalls lengthen critical sections that hold the log mutex or generate redo records, further reducing log throughput. This positive feedback loop causes cascading slowdowns across the access path, buffer manager, and logging layers, leading to severe, workload-wide performance degradation that is difficult to attribute to any single layer in isolation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.6534786547734893,
+            "bm25_score": 21.682359066668685,
+            "lexical_score": 0.1711111111111111,
+            "matched_terms": [
+                "activity",
+                "and",
+                "are",
+                "data",
+                "does",
+                "from",
+                "idle",
+                "is",
+                "latency",
+                "longer",
+                "more",
+                "not",
+                "of",
+                "or",
+                "sessions",
+                "the",
+                "this",
+                "time",
+                "to",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 39,
+            "entry": {
+                "timeout_id": "mysql84_network_read_timeout",
+                "parameter_name": "net_read_timeout",
+                "timeout_category": "network_read_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for more data from a connection before aborting the read.",
+                "trigger_condition": "The server waits for additional data from a connection longer than net_read_timeout.",
+                "workload_impact": "The network read is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

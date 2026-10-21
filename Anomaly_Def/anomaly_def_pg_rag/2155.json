@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Transaction Log Subsystem Anomaly + Replication Synchronization Anomaly",
+            "Description": "Database Memory Allocation Anomaly : Excessive or uncontrolled growth of buffer caches, work areas, plan caches, and other in-process memory regions pushes the database host beyond its physical RAM and swap limits, provoking paging, OOM kills, and cache-churn inefficiencies.\nTransaction Log Subsystem Anomaly : The generation, buffering, flushing, or archiving of write-ahead log (WAL) records cannot keep pace with commit throughput, making the log file group, log buffer, or archiver the primary bottleneck on the write path.\nReplication Synchronization Anomaly : Downstream standbys or subscribers are unable to receive, persist, or apply WAL data at the rate produced by the primary, causing growing log-position lag and preventing log-segment recycling.\n\nWhen these three root causes occur together, the system exhibits compounded symptoms: commit latency and user-visible stalls rise sharply as log buffers back up behind a saturated log device while memory pressure simultaneously forces buffer eviction, swap storms, and CPU stalls. The primary accumulates large, unrecycled log segments because replicas lag, inflating on-disk log space; meanwhile, over-allocated in-memory caches and work areas bloat the resident set, further constraining I/O cache effectiveness. Administrators may observe oscillating throughput, frequent checkpoint storms, and emergency restarts triggered by out-of-memory or full-log conditions, along with widening replication delay and inconsistent read freshness on replicas. The overlapping waits (log flush, log sync, memory latch, page-in I/O) make it difficult to isolate any single culprit.\n\nCausally, aggressive memory allocation reduces effective filesystem cache and amplifies paging, slowing physical log writes and elevating commit latency. Prolonged log flush times expand the log tail that replicas must ship and apply; replica lag in turn prevents log recycling, causing the primary to retain ever-growing log files that consume additional disk and may prompt larger in-memory directory and metadata caches—exacerbating memory pressure. Conversely, as replicas fall behind, the primary must hold more WAL in memory and on disk, inflating both log buffer residency and archive queues, which collide with already scarce memory resources. The feedback loop between memory exhaustion, log-subsystem saturation, and replication backlog thus intensifies each anomaly, pushing the OLTP system toward throughput collapse or forced failover.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.742564935064935,
+            "bm25_score": 30.132341921012628,
+            "lexical_score": 0.14188311688311686,
+            "matched_terms": [
+                "and",
+                "any",
+                "because",
+                "cannot",
+                "database",
+                "delay",
+                "metadata",
+                "of",
+                "or",
+                "other",
+                "that",
+                "the",
+                "to",
+                "transaction",
+                "triggered",
+                "user",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 268,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

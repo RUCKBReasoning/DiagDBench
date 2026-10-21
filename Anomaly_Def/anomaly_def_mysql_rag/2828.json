@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Database Memory Allocation Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly: Excessive accumulation of obsolete row versions and rollback data because background cleanup cannot keep pace with update-/delete-churn, inflating storage footprints and visibility-check cost.\nDatabase Memory Allocation Anomaly: Unbounded growth of buffer, work, and auxiliary memory areas that pushes the host into heavy paging, OOM kills, or node eviction.\nData Block and Index Integrity Anomaly: Physical pages or index structures become internally inconsistent, causing logical/physical corruption and unreliable access paths.\n\nWhen all three anomalies coexist, the database exhibits a compound failure mode: version bloat swells table and index sizes, driving up buffer-cache demand and temporary-work memory; the overstressed memory subsystem begins paging, which slows background vacuum/cleaner threads, further accelerating version accumulation. Simultaneously, memory pressure and incessant dirty-page churn shorten write-back intervals and increase I/O bursts, heightening the risk of torn pages or incomplete writes that manifest as page-checksum errors, mismatched heap-to-index entries, and sudden \"could not read block\" or \"index corrupted\" errors. Symptomatically, administrators observe: rapidly growing disk usage, declining live-row density, long-running snapshot queries, vacuum workers perpetually lagging, escalating RSS and swap use, intermittent OOM terminations of worker or autovacuum processes, sporadic integrity-check failures, index scans returning inconsistent row counts, and emergency restarts that only partially resolve corruption reports.\n\nCausally, heavy update/delete churn initiates sustained version buildup. The bloated heap and indexes enlarge the buffer pool footprint and lengthen cleaner cycles, forcing the engine to allocate ever-more memory for caching and for the large intermediate sort/hash operations now needed to handle expanded data ranges. Once physical memory is exhausted, the operating system pages or kills processes, interrupting vacuum or checkpoint activity mid-operation. These aborted maintenance actions, together with write storms from swap-in/swap-out and aggressive check-pointing, create windows where critical pages are only partially written, amplifying susceptibility to block corruption. Corruption, in turn, invalidates indexes and requires full-table scans, which touch even more bloated pages, feeding back into memory pressure and leaving cleaners powerless to advance the version horizon. The intertwined feedback loops among version bloat, memory exhaustion, and structural corruption rapidly degrade both performance and data reliability in transactional workloads.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5448,
+            "score": 0.442202092356984,
+            "bm25_score": 49.346731447517435,
+            "lexical_score": 0.19977564102564102,
+            "matched_terms": [
+                "access",
+                "and",
+                "are",
+                "because",
+                "cannot",
+                "check",
+                "create",
+                "data",
+                "disk",
+                "engine",
+                "failure",
+                "failures",
+                "growth",
+                "is",
+                "not",
+                "operation",
+                "or",
+                "paths",
+                "pressure",
+                "storage",
+                "the",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013587",
+                "error_name": "ER_IB_MSG_INVALID_LOCATION_FOR_TABLESPACE",
+                "official_description": "Cannot create tablespace %s because the directory is not a valid location. %s",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

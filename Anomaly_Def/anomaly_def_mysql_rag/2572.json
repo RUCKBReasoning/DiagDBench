@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Replication Synchronization Anomaly + Storage Space Capacity Anomaly + CPU Resource Anomaly",
+            "Description": "Replication Synchronization Anomaly : Replicas or downstream consumers are unable to receive or apply primary transaction-log records at the rate they are generated, producing widening replication lag.\nStorage Space Capacity Anomaly : Physical or logical free space for data files, logs, or temporary areas is exhausted or approaching hard limits, leading to allocation failures and blocked recycling.\nCPU Resource Anomaly : Database or related processes saturate host CPU cores, creating run-queue buildup and pervasive latency.\n\nWhen all three conditions arise together, the database experiences a compound failure mode in which replication lag grows rapidly, on-disk log segments and relay files accumulate until file systems or tablespaces fill, and the CPU remains pegged as both primary and replica processes fight for compute time to generate, transmit, and replay an ever-growing backlog. Observable symptoms include:  \n• Exponential increase of replication \"write/flush/replay\" delay accompanied by near-full disk or object-store usage on both primary and replica nodes.  \n• Frequent \"cannot allocate space\", \"write failed\", or \"archive destination full\" errors interleaved with scheduler and CPU spin waits.  \n• Periodic stalls where foreground user transactions block on log-space or checkpoint waits, followed by bursty catch-up periods that again spike CPU to 100%.  \n• Monitoring shows rebounding replication lag after every attempted recovery cycle, with replica apply threads starved for CPU while also contending with I/O stalls caused by full disks.\n\nCausal interaction: CPU saturation on either primary or replica slows log generation, network processing, and redo apply threads, which in turn inflates replication lag. The unresolved lag forces the primary to retain past WAL segments, rapidly consuming storage and pushing both primary and archive destinations toward capacity limits. As free space dwindles, checkpoints, auto-extension, and archive writes pause foreground activity, but these pauses cause queues to build, after which surges of deferred work reignite CPU pressure. On the replica side, limited CPU prolongs apply times, so retained relay logs bloat local storage, risking replay halts when disks fill. Conversely, once space exhaustion triggers excessive garbage collection, error logging, or retry loops, additional CPU is consumed, further aggravating saturation. The feedback loop among slow replication, shrinking space, and CPU overload can cascade into systemic outage or forced failovers if not interrupted.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2488,
+            "score": 0.4691792688708255,
+            "bm25_score": 50.2617766076013,
+            "lexical_score": 0.19357843137254904,
+            "matched_terms": [
+                "and",
+                "are",
+                "capacity",
+                "data",
+                "disk",
+                "error",
+                "failure",
+                "failures",
+                "file",
+                "is",
+                "latency",
+                "log",
+                "or",
+                "pressure",
+                "replica",
+                "storage",
+                "temporary",
+                "the",
+                "to",
+                "unable",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010601",
+                "error_name": "ER_REPLICA_CANT_USE_TEMPDIR",
+                "official_description": "Unable to use replica's temporary directory '%s'.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

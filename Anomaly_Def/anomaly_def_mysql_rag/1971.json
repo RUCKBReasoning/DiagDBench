@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Data Block and Index Integrity Anomaly + CPU Resource Anomaly",
+            "Description": "Data Block and Index Integrity Anomaly : Physical or logical corruption of on-disk data and index pages such that page checksums, key order, or heap-to-index mappings are no longer trustworthy.\nCPU Resource Anomaly : Host CPU cores become saturated by database processes, leaving insufficient compute capacity for the rest of the workload.\n\nWhen both faults occur simultaneously, the system exhibits a compound failure mode: corruption-induced full table scans, repeated page rereads, checksum retries, or error-handling loops multiply CPU demand, while the already maxed-out CPUs slow internal recovery routines, verification passes, and client queries. Observable symptoms include near-100 % CPU utilization alongside a spike in physical-corruption messages in the error log, sudden plan switches from index seeks to exhaustive scans, dramatic divergence between index and heap row counts, time-outs in integrity-check utilities, and pervasive latency across unrelated sessions as the scheduler queue length explodes.\n\nCausally, damaged pages or broken index pointers force the optimizer or storage layer to fall back to costlier access paths, reread pages, or invoke on-the-fly repair logic—each action consuming additional CPU cycles. The elevated CPU load lengthens I/O and latch holding times, increasing the window for further corruption to surface and complicating post-failure recovery. In turn, CPU starvation delays background validation jobs and checkpoint processing, allowing more corrupted pages to remain undetected and propagating inconsistent data to replicas or backups. The two root causes therefore reinforce each other, escalating from isolated page issues or momentary CPU spikes into a widespread performance and data-integrity crisis.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.7529508196721311,
+            "bm25_score": 21.29959027178057,
+            "lexical_score": 0.17650273224043714,
+            "matched_terms": [
+                "additional",
+                "and",
+                "are",
+                "check",
+                "client",
+                "data",
+                "for",
+                "from",
+                "handling",
+                "holding",
+                "latency",
+                "longer",
+                "more",
+                "of",
+                "or",
+                "sessions",
+                "the",
+                "time",
+                "to",
+                "when"
+            ],
+            "match_count": 93,
+            "entry": {
+                "timeout_id": "mysql84_network_read_timeout",
+                "parameter_name": "net_read_timeout",
+                "timeout_category": "network_read_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for more data from a connection before aborting the read.",
+                "trigger_condition": "The server waits for additional data from a connection longer than net_read_timeout.",
+                "workload_impact": "The network read is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

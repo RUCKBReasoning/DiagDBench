@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + MVCC Version Maintenance Anomaly + CPU Resource Anomaly",
+            "Description": "Composite definition: The system simultaneously suffers (1) heavy lock-manager conflicts that block or deadlock concurrent transactions, (2) runaway accumulation of obsolete MVCC versions that background cleaners cannot reclaim in time, and (3) sustained saturation of host CPU resources by database processes. The three root causes coexist and interact, jointly degrading throughput, increasing latency, and threatening availability on a write-intensive OLTP workload.\n\nCombined anomalous phenomena: \n• Long blocker-waiter chains and periodic deadlock victim errors coincide with rapidly growing table and index footprints, swollen undo/version stores, and vacuum/cleaner workers stuck in backlog. \n• Global CPU utilisation hovers near 100 %, run-queue length rises, and CPU-related wait events dominate performance views; at the same time, lock wait time, query latency, and application timeouts climb steeply. \n• Select queries encounter larger visibility-check costs due to bloated page contents, while update/delete statements both wait on locks and spend extra CPU sifting through long version chains. \n• Background cleanup workers, starved of CPU and blocked by long-running transactions, fall further behind, allowing version bloat and storage usage to snowball. \n\nCausal interaction: Lock contention prolongs transaction lifetimes and increases the number of in-flight snapshots, preventing garbage collection of obsolete versions and accelerating MVCC bloat. The enlarged version store forces foreground queries to scan more row versions, inflating CPU consumption, while overworked cleanup processes intensify CPU demand yet make little progress because they are pre-empted by user back-ends and impeded by still-held locks. Rising CPU saturation slows both application and maintenance tasks, lengthening lock hold times and further delaying version reclamation. This feedback loop amplifies each individual anomaly, driving the database into a state where blocking, storage growth, and CPU exhaustion reinforce one another, culminating in severe throughput collapse and potential service outages.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.21709665141992496,
+            "bm25_score": 9.497326127546943,
+            "lexical_score": 0.10315789473684209,
+            "matched_terms": [
+                "and",
+                "are",
+                "check",
+                "in",
+                "latency",
+                "of",
+                "or",
+                "progress",
+                "the",
+                "this",
+                "time",
+                "wait"
+            ],
+            "match_count": 166,
+            "entry": {
+                "timeout_id": "pg16_libpq_connection_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "client_connection_establishment_timeout",
+                "scope": "libpq/client connection parameter",
+                "official_definition": "Maximum wait for connection, in seconds; zero or not specified means wait indefinitely.",
+                "trigger_condition": "A libpq client connection attempt exceeds connect_timeout seconds.",
+                "workload_impact": "The client connection attempt fails instead of waiting indefinitely.",
+                "default_behavior": "Zero or absent value means wait indefinitely.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

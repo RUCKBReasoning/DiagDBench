@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Database Memory Allocation Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer chooses a substantially sub-optimal execution plan even though statistics are sound, yielding overly expensive operators or inappropriate join methods.\nDatabase Memory Allocation Anomaly: Database components (buffer cache, work areas, plan cache, etc.) collectively consume more physical memory than the host can sustain, driving paging, OOM events, and cache churn.\nStorage Space Capacity Anomaly: Data files, temp areas, or log/backup destinations run out of free space, leading to allocation failures and stalled workload progress.\n\nWhen these three root causes strike together, the workload may oscillate between memory and storage crises: bad plans inflate work-area demand and fragment the buffer-pool, which in turn forces large sorts, hashes, or spill files into already constrained temporary or log spaces. Operators may start in memory, then spill to disk, rapidly depleting free space; once space is exhausted, the same statements abort with \"out of space\" or \"cannot allocate” errors, while concurrent sessions experience severe latency from swapping, frequent plan cache evictions, and erratic plan flips. Background processes struggle to extend datafiles or recycle logs, leading to checkpoint stalls, replication lag, and even instance terminations.\n\nCausally, a sub-optimal plan (1) amplifies memory consumption (e.g., choosing hash joins over indexed lookups, or requesting large sort buffers). The inflated work areas push the engine beyond physical RAM, activating the Database Memory Allocation Anomaly; paging and memory pressure then force operators to dump intermediate results to temporary storage. Those spills, plus bloated logs from long-running, poorly planned queries, quickly exhaust tablespace, temp, and archive destinations, triggering the Storage Space Capacity Anomaly. Conversely, once space fills, the optimizer may reject optimal index or parallel plans that require additional scratch or log space, defaulting to even heavier full scans or serial plans, further prolonging memory residency and perpetuating the vicious cycle. The intertwined feedback loops between bad plans, runaway memory growth, and space exhaustion dramatically degrade both transactional and analytical workloads and can culminate in service outages.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.33820121612373444,
+            "bm25_score": 13.038210056239613,
+            "lexical_score": 0.10747509608596752,
+            "matched_terms": [
+                "and",
+                "are",
+                "bad",
+                "is",
+                "latency",
+                "of",
+                "or",
+                "progress",
+                "sessions",
+                "that",
+                "the",
+                "when",
+                "with"
+            ],
+            "match_count": 47,
+            "entry": {
+                "timeout_id": "mysql84_connection_handshake_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "connection_handshake_timeout",
+                "scope": "global",
+                "official_definition": "The number of seconds that the mysqld server waits for a connect packet before responding with Bad handshake.",
+                "trigger_condition": "A client does not complete the initial connection packet exchange within connect_timeout.",
+                "workload_impact": "The connection attempt fails during handshake.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

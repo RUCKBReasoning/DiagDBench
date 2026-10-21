@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Sessions stall while competing for hot buffer-cache pages, page pins, or latches, leading to spin or sleep delays during page access.\nOperating System Resource Limit Anomaly : The database engine or its worker processes hit kernel-enforced ceilings for objects such as file descriptors, shared-memory segments, semaphores, threads, or I/O contexts, preventing further resource acquisition.\n\nWhen both root causes manifest together, the system shows a mixture of intense page-level contention and sporadic kernel allocation failures. Symptom patterns include surging buffer-busy and page-latch waits intertwined with error messages about exhausted file handles, semaphore limits, or thread creation failures. Throughput oscillates as some sessions spin on latch acquisition while others are aborted or blocked by the OS, leading to sharp latency spikes, uneven CPU utilisation (alternating between spin storms and idle time), partial loss of parallel workers, and a rapid drop in cache hit ratios as pages are evicted or cannot be pinned. Monitoring views may show rising I/O due to reduced cache residency, yet background writers and checkpoint threads fail intermittently, amplifying dirty-page backlogs and prolonging flush-related holds.\n\nCausally, OS-level resource exhaustion reduces the number of buffer-pool frames, background processes, or I/O contexts available, forcing more aggressive page replacement and enlarging the set of hot pages contended by surviving sessions—thereby aggravating latch contention. Conversely, severe latch spin or sleep loops inflate thread counts and open-file usage as sessions retry I/O and spawn additional workers, accelerating consumption of kernel objects until limits are breached. The two anomalies thus form a feedback loop: OS limits constrict the buffer manager’s operating headroom, heightening page-level serialization, while the resulting contention multiplies kernel object requests, hastening limit exhaustion and driving the database into cascading stalls or partial outages.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.4738017469577779,
+            "bm25_score": 18.05703237200137,
+            "lexical_score": 0.11646723646723646,
+            "matched_terms": [
+                "aborted",
+                "acquisition",
+                "and",
+                "cannot",
+                "for",
+                "in",
+                "or",
+                "retry",
+                "sessions",
+                "the",
+                "to",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 13,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

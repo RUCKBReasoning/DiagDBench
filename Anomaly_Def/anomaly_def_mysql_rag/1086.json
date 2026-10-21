@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Database Memory Allocation Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same objects, forming blocking chains or deadlocks that stall progress until a victim is chosen or the blocking clears.\nDatabase Memory Allocation Anomaly : Database processes collectively consume more RAM than the host can safely supply, provoking paging, OOM terminations, or cache churn that slows every operation.\nStorage Space Capacity Anomaly : Growth of data, log, temp, or backup areas exhausts allotted disk space, leading to allocation failures, halted checkpoints, or inability to persist new data.\n\nWhen all three root causes strike together, the system exhibits a layered failure pattern: long-running lock waits accumulate sessions that continue to hold memory grants; the pinned buffers, work areas, and unreleased cursor state inflate physical memory usage, pushing the host into swap. As memory pressure rises, sort and hash operations spill to TEMP, and frozen transactions prevent log truncation, rapidly consuming remaining disk space. The resulting space exhaustion then blocks further writes and checkpoints, which in turn prolongs lock retention and forces even more sessions into wait queues. Observable symptoms include explosive growth of lock-wait time, escalating resident-set size, heavy paging, TEMP and log files auto-extending until full, aborted transactions due to deadlock, OOM, or \"no space left\" errors, and cluster failover or crash-recovery storms that make diagnosis difficult.\n\nCausally, initial lock contention lengthens transaction lifetimes, keeping their memory allocations and unflushed log segments open. This sustained resource hold amplifies memory pressure and temp-space use. As RAM becomes scarce, the engine spills work to disk, accelerating space consumption; once disk fills, checkpoints and log archiving stall, so lock-holding transactions cannot commit or roll back, deepening the contention. Each anomaly therefore feeds the others in a reinforcing loop that can drive the database into a cascading outage if not interrupted.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.7494045616175264,
+            "bm25_score": 27.559219428267433,
+            "lexical_score": 0.1696953541507997,
+            "matched_terms": [
+                "aborted",
+                "and",
+                "blocking",
+                "cannot",
+                "holding",
+                "in",
+                "incompatible",
+                "is",
+                "lock",
+                "locks",
+                "not",
+                "operation",
+                "or",
+                "sessions",
+                "than",
+                "the",
+                "this",
+                "to",
+                "transaction",
+                "waits",
+                "when"
+            ],
+            "match_count": 53,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + MVCC Version Maintenance Anomaly + Database Memory Allocation Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Row-count and data-distribution metadata are outdated or incomplete, causing systematic cardinality misestimation during cost-based planning.\nMVCC Version Maintenance Anomaly : Obsolete row versions and logically deleted index entries accumulate faster than background cleanup, bloating tables and indexes and increasing visibility-check overhead.\nDatabase Memory Allocation Anomaly : Total memory reserved by buffer caches, work areas, and background structures grows beyond the host’s safe limits, driving OS-level pressure, paging, and potential OOM events.\n\nWhen these three root causes strike simultaneously, the engine exhibits compound symptoms: execution plans are chosen on the basis of stale statistics that underestimate the now-bloated relation sizes, producing pathologically sub-optimal strategies such as nested-loop joins that iterate over swollen heaps or sequential scans that spill to disk because inflated memory footprints have triggered global memory pressure. Concurrently, vacuum/cleanup workers compete for scarce memory and I/O while struggling to reclaim runaway version stores, and their backlog further enlarges table and index sizes. Operators report wildly divergent estimated versus actual row counts, steadily declining cache hit ratios, sudden bursts of swap activity, and erratic query latencies punctuated by out-of-memory terminations or instance restarts.\n\nCausally, heavy update/delete churn creates surplus row versions; if automatic statistics refresh is suppressed by that same churn or by long-running snapshots, the optimizer’s view of table cardinalities lags behind reality. The resulting mischosen plans often scan far more pages than expected, escalating buffer-pool turnover and prompting the engine to allocate additional work memory for spills and re-reads, which in turn aggravates global memory pressure. Heightened memory stress slows background cleaners and may throttle their work via cost-based back-off, allowing even more dead tuples to pile up. The enlarged storage footprint feeds back into further cardinality drift and memory consumption, forming a vicious cycle that degrades transactional throughput and endangers system stability.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.48296989526244044,
+            "bm25_score": 16.4327060262242,
+            "lexical_score": 0.14454545454545453,
+            "matched_terms": [
+                "activity",
+                "additional",
+                "and",
+                "are",
+                "check",
+                "data",
+                "for",
+                "global",
+                "is",
+                "more",
+                "of",
+                "or",
+                "stale",
+                "than",
+                "the",
+                "to",
+                "triggered",
+                "when"
+            ],
+            "match_count": 109,
+            "entry": {
+                "timeout_id": "mysql84_network_read_timeout",
+                "parameter_name": "net_read_timeout",
+                "timeout_category": "network_read_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for more data from a connection before aborting the read.",
+                "trigger_condition": "The server waits for additional data from a connection longer than net_read_timeout.",
+                "workload_impact": "The network read is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

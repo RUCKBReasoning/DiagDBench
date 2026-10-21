@@ -1,0 +1,66 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Database Configuration Parameter Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Transaction Lock Contention Anomaly: Concurrent transactions compete for incompatible locks on the same rows, pages, or metadata, leading to blocking chains or deadlocks managed by the lock manager.\nDatabase Configuration Parameter Anomaly: Engine-level settings for memory, logging, checkpointing, parallelism, or session limits are mis-tuned relative to hardware and workload, creating artificial resource pressure or background-worker imbalance.\nNetwork and Connectivity Resource Anomaly: The client-to-server communication path or connection-handling layer cannot accept, authenticate, or stream data at the offered rate, causing connection stalls, socket backlog growth, and retransmissions.\n\nWhen all three root causes coincide, the database exhibits a multi-faceted performance collapse:  • Connection establishment and query submission slow down or time out while authenticated sessions pile up in client-read/write waits.  • Sessions that do reach execution quickly encounter long lock-waits or deadlocks, driving retries that further inflate connection churn and lock pressure.  • Wait-event histograms show a confusing blend of network I/O waits, lock waits, and apparently contradictory idle CPU or idle I/O periods that do not align with hardware utilisation because mis-set parameters throttle buffer flush, background workers, or concurrency slots.  • Application-side symptoms escalate from sporadic latency spikes to wholesale service degradation as thread pools are exhausted by hanging connections and retry storms.\n\nCausal chain: sub-optimal configuration (e.g., too many allowed backends, undersized work-memory, or aggressive checkpoint intervals) increases session count and I/O bursts, inflating both lock footprints and connection-handling load. Heightened concurrency amplifies the likelihood of hot-row conflicts; mis-sized memory or checkpoint storms prolong critical-section hold times, deepening lock queues. Blocked or deadlocked transactions trigger client-side timeouts and automatic retries, multiplying connection attempts and result-set replays that saturate listener sockets and network bandwidth. In turn, network stalls leave server backends waiting on client reads, holding locks even longer and feeding back into contention. The intertwined effects of poor configuration, lock contention, and connectivity saturation therefore reinforce each other, producing a severe OLTP outage that is harder to diagnose because each symptom masks and intensifies the others.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.5181158397011648,
+            "bm25_score": 27.894416101901175,
+            "lexical_score": 0.24012875536480685,
+            "matched_terms": [
+                "allowed",
+                "and",
+                "are",
+                "client",
+                "connection",
+                "data",
+                "establishment",
+                "for",
+                "from",
+                "handling",
+                "holding",
+                "idle",
+                "is",
+                "latency",
+                "longer",
+                "network",
+                "not",
+                "of",
+                "or",
+                "pools",
+                "read",
+                "server",
+                "session",
+                "sessions",
+                "the",
+                "time",
+                "to",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 26,
+            "entry": {
+                "timeout_id": "mysql84_network_read_timeout",
+                "parameter_name": "net_read_timeout",
+                "timeout_category": "network_read_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for more data from a connection before aborting the read.",
+                "trigger_condition": "The server waits for additional data from a connection longer than net_read_timeout.",
+                "workload_impact": "The network read is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

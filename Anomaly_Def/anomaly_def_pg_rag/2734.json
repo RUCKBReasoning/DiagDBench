@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Replication Synchronization Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Obsolete row versions and deleted index entries accumulate faster than background cleanup can reclaim them, inflating the version store and heap size.\nReplication Synchronization Anomaly : Stand-by or downstream replicas cannot receive or apply transaction-log records at the rate the primary generates them, producing sustained replication lag.\nData Block and Index Integrity Anomaly : Physical pages or index structures become internally inconsistent, causing logical/physical corruption and unreliable access paths.\n\nWhen all three root causes coexist, the system shows a blended symptom set: the primary’s tables and indexes grow rapidly while replication monitoring reports widening write/flush/replay gaps; VACUUM/cleanup workers stay permanently backlogged and may repeatedly abort or skip ranges because they encounter corrupted pages; replica apply workers stall on the same corrupt blocks, causing cascading log retention on the primary. Query plans on both primary and replicas degrade—some scans slow down due to bloated heaps, others fall back to full scans after detecting unusable indexes, and read-only replicas deliver increasingly stale or incorrect results. Disk consumption spikes on every node (heap bloat on the primary, retained WAL on the primary, expanded relay logs on replicas), and administrative utilities report both version-age horizon warnings and page-checksum or key-order errors.\n\nCausal interaction: heavy update/delete churn creates large WAL streams and rapid version accumulation. Replication lag prevents the primary from advancing its replication-xmin horizon, so VACUUM cannot prune old versions, further enlarging the version store. The swollen version store in turn magnifies WAL volume, worsening replication lag in a feedback loop. Concurrently, any latent on-disk block or index corruption causes VACUUM or replica apply processes to error out or slow down, freezing progress at exactly the pages that need cleanup or replay; this halting behavior amplifies both the version-maintenance backlog and the replication gap. Conversely, the prolonged presence of corrupted pages inside an ever-growing heap complicates detection and repair because corruption signatures are buried under layers of obsolete versions. The three anomalies therefore reinforce each other, accelerating storage growth, degrading query correctness, and eroding failover readiness far more severely than any single anomaly alone.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.7390475404423902,
+            "bm25_score": 26.097004139464083,
+            "lexical_score": 0.13015846814130075,
+            "matched_terms": [
+                "an",
+                "and",
+                "any",
+                "because",
+                "cannot",
+                "cleanup",
+                "from",
+                "of",
+                "or",
+                "prevents",
+                "query",
+                "than",
+                "that",
+                "the",
+                "this",
+                "transaction",
+                "vacuum",
+                "when",
+                "while"
+            ],
+            "match_count": 297,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

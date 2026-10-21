@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Database Memory Allocation Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Schema and Index Design Anomaly: A static mismatch between data model structures (tables, indexes, partitions, data types, constraints) and the workload’s access patterns forces queries into full scans, non-covering index lookups, and other inefficient access paths.\nDatabase Memory Allocation Anomaly: Excessive or uncontrolled growth of buffer caches, work areas, plan caches, and other engine heaps drives the database process beyond the physical memory envelope, triggering paging, swap-thrashing, or out-of-memory events.\nOperating System Resource Limit Anomaly: Exhaustion of kernel-managed resources (file descriptors, shared-memory segments, semaphores, process/thread counts, AIO contexts, cgroup quotas, etc.) prevents the database from allocating additional system objects, despite internal demand.\n\nWhen these three root causes surface simultaneously, the workload experiences compounding symptoms:  \n• Queries that already scan large tables or perform multi-stage joins spill massive intermediate results into memory, inflating per-query work areas and bloating buffer caches.  \n• The ballooning memory footprint pushes the host into constant reclamation, page cache eviction, and swap I/O; once kernel limits are reached, new buffer allocations, shared-memory extensions, temp-segment mappings, or parallel worker spawns fail with OS-level errors.  \n• Sessions intermittently abort with \"cannot allocate memory\", \"too many open files\", or \"cannot attach to shared memory\" messages; surviving sessions throttle as they contend for depleted memory and file handles, while checkpoint, logging, and background threads may be killed or hang.  \n• Performance becomes erratic: some queries stall during hash or sort phases, others fall back to disk-based temp I/O, and overall throughput collapses.  \n\nCausal interaction: Poor schema and indexing force the optimizer to choose wide scans, large hash joins, and repeated non-covering lookups, inflating buffer and work-area demand. This surge in memory consumption accelerates the Database Memory Allocation Anomaly, driving the engine to request additional caches, work buffers, and temporary segments. As the process RSS climbs, it collides with host-level caps on address space, shared memory, file descriptors, and swap, triggering the Operating System Resource Limit Anomaly. OS denials feed back into the database: failed allocations invalidate plans, cause worker starvation, and force spill-to-disk strategies that further amplify I/O and memory churn. The intertwined effects create a vicious cycle where inefficient access paths continually demand more resources that the engine and OS can no longer provide, leading to progressive degradation and potential service outages.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.30836934323009807,
+            "bm25_score": 11.260794730732306,
+            "lexical_score": 0.0938711652268553,
+            "matched_terms": [
+                "and",
+                "are",
+                "during",
+                "for",
+                "of",
+                "or",
+                "sessions",
+                "that",
+                "the",
+                "this",
+                "when",
+                "with"
+            ],
+            "match_count": 51,
+            "entry": {
+                "timeout_id": "mysql84_connection_handshake_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "connection_handshake_timeout",
+                "scope": "global",
+                "official_definition": "The number of seconds that the mysqld server waits for a connect packet before responding with Bad handshake.",
+                "trigger_condition": "A client does not complete the initial connection packet exchange within connect_timeout.",
+                "workload_impact": "The connection attempt fails during handshake.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Database Memory Allocation Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently chooses a markedly sub-optimal execution plan even though statistics are reasonably accurate, leading to inefficient access paths, incorrect join orders, or inappropriate parallelism settings.\nDatabase Memory Allocation Anomaly : The database engine allocates or leaks so much memory to caches, work areas, and background structures that the host experiences sustained RAM pressure, paging, or OOM events, degrading every component that depends on predictable memory availability.\nTransaction Log Subsystem Anomaly : The write-ahead logging machinery—log buffers, redo files, flush and archive operations—cannot keep pace with the workload’s commit rate, causing log-related waits and potential stalls on the write path.\n\nWhen these three root causes occur concurrently, the system exhibits a blended failure pattern: a poor query plan may trigger excessive logical and physical I/O, large hash or sort buffers, and elevated redo generation; the inflated memory footprint from those work areas—combined with uncontrolled plan and buffer cache growth—pushes the host into memory pressure and paging, which in turn slows log buffer flushes and data-file I/O. The log subsystem, already undersized or on a saturated device, now faces a spike in redo volume and longer flush times, driving commit latency higher and forcing additional waits inside sessions already executing inefficient plans. Symptoms therefore include: rapid oscillation between different bad plans, surge in memory reservations per session, abrupt drops in page-cache hit ratios, escalating log write/sync waits, frequent checkpoint or log-switch storms, and eventual process throttling or termination by the OS as swap fills—making it difficult to isolate a single culprit.\n\nCausally, an ill-chosen plan (e.g., nested loops on skewed data) multiplies row processing and generates large temporary structures, inflating per-query work memory. This accelerates memory exhaustion, which induces OS-level paging; the resulting I/O contention further degrades plan performance and extends transaction lifetimes, amplifying redo generation. The overtaxed log subsystem must now flush bigger, bursty redo streams while competing with paging and data reads, lengthening commit durations. Prolonged commits keep locks held longer, increasing concurrency and memory usage, which feeds back into higher cache bloat and additional sub-optimal plan selections as the optimizer misinterprets transient statistics. Thus, each anomaly intensifies the others, creating a self-reinforcing loop that can cripple an OLTP system.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.6607055137452809,
+            "bm25_score": 23.381561820547812,
+            "lexical_score": 0.12162763466042154,
+            "matched_terms": [
+                "an",
+                "and",
+                "cannot",
+                "database",
+                "longer",
+                "or",
+                "row",
+                "session",
+                "sessions",
+                "that",
+                "the",
+                "this",
+                "to",
+                "transaction",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 243,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

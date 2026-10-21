@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Database Memory Allocation Anomaly + Replication Synchronization Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Optimizer-input metadata (row counts, histograms, correlations) is stale or incomplete, causing systematic cardinality misestimation and sub-optimal plan choices.\nDatabase Memory Allocation Anomaly : Engine memory regions (buffer pool, work areas, plan cache, background heaps) expand beyond the safe envelope of the host, provoking OS pressure, paging, or OOM events.\nReplication Synchronization Anomaly : Standbys or downstream consumers cannot receive or apply log records at the rate produced by the primary, creating widening log-position gaps and retention of unrecycled log segments.\n\nWhen these three root causes manifest together, the system exhibits a compound failure pattern: the optimizer repeatedly selects memory-hungry or parallel plans due to inaccurate statistics, inflating per-query work buffers and hash tables; this enlarges overall memory consumption, drives the database process into paging and stalls, and further slows local log generation and background I/O. The impaired primary now produces transaction logs in bursts with uneven latency, while replicas—already lagging—fall further behind because their replay threads contend for scarce memory and suffer the same mis-estimated plans. Observable symptoms therefore include: 1) dramatic divergence between estimated and actual rows in both primary and replica plans, 2) resident-set size and swap usage climbing in lock-step with plan cache and work-area footprints, 3) steep replication delay and unrecycled WAL/redo segments exhausting primary storage, 4) intermittent query timeouts, replica read staleness, and destabilising failover readiness.\n\nCausally, stale statistics can trigger memory pressure by choosing plans that favor large in-memory sorts, hashes, or excessive parallelism. The resulting memory allocation anomaly not only degrades local execution but also starves the replication sender and receiver processes, slowing log shipping and apply throughput. Growing replication lag, in turn, prevents log file recycling, expanding the I/O footprint and exacerbating memory pressure through larger buffer-pool churn. Meanwhile, delayed replicas keep their own statistics ever more outdated, reinforcing the optimizer statistics anomaly on the replay side. Thus the three root causes reinforce each other in a feedback loop that degrades query performance, memory stability, and replication health simultaneously.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 122,
+            "score": 0.13188324807133367,
+            "bm25_score": 7.580431584143414,
+            "lexical_score": 0.1311337099811676,
+            "matched_terms": [
+                "and",
+                "but",
+                "by",
+                "engine",
+                "execution",
+                "failure",
+                "in",
+                "is",
+                "not",
+                "or",
+                "pressure",
+                "the",
+                "to",
+                "together",
+                "trigger",
+                "with"
+            ],
+            "match_count": 9,
+            "entry": {
+                "error_code": "38001",
+                "error_name": "containing_sql_not_permitted",
+                "official_description": "containing sql not permitted",
+                "error_class": "Class 38 - External Routine Exception",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

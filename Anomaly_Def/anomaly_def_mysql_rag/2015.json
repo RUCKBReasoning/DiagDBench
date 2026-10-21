@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + CPU Resource Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level statement or transaction design forces the engine to process far more data or rows than the true business need. \nCPU Resource Anomaly : Database-related processes saturate host CPU cycles, creating system-wide compute contention. \nOperating System Resource Limit Anomaly : Kernel-enforced limits on file handles, threads, shared memory, or similar objects are reached, preventing the database from acquiring additional OS resources. \n\nWhen all three root causes coexist, the database exhibits a layered failure pattern: statement latencies grow long and variable; CPU utilization hovers at or above core capacity with high run-queue lengths; meanwhile, new sessions, parallel workers, or I/O requests intermittently fail with \"too many open files,\" \"cannot create thread,\" or shared-memory errors. Slow-query logs and performance views show repeated, bloated SQL with extreme CPU time, while the error log and system journal simultaneously record kernel resource-limit denials. End-user symptoms range from sporadic timeouts and retries to partial outages where existing sessions crawl while new connections are rejected.\n\nCausally, inefficient SQL constructs (wide scans, Cartesian joins, long-lived transactions) drive excessive CPU demand. The resulting saturation lengthens task runtimes and escalates context switches, increasing the number of concurrent threads, open file descriptors, and asynchronous I/O contexts the database tries to allocate. As CPU pressure rises, the engine spawns more background or parallel workers in an attempt to keep up, rapidly depleting kernel-level quotas. Once an OS limit is hit, the database cannot create additional execution or I/O resources, which forces even well-written queries to queue behind stuck tasks, further extending transaction lifetimes and compounding CPU consumption. The feedback loop—inefficient SQL → CPU exhaustion → kernel limit exhaustion → wider systemic slowdown—amplifies each individual anomaly and can culminate in cascading service degradation or outage.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.3609027702452376,
+            "bm25_score": 18.121619580352313,
+            "lexical_score": 0.11265460030165914,
+            "matched_terms": [
+                "an",
+                "and",
+                "cannot",
+                "in",
+                "is",
+                "or",
+                "sessions",
+                "statement",
+                "than",
+                "the",
+                "to",
+                "transaction",
+                "when",
+                "while"
+            ],
+            "match_count": 95,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

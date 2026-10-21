@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + MVCC Version Maintenance Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same data items, leading to long blocking chains or deadlocks that stall commit progress until waiters are released or victims are aborted.\nMVCC Version Maintenance Anomaly : Obsolete row versions and undo/rollback records accumulate faster than background cleanup can reclaim them, inflating tables and indexes and adding visibility-check overhead.\nStorage Space Capacity Anomaly : Data, index, log, or temp areas approach or reach their physical or logical size limits, causing allocation failures, halted writes, and system-wide back-pressure.\n\nWhen all three conditions arise together, the database exhibits compound symptoms: lock-wait queues lengthen while table and index sizes balloon, buffer-pool hit ratios fall as bloated pages evict hot ones, and checkpoint or log-flush operations stall when storage space runs out. Applications experience timeouts and frequent deadlock or \"out of space\" errors, throughput collapses, and background vacuum/garbage-collection workers spin but make little progress because they themselves are blocked or cannot allocate additional work space. Monitoring shows soaring lock-wait time, rapidly shrinking free bytes in data and log volumes, expanding version stores, and a surge of log and temp-space allocation failures.\n\nCausally, heavy lock contention tends to prolong transaction lifetimes, delaying commit/rollback and preventing cleanup workers from advancing the MVCC horizon; this accelerates version bloat. The swelling version store expands data files and rollback segments, consuming additional disk space, while extended lock holds also keep undo and redo logs active, slowing log recycling. As storage fills, auto-extension failures and throttled write paths further lengthen commit latency, which in turn exacerbates lock queues and deadlock frequency. The feedback loop between blocked transactions, unreclaimed versions, and dwindling storage amplifies each individual anomaly, driving the system toward a space-exhaustion and availability crisis that is more severe than any single root cause alone.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.29994948548318345,
+            "bm25_score": 15.202125355288707,
+            "lexical_score": 0.13856669428334714,
+            "matched_terms": [
+                "aborted",
+                "and",
+                "are",
+                "between",
+                "can",
+                "check",
+                "is",
+                "latency",
+                "long",
+                "or",
+                "progress",
+                "system",
+                "that",
+                "the",
+                "this",
+                "time",
+                "when",
+                "while"
+            ],
+            "match_count": 292,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

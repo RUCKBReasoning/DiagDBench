@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Buffer Cache and Latch Contention Anomaly + CPU Resource Anomaly",
+            "Description": "Schema and Index Design Anomaly : Table layouts, data types, indexes, and partitioning do not match access patterns, forcing every statement through intrinsically inefficient access paths.\nBuffer Cache and Latch Contention Anomaly : Concurrent sessions serialize on hot buffer-cache pages, latches, and I/O slots, stalling while competing for low-level memory structures rather than logical locks.\nCPU Resource Anomaly : Database processes consume most available CPU cycles, driving run-queue pressure and system-wide latency once cores saturate.\n\nWhen all three issues occur together, the workload shows a mix of plan scans and lookup amplification that flood the buffer pool, triggering excessive page replacements and dirty-page flushes. Sessions pile up on buffer-busy and page-latch waits, while at the same time CPUs peg near 100 % due to constant buffer pin spinning, latch polling, and over-executed, non-selective query plans. Performance views report simultaneous spikes in logical I/O, latch wait time, and CPU time per transaction; response-time variance grows unpredictably, and even simple queries intermittently stall behind internal contention rather than explicit user locks.\n\nCausal chain: Poor schema and index design inflates the number of pages each statement must touch, rapidly churning the limited buffer cache. The heightened churn forces frequent page evictions and flushes, concentrating accesses on a small set of root or hotspot pages that all sessions must repeatedly pin, thereby escalating buffer-latch contention. The resulting spin-loops and retry logic, combined with the already bloated execution work, drive CPU utilization to saturation. High CPU load then prolongs latch holding times and slows background flusher threads, which in turn exacerbates buffer pressure and contention, creating a reinforcing feedback loop that magnifies latency and erodes overall throughput.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.33433404371143904,
+            "bm25_score": 13.008651891249716,
+            "lexical_score": 0.14166666666666666,
+            "matched_terms": [
+                "and",
+                "data",
+                "for",
+                "holding",
+                "latency",
+                "not",
+                "number",
+                "of",
+                "or",
+                "sessions",
+                "than",
+                "the",
+                "time",
+                "to",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 56,
+            "entry": {
+                "timeout_id": "mysql84_replica_network_timeout",
+                "parameter_name": "replica_net_timeout",
+                "timeout_category": "replication_network_timeout",
+                "scope": "global/replication",
+                "official_definition": "The number of seconds to wait for more data from a source/replica connection before aborting the read.",
+                "trigger_condition": "A replica waits longer than replica_net_timeout for more data from the source connection.",
+                "workload_impact": "The replication network read is aborted and the replica considers the connection interrupted.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

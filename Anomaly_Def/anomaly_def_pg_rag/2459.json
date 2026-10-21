@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Optimizer Statistics Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Composite definition: The database is simultaneously affected by (1) application-layer SQL that processes more data or holds transactions longer than business logic requires, (2) stale or insufficient optimizer statistics that cause systematic cardinality misestimation and sub-optimal plan choices, and (3) a write-ahead log subsystem whose generation, flushing, or archival capacity is saturated. All three root causes coexist and interact during the same workload execution.\n\nCombined observable phenomena: Queries show extreme and erratic latency, with execution plans exhibiting large mismatches between estimated and actual row counts, wide scans, or inappropriate join orders. Transactions remain open far longer than normal, consume excessive locks, and generate unusually large volumes of redo. Commit, checkpoint, and log-flush waits spike, archive or replica-shipping queues back up, and application sessions face timeouts or cascading retries. Performance degradations may appear suddenly after data loads or schema changes, yet persist because inefficient SQL continues to execute against misinformed plans while the log subsystem throttles all write traffic, making the individual symptoms difficult to isolate.\n\nCausal chain and interaction: Inefficient SQL logic expands data touched per statement; when paired with inaccurate statistics, the optimizer selects plans that further magnify row processing, I/O, and sort or hash spill volumes. The bloated work units inflate redo generation and prolong transaction duration, driving a surge of log records that must be flushed and archived. The overwhelmed log subsystem lengthens commit latency, which in turn holds locks and latches for longer periods, inflating concurrency conflicts and extending transaction lifespans. These longer transactions keep snapshot versions and index pages \"in flight,\" preventing automatic statistics refresh from triggering and thereby keeping statistics stale. The feedback loop—poor SQL logic → bad cardinality → excess redo → log bottleneck → longer transactions → delayed stats upkeep—amplifies systemic slowdown until all three layers are addressed together.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.407369052337212,
+            "bm25_score": 18.147255679798505,
+            "lexical_score": 0.12392156862745099,
+            "matched_terms": [
+                "after",
+                "and",
+                "are",
+                "be",
+                "between",
+                "during",
+                "is",
+                "latency",
+                "or",
+                "queries",
+                "sessions",
+                "stale",
+                "that",
+                "the",
+                "when",
+                "while"
+            ],
+            "match_count": 283,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

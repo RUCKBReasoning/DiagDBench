@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Database Memory Allocation Anomaly + Replication Synchronization Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer persistently picks sub-optimal execution plans despite reasonably accurate statistics, causing excessive I/O, CPU, or wrong join and access strategies.\nDatabase Memory Allocation Anomaly: Database memory regions (buffer/cache, work areas, plan cache, etc.) grow beyond safe limits, triggering OS memory pressure, paging, or OOM events.\nReplication Synchronization Anomaly: Standby or downstream replicas cannot ingest or apply log records as fast as the primary produces them, leading to widening replay lag and retention of un-recycled logs.\n\nWhen all three root causes strike concurrently, their symptoms overlap and intensify: 1) Erratic plan flips or bad plans inflate logical and physical I/O, create huge hash/sort structures, and spawn excess parallel workers; 2) the inflated work memory and bloated plan cache accelerate overall memory exhaustion, provoking paging, swap-thrashing, or forced background process restarts; 3) sustained resource contention on the primary—extra CPU, I/O waits, and memory pressure—slows transaction processing and write-ahead logging, while swollen log files cannot be recycled because replicas are falling behind. Replication delay in turn removes read-scaling capacity, pushing more analytic and read traffic back onto the overloaded primary and compounding the plan churn and memory stress. Visibility becomes blurred: administrators may see cache-hit drops, rising commit latency, growing replication lags, and OS-level swapping all at once, making it difficult to isolate a single trigger.\n\nCausally, sub-optimal plans generate large intermediate results and parallel workers that demand extraordinary memory; the resulting Database Memory Allocation Anomaly introduces OS paging and CPU stalls, elongating statement runtimes and increasing the volume and duration of redo generation. The primary’s slower log flush and the surge of larger transactions then overwhelm the replication pipeline, producing Replication Synchronization Anomaly. Conversely, the growing backlog of unapplied logs prevents log truncation, enlarging in-memory log buffers and further pressuring memory. The diminished replica capacity pushes additional read queries back to the primary, causing the optimizer to re-optimize with different parameter sniffing contexts, perpetuating plan instability and creating a feedback loop that amplifies all three anomalies.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.739,
+            "bm25_score": 28.264525382432304,
+            "lexical_score": 0.13,
+            "matched_terms": [
+                "access",
+                "and",
+                "be",
+                "because",
+                "behind",
+                "contention",
+                "execution",
+                "in",
+                "or",
+                "query",
+                "resource",
+                "statement",
+                "the",
+                "when",
+                "with",
+                "work"
+            ],
+            "match_count": 73,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

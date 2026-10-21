@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + MVCC Version Maintenance Anomaly + Database Memory Allocation Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions hold or request mutually incompatible locks on the same rows, pages, or metadata, forming long blocking chains or deadlocks that stall progress until victims are rolled back.\nMVCC Version Maintenance Anomaly : Obsolete row versions and undo records accumulate faster than background cleaners can reclaim them, inflating the version store and degrading visibility checks.\nDatabase Memory Allocation Anomaly : Buffer caches, work areas, and other in-memory structures grow beyond the host’s safe capacity, provoking paging, OOM kills, or instance restarts.\n\nWhen these three root causes strike at once, the database exhibits a toxic mix of symptoms:  \n• Sessions pile up in lock-wait or deadlock retry loops while overall transaction throughput and application responsiveness collapse.  \n• Heap and index footprints balloon because cleanup workers are prevented from advancing the snapshot horizon, inflating on-disk size, slowing sequential scans, and further stressing shared buffers.  \n• The surging version store and proliferating lock objects consume large amounts of shared memory; combined with unbounded per-query work areas and buffer-cache churn, this tips the host into heavy paging or OOM events.  \n• Monitoring shows simultaneous spikes in lock-wait time, deadlock detections, bloat and vacuum/autovacuum lag, rapidly growing memory RSS, and degraded cache hit ratios; emergency restarts may occur, wiping in-flight work and masking the underlying dual/triple interaction.\n\nCausal interaction: Hot rows or long-running transactions first create lock contention. Blocked or orphaned transactions hold snapshots open, freezing the MVCC cleanup horizon and causing rapid version accumulation. The expanding version store must be cached or paged, driving up shared-memory and OS memory consumption. Rising memory pressure slows background cleaners, which further delays version reclamation, while paging elongates lock-hold durations as transactions struggle to read bloated pages. This positive feedback loop tightens lock contention, accelerates bloat, and amplifies memory exhaustion, ultimately threatening database availability through deadlocks, timeouts, and process termination.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.6156920440447613,
+            "bm25_score": 32.11544574753371,
+            "lexical_score": 0.14195542774982026,
+            "matched_terms": [
+                "and",
+                "because",
+                "blocking",
+                "in",
+                "incompatible",
+                "lock",
+                "locks",
+                "metadata",
+                "or",
+                "retry",
+                "sessions",
+                "than",
+                "the",
+                "this",
+                "to",
+                "transaction",
+                "when",
+                "while"
+            ],
+            "match_count": 12,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

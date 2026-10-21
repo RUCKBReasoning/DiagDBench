@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Database Memory Allocation Anomaly + Replication Synchronization Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions acquire mutually incompatible locks on the same resources, causing blocking chains or deadlocks that stall or abort work. \nDatabase Memory Allocation Anomaly : The engine’s memory consumers collectively exceed safe physical limits, triggering paging, allocation throttling, or OOM terminations. \nReplication Synchronization Anomaly : Stand-by or downstream replicas fall behind because they cannot receive, persist, or apply log records at the rate produced by the primary. \n\nWhen all three conditions co-exist, the system exhibits severe and interleaved symptoms: lock wait queues lengthen while primary and replica memory footprints grow uncontrollably; backend processes stall on both lock acquisition and memory allocation, driving CPU idle time interspersed with kernel paging spikes. Replication lag balloons as apply workers blocked on locks or starved for memory defer redo, causing log files to accumulate and consume additional memory for in-flight buffers. Application sessions experience timeouts, intermittent deadlock errors, and sudden disconnects when OOM killers or crash-recovery events fire; monitoring shows rising lock-wait and memory-pressure counters alongside widening replica delay, making it hard to discern the dominant bottleneck.\n\nCausally, heavy lock contention elongates transaction lifetimes, inflating in-memory lock tables, undo/redo buffers, and per-session work areas, which accelerates memory exhaustion. Memory pressure in turn slows buffer-cache lookups and forces paging, lengthening critical sections and increasing the window during which locks are held, thereby aggravating contention. Both factors throttle the primary’s commit rate, yet the generated WAL still outpaces replicas whose apply threads now compete for scarce memory and encounter the same lock conflicts when replaying changes, deepening replication lag. The expanding replica delay prevents log truncation, causing additional memory and storage usage for retained log segments, which feeds back into the overall memory-allocation crisis and further stresses lock management, creating a vicious amplification loop that can culminate in cluster instability or forced failover.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.28977077133559154,
+            "bm25_score": 12.451195289185828,
+            "lexical_score": 0.11618381618381618,
+            "matched_terms": [
+                "and",
+                "are",
+                "by",
+                "for",
+                "idle",
+                "on",
+                "or",
+                "session",
+                "sessions",
+                "system",
+                "that",
+                "the",
+                "time",
+                "to",
+                "when",
+                "which"
+            ],
+            "match_count": 247,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_interval",
+                "parameter_name": "tcp_keepalives_interval",
+                "timeout_category": "network_keepalive_retry_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time after which a TCP keepalive message that has not been acknowledged by the client should be retransmitted.",
+                "trigger_condition": "A TCP keepalive probe is not acknowledged for tcp_keepalives_interval on systems supporting TCP_KEEPINTVL or an equivalent socket option.",
+                "workload_impact": "Controls retry timing for keepalive probes used to detect unresponsive client connections.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

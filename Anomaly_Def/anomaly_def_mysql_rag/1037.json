@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + MVCC Version Maintenance Anomaly + CPU Resource Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently chooses sub-optimal execution plans despite reasonably accurate statistics, leading to excessive I/O, row visits, or parallelism misuse.\nMVCC Version Maintenance Anomaly : Obsolete row versions and rollback records accumulate faster than background cleanup can reclaim them, inflating tables/indexes and adding visibility-check overhead.\nCPU Resource Anomaly : Database back-end and maintenance processes drive host CPU utilization to saturation, creating run-queue waits and pervasive latency spikes.\n\nWhen all three conditions coexist, the database exhibits a blended failure pattern: queries flip to or remain on inefficient plans that scan or join far more rows than necessary; the scanned pages are bloated with dead tuples, so every logical row access requires extra visibility checks and additional buffer churn; the surplus work manifests as sustained CPU saturation, causing system-wide slowdowns. Autovacuum or garbage-collection workers run constantly yet make little progress because they compete for the same exhausted CPU, while critical user queries also stall on CPU run-queue waits. Statistics drift as table bloat grows, amplifying plan instability and fostering new mis-plans. Symptoms include erratic plan changes, explosive growth of table and index size, skyrocketing CPU wait events, and workload latency that degrades non-linearly with concurrency.\n\nCausally, poor plan choices initiate oversized scans and high row lookups, inflating CPU consumption and prolonging transaction lifetimes; the longer execution times delay cleanup horizon advancement, letting MVCC garbage pile up. The ensuing table bloat further skews cardinality estimates, nudging the optimizer toward even worse plans—especially when plan reuse locks in bad strategies—creating a vicious feedback loop. Meanwhile, the compounded read-amplification from dead rows and the CPU-intensive mis-plans jointly saturate the processor, throttling both foreground queries and background vacuuming. The throttled cleanup then falls further behind, intensifying version accumulation and perpetuating the cycle until the system experiences severe throughput collapse or reaches transaction-ID wraparound danger.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5922,
+            "score": 0.45548060010939384,
+            "bm25_score": 44.362723670512494,
+            "lexical_score": 0.13289506953223768,
+            "matched_terms": [
+                "adding",
+                "and",
+                "because",
+                "execution",
+                "failure",
+                "for",
+                "in",
+                "instability",
+                "more",
+                "or",
+                "resource",
+                "size",
+                "table",
+                "than",
+                "the",
+                "to",
+                "with",
+                "workload"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-014086",
+                "error_name": "ER_IB_INSTANT_ADD_NOT_POSSIBLE",
+                "official_description": "Cannot add %zu field(s) in table '%s' because after adding it, the record size would be %zu which is more than the maximum allowed size (%zu) for a record.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

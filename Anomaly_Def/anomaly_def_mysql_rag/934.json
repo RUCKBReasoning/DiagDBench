@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Critical engine-level settings (memory pools, checkpoint cadence, parallelism, etc.) are mis-tuned relative to hardware capacity and workload demands, so the problem originates from the parameter choices themselves rather than from true resource scarcity.\nBuffer Cache and Latch Contention Anomaly : Sessions repeatedly serialize on buffer-cache pages, latches, or page-pin structures, causing buffer-busy waits, CPU spin, and I/O stalls even when aggregate resources appear sufficient.\n\nWhen both root causes are present, the system simultaneously suffers from mis-sized or overly aggressive configuration parameters and from intensified contention inside the buffer manager. Observable symptoms blend and amplify:  \n• Extreme and oscillating buffer-busy/latch wait counts alongside spikes of log-write, checkpoint, or background-writer waits that do not correlate with actual hardware usage.  \n• CPU cores alternate between idle periods (due to throttling by mis-tuned parameters) and 100 % spin-loops (due to latch storms).  \n• Sudden latency cliff after configuration changes or upgrades, followed by cascading stalls in buffer I/O, prolonged checkpoint completion, and lock escalations at higher tiers.  \n• Monitoring tools may falsely suggest memory pressure, yet page-in/out rates stay high because the undersized buffer pool forces constant eviction, further aggravating hot-page contention.  \n\nCausal chain: misconfigured parameters—such as a too-small buffer pool, overly frequent checkpoints, or an excessive max_parallelism value—create rapid page churn and frequent dirty-page flushing. This churn elevates demand on shared hotspot pages and on the buffer manager’s latch structures. The heightened contention lengthens critical sections, causing spin-loops that waste CPU cycles and delay I/O completion. The resulting throughput collapse, in turn, leads administrators to raise connection or parallel-worker limits, which further magnifies both latch pressure and configuration misfit. Thus, the two anomalies reinforce each other: poor configuration provokes buffer-level thrashing, and the ensuing latch contention obscures the original tuning fault, jointly degrading performance far more than either issue alone.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.6928670720261881,
+            "bm25_score": 20.280456866239163,
+            "lexical_score": 0.13166666666666665,
+            "matched_terms": [
+                "an",
+                "and",
+                "because",
+                "connection",
+                "delay",
+                "lock",
+                "of",
+                "or",
+                "sessions",
+                "than",
+                "the",
+                "this",
+                "to",
+                "wait",
+                "waits",
+                "when",
+                "write"
+            ],
+            "match_count": 45,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

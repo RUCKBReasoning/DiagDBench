@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Query Plan Selection Anomaly + CPU Resource Anomaly",
+            "Description": "Schema and Index Design Anomaly: Physical table, index, or partition design mismatches the workload, forcing inefficient access paths even with correct statistics.\nQuery Plan Selection Anomaly: Optimizer chooses or reuses a sub-optimal plan despite acceptable statistics, often due to flawed cost model or plan-cache behavior.\nCPU Resource Anomaly: Database processes consume sustained, abnormal CPU, saturating host cores and degrading overall workload performance.\n\nWhen all three root causes manifest together, the system exhibits severe and wide-spread latency spikes, throughput collapse during peak traffic, and erratic plan flips that coincide with CPU saturation. Typical observations include:  \n• Queries oscillate between full table scans (from missing/inefficient indexes) and occasionally cached but poor plans, inflating logical I/O and CPU time.  \n• Run-queue lengths and context-switch rates climb, while wait-event views show a mix of CPU queue waits and I/O reads from unselective scans.  \n• Minor data-skew or parameter changes trigger drastic performance variability because every new plan choice must fight for already scarce CPU resources.  \n• Maintenance DML or batch jobs magnify the problem by hammering oversized index structures, further crowding cores and displacing execution plans in the cache.  \n• Tuning actions that address only one layer (e.g., forcing a plan or adding CPU) yield limited benefit because the intertwined flaws at all three layers remain.\n\nCausal chain: Poor schema and index design forces the optimizer to consider expensive access paths. Even when statistics are adequate, the cost model may still misjudge alternatives, yielding sub-optimal plans. These heavyweight plans drive excessive CPU consumption; the resulting saturation feeds back into the optimizer’s runtime feedback and plan caching, promoting additional plan instability. High CPU pressure further degrades plan quality through reduced search effort or forced parallelism and delays background statistics refreshes, which in turn perpetuate reliance on bad schema structures. The intertwined feedback loop thus amplifies latency and resource contention far beyond what any single anomaly would cause in isolation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.45800753797270977,
+            "bm25_score": 17.76567205488851,
+            "lexical_score": 0.1106651376146789,
+            "matched_terms": [
+                "and",
+                "back",
+                "because",
+                "by",
+                "for",
+                "in",
+                "of",
+                "only",
+                "or",
+                "schema",
+                "the",
+                "time",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 139,
+            "entry": {
+                "timeout_id": "mysql84_innodb_row_lock_wait_timeout",
+                "parameter_name": "innodb_lock_wait_timeout",
+                "timeout_category": "innodb_row_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "The length of time in seconds an InnoDB transaction waits for a row lock before giving up.",
+                "trigger_condition": "An InnoDB transaction waits longer than innodb_lock_wait_timeout for a row lock.",
+                "workload_impact": "The lock wait gives up; by default only the current statement is rolled back unless innodb_rollback_on_timeout is enabled.",
+                "default_behavior": "Defined as an InnoDB system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

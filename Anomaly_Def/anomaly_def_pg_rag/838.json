@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Buffer Cache and Latch Contention Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer chooses a markedly sub-optimal execution plan even though statistics are accurate, inflating logical I/O, work-set size, and concurrency demand.\nBuffer Cache and Latch Contention Anomaly: Multiple sessions compete for hot buffer pages, latches, or page-pin resources, stalling on shared memory structures below the lock manager.\nStorage I/O Throughput Anomaly: The underlying storage subsystem is saturated so that physical read/write latency, IOPS, or throughput no longer meet the database engine’s demand.\n\nWhen these three root causes strike together, the workload experiences runaway response times and throughput collapse. Poorly chosen plans generate excessive and often non-sequential page access, rapidly rotating working sets through an already stressed buffer pool. As the same hot index or data pages are repeatedly loaded and evicted, latch and buffer-busy waits spike, while the engine simultaneously floods the storage layer with redundant physical I/O that it cannot sustain. Observable symptoms include: frequent plan flips coinciding with bursts of PAGE-LATCH or BUFFER_BUSY waits, CPU cores spinning while others idle in I/O wait, oscillating throughput, dramatic variance between executions of the same statement, inflated physical I/O counts despite a high logical read footprint, and sustained device queue depths with increasing storage latency. Monitoring views will show intertwined wait classes—optimizer-induced re-compilations, buffer latch stalls, and disk I/O waits—making single-root attribution difficult.\n\nCausal chain: a sub-optimal plan widens scans or drives high-fan-out nested loops, multiplying page requests. The surge in page fetches thrashes an undersized or already hot buffer cache, forcing frequent page replacements and intensifying latch acquisition on root and leaf pages. Each latch stall lengthens statement duration, keeping pages pinned longer and raising concurrency on the same hot structures. The inflated physical read/write demand then overruns storage throughput limits, elongating I/O service times; the slower I/O further extends page residency in the buffer and prolongs latch holds, feeding back into even more contention and reinforcing the optimizer’s incentive to keep or regenerate bad plans. The intertwined feedback loops between inefficient plans, memory-level contention, and storage saturation magnify latency and can lead to systemic slowdown or near-stall conditions under both OLTP and hybrid analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.27076365425076887,
+            "bm25_score": 10.622989404516503,
+            "lexical_score": 0.10850915835845118,
+            "matched_terms": [
+                "and",
+                "are",
+                "for",
+                "idle",
+                "in",
+                "is",
+                "latency",
+                "of",
+                "or",
+                "sessions",
+                "the",
+                "wait",
+                "when"
+            ],
+            "match_count": 144,
+            "entry": {
+                "timeout_id": "pg16_libpq_connection_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "client_connection_establishment_timeout",
+                "scope": "libpq/client connection parameter",
+                "official_definition": "Maximum wait for connection, in seconds; zero or not specified means wait indefinitely.",
+                "trigger_condition": "A libpq client connection attempt exceeds connect_timeout seconds.",
+                "workload_impact": "The client connection attempt fails instead of waiting indefinitely.",
+                "default_behavior": "Zero or absent value means wait indefinitely.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

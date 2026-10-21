@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Database Configuration Parameter Anomaly: Engine-level settings such as buffer-pool size, work-memory, checkpoint cadence, log-buffer length, and parallelism are mis-tuned for the hardware or workload, creating artificial pressure that is not rooted in the underlying resources themselves.\nTransaction Log Subsystem Anomaly: The write-ahead logging path—log buffer, physical log files, flushing, switching, and archiving—cannot keep up with redo generation, causing commit stalls, checkpoint storms, or backlog in replication/archiving pipelines.\n\nWhen both conditions arise concurrently, the database exhibits compounding symptoms: sharp spikes in commit latency, bursts of log-flush and log-write waits while I/O devices appear under-utilised, repeated emergency checkpoints that evict hot pages from an undersized buffer pool, rapid growth of log and archive directories, and oscillations between CPU spin and I/O idle time. Sessions may pile up on \"log sync\" or \"flush\" waits, while background cleaners and recovery workers lag, leading to autovacuum/compaction debt, bloated tables, and unpredictable throughput. Monitoring may show paradoxical metrics—high wait times alongside low physical device utilisation—making diagnosis harder.\n\nCausally, mis-set configuration parameters often amplify inherent weaknesses in the log subsystem: a too-small log buffer or overly aggressive synchronous commit policy forces every transaction to flush, driving the already constrained log files and archiver into saturation. Conversely, when the log subsystem stalls, mis-configured checkpoint intervals shrink recovery windows, triggering emergency checkpoints that flood the log further and thrash the buffer pool. Oversized per-session work memory and excessive parallel workers increase concurrent redo generation, while inadequate connection or background-worker limits delay log archival, causing retention pressure. The feedback loop between mis-tuned parameters and a bottlenecked log path escalates latency, jeopardises durability guarantees, and can ultimately halt write processing.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2043,
+            "score": 0.5693486745277845,
+            "bm25_score": 50.209978754855314,
+            "lexical_score": 0.16624367734492856,
+            "matched_terms": [
+                "and",
+                "are",
+                "durability",
+                "engine",
+                "files",
+                "for",
+                "growth",
+                "is",
+                "latency",
+                "log",
+                "logging",
+                "or",
+                "path",
+                "pressure",
+                "tables",
+                "the",
+                "to",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010156",
+                "error_name": "ER_LOG_FILES_GIVEN_LOG_OUTPUT_IS_TABLE",
+                "official_description": "Although a path was specified for the %s, log tables are used. To enable logging to files use the --log-output=file option.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Transaction Log Subsystem Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly: Hot or rapidly recycled buffer pages, pins, or latches force sessions to serialize access to shared in-memory data structures, inflating buffer-busy, page-latch, and spin wait times.\nTransaction Log Subsystem Anomaly: Commit processing and log maintenance are throttled by insufficient log buffer, log file, or archiver bandwidth, driving up log-flush and log-write waits and stalling foreground writers.\nStorage I/O Throughput Anomaly: The underlying disks or storage fabric reach their IOPS / bandwidth limits, lengthening physical read-write service times for data, temp, and log files.\n\nWhen these three root causes strike concurrently, the database experiences a multi-layered stall: foreground transactions queue first on log-flush or commit waits, then hold buffer-cache latches longer than normal, while background check-point, buffer-flush, and archiver processes fight for the same saturated I/O channels. Observable symptoms include: 1) extreme variability in commit latency coupled with growing log file and archive backlogs; 2) explosive growth in buffer-busy/latch contention statistics as sessions spin on hot pages already pinned by log-waiting transactions; 3) device queues pinned at maximum depth, with both data-file and log-file latencies far exceeding their baselines; and 4) runaway CPU usage with little throughput gain, accompanied by periodic freezes when global cache or log buffers must be flushed.\n\nCausally, slow physical storage elongates every data-file and log-file I/O, directly triggering the Storage I/O Throughput Anomaly. Prolonged log writes propagate upstream, converting short commit paths into long log-flush waits; transactions already holding page latches remain in critical sections, thereby intensifying Buffer Cache and Latch Contention. The heightened contention forces additional retry loops and may inflate the buffer churn rate, which in turn issues more dirty-page flushes and advances checkpoints, further loading the already saturated storage subsystem and increasing redo generation. This positive feedback loop between I/O saturation, blocked log flushing, and latch hold-time amplification cascades into severe throughput collapse typical of write-heavy OLTP systems.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5701,
+            "score": 0.4777735754145719,
+            "bm25_score": 47.78125023481501,
+            "lexical_score": 0.17859887673662428,
+            "matched_terms": [
+                "access",
+                "and",
+                "are",
+                "check",
+                "data",
+                "file",
+                "growth",
+                "latency",
+                "log",
+                "of",
+                "or",
+                "paths",
+                "read",
+                "redo",
+                "storage",
+                "the",
+                "to",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013858",
+                "error_name": "ER_IB_MSG_LOG_FILE_HEADER_READ_FAILED",
+                "official_description": "Failed to read header of the redo log file %s",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

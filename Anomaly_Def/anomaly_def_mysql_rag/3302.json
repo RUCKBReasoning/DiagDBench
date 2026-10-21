@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + MVCC Version Maintenance Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer selects or reuses a highly sub-optimal execution plan even though statistics are reasonably accurate.\nMVCC Version Maintenance Anomaly: Obsolete row versions and rollback records accumulate faster than background cleaners can reclaim them, inflating the live data set.\nStorage Space Capacity Anomaly: Free space for data files, logs, temp areas, or archives is exhausted or about to hit hard limits.\n\nComposite Definition\nThis composite anomaly describes a condition in which the database simultaneously suffers from (1) poor execution-plan choices, (2) runaway accumulation of MVCC garbage, and (3) dwindling physical or logical storage space. The workload therefore experiences the combined pressure of inefficient query execution, table and index bloat, and imminent space exhaustion.\n\nCombined Observable Phenomena\n• Queries that suddenly switch from index access to full or bitmap scans, run far longer than usual, and generate large temporary-space spills.\n• Rapid growth of base tables, indexes, undo/rollback segments, and transaction logs; version-store or vacuum/cleaner processes remain perpetually backlogged.\n• Free space graphs show step-function drops; auto-extend/auto-grow requests fail or pause; warning messages cite both \"no space left\" and \"vacuum not keeping up\" conditions.\n• Statistics drift because bloated pages distort row counts, causing even more unstable plan flips and further execution-time variance.\n• End-user symptoms include sporadic timeouts, \"cannot allocate space\" errors, and unpredictable throughput collapse during peak update or reporting windows.\n\nCausal Chain and Reinforcement Mechanisms\n1. Sub-optimal plans (e.g., full table scans or poorly parallelized nested loops) read and modify far more pages than necessary, inflating undo/redo and version chains.\n2. The enlarged version store slows visibility checks, prolonging transaction lifetimes; long-running or stalled queries hold old snapshots, preventing cleanup workers from reclaiming dead rows.\n3. As MVCC garbage accumulates, table and index bloat consume additional disk space, forcing the storage subsystem toward its capacity limits.\n4. Approaching space limits throttle or fail further writes, which in turn can invalidate cached plans, trigger plan recompilations, or disable adaptive features—raising the likelihood of yet more sub-optimal plan choices.\n5. The feedback loop—bad plans → more version churn → storage bloat → space pressure → plan instability—amplifies latency and risk of outright service interruption, making the composite failure harder to diagnose than any single anomaly in isolation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.4385795676754247,
+            "bm25_score": 13.82048300483193,
+            "lexical_score": 0.10868985739037718,
+            "matched_terms": [
+                "and",
+                "are",
+                "bad",
+                "during",
+                "for",
+                "is",
+                "latency",
+                "not",
+                "of",
+                "or",
+                "that",
+                "the",
+                "this",
+                "time"
+            ],
+            "match_count": 133,
+            "entry": {
+                "timeout_id": "mysql84_connection_handshake_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "connection_handshake_timeout",
+                "scope": "global",
+                "official_definition": "The number of seconds that the mysqld server waits for a connect packet before responding with Bad handshake.",
+                "trigger_condition": "A client does not complete the initial connection packet exchange within connect_timeout.",
+                "workload_impact": "The connection attempt fails during handshake.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

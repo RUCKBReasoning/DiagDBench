@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Transaction Lock Contention Anomaly + MVCC Version Maintenance Anomaly",
+            "Description": "Schema and Index Design Anomaly : The physical layout of tables, partitions, and indexes does not align with the workload’s access patterns, forcing statements into wide or non-covering scans and inflating the amount of data touched per operation.\nTransaction Lock Contention Anomaly : Concurrent transactions compete for mutually incompatible locks on the same rows, pages, or metadata, causing wait chains or deadlocks that throttle throughput.\nMVCC Version Maintenance Anomaly : Old row versions and rollback records accumulate faster than background cleaners can reclaim them, expanding the physical data set and raising visibility-check overhead.\n\nWhen all three conditions coexist, the database shows a blend of severe symptoms: queries that should be selective instead trigger large table or index scans, which hold locks on many more rows or pages than necessary. The enlarged lock footprints increase the likelihood and length of blocking chains and deadlocks; blocked transactions that sit idle prolong the lifetime of their snapshots, preventing garbage collection of obsolete versions. Meanwhile, the unchecked version buildup fattens tables and indexes, making subsequent scans even longer and further extending lock durations. Administrators observe skyrocketing lock-wait and deadlock rates, rapidly growing table and index sizes, deteriorating cache efficiency, longer checkpoint and vacuum/cleanup cycles, increasing I/O and CPU usage for both query execution and background maintenance, and application timeouts even on moderately complex requests.\n\nCausally, poor schema and index design initiates wide scans and non-covering lookups, which touch and therefore lock far more data than necessary. The inflated lock scope intensifies contention; transactions wait longer and remain open, prolonging MVCC snapshots. These long-lived snapshots keep obsolete versions alive, causing version bloat. The growing heap and index size then slow future scans, further extending lock hold times and amplifying contention. Simultaneously, the overworked cleanup workers struggle to reclaim space because blocking transactions retain old versions, leading to a feedback loop where version bloat, lock contention, and inefficient access paths reinforce each other and collectively degrade OLTP performance.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.31340435602852695,
+            "bm25_score": 17.140539105943997,
+            "lexical_score": 0.1374191542288557,
+            "matched_terms": [
+                "amount",
+                "and",
+                "can",
+                "check",
+                "does",
+                "for",
+                "idle",
+                "longer",
+                "not",
+                "of",
+                "on",
+                "or",
+                "should",
+                "than",
+                "the",
+                "to",
+                "when",
+                "which",
+                "with"
+            ],
+            "match_count": 199,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_idle",
+                "parameter_name": "tcp_keepalives_idle",
+                "timeout_category": "network_idle_keepalive_probe_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time with no network activity after which the operating system should send a TCP keepalive message to the client.",
+                "trigger_condition": "A TCP client connection has no network activity longer than tcp_keepalives_idle on systems supporting TCP_KEEPIDLE or an equivalent socket option.",
+                "workload_impact": "Starts TCP keepalive probing for an otherwise idle client connection; together with interval and count settings this can lead to dead connection detection.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

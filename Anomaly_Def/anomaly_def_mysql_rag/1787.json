@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Transaction Lock Contention Anomaly + CPU Resource Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer chooses a substantially sub-optimal execution plan despite adequate statistics, yielding unexpected access paths, join orders, or parallelism settings.\nTransaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on shared resources, causing prolonged blocking chains or deadlocks that throttle throughput.\nCPU Resource Anomaly : Database processes consume most available CPU cycles, driving the host into sustained compute saturation.\n\nWhen these three root causes strike together, the system experiences a feedback loop of performance degradation. Sub-optimal plans inflate statement runtimes, touch more rows or pages, and often escalate lock scope, greatly increasing the number and duration of locks held. The enlarged lock footprint causes extensive blocking and deadlocks, which in turn stall sessions and prompt repeated retries or rollbacks that further elevate CPU usage. Meanwhile, the excessive CPU demand produced by the inefficient plans and by the lock manager’s heightened deadlock detection intensifies scheduler run-queue pressure, slowing the progress of already blocked or victimized transactions. Observable symptoms therefore overlap and amplify: frequent plan flip-flops, full-table scans or wide nested loops appearing in execution plans; growing lock-wait and deadlock counts alongside application timeouts; and host CPU utilization pegged near 100 %, with lock-manager and user sessions topping the CPU list. Latency balloons across both read and write paths, connection pools back up, and overall throughput collapses.\n\nCausally, a single plan regression can trigger the entire cascade: the poor plan prolongs execution and holds locks longer, which raises contention. The ensuing blocking stretches transaction lifetimes, magnifying lock footprints and spawning deadlocks. Every retry or victim rollback feeds additional optimizer compilations and execution attempts, compounding CPU demand. In parallel, CPU saturation slows the lock-granting and deadlock-detection threads, lengthening wait times even further. The intertwined effects create a self-reinforcing spiral in which each anomaly deepens the others, dramatically worsening the database’s operational state until one of the root causes is resolved.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.6676368558138603,
+            "bm25_score": 30.04038062346769,
+            "lexical_score": 0.13381037567084078,
+            "matched_terms": [
+                "and",
+                "attempts",
+                "blocking",
+                "in",
+                "incompatible",
+                "is",
+                "lock",
+                "locks",
+                "longer",
+                "or",
+                "overlap",
+                "retry",
+                "sessions",
+                "statement",
+                "the",
+                "transaction",
+                "when"
+            ],
+            "match_count": 85,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

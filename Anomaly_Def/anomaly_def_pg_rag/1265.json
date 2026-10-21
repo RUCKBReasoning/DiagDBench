@@ -1,0 +1,47 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Transaction Log Subsystem Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Excessive accumulation of obsolete row versions, undo/rollback records, and stale index entries outpaces background cleanup, inflating data structures and extending visibility-check work.\nTransaction Log Subsystem Anomaly : The write-ahead logging path—generation, flush, switch, or archival—becomes the primary bottleneck, stretching commit latency and stalling further DML until log space or I/O bandwidth is freed.\nNetwork and Connectivity Resource Anomaly : Client/server transport, listener, or socket resources saturate or flap, delaying connection establishment and slowing or interrupting result streaming.\n\nWhen all three root causes strike concurrently, the database exhibits a compound pathology: 1) commits and statement completions slow first at the server (log-flush and version-chain scanning waits) and then at the client (network send/receive stalls); 2) transaction throughput collapses while session counts, half-open sockets, version-store bytes, and unarchived log segments all climb in tandem; 3) planner estimates drift because of table bloat, causing long-running scans that emit large result sets which further congest the network, amplifying front-end timeouts and retry storms; 4) monitoring shows cleanup workers, log writer, and archiver pegged, yet disk devices may appear only moderately busy because pauses are dominated by dependency back-pressure rather than raw I/O saturation.\n\nCausally, heavy update/delete activity produces a flood of redo records that must be flushed, growing the transaction log. Log flush slowdowns delay commit completion, stretching transaction lifetimes and preventing MVCC cleanup from advancing its snapshot horizon; this in turn accelerates version bloat, generating still more redo and further enlarging the log. Meanwhile, the increasing payload of bloated table scans and prolonged transactions expand result sets and keep backend processes open longer, consuming connection slots and network buffers. Network congestion or socket exhaustion feeds back by raising commit acknowledgment and client-ack wait times, which lengthens transactions even more, giving rollback segments additional time to swell. The intertwined feedback loops among version buildup, log saturation, and network pressure cause a reinforcing spiral that degrades overall OLTP performance and complicates diagnosis because symptoms from one layer mask or exacerbate those in the others.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 205,
+            "score": 0.24377678396153274,
+            "bm25_score": 11.553428239081665,
+            "lexical_score": 0.11503442149677992,
+            "matched_terms": [
+                "and",
+                "be",
+                "by",
+                "database",
+                "in",
+                "is",
+                "its",
+                "must",
+                "or",
+                "pressure",
+                "resource",
+                "statement",
+                "the",
+                "to"
+            ],
+            "match_count": 11,
+            "entry": {
+                "error_code": "57P04",
+                "error_name": "database_dropped",
+                "official_description": "database dropped",
+                "error_class": "Class 57 - Operator Intervention",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

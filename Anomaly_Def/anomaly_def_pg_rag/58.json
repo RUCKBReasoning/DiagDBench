@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions request conflicting locks on the same rows, pages, or metadata, producing long blocker-waiter chains or deadlocks that suspend or abort work until locks are released.\nStorage I/O Throughput Anomaly : The physical storage layer cannot supply the needed read/write bandwidth or IOPS, driving up I/O latency and queue depths for data, log, and temp files.\n\nComposite anomaly definition: The database simultaneously suffers from severe lock-manager contention while the underlying storage subsystem is saturated, so that blocking waits and deadlock retries are compounded by prolonged physical I/O delays, creating a feedback loop that cripples transactional throughput.\n\nCombined observable phenomena: Lock-wait and deadlock graphs lengthen and recur more frequently; sessions stay in lock-wait states far longer than usual because the holders of critical locks are themselves stalled on slow disk reads or log flushes. Overall response times and commit latency spike, CPU usage remains modest, and connection pools back up as both lock and I/O wait classes dominate performance monitors. Deadlock victims may rise, yet retries often re-encounter the same blocked resources because the underlying I/O bottleneck prevents rapid forward progress. Batch windows stretch, and application timeouts increase even for read-only workloads due to lock queues behind long-running write transactions.\n\nCausal chain interaction: Storage saturation lengthens the execution and commit duration of transactions, extending the lifetime of their locks and increasing the probability that other sessions will conflict with them. Those blocked sessions accumulate, enlarge lock queues, and may form deadlock cycles that force rollbacks and retries, which in turn generate additional I/O and further stress the already constrained storage subsystem. Conversely, the surge of retried or piled-up transactions multiplies random I/O requests, exacerbating device queue depths and widening latency, creating a vicious circle where lock contention and I/O bottlenecks reinforce each other and jointly deteriorate overall OLTP system performance.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.29452512266398906,
+            "bm25_score": 13.784503221668118,
+            "lexical_score": 0.1321988356471115,
+            "matched_terms": [
+                "and",
+                "are",
+                "by",
+                "connection",
+                "for",
+                "is",
+                "latency",
+                "of",
+                "on",
+                "or",
+                "pools",
+                "progress",
+                "sessions",
+                "system",
+                "that",
+                "the",
+                "to",
+                "which"
+            ],
+            "match_count": 165,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_interval",
+                "parameter_name": "tcp_keepalives_interval",
+                "timeout_category": "network_keepalive_retry_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time after which a TCP keepalive message that has not been acknowledged by the client should be retransmitted.",
+                "trigger_condition": "A TCP keepalive probe is not acknowledged for tcp_keepalives_interval on systems supporting TCP_KEEPINTVL or an equivalent socket option.",
+                "workload_impact": "Controls retry timing for keepalive probes used to detect unresponsive client connections.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

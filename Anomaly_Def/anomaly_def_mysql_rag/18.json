@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + MVCC Version Maintenance Anomaly + Database Memory Allocation Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level SQL or transactional design forces the engine to touch more data, rows, or time than the business need, inflating execution cost and concurrency footprints.\nMVCC Version Maintenance Anomaly : Obsolete row versions and rollback information pile up faster than background cleaners can reclaim them, bloating tables and indexes and increasing visibility-check overhead.\nDatabase Memory Allocation Anomaly : Engine memory-consuming structures—buffers, work areas, plan cache, session heaps—grow beyond the host’s safe physical limits, driving OS pressure and eviction.\n\nWhen these three faults co-exist, the system exhibits a blended symptom set: statements already slow from poor logic generate massive update/delete churn that swells the MVCC version store; the enlarged tables and growing undo segments demand additional buffer‐cache and work memory, accelerating overall RAM consumption. Operators observe a mix of long-tail query latency, surging table and index size, constantly busy autovacuum/cleaner workers, rising checkpoint and I/O times, cache hit-ratio deterioration, OS swapping or OOM events, and frequent application timeouts. Because each anomaly amplifies the others, symptoms can appear cyclic—memory pressure throttles cleaners, which lets version bloat grow, further inflating memory, while bloated objects make the original inefficient SQL even slower and more memory-hungry.\n\nCausally, inefficient SQL logic issues large scans, wide projections, and oversized batches that touch and modify far more rows than necessary. This churn not only inflates active memory usage for sorts, hashes, and buffer pins but also produces an oversized trail of old versions. If long transactions or open cursors from the same workload hold snapshots, vacuum/cleaner processes cannot reclaim those versions, and their own work queues lengthen. The still-growing version store must be kept resident in memory and eventually spills to disk, intensifying both memory allocation pressure and I/O. Memory stress may then throttle background workers or push them out of CPU time-slices, slowing cleanup even further—a positive feedback loop that degrades performance, jeopardizes cluster stability, and risks transaction-ID horizon or OOM crashes.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.7408218884120171,
+            "bm25_score": 26.830919548272714,
+            "lexical_score": 0.13607296137339053,
+            "matched_terms": [
+                "and",
+                "be",
+                "because",
+                "execution",
+                "for",
+                "in",
+                "long",
+                "or",
+                "query",
+                "session",
+                "statements",
+                "the",
+                "this",
+                "time",
+                "when",
+                "work",
+                "workload"
+            ],
+            "match_count": 2,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

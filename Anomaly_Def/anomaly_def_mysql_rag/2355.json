@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Database Configuration Parameter Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Composite Definition: The database concurrently suffers from a sub-optimal execution-plan selection by the optimizer, mis-tuned engine configuration parameters, and restrictive operating-system resource limits. Although each factor alone can cause performance degradation, their simultaneous presence creates a multifaceted failure in which query plans are poor, engine subsystems are ill-provisioned, and the host kernel blocks further resource allocation.\n\nCombined Observable Phenomena: Workloads exhibit erratic performance with the same SQL sometimes using efficient index probes and other times reverting to table scans or serial plans. CPU and I/O utilization metrics look inconsistent with wait-event reports—sessions show long log-write or memory allocation waits while disks and CPUs are under-utilized. Sudden bursts of checkpoints or background-writer activity coincide with spikes of \"cannot allocate shared memory,\" \"too many open files,\" or \"failed to create thread\" errors coming from the OS. Parallel queries intermittently fall back to single-threaded execution because worker pools cannot grow, causing unpredictable query runtimes. Plan cache churn grows as failed worker creation or memory shortages force frequent recompilations, and overall throughput collapses in waves rather than gradually.\n\nCausal Chain and Interaction: Mis-set database parameters (e.g., undersized buffer pool, aggressive work-memory limits, or overly frequent checkpoints) inflate true execution costs, but the optimizer—already prone to selecting borderline plans—may overestimate or underestimate those costs and choose plans that rely on resources the engine cannot effectively supply. When such a plan attempts to allocate additional memory, workers, or I/O contexts, it collides with tight operating-system limits on file handles, shared memory, or threads, resulting in run-time errors or implicit plan downgrades. These failures invalidate or evict plans, prompting fresh compilations that again suffer from the same flawed cost model and parameter landscape, creating a feedback loop. Meanwhile, engine background tasks triggered by the mis-configuration (e.g., checkpoint storms) consume the very kernel resources that user queries lack, amplifying contention and making the overall performance regression sharper and harder to diagnose.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.7295013632107797,
+            "bm25_score": 34.123831128056835,
+            "lexical_score": 0.15307860262008732,
+            "matched_terms": [
+                "and",
+                "because",
+                "by",
+                "contention",
+                "execution",
+                "in",
+                "limit",
+                "long",
+                "or",
+                "other",
+                "query",
+                "resource",
+                "the",
+                "time",
+                "too",
+                "triggered",
+                "when",
+                "with",
+                "work"
+            ],
+            "match_count": 111,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

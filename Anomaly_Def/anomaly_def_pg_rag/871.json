@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Schema and Index Design Anomaly: Static mismatch between physical data model (tables, indexes, partitions, datatypes, constraints) and the workload’s access patterns, forcing inefficient access paths regardless of optimizer choices.\nBuffer Cache and Latch Contention Anomaly: Excessive serialization on hot buffer-cache pages and their latches or pins, causing sessions to stall or spin while competing for page access and flush slots.\n\nWhen these two root causes coexist, queries are not only forced into full-table scans, non-covering index probes, or hot-page insert patterns by poor schema/index design, but they must also fight for the same overcrowded buffer pages, latches, and I/O slots. Observable symptoms therefore include: 1) widespread full-object or non-selective index scans that inflate buffer churn, 2) surging buffer-busy/latch wait events concentrated on a few root or data pages, 3) CPU spikes from spin-locks coupled with high I/O service times, 4) erratic query latency where some executions stall far longer than optimizer estimates, and 5) write throughput collapses during bulk loads or hot-spot inserts despite otherwise adequate hardware resources.\n\nCausally, the sub-optimal physical design creates access patterns (e.g., range scans on unpartitioned, unindexed columns, monotonic inserts into a single data or index page, or repeated lookups requiring back-to-table fetches) that funnel many concurrent sessions toward the same limited set of buffer pages. This concentrates reads, updates, and dirty-page flushes on those pages, inflating latch acquisition and buffer pin times. In turn, the resulting latch contention prolongs page residency, reduces effective cache capacity, and magnifies the penalty of the original design flaws—encouraging yet more full scans and page churn. The feedback loop between design-induced hot spots and low-level buffer contention can degrade both transactional and analytical workloads, making the underlying issues harder to diagnose because symptoms appear both at the execution-plan level and deep inside the storage engine’s synchronization layer.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.686384974434399,
+            "bm25_score": 23.76429044038347,
+            "lexical_score": 0.1342039800995025,
+            "matched_terms": [
+                "and",
+                "are",
+                "at",
+                "between",
+                "can",
+                "during",
+                "latency",
+                "not",
+                "or",
+                "queries",
+                "query",
+                "sessions",
+                "that",
+                "the",
+                "this",
+                "when",
+                "while"
+            ],
+            "match_count": 205,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

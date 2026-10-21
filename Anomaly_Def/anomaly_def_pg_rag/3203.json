@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Storage I/O Throughput Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly: Excess accumulation of obsolete row versions and index entries because background cleanup cannot keep pace with update/delete churn.\nStorage I/O Throughput Anomaly: Physical read/write demand exceeds the bandwidth, IOPS, or latency capacity of the underlying storage subsystem.\nOperating System Resource Limit Anomaly: Exhaustion of kernel-enforced resources (file descriptors, async-I/O contexts, threads, shared memory, etc.) needed by the database engine and its workers.\n\nWhen all three conditions coincide, the database exhibits a compound failure pattern: tables and indexes balloon in size, causing every scan, vacuum, checkpoint, or log flush to issue more physical I/O against devices that are already saturated. Read and write latencies rise sharply, buffer-pool hit ratios plunge, and wait profiles fill with both I/O waits and kernel-level \"resource temporarily unavailable\" errors. Autovacuum or garbage-collection workers start and stop erratically as they hit OS limits on file handles or AIO contexts, further delaying cleanup. Administrators observe runaway disk-space usage, near-continuous storage queues, intermittent inability to start new backend or maintenance processes, and a mix of MVCC horizon warnings, I/O stall messages, and kernel denials in system logs. Planner misestimates and timeout-driven query cancellations become frequent, and parts of the workload may hang while existing sessions cling to old snapshots that prevent reclamation of space.\n\nCausal chain: heavy OLTP churn creates surplus row versions, inflating on-disk structures and multiplying physical pages that must be read, written, and eventually vacuumed. This extra traffic pushes the storage subsystem to (or beyond) its throughput limits, lengthening I/O completion times. Prolonged I/O stretches the window during which cleanup workers must hold resources, so they consume more file descriptors, AIO slots, and threads; meanwhile other sessions also queue additional I/O, driving kernel resource counts higher. Once OS ceilings are reached, new workers or I/O submissions are rejected, which stalls or aborts garbage collection and checkpoints, causing even faster version buildup and still more I/O. The feedback loop—version bloat → higher I/O demand → storage saturation → kernel resource exhaustion → stalled cleanup—amplifies both performance degradation and risk of outage until manual intervention or configuration changes break the cycle.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.7445491612301957,
+            "bm25_score": 33.13555253229724,
+            "lexical_score": 0.14849720410065237,
+            "matched_terms": [
+                "aborts",
+                "and",
+                "be",
+                "because",
+                "completion",
+                "exceeds",
+                "more",
+                "of",
+                "or",
+                "other",
+                "pattern",
+                "query",
+                "resource",
+                "that",
+                "the",
+                "this",
+                "timeout",
+                "until",
+                "when",
+                "with",
+                "workload"
+            ],
+            "match_count": 319,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

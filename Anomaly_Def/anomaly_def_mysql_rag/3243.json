@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + MVCC Version Maintenance Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions request mutually incompatible locks on the same data or metadata objects, forming blocking chains or deadlocks that stall statement execution until a waiter is granted, times out, or is chosen as a deadlock victim.\nMVCC Version Maintenance Anomaly : Obsolete row versions and rollback records accumulate faster than background cleaners can reclaim them, inflating storage, lengthening visibility checks, and slowing scans and look-ups.\nNetwork and Connectivity Resource Anomaly : Client-server network links, listener sockets, or backend connection slots are saturated or slow, causing connection establishment delays, data-transfer stalls, and session-level wait events.\n\nWhen all three root causes coexist, the database exhibits an intertwined symptom set: long transaction latencies and timeouts surface first as network-side slow query or connection errors, while backend diagnostics simultaneously show deep lock-wait queues, deadlock rollbacks, bloated heaps and indexes, and cleaners permanently at 100 % duty cycle. Transactions that finally obtain a lock still spend extra CPU cycles traversing oversized version chains, prolonging their critical sections and locking window, which in turn lengthens blocking chains and keeps sockets open longer. Clients perceive sporadic connection refusals or abrupt resets as the server exhausts connection slots held by lock-blocked backends that are further delayed by MVCC bloat. Monitoring tools show a self-reinforcing rise in lock-wait time, version-store size, listener backlog depth, and end-to-end RTT, making it difficult to attribute the slowdown to any single subsystem.\n\nCausally, heavy lock contention increases the lifetime of in-flight snapshots because waiting transactions hold older transaction IDs open, throttling vacuum/cleaner progress and aggravating MVCC version accumulation. In turn, the larger version store stretches the duration of read and write statements, widening the timeframe in which they hold locks and intensifying contention. Both factors keep backend processes active yet unproductive, consuming connection slots and keeping TCP sockets open; this swells the listener queue and pushes the system toward network-level saturation. Conversely, network stalls slow down result delivery, extending transaction completion time and further delaying lock release and version cleanup. The feedback loop across concurrency control, version maintenance, and connectivity layers ultimately drives a compounded degradation that is more severe than any individual anomaly acting alone.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 16,
+            "score": 0.4989836251601837,
+            "bm25_score": 27.01650375963993,
+            "lexical_score": 0.18260162601626015,
+            "matched_terms": [
+                "and",
+                "are",
+                "client",
+                "data",
+                "delaying",
+                "is",
+                "level",
+                "links",
+                "network",
+                "or",
+                "out",
+                "progress",
+                "read",
+                "session",
+                "slow",
+                "the",
+                "this",
+                "times",
+                "waiting",
+                "when",
+                "window",
+                "write"
+            ],
+            "match_count": 107,
+            "entry": {
+                "timeout_id": "mysql84_xplugin_write_timeout",
+                "parameter_name": "mysqlx_write_timeout",
+                "timeout_category": "x_protocol_network_write_timeout",
+                "scope": "global/session/X Plugin",
+                "official_definition": "Write timeout for X Plugin network communication.",
+                "trigger_condition": "A MySQL X Protocol write operation exceeds mysqlx_write_timeout.",
+                "workload_impact": "The X Protocol network write operation times out.",
+                "default_behavior": "Defined as a MySQL X Plugin system variable.",
+                "system_domain": "network_transport",
+                "cause_analysis": "This timeout is usually triggered when network data is not acknowledged, received, or written within the configured transport-level waiting window.",
+                "solution_guidance": "Inspect packet loss, transport latency, client responsiveness, proxy behavior, and whether slow consumers or unstable links are delaying network progress.",
+                "observable_symptoms": [
+                    "network timeout",
+                    "disconnect",
+                    "read/write interruption"
+                ]
+            }
+        }
+    }
+]

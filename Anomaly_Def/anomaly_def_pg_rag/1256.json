@@ -1,0 +1,46 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Transaction Log Subsystem Anomaly + CPU Resource Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Sessions serialize on hot buffer-cache pages, page pins, and latches, stalling logical I/O even when physical memory is available.\nTransaction Log Subsystem Anomaly : Commit processing is throttled by log buffer flush, log file write, or archiver activity, making the log path the critical choke point.\nCPU Resource Anomaly : Database processes drive host CPU to sustained saturation, starving all threads—including internal background workers—of scheduler time.\n\nWhen all three root causes strike together, the system exhibits an intertwined symptom set:  • End-to-end transaction latency and commit latency rise sharply, with wait-event views showing a mix of LOG-WRITE, LOG-FLUSH, BUFFER-BUSY, and PAGE-LATCH waits.  • CPU usage stays at or near 100 %, yet throughput plateaus or declines; spin loops on buffer latches crowd the run queue while log writer and archiver threads contend for CPU slices to perform synchronous writes.  • Checkpoint storms and rapid log-file switches amplify dirty-buffer pressure, so foreground sessions alternately wait for latch access to hot pages and for log space to be freed.  • Monitoring tools may mis-attribute the slowdown because the dominant symptom—CPU saturation—masks the underlying dual I/O bottlenecks on buffers and the redo log.\n\nCausal interaction: Hot pages and frequent page churn inflate latch acquisition attempts; many of those attempts spin rather than sleep, inflating CPU consumption. The elevated CPU load delays log writer, archiver, and buffer-flush threads, stretching commit latency and prolonging the time dirty pages remain pinned. Those pinned or dirty buffers, in turn, intensify latch contention because they cannot be evicted or reused until the log is persisted, further increasing spin and CPU pressure. Meanwhile, slow log advancement forces aggressive checkpoints, which flush more dirty pages and request additional latches, closing a feedback loop that binds buffer contention, log backlog, and CPU starvation into a self-reinforcing performance collapse.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 61,
+            "score": 0.3012325545986992,
+            "bm25_score": 12.01536641230247,
+            "lexical_score": 0.11682530795072787,
+            "matched_terms": [
+                "and",
+                "be",
+                "by",
+                "in",
+                "is",
+                "or",
+                "point",
+                "pressure",
+                "resource",
+                "the",
+                "to",
+                "together",
+                "with"
+            ],
+            "match_count": 11,
+            "entry": {
+                "error_code": "22P01",
+                "error_name": "floating_point_exception",
+                "official_description": "floating point exception",
+                "error_class": "Class 22 - Data Exception",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + CPU Resource Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Obsolete row versions, rollback records, and dead index entries accumulate faster than background cleanup workers can reclaim them.\nCPU Resource Anomaly : Database processes sustain near-saturation CPU consumption, starving other work and inflating latency.\nOperating System Resource Limit Anomaly : Database processes hit kernel-enforced ceilings such as file descriptors, shared-memory segments, or thread counts, causing allocation failures.\n\nWhen all three root causes are active, the system shows a compound failure signature: vacuum or purge workers spin at 100 % CPU yet make little progress, overall host load and context-switch rates soar, and the engine begins to log errors about failing to spawn new workers, open files, or extend shared memory. Query latencies rise non-linearly; some sessions stall on visibility checks of bloated tables while others are rejected outright by the kernel. Monitoring views show both a growing version store and a backlog of blocked or aborted background jobs. Administrators may observe that even emergency maintenance commands refuse to start because required handles or processes cannot be created.\n\nCausal chain: heavy UPDATE/DELETE churn inflates the version store, awakening more cleanup workers; these workers consume additional CPU cycles and create more kernel objects (threads, file handles, async-I/O contexts). The extra CPU demand pushes the host to saturation, lengthening task-switch queues and slowing all workers—including those needed for cleanup—so the MVCC bloat worsens. Meanwhile, the multiplication of worker threads and open files drives the process toward OS resource ceilings; once those limits are reached, new vacuum workers and client sessions fail to start, eliminating the very mechanisms that could relieve version pressure. The three anomalies therefore reinforce one another: MVCC bloat triggers CPU saturation, CPU saturation accelerates kernel object creation, OS denials block remediation, and the feedback loop rapidly degrades overall database availability.\n",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.7398384414350202,
+            "bm25_score": 27.42008563414345,
+            "lexical_score": 0.13279480478340067,
+            "matched_terms": [
+                "aborted",
+                "and",
+                "be",
+                "because",
+                "blocked",
+                "by",
+                "engine",
+                "for",
+                "limit",
+                "or",
+                "other",
+                "query",
+                "resource",
+                "the",
+                "when",
+                "work"
+            ],
+            "match_count": 101,
+            "entry": {
+                "timeout_id": "mysql84_regular_expression_time_limit",
+                "parameter_name": "regexp_time_limit",
+                "timeout_category": "expression_evaluation_time_limit",
+                "scope": "global/session",
+                "official_definition": "The time limit for regular expression matching operations performed by the regular expression engine.",
+                "trigger_condition": "A regular expression match operation exceeds regexp_time_limit.",
+                "workload_impact": "The regular expression operation is constrained by the configured time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

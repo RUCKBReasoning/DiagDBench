@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Database Memory Allocation Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly: Obsolete row versions and index entries accumulate faster than background cleanup workers can reclaim them, enlarging the version store and bloating tables and indexes.\nDatabase Memory Allocation Anomaly: Total in-engine memory demanded by caches, work areas, and background components pushes the host into sustained pressure, paging, or OOM events.\nBuffer Cache and Latch Contention Anomaly: Concurrent sessions serialize on hot buffer-cache pages and latches, creating wait spikes and CPU spin without corresponding throughput gains.\n\nCombined anomalous phenomena: While the version store and heap bloat grow, ever-increasing dirty pages and old row versions must be kept in memory. This expands the buffer pool footprint and forces the engine to reserve more private and shared work memory, driving the overall RSS upward. Under pressure, the operating system begins paging; page faults slow down cleanup workers, which in turn fall further behind, allowing even more dead tuples to accumulate. Hot pages such as index roots, free-space-map pages, and version-chain heads become latch hotspots because both foreground queries (doing long MVCC visibility scans) and background cleaners (doing deletes and vacuum-style work) continuously touch them. Users observe a mix of high buffer-busy/latch waits, rising memory usage, erratic cache-hit ratios, longer table scans, frequent checkpoints, and occasional OOM terminations or instance restarts that are hard to attribute to any single layer.\n\nCausal chain and reinforcement: Heavy update/delete churn produces large numbers of dead tuples, inflating both the heap and the version store. The extra pages must be cached and flushed, directly increasing memory consumption; when memory caps are exceeded, the OS pages out, lengthening I/O latency. Slower I/O prolongs latch hold times on dirty or hot pages, amplifying buffer contention. At the same time, memory pressure throttles or starves background cleaners, so version buildup accelerates, creating a feedback loop: more dead tuples ⇒ larger memory footprint ⇒ higher paging and slower cleaners ⇒ still more dead tuples. The three anomalies therefore reinforce one another in a vicious cycle that degrades OLTP throughput and latency far more severely than any of them would in isolation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.43261893683271513,
+            "bm25_score": 17.556294092354474,
+            "lexical_score": 0.13282407407407407,
+            "matched_terms": [
+                "and",
+                "are",
+                "can",
+                "dead",
+                "latency",
+                "longer",
+                "of",
+                "on",
+                "operating",
+                "or",
+                "sessions",
+                "system",
+                "than",
+                "the",
+                "this",
+                "time",
+                "to",
+                "when",
+                "which"
+            ],
+            "match_count": 274,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_idle",
+                "parameter_name": "tcp_keepalives_idle",
+                "timeout_category": "network_idle_keepalive_probe_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time with no network activity after which the operating system should send a TCP keepalive message to the client.",
+                "trigger_condition": "A TCP client connection has no network activity longer than tcp_keepalives_idle on systems supporting TCP_KEEPIDLE or an equivalent socket option.",
+                "workload_impact": "Starts TCP keepalive probing for an otherwise idle client connection; together with interval and count settings this can lead to dead connection detection.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

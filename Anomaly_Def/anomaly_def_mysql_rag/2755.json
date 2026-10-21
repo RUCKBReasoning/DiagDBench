@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Database Configuration Parameter Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Row-count, histogram, and correlation metadata are stale or incomplete, leading the optimizer to misestimate cardinalities and pick inefficient plans.\nDatabase Configuration Parameter Anomaly : Critical engine parameters for memory, parallelism, logging, and background workers are mis-tuned relative to hardware, workload mix, or version defaults, so the engine’s internal resource governance does not match real demand.\nOperating System Resource Limit Anomaly : Kernel-enforced ceilings on file handles, shared memory, threads, or other OS objects are reached, blocking the database from allocating the resources it requests.\n\nWhen these three root causes coexist, the system exhibits a tangled symptom set: queries suddenly switch to plans that demand far more memory, I/O, or worker processes than the engine or kernel can grant; execution plans show huge gaps between estimated and actual rows, while concurrent sessions stall on memory-allocation, file-open, or worker-spawn errors. Wait events oscillate between CPU-bound parallel workers and OS-reported resource-exhaustion waits; checkpoint storms or log-write stalls appear even though storage and CPU remain under-utilised. Administrators may observe flurries of statement re-plans, background process restarts, and kernel messages about ENOMEM, EMFILE, or EAGAIN, all interleaved with optimizer-related recompiles and configuration warnings, making single-cause diagnosis difficult.\n\nCausally, stale statistics drive the optimizer to over- or under-estimate work, which, under mis-set memory/parallelism parameters, inflates per-query resource requests (e.g., oversized hash tables, excessive parallel workers). These exaggerated requests push the database to the brink of configured limits; when the engine then asks the OS for large shared-memory extents, additional threads, or many file descriptors, it collides with tight kernel quotas. Each rejection by the OS triggers retries, plan invalidations, or emergency fallbacks that further skew workload timing and data distributions, which in turn exacerbate statistics staleness and prompt more aggressive (but still misguided) plan and parameter usage. The feedback loop among bad statistics, poor configuration, and OS denials amplifies contention, degrades throughput, and can precipitate partial or total service outages.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.667813528104595,
+            "bm25_score": 33.44631798958801,
+            "lexical_score": 0.14675675675675676,
+            "matched_terms": [
+                "and",
+                "by",
+                "configured",
+                "contention",
+                "execution",
+                "for",
+                "in",
+                "limit",
+                "or",
+                "other",
+                "query",
+                "resource",
+                "statement",
+                "the",
+                "when",
+                "with",
+                "work",
+                "workload"
+            ],
+            "match_count": 131,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

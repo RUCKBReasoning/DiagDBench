@@ -1,0 +1,43 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Transaction Log Subsystem Anomaly + Replication Synchronization Anomaly",
+            "Description": "Schema and Index Design Anomaly : Physical data-model objects (tables, partitions, indexes, constraints, data types) are mis-aligned with workload access paths, forcing the optimizer into broad, row-hungry scans or excessive random probes even when statistics are fresh.\nTransaction Log Subsystem Anomaly : The write-ahead log buffer, files, or archival pipeline cannot sustain the redo generation rate, causing commits to stall on log flush, switch, or archive waits.\nReplication Synchronization Anomaly : Downstream replicas or subscribers cannot receive or apply the primary’s log stream fast enough, so retained log segments pile up and widen replica lag.\n\nWhen these three root causes coexist, the system exhibits a blended failure signature: 1) Queries and modifications run slowly because of poor indexing and partitioning, inflating the volume of physical changes and redo per transaction; 2) Commit latency spikes with frequent LOG_FLUSH, LOG_WRITE, and LOG_SWITCH waits, and alert logs show rapid log file cycling while archive or shipping queues back up; 3) Replication lag grows unpredictably, replicas fall behind or disconnect, and primary log directories bloat because segments cannot be recycled while replicas remain out of sync. Administrators may observe apparently unrelated symptoms—slow queries, stalled commits, and replica lag—making the true intertwined root cause harder to isolate.\n\nCausally, inefficient schema and index design lengthens query execution and multiplies row touches, increasing undo and redo volume per transaction. The surging redo rate overwhelms an already constrained transaction-log subsystem, leading to longer flush times and more frequent log switches. Elevated log pressure simultaneously feeds a heavier replication stream; replicas struggling to apply the bloated redo fall further behind, preventing log reclamation and forcing the primary to keep additional log files online. The retained logs, in turn, exacerbate disk-space pressure on the log device and prolong checkpoint times, intensifying the original log bottleneck. The resulting feedback loop—poor data access driving excess redo, saturating the log path, which then stalls both commits and replication—deteriorates overall OLTP performance and availability.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 168,
+            "score": 0.18356852580215208,
+            "bm25_score": 10.192803244399874,
+            "lexical_score": 0.08957800511508951,
+            "matched_terms": [
+                "access",
+                "and",
+                "cannot",
+                "execution",
+                "failure",
+                "or",
+                "schema",
+                "the",
+                "with"
+            ],
+            "match_count": 11,
+            "entry": {
+                "error_code": "42P06",
+                "error_name": "duplicate_schema",
+                "official_description": "duplicate schema",
+                "error_class": "Class 42 - Syntax Error or Access Rule Violation",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "sql_and_parser",
+                "cause_analysis": "The failure is typically associated with unsupported syntax, invalid statement structure, or feature usage that the target engine version cannot execute as written.",
+                "solution_guidance": "Validate SQL syntax, target-engine compatibility, statement shape, and whether the feature is supported under the current engine version or execution context.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "syntax error",
+                    "feature rejection"
+                ]
+            }
+        }
+    }
+]

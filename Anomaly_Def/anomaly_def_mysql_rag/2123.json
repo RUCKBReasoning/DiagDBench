@@ -1,0 +1,60 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Database Configuration Parameter Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persists or selects markedly sub-optimal execution plans even though statistics are accurate, causing excessive I/O, CPU, or row explosion.\nDatabase Configuration Parameter Anomaly : Instance-level settings for memory, parallelism, checkpoints, and worker pools are mis-aligned with hardware capacity or workload demands, so the engine behaves inefficiently even though physical resources are not exhausted.\nTransaction Log Subsystem Anomaly : The write-ahead log path—buffer, flush, file rotation, or archiving—cannot sustain the redo rate, making commits stall and triggering log-related wait events.\n\nWhen all three root causes co-exist, the workload exhibits a compound failure signature: 1) sudden plan flips to full table scans or fat hash joins inflate row touches and redo volume; 2) mis-sized shared buffers and per-session work memory force extra page reads, bloated sort/Hash spills, and more frequent checkpoints; 3) log-flush and log-write waits skyrocket, driving up commit latency, which in turn elongates lock holding times and dampens throughput; 4) CPU and I/O utilization appear paradoxically low or skewed—cores spin on latch contention while storage idles between bursty checkpoint or log-switch storms; 5) performance degradation often starts immediately after an upgrade or parameter change that invalidates cached plans and simultaneously alters memory or checkpoint defaults, making the symptoms hard to attribute to a single layer.\n\nCausally, a poor plan (1) multiplies data-modification and redo generation, pushing the transaction-log subsystem toward saturation. In parallel, sub-optimal configuration parameters (2)—for example, an undersized log buffer, aggressive checkpoint timeout, or insufficient shared pool—reduce the margin for absorbing the extra redo and amplify log flush frequency. The overloaded log path (3) then feeds back into the optimizer and configuration layers: high commit latency delays statistics refreshes and prolongs locks, which can further skew plan selection and provoke more ad-hoc compilations, while emergency checkpoints invalidate additional plans and consume memory that is already mis-configured. The intertwined feedback loops between wrong plans, ill-tuned parameters, and a choking log path produce a runaway degradation that is more severe than any single anomaly alone.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.7501216814159292,
+            "bm25_score": 33.66489376282712,
+            "lexical_score": 0.16707227138643066,
+            "matched_terms": [
+                "an",
+                "and",
+                "back",
+                "cannot",
+                "change",
+                "configured",
+                "for",
+                "holding",
+                "in",
+                "is",
+                "lock",
+                "or",
+                "reduce",
+                "row",
+                "session",
+                "than",
+                "the",
+                "timeout",
+                "transaction",
+                "up",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 100,
+            "entry": {
+                "timeout_id": "mysql84_innodb_row_lock_wait_timeout",
+                "parameter_name": "innodb_lock_wait_timeout",
+                "timeout_category": "innodb_row_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "The length of time in seconds an InnoDB transaction waits for a row lock before giving up.",
+                "trigger_condition": "An InnoDB transaction waits longer than innodb_lock_wait_timeout for a row lock.",
+                "workload_impact": "The lock wait gives up; by default only the current statement is rolled back unless innodb_rollback_on_timeout is enabled.",
+                "default_behavior": "Defined as an InnoDB system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

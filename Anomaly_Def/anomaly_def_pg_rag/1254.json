@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Buffer Cache and Latch Contention Anomaly + CPU Resource Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer repeatedly chooses or reuses a markedly sub-optimal execution plan even though statistics are reasonable, causing excessive logical I/O, wrong join methods, or unnecessary parallelism.\nBuffer Cache and Latch Contention Anomaly: Hot pages, page-latch conflicts, or limited I/O slots force sessions to serialize on buffer-manager structures, inflating page-latch and buffer-busy waits and elongating critical sections.\nCPU Resource Anomaly: Database processes drive the host’s CPU usage to sustained saturation, creating long run-queues, high context-switch rates, and global latency inflation.\n\nCombined manifestation: When a bad plan that over-scans or over-probes data is executed concurrently by many sessions, it floods the buffer pool with unnecessary page touches, hammering a small set of index root or table pages. The resulting latch storms increase wait time while every process also burns CPU cycles in spin loops and plan work operations. Operators observe a toxic mix of symptoms: (1) abrupt plan flips followed by dramatic rises in both page-latch and CPU-scheduler waits; (2) CPU usage pegged near 100 %, yet throughput stagnates because sessions stall on buffer latches; (3) alternating spikes of logical I/O, latch contention, and scheduler delay in performance dashboards; (4) identical SQL text showing different plans and wildly different resource footprints within minutes; and (5) amplified latency variability that is hard to attribute to any single layer because optimizer, buffer manager, and CPU all appear as top consumers.\n\nCausal chain and reinforcement: A sub-optimal plan multiplies the number of page accesses, focusing pressure on a small working set. The intensified page churn heats up specific buffers and latches, extending their hold times. As more sessions queue on those latches, some spin-wait on CPU, driving processor utilization toward saturation. High CPU load in turn lengthens latch spin loops and slows the optimizer’s background tasks, delaying statistics refreshes and plan invalidations, which prolongs the life of the bad plan. Meanwhile, latch contention stalls dirty-page flushes, shrinking effective buffer capacity and further penalizing the plan’s I/O pattern. The feedback loop—bad plan → latch contention → CPU saturation → slower recovery mechanisms—creates a self-reinforcing state where all three anomalies aggravate one another and degrade the entire workload until the root causes are resolved.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.2636324725049079,
+            "bm25_score": 12.65615745476734,
+            "lexical_score": 0.11774891774891774,
+            "matched_terms": [
+                "and",
+                "are",
+                "by",
+                "is",
+                "latency",
+                "of",
+                "on",
+                "or",
+                "probes",
+                "sessions",
+                "that",
+                "the",
+                "time",
+                "to",
+                "when",
+                "which",
+                "within"
+            ],
+            "match_count": 222,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_interval",
+                "parameter_name": "tcp_keepalives_interval",
+                "timeout_category": "network_keepalive_retry_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time after which a TCP keepalive message that has not been acknowledged by the client should be retransmitted.",
+                "trigger_condition": "A TCP keepalive probe is not acknowledged for tcp_keepalives_interval on systems supporting TCP_KEEPINTVL or an equivalent socket option.",
+                "workload_impact": "Controls retry timing for keepalive probes used to detect unresponsive client connections.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

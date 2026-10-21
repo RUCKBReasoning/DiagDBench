@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + MVCC Version Maintenance Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently picks a substantially sub-optimal execution plan even though statistics are reasonably accurate and the query text is unchanged.\nMVCC Version Maintenance Anomaly : Obsolete row versions and logically deleted index entries accumulate faster than background cleanup can reclaim them, inflating storage and visibility-check overhead.\nData Block and Index Integrity Anomaly : On-disk heap pages or index structures become physically or logically corrupted, breaking key order, page links, or heap–index correspondence.\n\nCombined phenomena: 1) Sudden plan flips from index probes to full scans on tables whose physical size has exploded from version bloat or whose indexes have become unreliable, 2) huge gaps between estimated and actual row counts because corruption and bloat distort statistics, 3) escalating I/O, CPU, and memory consumption during long-running OLTP statements, 4) vacuum/cleanup workers stuck or failing on corrupted pages while plan cache thrashes with ever-changing bad plans, 5) user-visible symptoms ranging from intermittent wrong-result sets (duplicate or missing rows) to query-timeouts and engine warnings about both wraparound danger and page checksum errors.\n\nCausal chain: MVCC version bloat enlarges tables and skews visibility statistics, which misleads the optimizer into choosing cost-based plans that look cheaper but are disastrous in practice. Corrupted index or heap pages further undermine the optimizer’s cardinality feedback, triggering even worse plan choices or forcing full scans that magnify the impact of the bloated storage layer. In turn, the poor plans often perform wide scans and high-churn updates that generate yet more row versions and touch damaged pages, hampering cleanup workers whose failure allows both bloat and corruption to deepen. The three faults therefore reinforce one another, driving a feedback loop of growing storage, deteriorating plan quality, rising resource usage, and increasing risk of data-access errors in a live OLTP workload.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.32172679151765515,
+            "bm25_score": 13.740386945764747,
+            "lexical_score": 0.1121815166591286,
+            "matched_terms": [
+                "about",
+                "and",
+                "are",
+                "but",
+                "check",
+                "has",
+                "is",
+                "of",
+                "or",
+                "than",
+                "that",
+                "the",
+                "user",
+                "with"
+            ],
+            "match_count": 292,
+            "entry": {
+                "timeout_id": "pg16_idle_session_timeout",
+                "parameter_name": "idle_session_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle, but not within an open transaction, for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle and not inside an open transaction longer than the configured threshold.",
+                "workload_impact": "The session is terminated; the documentation warns about using this with connection pools or middleware.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + MVCC Version Maintenance Anomaly + Database Memory Allocation Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level SQL or transactional design forces the engine to touch more data, rows, or time than the business need, inflating execution cost and concurrency footprints.\nMVCC Version Maintenance Anomaly : Obsolete row versions and rollback information pile up faster than background cleaners can reclaim them, bloating tables and indexes and increasing visibility-check overhead.\nDatabase Memory Allocation Anomaly : Engine memory-consuming structures—buffers, work areas, plan cache, session heaps—grow beyond the host’s safe physical limits, driving OS pressure and eviction.\n\nWhen these three faults co-exist, the system exhibits a blended symptom set: statements already slow from poor logic generate massive update/delete churn that swells the MVCC version store; the enlarged tables and growing undo segments demand additional buffer‐cache and work memory, accelerating overall RAM consumption. Operators observe a mix of long-tail query latency, surging table and index size, constantly busy autovacuum/cleaner workers, rising checkpoint and I/O times, cache hit-ratio deterioration, OS swapping or OOM events, and frequent application timeouts. Because each anomaly amplifies the others, symptoms can appear cyclic—memory pressure throttles cleaners, which lets version bloat grow, further inflating memory, while bloated objects make the original inefficient SQL even slower and more memory-hungry.\n\nCausally, inefficient SQL logic issues large scans, wide projections, and oversized batches that touch and modify far more rows than necessary. This churn not only inflates active memory usage for sorts, hashes, and buffer pins but also produces an oversized trail of old versions. If long transactions or open cursors from the same workload hold snapshots, vacuum/cleaner processes cannot reclaim those versions, and their own work queues lengthen. The still-growing version store must be kept resident in memory and eventually spills to disk, intensifying both memory allocation pressure and I/O. Memory stress may then throttle background workers or push them out of CPU time-slices, slowing cleanup even further—a positive feedback loop that degrades performance, jeopardizes cluster stability, and risks transaction-ID horizon or OOM crashes.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 232,
+            "score": 0.7507715443313363,
+            "bm25_score": 74.41749922921805,
+            "lexical_score": 0.19062272248765083,
+            "matched_terms": [
+                "allocation",
+                "and",
+                "buffer",
+                "check",
+                "concurrency",
+                "consumption",
+                "data",
+                "engine",
+                "hashes",
+                "large",
+                "latency",
+                "memory",
+                "of",
+                "or",
+                "out",
+                "oversized",
+                "pressure",
+                "session",
+                "sorts",
+                "sql",
+                "the",
+                "workload"
+            ],
+            "match_count": 9,
+            "entry": {
+                "error_code": "HV001",
+                "error_name": "fdw_out_of_memory",
+                "official_description": "fdw out of memory",
+                "error_class": "Class HV - Foreign Data Wrapper Error (SQL/MED)",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "memory_and_buffer",
+                "cause_analysis": "The failure is typically associated with insufficient memory headroom, buffer pressure, oversized intermediate state, or memory-allocation constraints inside the engine or client library.",
+                "solution_guidance": "Check memory availability, per-session memory settings, large sorts or hashes, and whether workload concurrency is amplifying memory consumption.",
+                "observable_symptoms": [
+                    "memory pressure",
+                    "allocation failure",
+                    "spill",
+                    "unstable latency"
+                ]
+            }
+        }
+    }
+]

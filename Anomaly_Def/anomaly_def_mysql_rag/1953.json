@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Replication Synchronization Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Schema and Index Design Anomaly: Physical data-model and indexing choices do not match workload access patterns, forcing the optimizer into full scans, non-covering lookups, and excessive maintenance overhead that inflate I/O and log volume.\nReplication Synchronization Anomaly: Standby or subscriber systems cannot ingest or apply the primary’s change stream fast enough, producing growing log-position gaps, replay lag, and retention of un-archived log segments on the primary.\nStorage Space Capacity Anomaly: Allocated data, temp, or log areas approach exhaustion, leading to allocation failures, halted extensions, and stalled recycling of log/temporary space.\n\nWhen all three root causes co-exist, the database experiences cascading symptoms: 1) poorly indexed queries generate large scans, temp spills, and bloated undo/redo, elongating transactions; 2) the surge in log volume overwhelms replication apply threads, widening replication lag and forcing the primary to retain ever-growing log segments; 3) retained logs, enlarged indexes, and temporary spill files rapidly consume remaining disk space, triggering auto-extend failures, halted DML, aborted queries, and replica disconnections. Monitoring shows simultaneous spikes in query latency, checkpoint age, replica delay, and space usage, making it difficult to attribute blame to any single subsystem.\n\nCausally, inefficient schema and index design is the first amplifier: every read and write becomes heavier, generating more undo/redo and larger index updates. The inflated log stream must be shipped and replayed downstream; limited apply throughput on replicas turns this into chronic replication backlog. Because the primary cannot recycle log segments that replicas have not replayed, space consumption on both primary and replica storage rises sharply. As free space shrinks, auto-extension or archive operations fail, which in turn stalls new writes and further delays replication, establishing a feedback loop that degrades performance and can culminate in an outage. The intertwined nature of design inefficiencies, replication lag, and space exhaustion complicates diagnosis, as each anomaly masks and intensifies the others.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2916,
+            "score": 0.5048193329471521,
+            "bm25_score": 49.82461389652039,
+            "lexical_score": 0.14034843205574912,
+            "matched_terms": [
+                "and",
+                "apply",
+                "downstream",
+                "exist",
+                "have",
+                "is",
+                "lag",
+                "log",
+                "not",
+                "or",
+                "replica",
+                "replication",
+                "retention",
+                "the",
+                "to",
+                "which"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-011032",
+                "error_name": "ER_RPL_FILTERS_NOT_ATTACHED_TO_CHANNEL",
+                "official_description": "There are per-channel replication filter(s) configured for channel '%.192s' which does not exist. The filter(s) have been discarded.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

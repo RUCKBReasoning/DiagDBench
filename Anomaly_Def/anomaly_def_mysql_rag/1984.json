@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Transaction Log Subsystem Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Runtime settings such as buffer-pool size, log buffer, checkpoint cadence, and parallelism are mis-aligned with hardware capacity or workload characteristics.\nTransaction Log Subsystem Anomaly : The write-ahead logging path—generation, flushing, switching, or archiving of log records—becomes the principal bottleneck for commits and data-change activity.\nStorage Space Capacity Anomaly : Physical or logical free space for data, log, archive, or temporary areas approaches or reaches exhaustion, causing allocation failures and stalls.\n\nWhen all three root causes strike together, the database experiences a feedback loop of space-related and log-related stalls amplified by maladjusted parameters. Observable symptoms include:  \n• Sharp spikes in commit latency with simultaneous \"log flush\", \"log file switch\", and \"space allocation\" wait events.  \n• Repeated checkpoint storms and rapid cycling of small log files that quickly fill the remaining device space.  \n• Engine alerts reporting \"cannot allocate log\", \"no space left on device\", or \"archive destination full\" immediately after configuration changes.  \n• CPU spin or idle gaps while user sessions wait for log space, despite overall I/O devices showing intermittent idleness.  \n• Sudden throughput collapse in write-intensive OLTP workloads, followed by cascading read slowdowns as dirty-page back-pressure rises and background cleanup falls behind.\n\nCausal interaction: mis-tuned configuration parameters (e.g., undersized log buffer, aggressive checkpoint interval, or small max log size) elevate the transaction-log generation and switching frequency. This overstresses an already fragile log subsystem, which must flush and archive segments more often. Because log files and archives share limited storage that is near capacity, every extra switch consumes scarce free blocks, hastening space exhaustion. Once space is full, the log subsystem cannot obtain the next segment; commit paths stall, dirty pages cannot be flushed, and checkpoints pile up—conditions that further magnify wait events and accentuate the performance cliff. In turn, elevated waits mislead auto-tuning heuristics or administrators into further parameter tweaks (e.g., shortening checkpoints), unintentionally reinforcing the vicious cycle and deepening the outage.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5889,
+            "score": 0.4227871032498022,
+            "bm25_score": 47.431148098608006,
+            "lexical_score": 0.16101171112556928,
+            "matched_terms": [
+                "and",
+                "are",
+                "capacity",
+                "data",
+                "engine",
+                "failures",
+                "file",
+                "flush",
+                "interval",
+                "is",
+                "latency",
+                "log",
+                "or",
+                "paths",
+                "pressure",
+                "storage",
+                "the",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-014052",
+                "error_name": "ER_AUDIT_LOG_INVALID_FLUSH_INTERVAL_VALUE",
+                "official_description": "Invalid flush interval specified: %lu. Valid values are 0 (off) or greater than or equal to %d. Adjusting to %d",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

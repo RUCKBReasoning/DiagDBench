@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Database Configuration Parameter Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "SQL Workload Logic Anomaly: Application-level statement or transaction design forces the engine to touch more data, rows, or time than the true business requirement demands.\nDatabase Configuration Parameter Anomaly: Instance-level runtime parameters are mis-tuned so that memory, background workers, checkpoint cadence, or parallelism no longer match hardware capacity or workload profile.\nBuffer Cache and Latch Contention Anomaly: Sessions serialize on hot buffer pages, page pins, or lightweight latches, creating a bottleneck inside the buffer manager rather than running out of memory itself.\n\nWhen all three anomalies coexist, the database exhibits a compound symptom pattern: 1) statement latency outliers and repeated slow-query entries; 2) bursty or sustained waits on page latches and buffer-busy events even when global CPU, I/O, or memory utilization looks moderate; 3) rapid oscillations between CPU spinning and idle periods; 4) checkpoint or background-writer storms triggered earlier than expected; 5) application timeouts escalating into long-running transactions that hold hot pages even longer, magnifying contention footprints; and 6) diagnostic views showing both inefficient SQL plans and suspicious configuration ratios (e.g., undersized buffer pool, overly aggressive checkpoint_target) that fail to alleviate the hot-page churn.\n\nCausal chain: inefficient SQL logic inflates the volume and frequency of page touches, turning a few index root pages or sequence blocks into extreme hot spots. A mis-sized buffer pool or ill-timed checkpoint/worker scheduling (configuration anomaly) prevents those pages from staying resident or being flushed smoothly, increasing the turnover of the cache and the number of threads simultaneously demanding the same pages. As concurrency rises, the probability of latch collisions on the overused pages skyrockets, producing Buffer Cache and Latch Contention. In turn, the contention inflates the latency of each already inefficient statement, extending transaction lifetimes and redo generation windows, which further stresses the mis-tuned memory and checkpoint parameters. The three issues therefore reinforce one another in a feedback loop that degrades throughput far more severely than any single anomaly in isolation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.7404909794876019,
+            "bm25_score": 26.94677653903516,
+            "lexical_score": 0.13496993162533982,
+            "matched_terms": [
+                "and",
+                "contention",
+                "engine",
+                "global",
+                "long",
+                "match",
+                "or",
+                "pattern",
+                "query",
+                "running",
+                "statement",
+                "the",
+                "time",
+                "triggered",
+                "when",
+                "workload"
+            ],
+            "match_count": 18,
+            "entry": {
+                "timeout_id": "mysql84_regular_expression_time_limit",
+                "parameter_name": "regexp_time_limit",
+                "timeout_category": "expression_evaluation_time_limit",
+                "scope": "global/session",
+                "official_definition": "The time limit for regular expression matching operations performed by the regular expression engine.",
+                "trigger_condition": "A regular expression match operation exceeds regexp_time_limit.",
+                "workload_impact": "The regular expression operation is constrained by the configured time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

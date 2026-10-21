@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Replication Synchronization Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer repeatedly chooses a sub-optimal execution plan even though statistics are accurate, leading to excessive CPU, I/O, or memory consumption per statement.\nReplication Synchronization Anomaly : Standby or downstream replicas cannot receive or apply log records at the rate the primary generates them, causing widening replication lag and retained WAL segments.\nNetwork and Connectivity Resource Anomaly : Client-to-server or server-to-replica network paths and connection-handling resources are saturated or unreliable, throttling data transfer and session establishment.\n\nWhen these three root causes strike together, the system shows a compound symptom set: 1) unpredictable query latency spikes and CPU/I/O bursts on the primary due to poor plans; 2) rapidly growing replication send, write, and replay lag because the heavier plans inflate the volume of WAL generated per time unit; 3) simultaneous network queuing, retransmissions, and connection timeouts that slow both client traffic and the streaming of WAL to replicas. Monitoring dashboards may reveal alternating bottlenecks—some intervals dominated by query-execution waits, others by replication backlog, and still others by listener-queue saturation—making the true culprit difficult to isolate. Fail-over readiness degrades as replicas fall behind while end-user sessions experience both execution slowdowns and intermittent connection errors.\n\nCausal interaction: The sub-optimal plans increase row touches, temp-space spills, and index maintenance, amplifying WAL generation and stressing the replication pipeline. The swollen outbound log stream must traverse the same constrained network paths and connection pools that are already suffering congestion, further slowing delivery to replicas and feeding back pressure to the primary, which must retain more log segments and may stall commits when synchronous replication is configured. In turn, network saturation lengthens client round-trip times; connection retries inflate session counts, consuming listener and socket resources and reducing the budget of backends available to execute queries. The resulting execution slowdowns give the optimizer volatile runtime feedback, encouraging still more erratic plan selection. Thus, each anomaly reinforces the others, driving a vicious cycle of heavier workload, growing lag, and deteriorating connectivity that degrades both transactional and analytical performance.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.5463426391691322,
+            "bm25_score": 21.738716278537318,
+            "lexical_score": 0.15305010893246188,
+            "matched_terms": [
+                "and",
+                "because",
+                "cannot",
+                "client",
+                "configured",
+                "connection",
+                "is",
+                "network",
+                "of",
+                "or",
+                "server",
+                "session",
+                "sessions",
+                "statement",
+                "the",
+                "to",
+                "waits",
+                "when",
+                "while",
+                "write"
+            ],
+            "match_count": 126,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

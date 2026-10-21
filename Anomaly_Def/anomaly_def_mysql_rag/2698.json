@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Replication Synchronization Anomaly + Storage I/O Throughput Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Composite definition: The database cluster concurrently suffers (1) a replication pipeline that cannot ship or apply WAL/redo as fast as it is generated, (2) a saturated storage subsystem whose physical read/write throughput and latency budgets are exceeded, and (3) constrained network and connection-handling capacity between nodes and client endpoints. The triple condition means log generation, log shipping, log replay, and client traffic are all bottlenecked at once.\n\nCombined anomalous phenomena: Log-position gaps and replay lag widen far beyond normal as primary and replica disks exhibit long queue depths, elevated service times, and stalled durability flushes. Retained WAL segments and relay logs grow rapidly, consuming space on overworked volumes. Primary and standby sessions accumulate on commit, buffer-I/O, client-read, and client-write waits while CPU remains under-utilised. Clients observe intermittent connection refusals, prolonged authentication, query timeouts, and erratic latency spikes correlated with surges in packet loss and retransmissions. Maintenance windows, backups, and analytical reporting jobs elongate or fail, and failover readiness degrades as replicas become too stale to promote.\n\nCausal interaction: Disk saturation slows WAL flush on the primary, lengthening commit paths and forcing larger bursts of log data once writes succeed; these bursts collide with limited replication bandwidth and network congestion, inflating transport queues and aggravating replica lag. The swollen backlog prevents WAL recycling, which in turn inflates I/O pressure on already constrained storage. On the replica side, poor disk throughput and delayed network delivery hamper redo apply, further postponing feedback to the primary and perpetuating retention growth. Meanwhile, client connection stalls and retries increase session counts and write amplification, adding more log traffic and random I/O to the stressed storage layer. Each anomaly reinforces the others, forming a feedback loop that degrades throughput, increases latency, and threatens data-durability and availability guarantees across both transactional and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.40626899574015224,
+            "bm25_score": 16.584390035132667,
+            "lexical_score": 0.15729813664596273,
+            "matched_terms": [
+                "and",
+                "are",
+                "authentication",
+                "client",
+                "connection",
+                "handling",
+                "is",
+                "it",
+                "latency",
+                "of",
+                "on",
+                "or",
+                "remains",
+                "session",
+                "sessions",
+                "stale",
+                "the",
+                "waits"
+            ],
+            "match_count": 25,
+            "entry": {
+                "timeout_id": "mysql84_idle_noninteractive_session_timeout",
+                "parameter_name": "wait_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds the server waits for activity on a noninteractive connection before closing it.",
+                "trigger_condition": "A noninteractive session remains idle longer than wait_timeout.",
+                "workload_impact": "The server closes the idle connection.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

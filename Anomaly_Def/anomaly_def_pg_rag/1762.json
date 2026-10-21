@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Data Block and Index Integrity Anomaly + Storage Space Capacity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Data Block and Index Integrity Anomaly : Physical pages or index structures on disk no longer match their logical contents, leading to corrupted or inconsistent data blocks, page links, or key order. \nStorage Space Capacity Anomaly : The database exhausts or approaches exhaustion of allocated disk or filesystem space for data, logs, temp, or backup areas, resulting in allocation failures and stalled write-ahead activities. \nOperating System Resource Limit Anomaly : Database processes hit kernel-enforced ceilings for file descriptors, shared memory, semaphores, threads, or other OS-managed objects, preventing new allocations or worker creation.\n\nWhen these three conditions arise concurrently, symptoms overlap and amplify: corruption verification errors and checksum failures appear at the same time as data-file growth, redo, or temp writes are being refused because disks are full; error logs alternate between \"out of space\" messages and OS denials to open additional files or map pages; background recovery, checkpoint, or index-rebuild tasks loop or crash for lack of both disk blocks and kernel resources, causing repeated instance restarts; queries that fall back to full table scans due to broken indexes now also fail on temporary-space exhaustion, and new client connections intermittently fail when the engine cannot obtain file handles or shared memory—creating a mixed pattern of logical errors, I/O failures, and session drops that is difficult to attribute to a single layer.\n\nCausally, storage exhaustion and OS resource saturation can precipitate or magnify physical corruption: when space is scarce, data and log writes contend for the last free extents; interrupted or partial writes (e.g., due to ENOSPC or inability to extend files) leave pages half-written, producing integrity faults. Simultaneously, hitting file-descriptor or I/O context limits prevents the engine from opening replacement files, completing checkpoints, or flushing dirty buffers, increasing the window during which torn or inconsistent pages persist. Conversely, corruption inflates error logging and forces emergency reorganization or repair jobs that allocate temp space and extra file handles, accelerating both space consumption and kernel-resource depletion. The intertwined feedback loop degrades availability and risks unrecoverable data loss unless all three underlying constraints—on-disk integrity, free capacity, and OS limits—are addressed together.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.3365107964404767,
+            "bm25_score": 12.522316150096303,
+            "lexical_score": 0.12081245054075442,
+            "matched_terms": [
+                "and",
+                "are",
+                "can",
+                "client",
+                "is",
+                "messages",
+                "of",
+                "on",
+                "or",
+                "session",
+                "system",
+                "that",
+                "the",
+                "time",
+                "to",
+                "when"
+            ],
+            "match_count": 244,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_count",
+                "parameter_name": "tcp_keepalives_count",
+                "timeout_category": "network_keepalive_failure_threshold",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the number of TCP keepalive messages that can be lost before the server connection to the client is considered dead.",
+                "trigger_condition": "The number of lost TCP keepalive probes reaches tcp_keepalives_count on systems supporting TCP_KEEPCNT.",
+                "workload_impact": "The server can consider the client connection dead after the configured keepalive failure threshold.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

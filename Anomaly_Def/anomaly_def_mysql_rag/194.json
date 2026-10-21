@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Data Block and Index Integrity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Engine-level runtime settings are mis-tuned with respect to hardware capacity, workload mix, or version defaults, creating artificial memory, I/O, or parallelism bottlenecks.\nData Block and Index Integrity Anomaly : On-disk table or index pages are physically or logically corrupt, breaking key ordering, page links, or checksum validation and making persisted structures unreliable.\nOperating System Resource Limit Anomaly : Kernel-enforced ceilings on file handles, shared memory, threads, or other process resources are reached, preventing the database from allocating required OS objects.\n\nWhen these three root causes are present together, symptoms overlap and intensify: checksum or index-integrity errors may appear intermittently as the engine retries I/O using sub-optimal paths forced by bad configuration; sudden spikes in log-write or buffer-flush waits coexist with unexplained failures to spawn background workers or open files; query plans oscillate between full scans and index access, yet both can return inconsistent row counts; checkpoints or crash-recovery phases stall because corrupted pages trigger re-reads while the process simultaneously waits for additional file descriptors or shared-memory segments that the kernel refuses to grant. The administrator may observe idle CPU despite high wait events, bursts of corruption messages after parameter changes, and partial outages where existing sessions hang in I/O or lock waits while new connections are rejected by the OS.\n\nCausally, mis-configured memory pools, log sizing, or parallel-worker limits can inflate the number of files, threads, and shared-memory objects the engine attempts to allocate, hastening the exhaustion of OS resource limits. Once those limits are hit, failed writes or incomplete background jobs increase the window during which torn pages or unfinished index modifications are exposed, aggravating latent on-disk corruption. Conversely, corruption that forces repeated retries, page reads, or index rebuild attempts drives additional kernel object consumption and accentuates the impact of tight OS quotas, while the same corruption can be masked or surfaced depending on buffer-pool and checkpoint parameters. The feedback loop between bad configuration, resource-limit exhaustion, and structural corruption accelerates workload degradation and complicates diagnosis because each layer surfaces errors that appear unrelated yet stem from their interaction.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.4732297617934626,
+            "bm25_score": 19.476802776660172,
+            "lexical_score": 0.12738417676407698,
+            "matched_terms": [
+                "and",
+                "are",
+                "bad",
+                "during",
+                "for",
+                "idle",
+                "number",
+                "of",
+                "or",
+                "pools",
+                "sessions",
+                "that",
+                "the",
+                "waits",
+                "when",
+                "with"
+            ],
+            "match_count": 7,
+            "entry": {
+                "timeout_id": "mysql84_connection_handshake_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "connection_handshake_timeout",
+                "scope": "global",
+                "official_definition": "The number of seconds that the mysqld server waits for a connect packet before responding with Bad handshake.",
+                "trigger_condition": "A client does not complete the initial connection packet exchange within connect_timeout.",
+                "workload_impact": "The connection attempt fails during handshake.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

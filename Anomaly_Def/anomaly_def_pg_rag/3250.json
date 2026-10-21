@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Data Block and Index Integrity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Database Memory Allocation Anomaly : The engine’s internal caches, work areas, and background heaps grow beyond the safe physical- or swap-memory envelope of the host, provoking sustained OS memory pressure and allocation stalls.\nData Block and Index Integrity Anomaly : Persisted data pages and index structures become physically or logically inconsistent with their expected state, leading to corruption errors and unreliable access paths.\nOperating System Resource Limit Anomaly : The database process exhausts kernel-enforced limits on objects such as file descriptors, shared-memory segments, semaphores, or address space, causing allocation failures outside the engine’s own quota system.\n\nWhen all three root causes co-exist, symptoms overlap and intensify: frequent OOM killer events or heavy paging coincide with sporadic \"cannot allocate descriptor\" or \"unable to map shared memory\" errors, while corruption alerts or checksum failures begin to appear in engine logs. Recovery attempts or integrity-check utilities may hang or crash because they cannot acquire the required OS handles or memory, and repeated retries inflate memory use further. Queries may oscillate between full scans (forced by corrupted or unusable indexes) and aborted executions (blocked by OS limits), producing erratic performance, duplicated or missing rows, and intermittent node evictions in clustered deployments. Administrators observe a system that alternates between memory thrashing, resource-limit denials, and corruption warnings, making it difficult to isolate any single culprit.\n\nCausally, excessive memory allocation drives the process closer to both physical exhaustion and configured OS object limits—for example, each new work area or parallel worker consumes additional file handles, shared-memory segments, and address-space mappings. As the kernel begins to deny allocations or invokes the OOM killer, abrupt termination of checkpoints, log flushes, or background writers can leave pages half-written, seeding data-block and index corruption. Conversely, once corruption emerges, the engine may abandon efficient index paths and fall back to wide scans that allocate larger buffers and temporary structures, further exacerbating memory pressure. Any restart or recovery cycle triggered by corruption or OOM events must reopen files and recreate IPC structures, pushing the process back against the same OS limits. Thus, each anomaly feeds the others in a reinforcing loop, rapidly degrading stability and data integrity across both OLTP and analytic workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.7464273127753304,
+            "bm25_score": 33.718216466673596,
+            "lexical_score": 0.15475770925110133,
+            "matched_terms": [
+                "aborted",
+                "acquire",
+                "and",
+                "any",
+                "because",
+                "cannot",
+                "configured",
+                "database",
+                "for",
+                "index",
+                "object",
+                "of",
+                "or",
+                "overlap",
+                "required",
+                "that",
+                "the",
+                "to",
+                "triggered",
+                "when",
+                "while"
+            ],
+            "match_count": 321,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

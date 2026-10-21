@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Database Memory Allocation Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently chooses a sub-optimal execution plan despite reasonable statistics, leading to unnecessarily expensive operator choices, poor join orders, or inappropriate degrees of parallelism.\nDatabase Memory Allocation Anomaly : The database engine and its sessions over-allocate buffer, work, and cache memory, pushing the host into paging, swap, or OOM situations and causing frequent memory-pressure stalls.\nNetwork and Connectivity Resource Anomaly : Client-to-server communication paths and connection slots are saturated or unstable, producing connection timeouts, socket backlog growth, and prolonged data-transfer waits.\n\nWhen these three root causes arise together, symptoms interleave and intensify: expensive plans inflate working-set sizes and per-query work memory, accelerating buffer-cache churn and hash/sort spillover while bloating the plan cache; the resulting memory pressure triggers paging and CPU stalls that elongate statement runtimes. Longer runtimes hold server back-end processes and sockets open, inflating connection counts and transmit queues just as the network layer is already bandwidth- or handshake-constrained. Clients observe erratic response times, intermittent authentication failures, and frequent connection drops, while the database shows oscillating cache hit ratios, skyrocketing memory consumption, rapid plan churn with alternating good and bad plans, and an explosion of wait events related to both memory management and client I/O.\n\nCausally, a vicious cycle forms: 1) poor plans demand excessive memory for scans, joins, and sorts; 2) this over-consumption collides with unbounded work areas and plan-cache growth, exhausting physical RAM and provoking paging, which throttles CPU and I/O throughput; 3) degraded execution speeds stretch transaction lifetimes, thereby increasing the number of concurrently active sessions and the volume of result data in transit; 4) the already congested network and limited listener or process pools cannot absorb the surge, causing connection stalls and retries; 5) retry storms and session churn further pollute the plan cache and allocate additional memory, feeding back into steps 1 and 2. The intertwined nature of these issues obscures single-factor diagnosis and can rapidly destabilize both the database host and its client ecosystem.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.4140291801082888,
+            "bm25_score": 14.106659282409561,
+            "lexical_score": 0.14685670476721494,
+            "matched_terms": [
+                "and",
+                "are",
+                "authentication",
+                "can",
+                "client",
+                "connection",
+                "is",
+                "number",
+                "of",
+                "or",
+                "pools",
+                "server",
+                "session",
+                "sessions",
+                "that",
+                "the",
+                "this",
+                "to",
+                "when"
+            ],
+            "match_count": 301,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_count",
+                "parameter_name": "tcp_keepalives_count",
+                "timeout_category": "network_keepalive_failure_threshold",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the number of TCP keepalive messages that can be lost before the server connection to the client is considered dead.",
+                "trigger_condition": "The number of lost TCP keepalive probes reaches tcp_keepalives_count on systems supporting TCP_KEEPCNT.",
+                "workload_impact": "The server can consider the client connection dead after the configured keepalive failure threshold.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

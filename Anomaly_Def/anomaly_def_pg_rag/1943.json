@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + CPU Resource Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly: The log-file group, buffer, or archiver cannot keep up with redo generation, stalling commits and log switches.\nCPU Resource Anomaly: Database processes exhaust available CPU cycles, driving run-queue pressure and system-wide latency.\n\nComposite definition: Both resource layers are saturated at the same time, so every commit must fight for CPU to format and flush redo while the log path itself is already a bottleneck. The engine is therefore constrained by two critical chokepoints on the write path—log throughput and compute capacity.\n\nCombined observable phenomena: 1) commit, log-flush, and log-sync waits climb sharply and remain high; 2) host CPU utilization stays near 100 %, with elevated load average and context-switch rate; 3) the same user transactions appear simultaneously at the top of CPU-time and log-wait lists; 4) checkpoint frequency, log-file switches, or archival backlog accelerates, yet the archiver gets fewer CPU slices to clear segments; 5) latency balloons across both read and write statements, and overall throughput oscillates as scheduler pressure and log-flush pauses alternate; 6) monitoring tools may mis-attribute slowdown to either CPU or I/O alone because both symptoms manifest together.\n\nCausal interaction: Heavy write activity formats redo records, which consumes CPU; once the undersized or mis-placed log subsystem stalls, worker threads spin or block, generating even more context switches and scheduler contention. The CPU saturation, in turn, slows down log-flush and archiver threads, prolonging log-buffer occupancy and amplifying commit back-pressure. This feedback loop escalates quickly: log stall increases wait time per transaction, holding locks and sessions longer, which keeps more processes runnable and pushes CPU even closer to saturation, further delaying log I/O. Without intervention, the mutual reinforcement of compute starvation and log-path congestion can cascade into widespread timeouts, replication lag, or instance freeze.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.4093873502430764,
+            "bm25_score": 12.528596441568,
+            "lexical_score": 0.13507832373811757,
+            "matched_terms": [
+                "activity",
+                "and",
+                "are",
+                "by",
+                "for",
+                "holding",
+                "is",
+                "latency",
+                "of",
+                "on",
+                "or",
+                "sessions",
+                "system",
+                "the",
+                "this",
+                "time",
+                "to",
+                "which"
+            ],
+            "match_count": 257,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_interval",
+                "parameter_name": "tcp_keepalives_interval",
+                "timeout_category": "network_keepalive_retry_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time after which a TCP keepalive message that has not been acknowledged by the client should be retransmitted.",
+                "trigger_condition": "A TCP keepalive probe is not acknowledged for tcp_keepalives_interval on systems supporting TCP_KEEPINTVL or an equivalent socket option.",
+                "workload_impact": "Controls retry timing for keepalive probes used to detect unresponsive client connections.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

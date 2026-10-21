@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Composite Definition: This anomaly represents the concurrent occurrence of a sub-optimal execution plan chosen by the optimizer (Query Plan Selection Anomaly) together with saturation or mis-configuration of the write-ahead log infrastructure (Transaction Log Subsystem Anomaly). Both root causes are active at the same time, so the workload suffers from inefficient SQL execution paths while every data-modification operation is additionally throttled by log I/O delays.\n\nCombined Observable Phenomena: • Highly variant and often degraded response times: some statements suddenly switch to full scans or row-by-row nested loops, inflating CPU and I/O, while commits stall on log-flush waits. • Dramatic spikes in redo generation, frequent log file switches, and enlarged archive backlogs driven by the extra work performed by sub-optimal plans (e.g., unnecessary wide-range updates or large sort/merge spill redo). • Plan instability that coincides with rising log-related wait events, making it difficult to attribute performance drops to either the optimizer or logging alone. • Elevated contention on buffer cache and temp space caused by poor plans, further increasing the volume of dirty pages that must be flushed at checkpoint, which in turn competes with log writes for the same I/O channels. • Application-level symptoms include timeouts, deadlock-like stalls at commit boundaries, erratic throughput, and exponential latency under peak write load.\n\nCausal Interaction: Poor plan selection can magnify the rate and burstiness of data modifications—e.g., choosing a table scan plus large hash aggregation that spills to disk may touch and dirty far more pages than a selective index access, thereby generating excessive redo. This surge stresses the log buffer, amplifies log file switch frequency, and exposes any sizing or device-placement weaknesses in the transaction-log subsystem. Conversely, when log-flush latency rises, transactions stay open longer, holding locks and keeping their execution contexts alive. This inflates the working set and can prompt the optimizer to evict or recompile plans, increasing the probability of unstable or downgraded plan choices. The feedback loop between growing redo pressure and deteriorating plan quality accelerates resource exhaustion, leading to severe throughput collapse in write-intensive OLTP workloads.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 4951,
+            "score": 0.48234176872872864,
+            "bm25_score": 51.80832387269422,
+            "lexical_score": 0.20351445663010964,
+            "matched_terms": [
+                "access",
+                "and",
+                "are",
+                "be",
+                "boundaries",
+                "can",
+                "data",
+                "disk",
+                "file",
+                "is",
+                "latency",
+                "log",
+                "operation",
+                "or",
+                "paths",
+                "placement",
+                "pressure",
+                "redo",
+                "set",
+                "the",
+                "to",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013068",
+                "error_name": "OBSOLETE_ER_IB_MSG_1244",
+                "official_description": "Can't set redo log tablespace to be encrypted.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

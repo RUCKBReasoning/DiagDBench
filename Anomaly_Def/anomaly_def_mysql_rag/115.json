@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + MVCC Version Maintenance Anomaly",
+            "Description": "Composite Definition: The database simultaneously suffers from heavy lock-manager blocking/deadlocks and from excessive accumulation of obsolete MVCC versions, so each transaction is at risk of both waiting on incompatible locks and wading through bloated heaps and indexes whose cleanup is lagging behind.\n\nCombined Observable Phenomena: Administrators will see long lock wait queues, deadlock victim rollbacks, and rising application time-outs together with rapidly growing table and index sizes, a persistently busy or backlogged vacuum/cleanup process, and planner misestimates caused by low live-row density. Throughput and latency variability become extreme: sessions that finally acquire their locks still run slowly because scans must traverse many dead versions, while lengthy scans keep locks held for longer, enlarging blocking chains. I/O and CPU usage rise concurrently—disk reads driven by bloat, and CPU cycles consumed by lock management and version visibility checks—yet business transactions per second keep falling.\n\nCausal Interaction: Lock contention prolongs the lifetime of update and delete transactions, keeping their snapshots and row versions alive and preventing background cleaners from advancing the version horizon; this accelerates version-store growth. The resulting table and index bloat lengthens read and write execution times, so transactions hold locks for longer and are more likely to collide, escalating row locks to page or table level and deepening contention. Cleanup workers may also be throttled by locks that protect hot pages, causing them to yield and fall further behind. Thus each anomaly amplifies the other in a positive feedback loop that degrades both concurrency control and storage health until manual intervention or a workload drop breaks the cycle.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.6776866525036385,
+            "bm25_score": 31.190152310957018,
+            "lexical_score": 0.1688128619323377,
+            "matched_terms": [
+                "and",
+                "be",
+                "because",
+                "blocking",
+                "for",
+                "incompatible",
+                "is",
+                "lifetime",
+                "lock",
+                "longer",
+                "of",
+                "or",
+                "sessions",
+                "the",
+                "this",
+                "to",
+                "transaction",
+                "wait",
+                "waiting",
+                "while",
+                "write"
+            ],
+            "match_count": 7,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

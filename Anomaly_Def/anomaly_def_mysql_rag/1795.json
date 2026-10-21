@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Buffer Cache and Latch Contention Anomaly + Replication Synchronization Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Engine-level settings (memory, checkpoint cadence, parallelism, etc.) are mis-tuned relative to hardware and workload, causing secondary performance pathologies even though the physical resources are not inherently exhausted.\nBuffer Cache and Latch Contention Anomaly : Sessions serialize on hot buffer pages, latches, or I/O slots inside the buffer manager, producing buffer-busy waits, CPU spin, and latency spikes driven by page-level contention rather than total memory shortage.\nReplication Synchronization Anomaly : Standbys or downstream consumers cannot receive, persist, or apply redo at the rate generated on the primary, leading to widening log gaps, replay lag, and retention of un-recycled log segments.\n\nComposite behaviour: When mis-tuned configuration parameters simultaneously foster buffer-cache/latch hot spots and accelerate redo generation, the primary instance experiences both severe page-level contention and a surge in transaction-log traffic that replicas fail to keep up with. Observable symptoms include: 1) mixed wait-event spikes—buffer-busy, page-latch, log-flush, and replication-sender waits—cycling in unpredictable patterns; 2) CPU utilisation that oscillates between spin-loops on latches and idle periods while replication back-pressure throttles commit throughput; 3) bloating of the primary’s transaction log because replication prevents recycling while aggressive checkpoints keep forcing additional flushes; 4) replica-side apply workers falling further behind, showing elevated lock conflicts on the same hotspot pages once they finally replay, and 5) end-user latency outliers that are hard to attribute to a single tier because stalls propagate from buffer manager to commit path to replication pipeline.\n\nCausal chain: Poor configuration—for example an undersized buffer pool, overly aggressive checkpoint interval, or improper work-memory/granule sizing—magnifies page churn and concentrates traffic on a limited set of cache lines. This intensifies latch contention, which lengthens commit time and inflates the volume and burstiness of redo writes. The heavier, more bursty log stream in turn overwhelms replicas, introducing apply lag that blocks log truncation on the primary. Retained log segments consume more cache and I/O bandwidth, further shrinking effective buffer space and prolonging dirty-page residence, which feeds back into even higher latch contention cycles. Thus, each anomaly amplifies the others: mis-tuned parameters create the hot pages, latch contention slows commit, slow commits inflate log backlog, and replication drag prevents cleanup, together degrading both primary and replica performance far beyond what any single issue would cause.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.6747944297467824,
+            "bm25_score": 27.3926437200396,
+            "lexical_score": 0.12288042281435807,
+            "matched_terms": [
+                "and",
+                "apply",
+                "causing",
+                "downstream",
+                "lag",
+                "or",
+                "replica",
+                "replication",
+                "sender",
+                "than",
+                "the",
+                "this",
+                "to",
+                "waits",
+                "when"
+            ],
+            "match_count": 86,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Replication Synchronization Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Optimizer Statistics Anomaly: The optimizer relies on stale, incomplete, or missing statistics, systematically misestimating cardinalities and choosing inefficient execution plans.\nReplication Synchronization Anomaly: Standby or downstream replicas fall behind the primary because they cannot receive, write, or apply WAL/redo at the pace it is generated.\nOperating System Resource Limit Anomaly: The database engine or its background workers hit kernel-enforced ceilings such as file-descriptor, shared-memory, semaphore, or thread limits, causing allocation failures and process throttling.\n\nWhen all three anomalies co-exist, the system exhibits compounded symptoms: queries on the primary choose bloated plans that spill to disk, saturate I/O, and generate unusually large redo streams; replicas show rapidly widening log-position gaps, growing retained WAL segments, and stale read data. Meanwhile, the mounting number of open log files, temporary spill files, parallel-worker threads, and lingering replication processes exhaust kernel limits on file handles, shared memory, or process counts. Operators observe a mixture of plan-estimate skew warnings, replication lag alarms, and intermittent \"too many open files\", \"cannot allocate shared memory\", or \"failed to fork worker\" errors. Automatic statistics jobs and replication apply workers may crash or refuse to start, making it difficult to distinguish whether performance problems stem from the optimizer, replication, or the host OS.\n\nCausally, stale or missing statistics cause the optimizer to favor plan shapes that read or sort far more data than necessary, driving up CPU, memory, and especially write-ahead logging volume. The inflated WAL stream overwhelms network, I/O, and CPU capacity on replicas, triggering replication synchronization delays. As lag accumulates, the primary is forced to retain ever-growing sets of log segments and file descriptors. The surge in simultaneously open WAL, temp files, and worker processes pushes the database up against operating-system limits; once those limits are reached, new background workers (including auto-analyze and replication apply processes) fail to start, preventing statistics refreshes and further slowing replay on replicas. This feedback loop amplifies all three root causes, leading to severe performance degradation, disk exhaustion risk, impaired failover readiness, and partial service outages.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 839,
+            "score": 0.48011425586934564,
+            "bm25_score": 49.62556097971409,
+            "lexical_score": 0.14010291595197255,
+            "matched_terms": [
+                "and",
+                "apply",
+                "downstream",
+                "execution",
+                "incomplete",
+                "is",
+                "lag",
+                "log",
+                "network",
+                "once",
+                "or",
+                "replication",
+                "stale",
+                "the",
+                "thread",
+                "to"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "1867",
+                "error_name": "ER_STOP_REPLICA_SQL_THREAD_TIMEOUT",
+                "official_description": "STOP REPLICA command execution is incomplete: Replica SQL thread got the stop signal, thread is busy, SQL thread will stop once the current task is complete.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

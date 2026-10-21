@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Replication Synchronization Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer persistently chooses a sub-optimal execution plan despite having reasonably accurate statistics, leading to excessive CPU, I/O, or memory consumption per statement.\nReplication Synchronization Anomaly: Standby or subscriber nodes cannot receive or apply WAL / redo as fast as the primary produces it, causing growing log-position gaps and replay lag.\nOperating System Resource Limit Anomaly: Kernel-enforced limits on file descriptors, shared memory, semaphores, threads, or similar resources prevent the database from opening new objects or spawning background workers.\n\nWhen all three root causes manifest concurrently, the system exhibits a blend of symptoms that blur subsystem boundaries:  \n• Queries that used to be fast suddenly slow down or fluctuate because the optimizer has switched to scan-heavy or single-threaded plans; parallel workers may be missing due to OS thread limits.  \n• The inefficient plans inflate transaction duration and generate excessive redo, which in turn causes replication send and apply queues to balloon; monitoring shows rapidly widening WAL/LSN gaps and replicas falling minutes or hours behind.  \n• At the same time, OS resource ceilings are hit—log-sender or apply processes fail to open additional files, allocate shm segments, or start extra apply threads—leading to error messages in both database logs and kernel logs, further throttling replication and occasionally aborting query executions.  \n• The primary’s pg_wal or redo area grows uncontrollably because old segments cannot be recycled while replicas lag, risking full disks and cascading slowdowns.  \nOverall, users observe erratic response times, timeouts, stale read traffic on replicas, and declining fail-over readiness, yet the individual symptoms overlap enough to obscure the multi-layered root cause.\n\nCausal interaction: A poor plan elevates I/O and CPU load, inflating the volume and rate of transaction log generation. This heavier WAL stream must traverse the replication channel, but replicas already struggle because OS-level limits cap the number of receiver/apply workers and restrict kernel objects (file handles, AIO contexts). The constrained replication workers fall further behind, which prevents log recycling on the primary, amplifying storage pressure and increasing contention for file descriptors—tightening the OS resource squeeze. Simultaneously, the exhausted kernel quotas prevent the optimizer from spawning parallel execution or maintaining plan cache structures, encouraging more plan switches and further entrenching sub-optimal plans. The feedback loop between wasteful plans, replication backlog, and kernel-level throttling drives the database into a degraded, unstable state.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.4728141936108552,
+            "bm25_score": 18.47971450506003,
+            "lexical_score": 0.1121239837398374,
+            "matched_terms": [
+                "and",
+                "are",
+                "for",
+                "has",
+                "of",
+                "on",
+                "operating",
+                "or",
+                "send",
+                "stale",
+                "system",
+                "the",
+                "this",
+                "time",
+                "to",
+                "when",
+                "which"
+            ],
+            "match_count": 270,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_idle",
+                "parameter_name": "tcp_keepalives_idle",
+                "timeout_category": "network_idle_keepalive_probe_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time with no network activity after which the operating system should send a TCP keepalive message to the client.",
+                "trigger_condition": "A TCP client connection has no network activity longer than tcp_keepalives_idle on systems supporting TCP_KEEPIDLE or an equivalent socket option.",
+                "workload_impact": "Starts TCP keepalive probing for an otherwise idle client connection; together with interval and count settings this can lead to dead connection detection.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

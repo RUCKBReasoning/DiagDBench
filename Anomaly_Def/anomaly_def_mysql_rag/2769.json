@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Transaction Log Subsystem Anomaly + CPU Resource Anomaly",
+            "Description": "Database Memory Allocation Anomaly: Excessive or uncontrolled growth of buffer caches, work areas, and other engine heaps drives the database process beyond the physical-memory envelope, provoking paging, swapping, or OOM events.\nTransaction Log Subsystem Anomaly: Generation, flushing, or archival of write-ahead log records becomes the principal bottleneck on the write path, inflating commit latency and stalling forward progress when log space or bandwidth is exhausted.\nCPU Resource Anomaly: Database processes saturate host CPUs, keeping run queues full and starving other components of compute cycles, thereby inflating response times across the workload.\n\nWhen these three conditions co-exist, the platform experiences a multilayer resource crisis. Memory pressure forces the engine and operating system to page frequently, which inflates CPU time spent in kernel mode and raises contention on memory latches. Simultaneously, the log subsystem cannot flush or archive fast enough, so commit and checkpoint waits accumulate. Because every commit now lingers on log I/O, client sessions remain active longer, holding onto memory allocations and consuming additional CPU while spinning on log-related waits. The prolonged session lifetimes and retry storms further expand plan and buffer caches, aggravating the memory shortfall, and the elevated CPU utilization slows both log-writer threads and page-reclaimer daemons, creating a feedback loop that deepens stalls. Symptoms therefore blend: escalating commit latency, soaring CPU load averages, runaway RSS growth, swap storms, and ultimately node eviction or crash recovery triggered by failed commits or OOM kills.\n\nCausally, high redo generation drives the log subsystem to its limits; stalled commits elongate transaction lifetimes, which in turn prevent memory buffers from being released and keep worker threads runnable, pushing CPU toward saturation. The CPU bottleneck then slows log flushing and memory reclamation, while memory scarcity induces additional CPU overhead through paging and spin-lock contention. Each anomaly reinforces the others, turning what might have been isolated pressure points into a systemic failure that degrades throughput for write-intensive OLTP workloads and risks abrupt service interruption.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 976,
+            "score": 0.466085425235379,
+            "bm25_score": 39.94619752260363,
+            "lexical_score": 0.14979309360730592,
+            "matched_terms": [
+                "and",
+                "by",
+                "cannot",
+                "client",
+                "commit",
+                "engine",
+                "failure",
+                "in",
+                "is",
+                "its",
+                "on",
+                "or",
+                "pressure",
+                "released",
+                "resource",
+                "that",
+                "the",
+                "to",
+                "workload"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "3138",
+                "error_name": "ER_CANT_SET_VARIABLE_WHEN_OWNING_GTID",
+                "official_description": "Variable %-.192s cannot be changed by a client that owns a GTID. The client owns %s. Ownership is released on COMMIT or ROLLBACK.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

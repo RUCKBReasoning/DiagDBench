@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Database Memory Allocation Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Obsolete row versions and rollback data accumulate faster than background cleanup can reclaim them, inflating the version store and enlarging on-disk structures.\nDatabase Memory Allocation Anomaly : Total in-process memory for caches, work areas, and background structures outgrows physical limits, provoking OS-level pressure, paging, and OOM terminations.\nTransaction Log Subsystem Anomaly : Log generation and flushing lag behind workload demand or archiving throughput, driving up commit latency and stalling writes.\n\nWhen these three root causes strike together, the database simultaneously shows runaway memory usage, ballooning version stores and tables, and a saturated redo/commit path. Symptoms include: rapidly expanding data and log files, escalating checkpoint and log-flush waits, degraded cache hit ratios from eviction or swap, long-running VACUUM/cleanup workers perpetually behind, soaring commit times that induce application timeouts, and periodic instance restarts when memory or log space is exhausted. Performance diagnostics may reveal intertwined waits—sessions stuck on log syncs while also incurring excessive memory and I/O to scan bloated heaps—making isolation of any single culprit difficult.\n\nCausally, high update/delete churn inflates both the MVCC version store and the volume of redo records, driving up memory demand and log throughput concurrently. Memory overcommitment reduces effective buffer cache and can force dirty pages to be flushed more aggressively, increasing log write frequency. Log back-pressure slows commit completion, leaving transactions open longer; these lingering snapshots prevent garbage collection, which in turn enlarges the version store, further consuming memory and I/O. The expanding memory footprint competes with log buffers and background workers for resources, slowing log archiving and cleanup tasks, creating a self-reinforcing loop that degrades throughput and risks crash or data-loss scenarios if not addressed promptly.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.36081879245885334,
+            "bm25_score": 15.77633096468095,
+            "lexical_score": 0.13113636363636363,
+            "matched_terms": [
+                "and",
+                "can",
+                "for",
+                "is",
+                "latency",
+                "longer",
+                "not",
+                "of",
+                "on",
+                "or",
+                "sessions",
+                "than",
+                "the",
+                "to",
+                "together",
+                "when",
+                "which",
+                "with"
+            ],
+            "match_count": 275,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_idle",
+                "parameter_name": "tcp_keepalives_idle",
+                "timeout_category": "network_idle_keepalive_probe_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time with no network activity after which the operating system should send a TCP keepalive message to the client.",
+                "trigger_condition": "A TCP client connection has no network activity longer than tcp_keepalives_idle on systems supporting TCP_KEEPIDLE or an equivalent socket option.",
+                "workload_impact": "Starts TCP keepalive probing for an otherwise idle client connection; together with interval and count settings this can lead to dead connection detection.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Schema and Index Design Anomaly: Static mismatch between physical data model (tables, indexes, partitions, data types, constraints) and the workload’s access patterns, forcing the optimizer into inefficient scans, excessive look-ups, and costly maintenance work.\nOperating System Resource Limit Anomaly: Exhaustion of kernel-enforced resources (file descriptors, shared memory, semaphores, thread or process quotas, async-I/O contexts, cgroup limits) that prevents the database engine from creating or using required OS objects.\n\nWhen these two root causes exist simultaneously, the workload experiences compounded symptoms: queries already slowed by missing or poorly chosen indexes trigger many extra random I/O operations, file opens, and context switches, pushing the engine to allocate more file handles, buffer pages, and background workers. At the same time, restrictive OS limits throttle those very kernel objects, so the database starts emitting \"too many open files\", \"cannot allocate shared memory\", or \"failed to start worker\" errors in the middle of long-running scans. Execution plans show full-table scans combined with sudden plan fallbacks to serial execution because parallel workers cannot be spawned. End-users observe erratic latencies—some statements hang or error out while others complete slowly—and maintenance tasks such as index rebuilds or autovacuum may stall, causing further bloat and performance decay.\n\nCausally, poor schema and index design inflates the number and duration of low-level operations (file accesses, temporary spill files, sort runs, row fetches) that rely on OS resources. This raised demand accelerates the exhaustion of file descriptors, shared-memory segments, or thread quotas governed by the operating system. Conversely, once OS limits are hit, the optimizer’s ability to use whatever indexes do exist is undermined—parallel scans are disabled, temporary file creation fails, and statistics refresh jobs cannot complete—masking or exacerbating the original design flaw. The feedback loop between inefficient access paths (driving resource hunger) and OS-level throttling (starving the database of those resources) amplifies performance degradation, increases error rates, and makes root-cause isolation difficult because symptoms fluctuate between slow queries and outright resource allocation failures.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 113,
+            "score": 0.5003400504748073,
+            "bm25_score": 33.38648192390647,
+            "lexical_score": 0.12794618834080718,
+            "matched_terms": [
+                "access",
+                "and",
+                "at",
+                "context",
+                "descriptors",
+                "error",
+                "execution",
+                "exist",
+                "is",
+                "objects",
+                "or",
+                "the",
+                "time",
+                "with"
+            ],
+            "match_count": 14,
+            "entry": {
+                "error_code": "2BP01",
+                "error_name": "dependent_objects_still_exist",
+                "official_description": "dependent objects still exist",
+                "error_class": "Class 2B - Dependent Privilege Descriptors Still Exist",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "authentication_and_authorization",
+                "cause_analysis": "The failure is typically associated with user identity, privilege scope, object access checks, or credential validation at session establishment or statement execution time.",
+                "solution_guidance": "Verify account credentials, privilege grants, object ownership, role settings, and whether the execution context has sufficient access rights.",
+                "observable_symptoms": [
+                    "access denied",
+                    "authentication failure",
+                    "permission error"
+                ]
+            }
+        }
+    }
+]

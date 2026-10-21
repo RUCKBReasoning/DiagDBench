@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Replication Synchronization Anomaly + Storage I/O Throughput Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Replication Synchronization Anomaly: Standbys or downstream consumers cannot read, persist, or apply WAL/redo fast enough, causing ever-growing log-position gaps and replica lag.\nStorage I/O Throughput Anomaly: The physical devices or storage fabric are saturated, driving up read/write latencies and queue depths and slowing all database I/O.\nStorage Space Capacity Anomaly: Allocated disk or logical volume free space is exhausted for data, log, archive, temp, or backup areas, producing allocation failures and blocking further growth.\n\nWhen these three issues occur together, the database experiences compounding symptoms: replication delay widens rapidly while primary and replica disks show both high latency and dwindling free space. Primary log segments accumulate because they cannot be recycled until replicas catch up, but the replicas themselves are replaying slowly due to saturated I/O paths. The retained logs, growing relay logs, and stalled archiving consume the remaining disk capacity on both tiers, causing space-exhaustion errors, forced pauses of replication or checkpoint activity, prolonged commit acknowledgment times, escalating application latency, and eventually write failures that can freeze the entire workload. Monitoring dashboards show soaring replication lag, elevated storage wait events, device queues at maximum depth, and critical free-space alarms firing almost simultaneously.\n\nCausally, an underlying Storage I/O Throughput Anomaly throttles both the primary’s log flushes and the replicas’ redo apply rates. This slowdown makes replicas fall behind, which prevents the primary from removing old log segments. The retained logs rapidly consume disk, triggering a Storage Space Capacity Anomaly on both primary and standby volumes. As space tightens, background checkpoints and archiving intensify I/O pressure, further degrading throughput and creating a positive feedback loop that worsens replication lag and accelerates space depletion. The intertwined nature of insufficient I/O bandwidth and shrinking free space amplifies the replication backlog, culminating in systemic stalls, potential replication stoppage, and risk of primary outage due to full disks.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.7455332047395976,
+            "bm25_score": 30.13416120203553,
+            "lexical_score": 0.15177734913199226,
+            "matched_terms": [
+                "and",
+                "apply",
+                "be",
+                "causing",
+                "data",
+                "downstream",
+                "is",
+                "lag",
+                "or",
+                "replica",
+                "replication",
+                "stalled",
+                "the",
+                "this",
+                "times",
+                "to",
+                "when"
+            ],
+            "match_count": 58,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

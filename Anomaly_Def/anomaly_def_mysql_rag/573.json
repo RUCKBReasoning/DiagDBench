@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Storage Space Capacity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application SQL and transaction design compel the engine to scan or manipulate far more data and hold resources longer than functionally required.\nStorage Space Capacity Anomaly : Physical or logical free space for data files, logs, and temporary areas is exhausted or cannot grow, causing allocation failures.\nOperating System Resource Limit Anomaly : Kernel-enforced ceilings on file descriptors, shared memory, processes, or related objects are reached, blocking further resource acquisition by the database.\n\nWhen these three root causes manifest together, the system experiences compound symptoms: long-running or repetitive statements consume excessive CPU and memory, inflate redo and undo logs, and generate large temporary segments. The surging I/O and spill-to-disk activity accelerate space consumption until tablespaces, logs, and temp areas hit hard limits, at which point DML, queries, index builds, and checkpoint operations stall with \"no space\" or \"cannot extend\" errors. Simultaneously, the same bloat drives a spike in open files, shared memory segments, and background worker creation; as kernel quotas are met, new sessions fail to connect, parallel workers abort, and existing tasks receive OS-level \"too many open files\" or \"cannot allocate memory\" errors. The overlap of storage exhaustion and OS-resource exhaustion leaves the engine partially frozen: some sessions hang on I/O or log writes, others on kernel denials, producing a confusing mosaic of timeouts, lock contention, and crash-recovery events.\n\nCausally, poorly written SQL amplifies data churn, flooding redo, undo, and temp space and forcing the engine to open additional data files, sort runs, and temporary objects—each requiring file handles and shared memory. Rapid space depletion causes frequent auto-extension or archive operations, further multiplying file opens and background processes until kernel limits are breached. Conversely, once OS limits are reached, the database cannot allocate the very handles and shared segments it needs to recycle space or archive logs, so space remains unreclaimed and fills even faster. The intertwined feedback loop between inefficient workload, space exhaustion, and OS resource starvation escalates into a systemic outage far more severe than any of the individual anomalies alone.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 824,
+            "score": 0.5884648922377105,
+            "bm25_score": 66.93377785324674,
+            "lexical_score": 0.181422351233672,
+            "matched_terms": [
+                "acquisition",
+                "and",
+                "blocking",
+                "by",
+                "creation",
+                "engine",
+                "for",
+                "index",
+                "is",
+                "lock",
+                "logic",
+                "logical",
+                "needs",
+                "or",
+                "overlap",
+                "resources",
+                "same",
+                "the",
+                "transaction",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "1850",
+                "error_name": "ER_ALTER_OPERATION_NOT_SUPPORTED_REASON_FTS",
+                "official_description": "Fulltext index creation requires a lock",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "concurrency_and_transaction",
+                "cause_analysis": "The failure is typically associated with concurrent transactions contending for the same logical resources, incompatible lock acquisition order, or transaction-state conflicts surfaced by the engine.",
+                "solution_guidance": "Inspect blocking chains, reduce conflicting write overlap, shorten transaction lifetime, review lock acquisition order, and verify whether transaction scheduling or retry logic needs adjustment.",
+                "observable_symptoms": [
+                    "blocking",
+                    "rollback",
+                    "retry",
+                    "stalled transaction"
+                ]
+            }
+        }
+    }
+]

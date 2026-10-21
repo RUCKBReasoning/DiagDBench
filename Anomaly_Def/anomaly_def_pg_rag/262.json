@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Sessions stall while competing for hot buffer-cache pages, page pins, or latches, leading to spin or sleep delays during page access.\nOperating System Resource Limit Anomaly : The database engine or its worker processes hit kernel-enforced ceilings for objects such as file descriptors, shared-memory segments, semaphores, threads, or I/O contexts, preventing further resource acquisition.\n\nWhen both root causes manifest together, the system shows a mixture of intense page-level contention and sporadic kernel allocation failures. Symptom patterns include surging buffer-busy and page-latch waits intertwined with error messages about exhausted file handles, semaphore limits, or thread creation failures. Throughput oscillates as some sessions spin on latch acquisition while others are aborted or blocked by the OS, leading to sharp latency spikes, uneven CPU utilisation (alternating between spin storms and idle time), partial loss of parallel workers, and a rapid drop in cache hit ratios as pages are evicted or cannot be pinned. Monitoring views may show rising I/O due to reduced cache residency, yet background writers and checkpoint threads fail intermittently, amplifying dirty-page backlogs and prolonging flush-related holds.\n\nCausally, OS-level resource exhaustion reduces the number of buffer-pool frames, background processes, or I/O contexts available, forcing more aggressive page replacement and enlarging the set of hot pages contended by surviving sessions—thereby aggravating latch contention. Conversely, severe latch spin or sleep loops inflate thread counts and open-file usage as sessions retry I/O and spawn additional workers, accelerating consumption of kernel objects until limits are breached. The two anomalies thus form a feedback loop: OS limits constrict the buffer manager’s operating headroom, heightening page-level serialization, while the resulting contention multiplies kernel object requests, hastening limit exhaustion and driving the database into cascading stalls or partial outages.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.4461194686986591,
+            "bm25_score": 15.407067609340983,
+            "lexical_score": 0.1298474945533769,
+            "matched_terms": [
+                "and",
+                "are",
+                "be",
+                "idle",
+                "latency",
+                "messages",
+                "number",
+                "of",
+                "on",
+                "or",
+                "sessions",
+                "system",
+                "the",
+                "time",
+                "to",
+                "when"
+            ],
+            "match_count": 173,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_count",
+                "parameter_name": "tcp_keepalives_count",
+                "timeout_category": "network_keepalive_failure_threshold",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the number of TCP keepalive messages that can be lost before the server connection to the client is considered dead.",
+                "trigger_condition": "The number of lost TCP keepalive probes reaches tcp_keepalives_count on systems supporting TCP_KEEPCNT.",
+                "workload_impact": "The server can consider the client connection dead after the configured keepalive failure threshold.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

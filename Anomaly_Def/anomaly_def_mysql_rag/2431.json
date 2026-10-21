@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Buffer Cache and Latch Contention Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Schema and Index Design Anomaly : The static physical data model and index layout do not fit workload access patterns, forcing queries into sub-optimal, scan-heavy plans and inflating maintenance work on every modification.\nBuffer Cache and Latch Contention Anomaly : Concurrent sessions serialize on hot buffer pages and latches, producing buffer-busy waits, spin-loop CPU burn, and checkpoint-related stalls even though total memory may be sufficient.\nData Block and Index Integrity Anomaly : On-disk data pages or index structures are physically or logically corrupted, so page checksums fail, index keys are out of order, and the optimizer reluctantly falls back to full scans or throws corruption errors.\n\nWhen all three conditions co-exist, the database shows a compound failure signature: queries that already favor full-table or non-covering index scans (because of poor schema and index design) pour traffic onto a small set of hot pages, amplifying latch and buffer-pin waits. The same pages may intermittently raise checksum or key-order errors, causing query retries, plan fallbacks to even broader scans, and emergency page repairs. Observable symptoms include oscillating CPU spikes from latch spin followed by I/O bursts from corruption-triggered page rereads, sudden drops in plan stability, mismatch between index and heap row counts, and erratic latency that improves only after both index redesign and corruption repair.\n\nCausally, inefficient schema design drives high page churn and repeated access to specific root or leaf pages, which intensifies buffer contention. Prolonged contention keeps pages locked or dirty longer, stretching checkpoint windows and increasing the chance that an unexpected shutdown or storage glitch leaves those frequently written pages in an inconsistent state—thus seeding or aggravating block and index corruption. In turn, corruption forces the optimizer to abandon damaged indexes, magnifying the original design flaw by routing even more traffic through full scans, which further heats the buffer cache and latches. The feedback loop among design mismatch, hot-page contention, and structural corruption rapidly degrades throughput and threatens data integrity unless all three layers are addressed together.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.6383238697166963,
+            "bm25_score": 22.7223675339492,
+            "lexical_score": 0.125,
+            "matched_terms": [
+                "access",
+                "and",
+                "be",
+                "because",
+                "by",
+                "contention",
+                "in",
+                "or",
+                "query",
+                "the",
+                "together",
+                "triggered",
+                "when",
+                "work",
+                "workload"
+            ],
+            "match_count": 114,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

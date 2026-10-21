@@ -1,0 +1,60 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Storage Space Capacity Anomaly + CPU Resource Anomaly",
+            "Description": "SQL Workload Logic Anomaly: Application-layer statement or transaction design forces the engine to scan, join, or retain more data than the business requirement really needs.\nStorage Space Capacity Anomaly: Physical or logical free space for data, logs, or temporary areas is exhausted or approaching hard limits.\nCPU Resource Anomaly: Database-related processes saturate host CPU, leaving too few cycles for the rest of the workload.\n\nWhen these three root causes strike concurrently, the database experiences a compound failure mode in which user-written queries chew through excessive rows, fan out large intermediate result sets, and keep transactions open longer. Those bloated operations quickly consume CPU time, while the inflated intermediate and persistent objects (work tables, spill files, growing tables, and never-committed LOBs) burn through remaining disk and log space. Observable symptoms therefore overlap and amplify: statement latency grows non-linearly, slow-query logs and OS run-queue metrics spike together, \"out of space\" or \"cannot extend\" errors interleave with CPU-bound wait events, checkpoints or log archival stall because the log destination is full, and emergency space-reclaim tasks fail to run because the server is already CPU-saturated.\n\nCausally, inefficient workload logic is the primary generator of both CPU demand and ballooning data footprints. The ensuing CPU saturation slows DML, causing redo and undo segments to remain active longer and accumulate more bytes, which in turn drives faster space consumption in datafiles and logs. Once space becomes scarce, allocation failures trigger retries and error handling paths in the application, spawning even more short-lived sessions and compiler activity that fight for already limited CPU. The feedback loop—poor query logic → high CPU → slow I/O recycling → accelerated space exhaustion → error-driven resubmissions → even higher CPU—can push the system into runaway degradation or outright outages unless all three contributing layers are addressed together.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.7529627740948495,
+            "bm25_score": 38.836095999028494,
+            "lexical_score": 0.1765425803161652,
+            "matched_terms": [
+                "and",
+                "because",
+                "error",
+                "is",
+                "longer",
+                "more",
+                "of",
+                "or",
+                "out",
+                "query",
+                "resource",
+                "sql",
+                "statement",
+                "than",
+                "that",
+                "the",
+                "time",
+                "together",
+                "too",
+                "user",
+                "when",
+                "with",
+                "work",
+                "workload"
+            ],
+            "match_count": 187,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

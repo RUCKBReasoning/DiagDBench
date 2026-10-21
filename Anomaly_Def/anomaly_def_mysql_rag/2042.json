@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Optimizer Statistics Anomaly: The optimizer relies on stale, incomplete, or misleading statistics, which drives systematic cardinality misestimation and chronic selection of sub-optimal execution plans.\nBuffer Cache and Latch Contention Anomaly: Excessive concurrent access to a small set of buffer-cache pages or latches forces sessions to wait or spin, producing high buffer-busy and page-latch latency even when overall memory is sufficient.\n\nWhen both anomalies surface together, the database experiences a feedback loop where poor plan choices amplify low-level cache and latch congestion, and the resulting contention further increases plan instability and statistics staleness. Observable symptoms include:  • Extreme divergence between estimated and actual row counts combined with surges in buffer_busy, page_latch, or latch_free waits.  • Queries that oscillate between different bad plans after bulk loads or partition swaps, each rapidly throttled by latch waits on hot index roots or data pages.  • CPU saturation due to spin-loops alongside I/O bursts from repeated buffer evictions, paired with sudden plan recompiles and escalating query latencies.  • Monitoring views show both outdated statistics timestamps and hot-page contention on the very objects whose statistics are stale.\n\nCausal chain: stale or inaccurate statistics cause the optimizer to favor access paths (e.g., nested-loop lookups, under-parallelized scans, or monotonically growing index inserts) that hammer a narrow set of pages. This concentrates read/write traffic, increasing latch acquisition frequency and buffer churn. The resulting contention elongates statement runtimes, delaying maintenance tasks such as auto-statistics refresh and check-point driven flushes, which keeps statistics stale and dirty pages resident longer, respectively. Prolonged flush cycles shrink effective buffer reuse, elevating contention further and creating a self-reinforcing degradation loop that affects both transactional and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 16,
+            "score": 0.4546164699327765,
+            "bm25_score": 13.532754935434275,
+            "lexical_score": 0.11880382775119616,
+            "matched_terms": [
+                "and",
+                "are",
+                "data",
+                "delaying",
+                "is",
+                "latency",
+                "level",
+                "or",
+                "read",
+                "the",
+                "this",
+                "when",
+                "write"
+            ],
+            "match_count": 63,
+            "entry": {
+                "timeout_id": "mysql84_xplugin_write_timeout",
+                "parameter_name": "mysqlx_write_timeout",
+                "timeout_category": "x_protocol_network_write_timeout",
+                "scope": "global/session/X Plugin",
+                "official_definition": "Write timeout for X Plugin network communication.",
+                "trigger_condition": "A MySQL X Protocol write operation exceeds mysqlx_write_timeout.",
+                "workload_impact": "The X Protocol network write operation times out.",
+                "default_behavior": "Defined as a MySQL X Plugin system variable.",
+                "system_domain": "network_transport",
+                "cause_analysis": "This timeout is usually triggered when network data is not acknowledged, received, or written within the configured transport-level waiting window.",
+                "solution_guidance": "Inspect packet loss, transport latency, client responsiveness, proxy behavior, and whether slow consumers or unstable links are delaying network progress.",
+                "observable_symptoms": [
+                    "network timeout",
+                    "disconnect",
+                    "read/write interruption"
+                ]
+            }
+        }
+    }
+]

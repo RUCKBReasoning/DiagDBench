@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Database Configuration Parameter Anomaly + Database Memory Allocation Anomaly",
+            "Description": "Schema and Index Design Anomaly: Static mismatch between table structures / indexes and the workload forces queries into wide scans, non-covering lookups, and write hot-spots.\nDatabase Configuration Parameter Anomaly: Engine parameters for memory, parallelism, checkpoints, and workers are mis-tuned relative to hardware capacity and workload mix.\nDatabase Memory Allocation Anomaly: Aggregate memory consumed by caches, work areas, and sessions exceeds the safe limit of the host, provoking OS-level pressure or OOM events.\n\nWhen all three root causes coexist, the system exhibits a blended symptom set: 1) full-table or full-index scans initiated by poor schema design allocate large work-memory regions that grow unchecked because per-query and per-session limits are misconfigured; 2) the bloated memory footprint collides with an undersized or overgrown buffer pool, causing rapid eviction, cache-hit volatility, and emergency flushes; 3) checkpoint storms, log-write stalls, or background-worker backlogs appear while CPU and I/O devices remain paradoxically under-utilised; 4) the host shows paging, swap thrashing, or abrupt process termination, after which execution plans may oscillate unpredictably as statistics, caches, and parameter adaptive features struggle to stabilise.\n\nCausal chain: Inefficient access paths produced by the schema/index mismatch dramatically increase the volume of rows read, sorted, and hashed. Because configuration parameters such as work-memory, temp-space thresholds, buffer-pool size, and parallel-worker caps are mis-set, each inflated operation reserves more memory than the host can realistically supply. The resulting ballooning of session and cache memory triggers the memory-allocation anomaly, pushing the operating system into paging and forcing the database to flush or evict useful buffers prematurely. These evictions, in turn, magnify the original design flaw by making every repeated table or index scan re-read pages from disk. Meanwhile, mis-tuned checkpoint and background housekeeping parameters amplify I/O bursts caused by the additional dirty pages. The feedback loop between bad access paths, misallocated resources, and systemic memory pressure leads to cascading slowdowns, erratic throughput, and, in extreme cases, service instability or crashes.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.5062647098090799,
+            "bm25_score": 19.64894738832133,
+            "lexical_score": 0.12503424657534246,
+            "matched_terms": [
+                "after",
+                "an",
+                "and",
+                "are",
+                "can",
+                "for",
+                "of",
+                "operating",
+                "or",
+                "session",
+                "sessions",
+                "system",
+                "than",
+                "the",
+                "to",
+                "when",
+                "which",
+                "with"
+            ],
+            "match_count": 260,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_idle",
+                "parameter_name": "tcp_keepalives_idle",
+                "timeout_category": "network_idle_keepalive_probe_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time with no network activity after which the operating system should send a TCP keepalive message to the client.",
+                "trigger_condition": "A TCP client connection has no network activity longer than tcp_keepalives_idle on systems supporting TCP_KEEPIDLE or an equivalent socket option.",
+                "workload_impact": "Starts TCP keepalive probing for an otherwise idle client connection; together with interval and count settings this can lead to dead connection detection.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

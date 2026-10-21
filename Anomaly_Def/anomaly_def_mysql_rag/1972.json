@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Buffer Cache and Latch Contention Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Excessive accumulation of obsolete row versions and index entries that outpaces background cleanup, inflating on-disk and in-memory data footprints and enlarging visibility-check work. \nBuffer Cache and Latch Contention Anomaly : Sessions serialize on hot buffer pages, latches, and I/O slots, producing CPU spin and wait time instead of useful work. \nNetwork and Connectivity Resource Anomaly : Client/server communication and connection-handling resources saturate, causing slow or failed connection attempts and stalled socket I/O.\n\nWhen all three conditions coexist, the database exhibits a multilayer slowdown: queries spend extra CPU cycles scanning bloated heaps, then block on latch and buffer-busy waits while seeking or modifying the same hot pages already inflated by version bloat. Prolonged statement execution holds network sockets, authentication slots, and result streams open, so new client sessions pile up behind an overworked listener, and existing backends linger in client-write or client-read waits. System views show simultaneously rising dead-tuple ratios, surging buffer/latch wait counters, growing dirty-page queues, and spikes in connection-queue depth, with application timeouts and sporadic throughput collapses that are hard to attribute to any single layer.\n\nCausally, long-running or stalled client sessions (due to network congestion or throttled consumers) keep transactions open, advancing the vacuum horizon slowly and preventing removal of obsolete versions; the ensuing table and index bloat multiplies the number of buffer pages that must be touched and pinned, amplifying latch contention. In parallel, the enlarged working set strains an already pressured buffer pool, increasing page churn and dirty-page flushes that further extend latch hold times. These longer critical sections propagate up the stack as slower queries, which in turn prolong connection lifetimes and raise the likelihood of hitting socket, process, or authentication limits—feeding back into the network/connectivity bottleneck. The intertwined feedback loops between version bloat, buffer contention, and connection saturation thus reinforce each other, degrading OLTP responsiveness and risking cascading outages.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2674,
+            "score": 0.4516317242553415,
+            "bm25_score": 50.37797632367915,
+            "lexical_score": 0.17761685319289006,
+            "matched_terms": [
+                "and",
+                "authentication",
+                "be",
+                "check",
+                "client",
+                "communication",
+                "connection",
+                "in",
+                "limits",
+                "must",
+                "network",
+                "number",
+                "of",
+                "or",
+                "pool",
+                "server",
+                "the",
+                "to",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010789",
+                "error_name": "OBSOLETE_ER_NDB_POOL_SIZE_CLUSTER_CONNECTION_POOL_NODEIDS",
+                "official_description": "NDB: The size of the cluster connection pool must be equal to the number of nodeids in --ndb-cluster-connection-pool-nodeids='%s'.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "connection_and_network",
+                "cause_analysis": "The failure is typically associated with connection establishment, authentication exchange, protocol correctness, network reachability, or client/server communication stability.",
+                "solution_guidance": "Check endpoint reachability, authentication flow, connection limits, protocol compatibility, transport stability, and client connection lifecycle management.",
+                "observable_symptoms": [
+                    "connection failure",
+                    "disconnect",
+                    "handshake failure",
+                    "unreachable session"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Buffer Cache and Latch Contention Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level statement and transaction design forces the engine to scan or modify far more data, rows, and pages than business logic requires.\nBuffer Cache and Latch Contention Anomaly : Hot buffer pages and their protecting latches become serialization points, causing sessions to spin or block while trying to pin or modify pages.\nStorage I/O Throughput Anomaly : The physical storage subsystem cannot supply read or write bandwidth fast enough, so database I/O queues grow and service times climb.\n\nWhen these three root causes strike together, the workload issues excessive page accesses, the hottest of which pile up in the buffer cache and contend on latches while the same pages are also waiting for slow physical reads or flushes. Observable symptoms are an explosive mixture of long-tail SQL latency, severe buffer-busy and page-latch waits, sustained I/O wait events, and CPU spin with little progress. Slow-query logs fill with the same heavyweight statements; wait-event histograms show alternating spikes of latch waits and I/O waits; checkpoint or dirty-page flush operations linger, causing transaction commit latency and drawing more latch contention on the log buffer. Application threads may time out, retry, and further magnify the concurrent pressure.\n\nCausally, the chatty or scan-heavy SQL multiplies the number of buffer touches; the surge in touched pages raises the probability that many sessions target the same index root, data hotspot, or insert location, intensifying latch contention. Because storage bandwidth is already saturated, pages stay in flight or dirty longer, prolonging the time latches must be held and increasing the likelihood of spin or block. Conversely, the latch pile-ups delay page release, throttling page recycling and forcing still more physical reads, which deepens the storage backlog. The result is a feedback loop in which inefficient SQL amplifies buffer-level hot spots, latch serialization keeps pages locked in memory, and constrained storage throughput prevents timely I/O completion, collectively driving runaway latency and throughput collapse.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.5524659888357286,
+            "bm25_score": 28.56145334183314,
+            "lexical_score": 0.17348557692307692,
+            "matched_terms": [
+                "an",
+                "and",
+                "because",
+                "cannot",
+                "delay",
+                "for",
+                "in",
+                "is",
+                "longer",
+                "or",
+                "retry",
+                "sessions",
+                "statement",
+                "than",
+                "the",
+                "to",
+                "transaction",
+                "waiting",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 91,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

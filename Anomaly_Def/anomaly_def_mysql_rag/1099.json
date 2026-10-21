@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Optimizer Statistics Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level statement or transaction construction obliges the engine to touch far more data or rows than functionally required.\nOptimizer Statistics Anomaly : Metadata that feeds the optimizer is stale or incomplete, driving systematic cardinality misestimates and poor plan choices.\nBuffer Cache and Latch Contention Anomaly : Hot pages or page-management structures become serialized choke points, stalling sessions on buffer pins, latches, or I/O slots.\n\nWhen all three root causes coexist, the workload generates oversized or repetitively executed statements whose misestimated plans choose wide scans or incorrect join orders; these plans in turn surge demand for the same small set of pages, amplifying buffer-busy waits and page-latch contention. Observable symptoms overlap and intensify: slow-query logs balloon with the same statements, execution plans show grossly divergent estimated-vs-actual row counts, wait-event views are dominated by both latch waits and long physical I/O times, CPUs exhibit spin without throughput gain, and application timeouts rise in coincidence with spikes in buffer-cache contention metrics.\n\nCausal chain: Poorly written SQL or transaction scoping (workload logic anomaly) forces the engine to access large ranges or repeatedly hit the same lookup pages. Because statistics are stale or missing (optimizer statistics anomaly), the optimizer underestimates the resulting row counts and selects execution paths—such as nested loops on tiny indexes or serial table scans—that further funnel traffic onto hot root or leaf pages. The sustained, concentrated access saturates buffer frames and latches (buffer cache contention anomaly), lengthening critical sections and inflating latch hold times. Prolonged contention delays the very statements that update statistics or flush dirty pages, keeping statistics stale and hot pages hotter, forming a feedback loop that progressively degrades latency and throughput across both transactional and analytical sessions.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.7473225806451612,
+            "bm25_score": 32.41749219634923,
+            "lexical_score": 0.15774193548387094,
+            "matched_terms": [
+                "access",
+                "and",
+                "because",
+                "by",
+                "contention",
+                "execution",
+                "for",
+                "in",
+                "is",
+                "long",
+                "or",
+                "query",
+                "statement",
+                "statements",
+                "the",
+                "when",
+                "with",
+                "workload"
+            ],
+            "match_count": 54,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

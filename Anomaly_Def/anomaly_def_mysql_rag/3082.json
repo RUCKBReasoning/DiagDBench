@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Replication Synchronization Anomaly",
+            "Description": "Schema and Index Design Anomaly : Physical data-model structures (tables, partitions, indexes, datatypes, constraints) do not match the workload’s access patterns, forcing inefficient access paths and inflating DML and query cost.\nReplication Synchronization Anomaly : The replication pipeline cannot receive, persist, or apply primary-side log records fast enough, causing widening apply lag and retention of log segments on the source.\n\nWhen these two root causes strike at the same time, the database exhibits a mixed set of local performance issues and distributed data-movement symptoms: primary queries suffer from full scans, non-covering index lookups, and write slow-downs due to oversized or missing indexes, while replicas simultaneously fall further behind because the bloated change stream (extra page writes, larger redo records, unnecessary index maintenance) overwhelms network, I/O, and apply threads. Monitoring may show high CPU and I/O on both primary and replicas, growing replication lag, expanding WAL/binlog retention, hot-spot pages locked on the replicas during re-indexing, and unpredictable read staleness that cannot be eliminated merely by tuning replication parameters.\n\nCausally, the poor physical design inflates every data modification—each insert, update, or delete touches more pages and indexes, enlarging transaction-log volume and increasing per-statement latency. The heavier log stream must traverse the replication channel, stressing network and replica resources; as replicas fall behind, retained log segments accumulate on the primary, further consuming I/O bandwidth and storage and lengthening checkpoint and vacuum cycles. Conversely, sustained replication lag prevents timely feedback about design fixes (e.g., new indexes) and can hold metadata locks, delaying online schema evolution and perpetuating the sub-optimal design. Together, the two anomalies reinforce each other, degrading both local workload performance and the availability of up-to-date replicas, thereby compromising overall system throughput, latency, and resilience.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.7369537480063796,
+            "bm25_score": 30.801454222984777,
+            "lexical_score": 0.12317916002126528,
+            "matched_terms": [
+                "and",
+                "apply",
+                "be",
+                "causing",
+                "channel",
+                "data",
+                "lag",
+                "or",
+                "replica",
+                "replication",
+                "the",
+                "timely",
+                "to",
+                "when"
+            ],
+            "match_count": 144,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

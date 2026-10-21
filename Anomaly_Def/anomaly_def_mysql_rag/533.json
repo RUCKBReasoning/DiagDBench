@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Transaction Log Subsystem Anomaly + CPU Resource Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level SQL or transaction design forces the engine to scan or change more data than business logic really requires.\nTransaction Log Subsystem Anomaly : The write-ahead logging path (log buffer, log files, flush, archive, replication retention) becomes the primary bottleneck for commits.\nCPU Resource Anomaly : Database processes consume an abnormally high share of CPU, saturating host cores and slowing all work.\n\nWhen these three root causes are active together the system exhibits extreme and unpredictable latency spikes: statements linger in the slow-query log while commit calls block behind log-flush waits; CPU utilisation stays near 100 %, with long run-queues and scheduler waits; log files grow and switch rapidly yet archiver or replication threads fall behind, triggering \"log file full\" or \"cannot allocate next log\" conditions; application timeouts, deadlocks, and recovery-driven crashes become more frequent because transactions remain open for extended periods and hold locks longer than expected. Diagnostic views simultaneously show top SQL by CPU time, high redo generation rates, and dominant log-related wait events, making single-factor analysis inconclusive.\n\nCausally, inefficient workload logic produces oversized scans, updates, and long-lived transactions that explode redo volume and CPU demand. The surge in redo overwhelms the transaction-log subsystem; flush and archive stalls delay commits, which in turn keep transactions—and their locks—open even longer. While sessions wait for log space, they continue to consume CPU in spin-loops, context switching, or retry logic, driving further CPU saturation. The oversubscribed CPU then slows both query execution and the log writer/archiver threads, deepening log congestion. This feedback loop between bad SQL semantics, log pressure, and CPU exhaustion amplifies each individual anomaly, rapidly degrading overall OLTP throughput and stability.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 929,
+            "score": 0.47693105653143314,
+            "bm25_score": 54.384921853471354,
+            "lexical_score": 0.15343589743589742,
+            "matched_terms": [
+                "and",
+                "between",
+                "for",
+                "keep",
+                "log",
+                "or",
+                "replication",
+                "requires",
+                "retention",
+                "run",
+                "stability",
+                "the",
+                "this",
+                "threads",
+                "to",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "3082",
+                "error_name": "ER_REPLICA_CHANNEL_NOT_RUNNING",
+                "official_description": "This operation requires running replication threads; configure replica and run START REPLICA FOR CHANNEL '%s'",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

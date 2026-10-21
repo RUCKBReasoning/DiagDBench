@@ -1,0 +1,61 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Transaction Lock Contention Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Row-count and data-distribution metadata are stale, incomplete, or missing, so the optimizer consistently misestimates cardinalities and chooses sub-optimal access and join strategies.\nTransaction Lock Contention Anomaly : Concurrent sessions compete for incompatible locks on the same rows, pages, or tables, causing blocking chains or deadlocks that throttle throughput.\n\nWhen these two root causes are present together, the workload exhibits an intertwined set of symptoms: execution plans that suddenly shift to full scans or incorrect join orders acquire far more or higher-granularity locks than expected, inflating lock footprints and lock-hold times; queue lengths, lock-wait time, and deadlock frequency surge while estimated versus actual row counts in show-plan output diverge by orders of magnitude; statistics-recompile or deadlock-victim errors, sporadic plan cache flushing, erratic query latencies, and application time-outs appear in close succession, making it difficult to attribute slowdown to a single layer.\n\nCausally, stale or poor-quality statistics drive the optimizer to pick plans that touch many unnecessary rows or escalate from index to table scans, dramatically increasing the number and scope of acquired locks. The enlarged lock footprint intensifies contention on hot objects, lengthening transaction duration and raising the probability of deadlocks. In turn, prolonged blocking holds data modifications open longer, allowing data skew to diverge further from recorded statistics and preventing timely auto-statistics updates (which often wait for object-level quiescence), thus reinforcing statistics staleness. This feedback loop magnifies both cardinality misestimation and lock contention, creating a persistent, self-worsening performance degradation under OLTP workloads.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.6160975667478621,
+            "bm25_score": 33.253281829720926,
+            "lexical_score": 0.18361204013377924,
+            "matched_terms": [
+                "an",
+                "and",
+                "blocking",
+                "for",
+                "from",
+                "incompatible",
+                "lock",
+                "locks",
+                "longer",
+                "metadata",
+                "of",
+                "open",
+                "or",
+                "preventing",
+                "query",
+                "sessions",
+                "than",
+                "that",
+                "the",
+                "this",
+                "time",
+                "transaction",
+                "when",
+                "while"
+            ],
+            "match_count": 196,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Query Plan Selection Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "SQL Workload Logic Anomaly: Application-level statement or transaction design forces the engine to touch far more data, rows, or time than the true business request requires.\nQuery Plan Selection Anomaly: The optimizer selects or reuses an execution plan whose cost model decision is sub-optimal despite having reasonably accurate statistics.\nData Block and Index Integrity Anomaly: Physical pages or index structures on disk have become corrupted or internally inconsistent, making their logical contents unreliable.\n\nWhen all three conditions coexist, the workload experiences extreme and erratic latency spikes, wide resource excursions, and unpredictable result-set correctness. Over-broad or poorly parameterized SQL keeps transactions open and touches large data ranges; the optimizer, already mis-choosing plans, may oscillate between full scans and inefficient nested loops; corrupted pages or mis-linked index structures further inflate I/O, cause repeated retries, checksum failures, or silent row omissions/duplications. Symptoms manifest as the same queries repeatedly entering slow-query logs with varying plans and row counts, sudden floods of checksum or logical-consistency errors, lock escalation or deadlocks due to long-running transactions stuck on corrupt pages, and application-side timeouts followed by inconsistent business results.\n\nCausally, excessive and ill-scoped SQL amplifies the surface area that the optimizer must reason about and the storage engine must read, raising the probability of touching corrupted pages. Once such pages are accessed, error handling or silent corruption skews runtime statistics, which in turn feeds back into the plan cache and encourages the optimizer to pick even poorer plans on subsequent executions. Conversely, a bad plan that chooses an unnecessary full scan or hot spot index walk is more likely to hit corrupted structures, provoking retries, forced plan invalidations, or emergency fallbacks to slower scans. The interaction forms a vicious cycle: workload inefficiency increases I/O and execution time, the optimizer’s misjudgments magnify that cost, and underlying corruption injects further unpredictability, leading to cascading performance collapse and potential data-consistency exposure across both transactional and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.7433288492112021,
+            "bm25_score": 34.16128709816554,
+            "lexical_score": 0.14442949737067384,
+            "matched_terms": [
+                "and",
+                "error",
+                "execution",
+                "is",
+                "long",
+                "more",
+                "of",
+                "or",
+                "query",
+                "resource",
+                "running",
+                "sql",
+                "statement",
+                "than",
+                "that",
+                "the",
+                "time",
+                "when",
+                "with",
+                "workload"
+            ],
+            "match_count": 208,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

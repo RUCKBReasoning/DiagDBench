@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly: Excessive accumulation of obsolete row versions, rollback records, and dead index entries that outpaces background cleanup, inflating the version store and increasing visibility-check and I/O overhead.\nData Block and Index Integrity Anomaly: Physical corruption or logical inconsistency in on-disk data or index pages, leading to broken page links, bad checksums, or mismatched heap-to-index mappings.\n\nWhen both root causes strike together, administrators may observe an explosive growth of disk space and severe query divergence: sequential scans lengthen because of massive dead tuples, while index scans intermittently miss or duplicate rows due to corrupt leaf pages. Autovacuum or purge workers can run continuously yet fail, repeatedly crashing or skipping damaged pages, so the dead-row ratio and version store continue to climb unchecked. CHECKDB-style utilities report both bloated heaps and structural defects; execution plans oscillate between slow full scans (triggered by planner distrust in corrupt indexes) and mis-guided index probes that still return incorrect results. Error logs may alternate between \"cannot find snapshot/clog\" warnings and \"page checksum mismatch\" or \"index inconsistent\" errors, making isolation of a single culprit difficult.\n\nCausally, heavy update/delete churn first inflates the MVCC version store; the enlarged heap and index structures expand the surface area for I/O and memory faults, increasing the probability of physical corruption. Conversely, once block or index corruption appears, cleanup workers may abort or skip corrupted pages, allowing even more obsolete versions to linger and accelerating version-store exhaustion and table bloat. Repeated crash-recovery cycles caused by corruption can interrupt vacuuming windows, further delaying reclamation. The feedback loop between failed cleanup and structural corruption amplifies performance collapse, risks transaction-ID wraparound or undo-segment exhaustion, and ultimately threatens data correctness and availability.\n",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 565,
+            "score": 0.5301332165464248,
+            "bm25_score": 50.62811150949355,
+            "lexical_score": 0.134,
+            "matched_terms": [
+                "and",
+                "by",
+                "check",
+                "corruption",
+                "data",
+                "duplicate",
+                "for",
+                "inconsistency",
+                "index",
+                "integrity",
+                "logical",
+                "or",
+                "structural",
+                "the"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "1585",
+                "error_name": "ER_DUP_ENTRY_WITH_KEY_NAME",
+                "official_description": "Duplicate entry '%-.64s' for key '%-.385s'",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "integrity_and_constraints",
+                "cause_analysis": "The failure is typically associated with logical data inconsistency, structural corruption, uniqueness conflicts, or referential-integrity rules being violated by the workload or storage state.",
+                "solution_guidance": "Validate data consistency, inspect constraints and index integrity, and check whether data-cleaning, repair, or workload correction is required before retrying.",
+                "observable_symptoms": [
+                    "constraint failure",
+                    "duplicate data rejection",
+                    "corruption warning"
+                ]
+            }
+        }
+    }
+]

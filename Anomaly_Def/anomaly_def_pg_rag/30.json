@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Database Configuration Parameter Anomaly + Storage Space Capacity Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level statements or transaction design force the engine to read, write, or hold more data than the business requirement actually needs.\nDatabase Configuration Parameter Anomaly : Engine settings such as memory, checkpoint cadence, log sizing, and parallelism are mis-tuned relative to hardware capacity and workload characteristics.\nStorage Space Capacity Anomaly : Free space for data, logs, temp, or backup areas runs up against hard physical or logical limits, leading to allocation failures.\n\nWhen these three root causes coincide, the database experiences an avalanche of mutually reinforcing symptoms: statement and transaction latency lengthens; slow-query logs and wait-event views show heavy page reads, log writes, and checkpoint activity; free-space monitors drop precipitously, with auto-extend or log-archive failures appearing alongside application timeouts and retries. Mis-sized memory pools or aggressive checkpoint parameters amplify write-amplification produced by inefficient SQL, filling datafiles and transaction logs faster than housekeeping processes can recycle them. Conversely, space exhaustion forces frequent checkpoints, log switches, and temp-space purges, further stalling already bloated queries and long-running transactions. Operators may observe idle CPU or I/O gaps alternating with sudden spikes, making the performance pattern erratic and hard to correlate with a single layer.\n\nCausal chain: chatty or wide-scan SQL generates excess data modifications and temporary spill that inflate datafiles and redo volumes. Because configuration parameters are set without regard to this inflated workload, buffer pools and work-memory segments flush and spill sooner, triggering more writes and checkpoint storms. The accelerated write rate rapidly consumes free space; once tablespaces, logs, or temp areas approach capacity, the engine issues frequent space-management operations and may block transactions waiting for space, further lengthening locks and holds initiated by the inefficient SQL. Each layer therefore tightens the pressure loop: poor SQL drives volume, mis-tuning magnifies volume into churn, and capacity ceilings turn churn into outright stalls, leading to a compound degradation far worse than any single anomaly would cause.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.5335893427517018,
+            "bm25_score": 26.148369220569883,
+            "lexical_score": 0.14203935599284434,
+            "matched_terms": [
+                "an",
+                "and",
+                "any",
+                "because",
+                "for",
+                "idle",
+                "locks",
+                "long",
+                "of",
+                "or",
+                "query",
+                "statement",
+                "than",
+                "that",
+                "the",
+                "this",
+                "transaction",
+                "transactions",
+                "waiting",
+                "when"
+            ],
+            "match_count": 165,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

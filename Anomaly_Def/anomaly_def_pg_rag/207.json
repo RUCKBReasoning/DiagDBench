@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Database Configuration Parameter Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Metadata about row counts, value distribution, and correlations is stale or incomplete, causing systematic cardinality misestimation during plan generation.\nDatabase Configuration Parameter Anomaly : Core engine parameters that govern memory, parallelism, checkpointing, and background workers are mis-tuned for the current hardware or workload, creating artificial resource bottlenecks or idle hardware.\n\nWhen both root causes are present, the database simultaneously chooses poor plans and executes them on a poorly calibrated runtime environment. Observable phenomena include:\n• Wildly inaccurate estimated-vs-actual row counts combined with sudden memory spills because work-memory or sort-buffer limits are set too low for the over-sized intermediate result sets produced by the misestimated plans.\n• Queries oscillating between serial and over-parallelized plans as the optimizer tries to compensate for bad statistics while the max-degree-of-parallelism setting is misaligned with CPU capacity, leading to CPU thrashing yet low throughput.\n• Frequent plan recompilations triggered by automatic statistics refreshes colliding with aggressive checkpoint cadence or undersized log buffers, surfacing as alternating CPULOCK or LOGWRITE waits even when neither CPU nor storage is saturated.\n• Post-bulk-load or partition-exchange workloads stalling: stale global stats drive table scans, while undersized buffer pools or too-frequent checkpoints evict the same data repeatedly, causing excessive I/O that masks the true root causes.\n\nCausal chain: stale/missing statistics push the optimizer toward execution plans that consume unexpected amounts of memory, I/O, and CPU. Misconfigured parameters then fail to absorb these spikes—e.g., low work memory forces temp-db spills, small log buffers elongate commit latency, and over-aggressive parallelism amplifies contention. Conversely, poor configuration (such as disabled auto-stats, reduced sampling rates, or altered parallel-threshold parameters after an upgrade) can itself delay or distort statistics collection, perpetuating the misestimation cycle. Together, the two anomalies reinforce each other, making performance regressions broader, harder to diagnose, and more sensitive to data-volume or workload shifts than either anomaly alone.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.5639000249647923,
+            "bm25_score": 24.10228518282598,
+            "lexical_score": 0.15187165775401068,
+            "matched_terms": [
+                "after",
+                "and",
+                "are",
+                "between",
+                "can",
+                "during",
+                "exchange",
+                "idle",
+                "is",
+                "latency",
+                "or",
+                "pools",
+                "queries",
+                "sets",
+                "stale",
+                "that",
+                "the",
+                "triggered",
+                "when",
+                "while"
+            ],
+            "match_count": 174,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

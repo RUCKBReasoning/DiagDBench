@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Replication Synchronization Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Excessive accumulation of obsolete row versions and rollback data because background cleanup cannot keep pace with update-/delete-driven churn.\nReplication Synchronization Anomaly : Standby or subscriber nodes fall behind because they cannot receive, write, or apply the primary’s WAL/redo stream at its production rate.\nStorage I/O Throughput Anomaly : The physical storage layer is saturated, driving up read/write latency and queue depth for data, log, and temporary files.\n\nWhen all three faults are active, the system exhibits a compound symptom set: version stores, rollback segments, and table bloat expand rapidly while replica lag grows and primary log segments pile up, inflating disk-space usage. Autovacuum or purge workers and replica apply threads contend for the same over-burdened I/O subsystem, so both visibility-map scans and redo replays slow sharply. Checkpoints, sequential scans, and large deletes stretch far longer; replica read freshness degrades from seconds to minutes or hours; failovers risk data loss because the replica’s recovery point trails the primary’s transaction-ID horizon; meanwhile the primary warns of imminent wraparound yet cannot recycle WAL because lagging replicas still need it. Global performance shows high I/O wait, moderate CPU, swollen disk queues, and an accelerating feedback loop of bloat → more I/O → deeper lag.\n\nCausally, heavy update/delete activity inflates the version store, forcing more page writes and generating extra WAL. The surge in log volume must traverse the replication channel, but limited network, CPU, or single-threaded apply logic on the replica slows consumption, so WAL accumulates on the primary. Retention of these log segments and the growing on-disk tables/indexes both expand the storage footprint, pushing the underlying disk array to its throughput limit. Elevated I/O latency then throttles autovacuum/purge and replica apply even further, allowing yet more dead tuples and WAL to gather. This positive feedback loop ties together MVCC cleanup debt, replication backlog, and storage saturation, creating a self-reinforcing degradation that can culminate in transaction-ID exhaustion, replica desynchronization, and service-level breaches.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 80,
+            "score": 0.2697356197018377,
+            "bm25_score": 12.01456983110463,
+            "lexical_score": 0.12443632405535686,
+            "matched_terms": [
+                "and",
+                "array",
+                "but",
+                "data",
+                "in",
+                "is",
+                "its",
+                "level",
+                "logic",
+                "must",
+                "or",
+                "the",
+                "to",
+                "together",
+                "with"
+            ],
+            "match_count": 14,
+            "entry": {
+                "error_code": "22039",
+                "error_name": "sql_json_array_not_found",
+                "official_description": "sql json array not found",
+                "error_class": "Class 22 - Data Exception",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

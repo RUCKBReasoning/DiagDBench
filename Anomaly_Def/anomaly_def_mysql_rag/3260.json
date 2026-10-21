@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Buffer Cache and Latch Contention Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer chooses or re-uses an execution plan that is materially sub-optimal even though statistics are reasonable.\nBuffer Cache and Latch Contention Anomaly : Sessions serialize on buffer-pool pages or their latches, causing CPU spin waits and latency spikes.\nStorage Space Capacity Anomaly : The database or log areas run out of free space, leading to allocation failures and stalled writes.\n\nComposite definition: The workload encounters all three conditions concurrently—poor execution plans drive excessive I/O and buffer hot spots, those hot spots intensify low-level latch contention, and the amplified I/O churn quickly consumes the remaining physical or logical storage space, eventually hitting space exhaustion boundaries.\n\nCombined anomalous phenomena: 1) Identical statements flip between index scans and table scans, producing unexpected full-table or hash-join plans that touch far more pages than normal. 2) Buffer-busy, page-latch, and IO wait events rise together; CPUs show high spin time while throughput flattens. 3) Free-space monitors drop precipitously; auto-extend or archive operations fail, and DML or log writes stall. 4) Performance volatility escalates—each plan flip can suddenly flood the buffer cache, evicting useful pages and forcing more physical reads against an already space-starved storage layer.\n\nCausal chain: A sub-optimal plan (e.g., full scan instead of index access) multiplies page touches and dirty-page generation. The surge of concurrent accesses to a small set of root or data pages creates intense latch contention, elongating critical sections and prolonging transaction lifetimes. Longer transactions and extra I/O amplify log growth and data-file expansion, rapidly consuming remaining disk space. As space approaches exhaustion, autogrowth pauses and checkpoints slow, further extending latch holds and causing the optimizer to invalidate or recompile plans more frequently, which can select even worse plans. The feedback loop between poor plan choice, buffer/latch pressure, and shrinking free space magnifies latency and eventually leads to workload-blocking space errors.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5566,
+            "score": 0.430980771056086,
+            "bm25_score": 46.10900826301199,
+            "lexical_score": 0.176962582538518,
+            "matched_terms": [
+                "access",
+                "and",
+                "are",
+                "auto",
+                "boundaries",
+                "capacity",
+                "data",
+                "disk",
+                "failures",
+                "file",
+                "growth",
+                "is",
+                "latency",
+                "log",
+                "or",
+                "pressure",
+                "storage",
+                "the"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013707",
+                "error_name": "ER_AUDIT_LOG_FILE_AUTO_PRUNED",
+                "official_description": "File '%s' auto-pruned",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

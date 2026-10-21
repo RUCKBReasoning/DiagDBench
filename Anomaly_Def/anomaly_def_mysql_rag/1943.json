@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + CPU Resource Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly: The log-file group, buffer, or archiver cannot keep up with redo generation, stalling commits and log switches.\nCPU Resource Anomaly: Database processes exhaust available CPU cycles, driving run-queue pressure and system-wide latency.\n\nComposite definition: Both resource layers are saturated at the same time, so every commit must fight for CPU to format and flush redo while the log path itself is already a bottleneck. The engine is therefore constrained by two critical chokepoints on the write path—log throughput and compute capacity.\n\nCombined observable phenomena: 1) commit, log-flush, and log-sync waits climb sharply and remain high; 2) host CPU utilization stays near 100 %, with elevated load average and context-switch rate; 3) the same user transactions appear simultaneously at the top of CPU-time and log-wait lists; 4) checkpoint frequency, log-file switches, or archival backlog accelerates, yet the archiver gets fewer CPU slices to clear segments; 5) latency balloons across both read and write statements, and overall throughput oscillates as scheduler pressure and log-flush pauses alternate; 6) monitoring tools may mis-attribute slowdown to either CPU or I/O alone because both symptoms manifest together.\n\nCausal interaction: Heavy write activity formats redo records, which consumes CPU; once the undersized or mis-placed log subsystem stalls, worker threads spin or block, generating even more context switches and scheduler contention. The CPU saturation, in turn, slows down log-flush and archiver threads, prolonging log-buffer occupancy and amplifying commit back-pressure. This feedback loop escalates quickly: log stall increases wait time per transaction, holding locks and sessions longer, which keeps more processes runnable and pushes CPU even closer to saturation, further delaying log I/O. Without intervention, the mutual reinforcement of compute starvation and log-path congestion can cascade into widespread timeouts, replication lag, or instance freeze.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.49623344659038815,
+            "bm25_score": 16.363901260332657,
+            "lexical_score": 0.16355670103092781,
+            "matched_terms": [
+                "activity",
+                "and",
+                "are",
+                "for",
+                "holding",
+                "is",
+                "latency",
+                "longer",
+                "more",
+                "of",
+                "or",
+                "read",
+                "sessions",
+                "the",
+                "this",
+                "time",
+                "to",
+                "wait",
+                "waits"
+            ],
+            "match_count": 91,
+            "entry": {
+                "timeout_id": "mysql84_network_read_timeout",
+                "parameter_name": "net_read_timeout",
+                "timeout_category": "network_read_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for more data from a connection before aborting the read.",
+                "trigger_condition": "The server waits for additional data from a connection longer than net_read_timeout.",
+                "workload_impact": "The network read is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

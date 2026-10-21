@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Storage I/O Throughput Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly: The log-writer path (log buffer, log files, archive/replication pipeline) becomes the bottleneck, inflating commit and log-flush latency.\nStorage I/O Throughput Anomaly: The physical storage layer saturates its IOPS/MB-per-s capacity, driving up read-write latencies and queue depths for all database files.\nOperating System Resource Limit Anomaly: Kernel-enforced ceilings on file descriptors, asynchronous-I/O contexts, shared memory, or process threads are reached, preventing the database from issuing or completing additional I/O or spawning helper tasks.\n\nWhen these three root causes strike concurrently, the database experiences compound symptoms: commit operations stall behind saturated log devices whose writes themselves wait in deep OS-level I/O queues; data and log read/write latencies climb simultaneously, obscuring whether slowness originates in the engine or the device; background tasks such as checkpoint, archiver, and replication sender processes intermittently fail to open new log segments or allocate AIO contexts, producing error bursts in both database and system logs; queue build-up in the log subsystem triggers frequent checkpoints and aggressive log switches, which further inflate I/O pressure on an already bandwidth-starved storage array; overall throughput collapses while CPU remains under-utilised and sessions time out.\n\nCausally, log-heavy OLTP traffic generates sustained redo that must be flushed. The undersized or co-located log files hit the physical throughput ceiling of the shared storage, lengthening sync times. As waits accumulate, the database spawns more helper processes and AIO requests, quickly consuming kernel file-handle and AIO limits. Once those limits are breached, new I/O submissions are throttled or fail, forcing the engine to fall back to synchronous, single-threaded or buffered I/O, which further degrades throughput and amplifies storage congestion. The persistent storage backlog, in turn, keeps log segments open longer, blocks checkpoints, and inflates recovery-related disk activity, creating a feedback loop that deepens the performance crisis and can escalate into a full write stall or service outage.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 21,
+            "score": 0.19863846973942517,
+            "bm25_score": 12.6243669978414,
+            "lexical_score": 0.13729109503616863,
+            "matched_terms": [
+                "and",
+                "array",
+                "be",
+                "data",
+                "engine",
+                "error",
+                "in",
+                "its",
+                "level",
+                "must",
+                "or",
+                "pressure",
+                "resource",
+                "the",
+                "to",
+                "whether"
+            ],
+            "match_count": 11,
+            "entry": {
+                "error_code": "2202E",
+                "error_name": "array_subscript_error",
+                "official_description": "array subscript error",
+                "error_class": "Class 22 - Data Exception",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

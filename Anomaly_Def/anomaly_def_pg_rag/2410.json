@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Database Memory Allocation Anomaly + Replication Synchronization Anomaly",
+            "Description": "Composite Definition:\nThe system simultaneously suffers from sub-optimal physical data-model and indexing choices, runaway memory consumption in core database caches and work areas, and a replication pipeline that cannot keep up with the primary’s log generation. The three conditions coexist and interact, degrading both local performance and cross-node consistency.\n\nCombined Observable Phenomena:\n• Queries on large or hot tables execute unexpected full scans or non-covering index probes, inflating logical and physical I/O and blowing out buffer-cache and work-memory allocations.\n• Database and replica nodes show rapidly growing resident-set sizes, OS paging, or OOM terminations; cache-hit ratios fluctuate as memory churn forces frequent page eviction.\n• Replication monitoring reports widening send/receive/replay lags; primary retains extra WAL / redo segments, and read replicas serve increasingly stale data or fall out of synchronous commit windows.\n• Periodic spikes in CPU and I/O utilization coincide with long-running hash/sort operations spawned by poorly indexed queries, further delaying log flushes and replica apply loops.\n• Failover or read-scaling SLAs degrade; maintenance windows for index creation or log retention cleanup extend unexpectedly because of memory pressure and replica backlog.\n\nCausal Chain and Reinforcement:\nInefficient schema and index design forces heavy, often parallel, scans and large hash/sort buffers that inflate memory usage. The resulting memory allocation anomaly triggers OS-level pressure, causing cache thrashing and slower local I/O. These same resource-intensive queries generate large volumes of redo/WAL data; meanwhile, replicas—already starved of memory and CPU due to identical schema inefficiencies and memory pressure—apply changes more slowly, creating replication lag. Growing lag prevents log recycling on the primary, further consuming memory for log buffers and disk space for retained segments, which in turn prolongs checkpoints and increases memory demand. Thus, each anomaly amplifies the others: bad access paths inflate memory needs; memory pressure throttles performance and increases log volume; and stressed replicas fall behind, feeding back into higher resource consumption and degraded resiliency across the cluster.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.41252176943040936,
+            "bm25_score": 15.356584671371113,
+            "lexical_score": 0.08388888888888887,
+            "matched_terms": [
+                "and",
+                "for",
+                "of",
+                "on",
+                "or",
+                "send",
+                "stale",
+                "system",
+                "the",
+                "to",
+                "which",
+                "with"
+            ],
+            "match_count": 280,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_idle",
+                "parameter_name": "tcp_keepalives_idle",
+                "timeout_category": "network_idle_keepalive_probe_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time with no network activity after which the operating system should send a TCP keepalive message to the client.",
+                "trigger_condition": "A TCP client connection has no network activity longer than tcp_keepalives_idle on systems supporting TCP_KEEPIDLE or an equivalent socket option.",
+                "workload_impact": "Starts TCP keepalive probing for an otherwise idle client connection; together with interval and count settings this can lead to dead connection detection.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

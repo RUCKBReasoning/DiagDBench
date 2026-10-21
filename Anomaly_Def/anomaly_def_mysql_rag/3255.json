@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Engine-level runtime parameters are mis-tuned for the hardware capacity or workload profile, leading the database to create excessive, bursty, or poorly scheduled work even though the underlying resources are not intrinsically exhausted.\nStorage I/O Throughput Anomaly : The physical or virtual storage layer cannot deliver the sustained read/write bandwidth, IOPS, or latency demanded by the database, so I/O requests queue and response times grow.\n\nComposite definition: The database simultaneously suffers from mis-tuned configuration parameters and a storage layer that is already throughput-constrained. The poor configuration amplifies I/O demand while the limited storage subsystem cannot absorb the pressure, producing a feedback loop of escalating waits and stalled workload progression.\n\nCombined anomalous phenomena:  • Sudden or cyclical spikes of log-write, buffer-flush, and data-file read waits where device queues are pegged and physical latency is multiples of normal.  • Checkpoint or page-flush storms triggered by too-small redo or checkpoint intervals that immediately saturate storage, driving end-user transactions or analytical scans into extended commit and read stalls.  • CPU utilization oscillates between spin waits and deep idle because worker threads are alternately starved by I/O and blocked by throttling parameters.  • Memory pressure symptoms such as cache churn and frequent dirty-page evictions appear even though total RAM is adequate, because buffer-pool, work-memory, or parallelism settings are mis-aligned with concurrency and force extra disk traffic.  • Performance regression often coincides with configuration changes, version upgrades, or hardware migrations, yet low-level storage metrics (queue depth, latency) indicate independent saturation, making the root cause ambiguous without holistic analysis.\n\nCausal chain and interaction: Undersized buffer pools, aggressive checkpoint cadence, or excessively high parallelism increase the volume and burstiness of I/O operations. This heightened demand quickly overloads a storage subsystem that is already bandwidth-limited, lengthening I/O service times. The longer latencies in turn cause background writers and checkpoint processes to fall behind, further enlarging dirty-page inventories and triggering even more urgent flushes per the mis-configured thresholds. As commits wait for log durability and readers wait for pages, application threads accumulate, consuming connection slots and memory that were not provisioned for this level of queuing. The intertwined feedback loop—mis-tuned parameters creating avoidable I/O and storage inability to satisfy that load—drives the system into prolonged stalls, making it difficult to attribute the slowdown to either layer in isolation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 16,
+            "score": 0.36727849240621063,
+            "bm25_score": 14.472829661891714,
+            "lexical_score": 0.13336326225215114,
+            "matched_terms": [
+                "and",
+                "are",
+                "configured",
+                "data",
+                "for",
+                "is",
+                "latency",
+                "level",
+                "not",
+                "or",
+                "read",
+                "the",
+                "this",
+                "times",
+                "triggered",
+                "write"
+            ],
+            "match_count": 108,
+            "entry": {
+                "timeout_id": "mysql84_xplugin_write_timeout",
+                "parameter_name": "mysqlx_write_timeout",
+                "timeout_category": "x_protocol_network_write_timeout",
+                "scope": "global/session/X Plugin",
+                "official_definition": "Write timeout for X Plugin network communication.",
+                "trigger_condition": "A MySQL X Protocol write operation exceeds mysqlx_write_timeout.",
+                "workload_impact": "The X Protocol network write operation times out.",
+                "default_behavior": "Defined as a MySQL X Plugin system variable.",
+                "system_domain": "network_transport",
+                "cause_analysis": "This timeout is usually triggered when network data is not acknowledged, received, or written within the configured transport-level waiting window.",
+                "solution_guidance": "Inspect packet loss, transport latency, client responsiveness, proxy behavior, and whether slow consumers or unstable links are delaying network progress.",
+                "observable_symptoms": [
+                    "network timeout",
+                    "disconnect",
+                    "read/write interruption"
+                ]
+            }
+        }
+    }
+]

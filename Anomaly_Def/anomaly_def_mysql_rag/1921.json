@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Replication Synchronization Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions contend for mutually incompatible locks, forming long blocking chains or deadlocks that stall commit progress.\nReplication Synchronization Anomaly : Standby or downstream replicas fall behind because they cannot receive, write, or apply the primary’s log stream at the production rate, widening replay lag.\nStorage Space Capacity Anomaly : Free space in data, log, archive, or temp areas approaches exhaustion, threatening further allocations and log recycling.\n\nWhen these three root causes strike together, the database exhibits an intertwined symptom set: transactions on the primary block each other and remain open longer, inflating commit latency and enlarging transaction-log records. The swollen log must be shipped and applied downstream, but replicas already lag, so unsent or unapplied segments accumulate. Because log truncation or recycling is now gated by both open transactions and replica confirmation, primary-side log volumes balloon, quickly consuming the remaining storage budget. Operators observe sharp rises in lock-wait time, deadlock reports, client timeouts, replication delay metrics, runaway disk usage in log or archive areas, and eventual \"out of space\" or \"cannot extend\" errors that can halt new transactions and stall recovery replay on replicas.\n\nCausally, severe lock contention lengthens transaction lifetimes, delaying commit acknowledgments that replication relies on, thereby increasing replica lag. The growing lag prevents the primary from reclaiming old log segments, so every additional blocked or retried transaction produces more unreleased log data. The expanding log footprint accelerates storage exhaustion; once space becomes scarce, auto-extension failures or forced checkpoints slow down data-file and log writes, which further degrades throughput and raises lock-hold times—feeding back into even worse contention and replication backlog. This positive feedback loop can cascade into a full outage affecting both primary OLTP processing and downstream read scalability or disaster-recovery objectives.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2264,
+            "score": 0.4553432662674736,
+            "bm25_score": 49.64118641918863,
+            "lexical_score": 0.12419289340101522,
+            "matched_terms": [
+                "already",
+                "and",
+                "applied",
+                "apply",
+                "because",
+                "downstream",
+                "is",
+                "lag",
+                "log",
+                "or",
+                "replica",
+                "replication",
+                "the"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010377",
+                "error_name": "ER_REPLICA_SQL_THREAD_STOPPED_BEFORE_GTIDS_ALREADY_APPLIED",
+                "official_description": "Replica SQL thread stopped because UNTIL SQL_BEFORE_GTIDS %s is already applied",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

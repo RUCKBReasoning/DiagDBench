@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Transaction Log Subsystem Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Concurrent sessions serialize on hot buffer-cache pages, page pins, or latches, stalling foreground work and consuming CPU in spin or sleep loops.\nTransaction Log Subsystem Anomaly : Commit processing and write-ahead logging are throttled by slow or saturated log buffers, files, or archiver/replication pipelines, inflating log-related wait events and commit latency.\nOperating System Resource Limit Anomaly : Kernel-enforced ceilings on file descriptors, shared memory, semaphores, threads, or AIO contexts are reached, preventing the database from allocating required OS objects.\n\nWhen these three root causes strike together the database exhibits a tangled symptom set: \n• Sharp spikes in buffer-busy, page-latch, log-flush, and log-sync waits, with foreground sessions oscillating between CPU spin on latches and sleeps on log writes.\n• Commit latency and overall transaction response times become highly erratic; small transactions pile up behind log flushes while also contending for hot index or sequence pages.\n• System and engine alert logs show failures to open files, allocate shared memory, or start background workers (e.g., archivers, checkpoint or buffer-flush helpers), and may report \"too many open files\" or semaphore exhaustion.\n• Throughput collapses as latch spin amplifies CPU usage, while log files fill faster than they can be archived, leading to log-switch storms and potential \"out of space\" or \"cannot allocate log buffer\" errors.\n• Performance tools reveal overlapping plateaus of CPU saturation, I/O queue buildup on the log device, and kernel resource allocation errors, making it difficult to attribute the slowdown to any single layer.\n\nCausal chain and interaction: Intense OLTP activity concentrates reads and writes on a few hot pages, extending latch hold times and inflating redo generation. The surge in commit requests drives the transaction-log subsystem to its throughput limits; prolonged log flushes keep transactions open longer, which in turn keeps latches and buffer pins held, deepening buffer-cache contention. As sessions and background processes retry I/O and spawn additional helper threads, they consume extra file handles, AIO contexts, and semaphores. If OS resource limits are already tight, these retries quickly exhaust kernel quotas, causing further failures to allocate log files, buffer I/O slots, or worker threads. The three anomalies therefore reinforce one another in a positive feedback loop—buffer contention prolongs transactions, inflated commit volume stresses the log, log stall increases latch hold duration, and both layers drive up kernel object usage until OS limits impose a hard stop—culminating in severe, workload-wide stalls or outages.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.7029164736747147,
+            "bm25_score": 28.045236365019882,
+            "lexical_score": 0.13357142857142856,
+            "matched_terms": [
+                "and",
+                "be",
+                "behind",
+                "by",
+                "contention",
+                "for",
+                "in",
+                "limit",
+                "or",
+                "resource",
+                "the",
+                "together",
+                "too",
+                "when",
+                "with",
+                "work",
+                "workload"
+            ],
+            "match_count": 30,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

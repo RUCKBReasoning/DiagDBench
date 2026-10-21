@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Data Block and Index Integrity Anomaly + CPU Resource Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Obsolete row versions and rollback records accumulate faster than background cleaners can reclaim them, inflating storage and visibility-check overhead. \nData Block and Index Integrity Anomaly : On-disk heap or index pages become physically or logically corrupted so that key ordering, page links, or row mappings are no longer reliable. \nCPU Resource Anomaly : Database processes consume nearly all available CPU, starving the rest of the workload and elongating every wait path.\n\nWhen all three anomalies coexist, the engine faces simultaneous version-store bloat, structural corruption, and compute saturation. Observable symptoms merge and intensify: table and index sizes balloon while integrity-check utilities flag page or key-order errors; long-running queries switch from index to full scans yet still miss or duplicate rows; VACUUM/autovacuum or purge workers run constantly but make little progress, monopolising CPU and I/O; error logs show a mix of \"transaction-id wraparound imminent\", \"page checksum mismatch\", and scheduler/run-queue wait events; overall latency spikes unpredictably as corruption forces redundant visibility checks and error-handling retries on an already CPU-starved host.\n\nCausally, page or index corruption can block or abort version cleanup by causing workers to loop, restart, or skip damaged ranges, allowing obsolete versions to accumulate unchecked. The growing version store inflates heap and index footprints, increasing the number of pages that must be scanned and validated, which further raises CPU demand. Sustained CPU saturation slows both foreground queries and background repair tasks, extending snapshot lifetimes and exacerbating version bloat. In turn, the larger and increasingly corrupted data structures heighten per-tuple visibility checks and checksum validations, feeding back into higher CPU consumption. The intertwined feedback loop accelerates storage inflation, widens corruption impact, and pushes the transactional system toward critical failure thresholds such as transaction-ID wraparound or irreversible data loss.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.6781696877462525,
+            "bm25_score": 22.335011729210404,
+            "lexical_score": 0.10590614886731392,
+            "matched_terms": [
+                "an",
+                "and",
+                "back",
+                "by",
+                "in",
+                "longer",
+                "of",
+                "or",
+                "row",
+                "than",
+                "the",
+                "transaction",
+                "wait",
+                "when"
+            ],
+            "match_count": 97,
+            "entry": {
+                "timeout_id": "mysql84_innodb_row_lock_wait_timeout",
+                "parameter_name": "innodb_lock_wait_timeout",
+                "timeout_category": "innodb_row_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "The length of time in seconds an InnoDB transaction waits for a row lock before giving up.",
+                "trigger_condition": "An InnoDB transaction waits longer than innodb_lock_wait_timeout for a row lock.",
+                "workload_impact": "The lock wait gives up; by default only the current statement is rolled back unless innodb_rollback_on_timeout is enabled.",
+                "default_behavior": "Defined as an InnoDB system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

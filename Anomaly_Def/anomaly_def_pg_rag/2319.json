@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Database Memory Allocation Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Obsolete row versions and rollback data accumulate faster than background cleanup can reclaim them, inflating the version store and enlarging on-disk structures.\nDatabase Memory Allocation Anomaly : Total in-process memory for caches, work areas, and background structures outgrows physical limits, provoking OS-level pressure, paging, and OOM terminations.\nTransaction Log Subsystem Anomaly : Log generation and flushing lag behind workload demand or archiving throughput, driving up commit latency and stalling writes.\n\nWhen these three root causes strike together, the database simultaneously shows runaway memory usage, ballooning version stores and tables, and a saturated redo/commit path. Symptoms include: rapidly expanding data and log files, escalating checkpoint and log-flush waits, degraded cache hit ratios from eviction or swap, long-running VACUUM/cleanup workers perpetually behind, soaring commit times that induce application timeouts, and periodic instance restarts when memory or log space is exhausted. Performance diagnostics may reveal intertwined waits—sessions stuck on log syncs while also incurring excessive memory and I/O to scan bloated heaps—making isolation of any single culprit difficult.\n\nCausally, high update/delete churn inflates both the MVCC version store and the volume of redo records, driving up memory demand and log throughput concurrently. Memory overcommitment reduces effective buffer cache and can force dirty pages to be flushed more aggressively, increasing log write frequency. Log back-pressure slows commit completion, leaving transactions open longer; these lingering snapshots prevent garbage collection, which in turn enlarges the version store, further consuming memory and I/O. The expanding memory footprint competes with log buffers and background workers for resources, slowing log archiving and cleanup tasks, creating a self-reinforcing loop that degrades throughput and risks crash or data-loss scenarios if not addressed promptly.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.34647826705353135,
+            "bm25_score": 14.997729443458494,
+            "lexical_score": 0.1362204130860847,
+            "matched_terms": [
+                "and",
+                "any",
+                "for",
+                "is",
+                "latency",
+                "longer",
+                "not",
+                "of",
+                "open",
+                "or",
+                "sessions",
+                "than",
+                "that",
+                "the",
+                "transaction",
+                "when",
+                "with"
+            ],
+            "match_count": 275,
+            "entry": {
+                "timeout_id": "pg16_idle_session_timeout",
+                "parameter_name": "idle_session_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle, but not within an open transaction, for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle and not inside an open transaction longer than the configured threshold.",
+                "workload_impact": "The session is terminated; the documentation warns about using this with connection pools or middleware.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

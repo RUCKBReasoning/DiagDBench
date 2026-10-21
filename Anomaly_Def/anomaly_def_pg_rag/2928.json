@@ -1,0 +1,45 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Data Block and Index Integrity Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly: The log-generation, buffering, flushing, or archival pipeline is throttled, making commit processing the primary performance bottleneck.\nData Block and Index Integrity Anomaly: On-disk data pages or index structures are physically or logically corrupt, causing unreliable access paths and consistency errors.\nStorage Space Capacity Anomaly: Usable free space for data, log, archive, temp, or backup areas is exhausted or about to be, provoking allocation failures and write stalls.\n\nWhen these three root causes strike concurrently, the database experiences a cascade of amplified symptoms: commit latency and log-flush waits climb while log switches stall because archive destinations are full; corruption-related retries or full-table scans inflate redo generation and temporary space usage; integrity-check or recovery operations emit additional diagnostic output that quickly consumes the dwindling free space; page-checksum failures, \"no space left on device\" errors, and timeout-driven rollbacks appear interleaved in the logs; instance restarts or crash-recovery attempts may loop or hang as corrupted pages force repeated redo application while log files cannot be written or archived.\n\nCausal chain: data and index corruption often stimulates heavy redo production through forced page clean-ups, index rebuilds, or full scans, which in turn pressures the already constrained transaction-log subsystem. The higher redo volume quickly fills log files and their archive destinations; once those locations reach capacity, log flushing stalls, freezing new transactions and preventing checkpoint progress. Because space exhaustion also blocks archiver and backup jobs, corrupted pages cannot be repaired or exported, prolonging exposure. Repeated aborts or crash recoveries invoked to address corruption must replay ever-growing, possibly damaged log streams, further stressing both the log subsystem and the limited storage. The three anomalies therefore reinforce each other, rapidly degrading throughput, threatening data durability, and complicating root-cause isolation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 183,
+            "score": 0.22883237574763277,
+            "bm25_score": 18.19088595642702,
+            "lexical_score": 0.1110248447204969,
+            "matched_terms": [
+                "access",
+                "and",
+                "as",
+                "cannot",
+                "is",
+                "or",
+                "table",
+                "that",
+                "the",
+                "usage",
+                "written"
+            ],
+            "match_count": 15,
+            "entry": {
+                "error_code": "42P16",
+                "error_name": "invalid_table_definition",
+                "official_description": "invalid table definition",
+                "error_class": "Class 42 - Syntax Error or Access Rule Violation",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "sql_and_parser",
+                "cause_analysis": "The failure is typically associated with unsupported syntax, invalid statement structure, or feature usage that the target engine version cannot execute as written.",
+                "solution_guidance": "Validate SQL syntax, target-engine compatibility, statement shape, and whether the feature is supported under the current engine version or execution context.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "syntax error",
+                    "feature rejection"
+                ]
+            }
+        }
+    }
+]

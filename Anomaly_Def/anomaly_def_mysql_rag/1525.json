@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Replication Synchronization Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly: The database’s local write-ahead logging path is saturated or stalled, so commit processing, log buffering, flushing, or archiving becomes the performance bottleneck.\nReplication Synchronization Anomaly: Downstream replicas or change-data consumers fall behind because they cannot receive, write, or apply log records at the pace the primary generates them, creating widening log-position gaps and retention of old log segments.\nStorage Space Capacity Anomaly: One or more storage areas—data files, log volumes, archive destinations, temp, or backup locations—approach or reach full utilization, resulting in allocation failures and preventing normal growth or recycling.\n\nCombined phenomena: With all three conditions active, the database exhibits escalating commit latency, prolonged log-flush and log-sync waits, and frequent pauses or timeouts for foreground transactions. Replication lag grows rapidly; replicas report increasing receive and replay delay, and failover readiness degrades. Log and archive directories expand uncontrollably until the underlying volume exhausts free space, after which both primary commits and replica apply threads may halt with \"out of space\" or \"cannot allocate log segment\" errors. Checkpoints and archive/relay-log purges trigger more often but complete slowly, leading to checkpoint storms, lock contention, and excessive CPU usage in background processes. Monitoring dashboards show simultaneous spikes in log-related waits, replication delay, and disk-space alerts, making it difficult to attribute the primary symptom to a single layer.\n\nCausal chain and reinforcement: Saturated transaction-log I/O slows commit throughput, which lengthens the queue of unsent log records to replicas. The growing replication backlog forces the primary to retain older log segments, blocking log recycling. This retention, combined with high redo generation, rapidly consumes remaining disk capacity on both primary and replica log or archive volumes, triggering the storage space anomaly. Once space becomes scarce, log switches or archive writes may hang, further increasing commit latency and deepening replication lag. Conversely, if storage fills first, log archiving and replica relay writing stall, which feeds back into the log subsystem by preventing segment reuse and inflating the in-memory log buffer. The intertwined feedback loops among log I/O saturation, replication backlog, and space exhaustion create a self-amplifying failure that can culminate in a total halt of transactional processing and replication.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2487,
+            "score": 0.46731391755941654,
+            "bm25_score": 52.07680077304614,
+            "lexical_score": 0.15890036711346367,
+            "matched_terms": [
+                "and",
+                "capacity",
+                "data",
+                "disk",
+                "failure",
+                "failures",
+                "first",
+                "growth",
+                "is",
+                "latency",
+                "log",
+                "or",
+                "relay",
+                "space",
+                "storage",
+                "the",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010600",
+                "error_name": "ER_RPL_LOG_NOT_FOUND_WHILE_COUNTING_RELAY_LOG_SPACE",
+                "official_description": "Could not find first log while counting relay log space.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

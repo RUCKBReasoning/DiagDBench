@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Database Configuration Parameter Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Obsolete row versions, rollback records, and dead index entries accumulate faster than background cleanup can reclaim them, inflating storage and visibility-check overhead.\nDatabase Configuration Parameter Anomaly : Engine parameters governing memory, workers, checkpointing, and parallelism are mis-tuned for the hardware and workload, introducing artificial bottlenecks and untimely background activity.\nData Block and Index Integrity Anomaly : On-disk pages and index structures contain physical or logical corruption that breaks key order, page links, or checksum verification, making access paths unreliable.\n\nCombined phenomena: When all three root causes are active, the system shows explosive table and index growth, chronic autovacuum or purge backlogs, and erratic query plans that oscillate between bloated index scans and full table scans because of missing or duplicated rows. Checkpoints and log flushes may surge immediately after parameter changes, yet the storage subsystem remains under-utilised. Background cleaners report \"skipped corrupted page\" or stall on invalid page links, leaving ever more dead tuples behind. Integrity-check utilities and engine logs intermittently emit checksum, page-level, or index-order errors, while wait-event charts are dominated by version visibility checks, corruption-related retries, and idle CPU gaps that do not match the apparent workload pressure. Application sessions may experience sudden serialization failures, duplicate-key errors on inserts, or silent data loss when queries miss rows that are present in the heap but absent from a damaged index.\n\nCausal chain: Mis-tuned parameters (e.g., undersized cleanup workers, disabled page checksums, aggressive checkpoint throttling, or oversized work_mem that bloats per-session memory) throttle version reclamation and extend transaction ID horizons, allowing MVCC debris to pile up. The enlarged heap and index footprint forces more page IO and longer maintenance windows, increasing the chance of power events, firmware bugs, or out-of-memory conditions that precipitate physical corruption. Once corruption appears, cleanup workers may skip or loop on damaged pages, further slowing or halting version reclamation. The lingering MVCC bloat in turn amplifies the stress on misconfigured memory and checkpoint parameters, causing additional checkpoint storms and weakened durability settings that make future corruption more likely. The three anomalies therefore reinforce each other in a feedback loop that degrades performance, jeopardises data integrity, and complicates root-cause diagnosis.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.614895861156223,
+            "bm25_score": 20.820362589729797,
+            "lexical_score": 0.15308933490751672,
+            "matched_terms": [
+                "activity",
+                "and",
+                "are",
+                "check",
+                "data",
+                "for",
+                "from",
+                "idle",
+                "longer",
+                "more",
+                "not",
+                "of",
+                "or",
+                "session",
+                "sessions",
+                "than",
+                "the",
+                "to",
+                "wait",
+                "when"
+            ],
+            "match_count": 119,
+            "entry": {
+                "timeout_id": "mysql84_replica_network_timeout",
+                "parameter_name": "replica_net_timeout",
+                "timeout_category": "replication_network_timeout",
+                "scope": "global/replication",
+                "official_definition": "The number of seconds to wait for more data from a source/replica connection before aborting the read.",
+                "trigger_condition": "A replica waits longer than replica_net_timeout for more data from the source connection.",
+                "workload_impact": "The replication network read is aborted and the replica considers the connection interrupted.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

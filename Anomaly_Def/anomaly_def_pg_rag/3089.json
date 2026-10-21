@@ -1,0 +1,47 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + MVCC Version Maintenance Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer repeatedly selects a substantially sub-optimal execution plan even though statistics are acceptable and no single plan should be reused.\nMVCC Version Maintenance Anomaly : Obsolete row versions and rollback records accumulate faster than background cleanup workers can reclaim them, inflating the physical size of tables and indexes and adding visibility-check overhead.\n\nComposite anomaly definition: The database concurrently suffers from plan-selection errors and runaway MVCC version buildup. While the workload is running, every statement is exposed both to bloated storage structures and to an execution plan that is not well adapted to the real cost landscape, creating a feedback loop that degrades throughput and latency.\n\nCombined observable phenomena: 1) Plans flip between index probes and full scans or choose inefficient join orders; at the same time, table and index sizes grow rapidly, causing I/O and buffer-pool pressure. 2) Execution-time skew increases dramatically—some executions are trapped in long sequential scans over dead rows, others fail early due to timeout. 3) Autovacuum or cleanup workers show sustained backlog, yet long-running queries with bad plans keep old snapshots open, preventing garbage collection. 4) The optimizer’s estimated costs diverge even further from reality because the bloated heap increases page counts, but the cost model picks plans that are optimal only for the leaner structure assumed at compile time. 5) Administrators observe both plan cache churn and high version-store utilization without obvious blocking locks.\n\nCausal chain and reinforcement: MVCC bloat inflates relation size and alters physical access costs; however, the optimizer’s plan selection anomaly fails to adapt, locking in plans that underweight the I/O penalty of scanning the expanded data. These inefficient plans run longer, holding snapshots and transaction IDs open for extended periods, which in turn delays vacuum/garbage collection and accelerates version accumulation. The growing version store further distorts cost dynamics, increasing the likelihood that the optimizer will mis-rank candidates on subsequent compilations, amplifying plan instability and continuing the vicious cycle. Without intervention—such as forced plan baselines plus aggressive vacuum tuning—both anomalies feed each other, driving the system into severe performance and storage crisis.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 184,
+            "score": 0.4074899258207665,
+            "bm25_score": 16.162830612498734,
+            "lexical_score": 0.12285792250318356,
+            "matched_terms": [
+                "access",
+                "and",
+                "as",
+                "definition",
+                "execution",
+                "is",
+                "or",
+                "statement",
+                "structure",
+                "that",
+                "the",
+                "version",
+                "with"
+            ],
+            "match_count": 15,
+            "entry": {
+                "error_code": "42P17",
+                "error_name": "invalid_object_definition",
+                "official_description": "invalid object definition",
+                "error_class": "Class 42 - Syntax Error or Access Rule Violation",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "sql_and_parser",
+                "cause_analysis": "The failure is typically associated with unsupported syntax, invalid statement structure, or feature usage that the target engine version cannot execute as written.",
+                "solution_guidance": "Validate SQL syntax, target-engine compatibility, statement shape, and whether the feature is supported under the current engine version or execution context.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "syntax error",
+                    "feature rejection"
+                ]
+            }
+        }
+    }
+]

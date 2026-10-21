@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Transaction Log Subsystem Anomaly + Replication Synchronization Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Engine-level settings such as log-buffer size, checkpoint cadence, synchronous-commit flags, parallel apply threads, and memory limits are mis-tuned with respect to hardware capacity and workload intensity.\nTransaction Log Subsystem Anomaly : The primary’s write-ahead log buffer, files, or archive pipeline cannot generate, flush, or recycle log records quickly enough, turning the log path into the dominant bottleneck on commits.\nReplication Synchronization Anomaly : Standbys or downstream consumers cannot receive, flush, or apply the shipped log stream at the rate the primary produces it, leading to growing positional lag and retained log segments.\n\nWhen all three root causes coexist, symptoms overlap and amplify: commit latency and log-flush wait events surge even though storage and CPU utilization appear modest; massive log backlogs accumulate because slow replication prevents log recycling; checkpoints and log-switch storms fire more often yet fail to relieve space pressure; replica replay lag widens, causing stale reads, delayed failover readiness, and possible cascading stalls on synchronous replicas; primary-side disk consumption grows unpredictably, while monitoring shows erratic spikes in background-worker CPU, network retransmissions, and I/O bursts that do not correlate cleanly with foreground workload volume.\n\nCausally, mis-configured parameters (small log buffers, undersized log files, aggressive synchronous-commit or archiving settings, insufficient apply-worker threads) throttle the transaction-log subsystem, inflating commit and flush latency. The slowed log path, in turn, reduces the throughput margin available for replication shipping. As replicas fall behind, the primary must retain additional log segments, further expanding the already stressed log file set and forcing more frequent checkpoints and file switches—each of which revisits the poorly tuned parameters that caused the initial slowdown. The feedback loop between configuration mis-tuning, log-path saturation, and replication lag therefore compounds pressure on memory, disk, and network, degrading OLTP performance and increasing the risk of outage.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.5202107980505798,
+            "bm25_score": 13.416344987316595,
+            "lexical_score": 0.1132486388384755,
+            "matched_terms": [
+                "and",
+                "are",
+                "for",
+                "in",
+                "latency",
+                "not",
+                "of",
+                "or",
+                "parameter",
+                "stale",
+                "the",
+                "wait",
+                "when"
+            ],
+            "match_count": 119,
+            "entry": {
+                "timeout_id": "pg16_libpq_connection_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "client_connection_establishment_timeout",
+                "scope": "libpq/client connection parameter",
+                "official_definition": "Maximum wait for connection, in seconds; zero or not specified means wait indefinitely.",
+                "trigger_condition": "A libpq client connection attempt exceeds connect_timeout seconds.",
+                "workload_impact": "The client connection attempt fails instead of waiting indefinitely.",
+                "default_behavior": "Zero or absent value means wait indefinitely.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,46 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Database Memory Allocation Anomaly + Replication Synchronization Anomaly",
+            "Description": "Composite definition: The database simultaneously suffers from (1) backlog in removing obsolete MVCC versions, (2) uncontrolled growth of in-process and shared memory allocations, and (3) replication receivers or apply workers that cannot keep pace with the primary’s WAL stream. The three issues coexist and interact, producing a compound failure mode that crosses the storage, memory, and replication subsystems.\n\nCombined observable phenomena: Dead-tuple density, version-store or rollback-segment length, and table/index sizes all rise quickly while autovacuum or purge workers remain constantly busy yet ineffective. At the same time the database processes’ resident memory and swap usage climb, leading to OS-level memory pressure, cache-eviction churn, and occasional OOM kills. On both primary and replicas the WAL/redo backlog grows; replication lag and relay-log retention widen, preventing log recycling and inflating disk usage. Administrators may see query slowdowns from bloated scans, erratic execution plans due to stale statistics, elevated CPU usage from memory thrashing, and degraded failover readiness because replicas are minutes or hours behind.\n\nCausal chain and reinforcement: Heavy OLTP update/delete churn creates excessive dead versions, inflating table size and producing larger WAL records. The enlarged working set must reside in buffer caches and plan/work areas, pushing total memory consumption beyond safe limits; memory pressure throttles autovacuum, purge, and replication apply workers, further delaying version cleanup and redo replay. Simultaneously, replication lag keeps old snapshots open on replicas (or via synchronous feedback slots), which in turn blocks HOT pruning and vacuum on the primary, locking more dead versions in place. The stranded WAL segments required for lagging replicas consume additional memory and disk, and their accumulation further stresses the memory allocator and I/O subsystem. This positive feedback loop makes each individual anomaly harder to remediate, accelerating systemic degradation until throughput collapses or the cluster experiences forced restarts.\n",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.3117879236856974,
+            "bm25_score": 10.312265188492926,
+            "lexical_score": 0.08156245222443051,
+            "matched_terms": [
+                "and",
+                "are",
+                "may",
+                "on",
+                "or",
+                "remain",
+                "stale",
+                "the",
+                "this",
+                "time"
+            ],
+            "match_count": 182,
+            "entry": {
+                "timeout_id": "pg16_tcp_user_timeout",
+                "parameter_name": "tcp_user_timeout",
+                "timeout_category": "network_unacknowledged_data_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies how long transmitted data may remain unacknowledged before the TCP connection is forcibly closed.",
+                "trigger_condition": "TCP data sent by PostgreSQL remains unacknowledged longer than tcp_user_timeout on systems supporting TCP_USER_TIMEOUT.",
+                "workload_impact": "The TCP connection is forcibly closed.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

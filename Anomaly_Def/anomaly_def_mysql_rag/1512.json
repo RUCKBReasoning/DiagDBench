@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Replication Synchronization Anomaly + CPU Resource Anomaly",
+            "Description": "Database Memory Allocation Anomaly : Excessive growth of buffer caches, work areas, or other engine heaps drives the host into sustained memory pressure.\nReplication Synchronization Anomaly : Stand-by or downstream replicas cannot receive or apply the primary’s transaction log fast enough, causing widening replication lag.\nCPU Resource Anomaly : Database processes consume most or all available CPU cycles, saturating the host scheduler.\n\nWhen all three root causes occur together the system exhibits an intertwined failure pattern: memory pressure triggers paging and stalls, while CPU saturation lengthens every critical path—foreground queries, background check-pointers, and replica receiver / applier threads alike. Replica apply lag widens rapidly, retaining ever-larger log segments on the primary; these segments increase both disk and in-memory metadata footprints, aggravating the already tight memory envelope. Operators may observe \"run-queue\" and \"memory-pressure\" wait events simultaneously, soaring context-switch rates, growing WAL/redo queues, expanding plan and buffer eviction churn, and replicas drifting so far behind that read scalability and fail-over readiness collapse.\n\nCausal chain: (1) Heavy workload or run-away operations inflate per-session work areas and caches, pushing the engine beyond safe RAM limits and causing OS paging; (2) paging and cache churn escalate CPU demand as the engine repeatedly faults and re-loads pages; (3) with CPU now saturated, replication receiver and applier threads are de-scheduled more frequently and replay throughput drops; (4) falling replay throughput forces the primary to retain more log segments and in-memory replication state, further swelling memory usage and intensifying pressure; (5) this positive feedback loop amplifies latency across the whole workload and risks OOM kills, primary node eviction, or replica divergence. The mutual reinforcement of memory exhaustion, CPU starvation, and replication backlog makes the composite anomaly harder to diagnose than any single component defect.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3467,
+            "score": 0.6103186032264407,
+            "bm25_score": 56.375576945692956,
+            "lexical_score": 0.17099999999999999,
+            "matched_terms": [
+                "and",
+                "applier",
+                "apply",
+                "downstream",
+                "failure",
+                "lag",
+                "log",
+                "node",
+                "or",
+                "receiver",
+                "replica",
+                "replication",
+                "state",
+                "the",
+                "threads",
+                "to",
+                "while",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-011583",
+                "error_name": "ER_GRP_RPL_STARTING_GRP_REC",
+                "official_description": "Error while starting the group replication incremental recovery receiver/applier threads",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

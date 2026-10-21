@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Database Configuration Parameter Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Inefficient or overly broad application-issued statements and transaction patterns that force the engine to process more data or hold resources longer than business logic requires.\nDatabase Configuration Parameter Anomaly : Mis-tuned engine parameters that misalign memory, logging, checkpoint, parallelism, or worker settings with actual hardware and workload needs.\nOperating System Resource Limit Anomaly : Exhaustion of kernel-enforced limits such as file handles, shared memory segments, or thread quotas, restricting the database process regardless of internal configurations.\n\nWhen these three root causes occur simultaneously, the workload generates excessive scans, large result sets, and long-running transactions while the engine is hamstrung by sub-optimal buffer sizes, work memory, checkpoint cadence, and worker pools. The inflated demand collides with artificial ceilings imposed by the operating system, producing a compound symptom set: long-tail and highly variable statement latency, frequent slow-query log entries, sudden spikes of log-write or buffer-flush waits that do not match actual device utilization, intermittent \"cannot allocate shared memory / open file\" errors, failed connection or parallel-worker startups, and partial outages where active sessions stall yet CPU and I/O metrics appear under-utilized. Diagnostic views may show bloated memory evictions, repeated checkpoint storms, and escalating kernel error messages about resource exhaustion, making it difficult to pin the problem on any single layer.\n\nCausally, inefficient SQL inflates resource consumption, driving up memory pressure, dirty-page generation, and concurrent session counts. Misconfigured parameters prevent the engine from absorbing this pressure—small buffer pools force excessive I/O and checkpoints, while oversized per-session memory or parallelism settings multiply the footprint of every bad query. The heightened demand accelerates consumption of kernel objects (file descriptors, shared memory, threads); once OS limits are reached, new allocations fail, which in turn causes retries, rollbacks, and further stretches transaction lifetimes. Each layer amplifies stress on the others: poor SQL magnifies the impact of bad configuration, while both together push the process into the hard wall imposed by operating-system limits, resulting in a feedback loop of escalating latency, resource thrashing, and intermittent errors that degrade overall database availability and performance.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.3872733374898706,
+            "bm25_score": 19.25146926510529,
+            "lexical_score": 0.16363636363636364,
+            "matched_terms": [
+                "and",
+                "are",
+                "connection",
+                "data",
+                "from",
+                "is",
+                "latency",
+                "longer",
+                "more",
+                "not",
+                "of",
+                "or",
+                "pools",
+                "session",
+                "sessions",
+                "than",
+                "the",
+                "this",
+                "to",
+                "waits",
+                "when"
+            ],
+            "match_count": 36,
+            "entry": {
+                "timeout_id": "mysql84_replica_network_timeout",
+                "parameter_name": "replica_net_timeout",
+                "timeout_category": "replication_network_timeout",
+                "scope": "global/replication",
+                "official_definition": "The number of seconds to wait for more data from a source/replica connection before aborting the read.",
+                "trigger_condition": "A replica waits longer than replica_net_timeout for more data from the source connection.",
+                "workload_impact": "The replication network read is aborted and the replica considers the connection interrupted.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

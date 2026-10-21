@@ -1,0 +1,46 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Buffer Cache and Latch Contention Anomaly + CPU Resource Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer repeatedly chooses or reuses a markedly sub-optimal execution plan even though statistics are reasonable, causing excessive logical I/O, wrong join methods, or unnecessary parallelism.\nBuffer Cache and Latch Contention Anomaly: Hot pages, page-latch conflicts, or limited I/O slots force sessions to serialize on buffer-manager structures, inflating page-latch and buffer-busy waits and elongating critical sections.\nCPU Resource Anomaly: Database processes drive the host’s CPU usage to sustained saturation, creating long run-queues, high context-switch rates, and global latency inflation.\n\nCombined manifestation: When a bad plan that over-scans or over-probes data is executed concurrently by many sessions, it floods the buffer pool with unnecessary page touches, hammering a small set of index root or table pages. The resulting latch storms increase wait time while every process also burns CPU cycles in spin loops and plan work operations. Operators observe a toxic mix of symptoms: (1) abrupt plan flips followed by dramatic rises in both page-latch and CPU-scheduler waits; (2) CPU usage pegged near 100 %, yet throughput stagnates because sessions stall on buffer latches; (3) alternating spikes of logical I/O, latch contention, and scheduler delay in performance dashboards; (4) identical SQL text showing different plans and wildly different resource footprints within minutes; and (5) amplified latency variability that is hard to attribute to any single layer because optimizer, buffer manager, and CPU all appear as top consumers.\n\nCausal chain and reinforcement: A sub-optimal plan multiplies the number of page accesses, focusing pressure on a small working set. The intensified page churn heats up specific buffers and latches, extending their hold times. As more sessions queue on those latches, some spin-wait on CPU, driving processor utilization toward saturation. High CPU load in turn lengthens latch spin loops and slows the optimizer’s background tasks, delaying statistics refreshes and plan invalidations, which prolongs the life of the bad plan. Meanwhile, latch contention stalls dirty-page flushes, shrinking effective buffer capacity and further penalizing the plan’s I/O pattern. The feedback loop—bad plan → latch contention → CPU saturation → slower recovery mechanisms—creates a self-reinforcing state where all three anomalies aggravate one another and degrade the entire workload until the root causes are resolved.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 156,
+            "score": 0.48384434427812006,
+            "bm25_score": 15.095273241157255,
+            "lexical_score": 0.11295938104448741,
+            "matched_terms": [
+                "and",
+                "as",
+                "context",
+                "execution",
+                "is",
+                "or",
+                "sql",
+                "that",
+                "the",
+                "usage",
+                "with",
+                "wrong"
+            ],
+            "match_count": 11,
+            "entry": {
+                "error_code": "42809",
+                "error_name": "wrong_object_type",
+                "official_description": "wrong object type",
+                "error_class": "Class 42 - Syntax Error or Access Rule Violation",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "sql_and_parser",
+                "cause_analysis": "The failure is typically associated with unsupported syntax, invalid statement structure, or feature usage that the target engine version cannot execute as written.",
+                "solution_guidance": "Validate SQL syntax, target-engine compatibility, statement shape, and whether the feature is supported under the current engine version or execution context.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "syntax error",
+                    "feature rejection"
+                ]
+            }
+        }
+    }
+]

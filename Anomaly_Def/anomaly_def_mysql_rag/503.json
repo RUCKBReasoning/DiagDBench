@@ -1,0 +1,47 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + MVCC Version Maintenance Anomaly",
+            "Description": "Composite anomaly definition: The database simultaneously suffers from stale or incomplete optimizer statistics and an overgrown MVCC version store whose cleanup has fallen behind. As a result, the cost-based optimizer makes decisions on metadata that are both outdated and distorted by heap and index bloat, producing systematically mis-estimated and sub-optimal execution plans.\n\nCombined anomalous phenomena: 1) Extreme and erratic divergences between estimated and actual row counts, with estimates often orders of magnitude off due to statistics that no longer reflect the swollen base tables. 2) Query plans flip unpredictably between index scans and full-table or bitmap scans as the optimizer struggles to evaluate heavily bloated relation sizes. 3) Execution times elongate because plans chosen to access small perceived row sets instead confront large on-disk footprints and must wade through many dead tuples, incurring excessive random I/O, CPU spent on visibility checks, and memory consumed by mis-sized hash or sort operations. 4) Autovacuum or background purge workers appear saturated yet ineffective; meanwhile, automatic statistics refresh jobs are throttled or miss their windows, causing a persistent feedback loop of poor plans and further bloat.\n\nCausal chain and interaction: MVCC version accumulation inflates table and index pages, rapidly invalidating previously accurate statistics and increasing the skew between logical row counts and physical storage size. The optimizer, lacking fresh or sufficiently detailed statistics, underestimates result sizes and selects access paths that intensify I/O and CPU pressure. These heavier plans prolong query execution and hold snapshots open longer, which in turn delays version reclamation and forces the version store to grow even faster. The enlarged version store makes maintenance operations costlier, causing further delays in both vacuum/purge cycles and statistics refresh, thereby reinforcing the downward spiral of bloat, misestimation, and degraded performance.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.6953149053904015,
+            "bm25_score": 19.99576350945958,
+            "lexical_score": 0.09469072164948453,
+            "matched_terms": [
+                "access",
+                "and",
+                "because",
+                "behind",
+                "by",
+                "execution",
+                "in",
+                "or",
+                "query",
+                "the",
+                "with"
+            ],
+            "match_count": 25,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

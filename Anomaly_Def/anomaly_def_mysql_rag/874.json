@@ -1,0 +1,59 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer consistently chooses a sub-optimal execution plan even though statistics are credible, leading to excessive CPU, I/O, or memory consumption per statement.\nNetwork and Connectivity Resource Anomaly : Client-to-server transport, listener, or session resources are saturated or unstable, producing connection delays, socket backlogs, and data-transfer stalls.\n\nWhen both root causes are present, the database shows a mixture of intra-engine and external latency signals: queries oscillate between different plans or stick to an inefficient plan that produces large intermediate result sets; those result sets linger in memory and on the wire while network throughput is constrained, causing back-end sessions to accumulate in client-read waits. Application servers observe longer connect times, sporadic authentication failures, and wide variability in statement latency, with some executions timing out during planning, others during result shipping. Plan changes may appear random because plan recompilations coincide with bursts of connection retries, while connection pool exhaustion masks whether the slowness originates in the optimizer or the network.\n\nThe causal chain often starts with a poor plan that executes for much longer and returns far more rows than necessary, inflating payload size and holding server processes and sockets open. The extended lifespan of each session amplifies pressure on the listener backlog and OS socket queues, pushing the network layer into congestion and raising round-trip times. Elevated network latency, in turn, delays completion feedback to the optimizer and exacerbates bind-sensitive plan instability; frequent reconnect attempts triggered by client timeouts further churn the plan cache, encouraging additional sub-optimal plan compilations. The two anomalies thus reinforce each other, multiplying concurrency, skewing resource estimates, and degrading overall throughput far beyond what either issue would cause in isolation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.6214569752498159,
+            "bm25_score": 21.42597571211973,
+            "lexical_score": 0.19442788541149195,
+            "matched_terms": [
+                "and",
+                "are",
+                "authentication",
+                "client",
+                "connect",
+                "connection",
+                "during",
+                "for",
+                "holding",
+                "is",
+                "latency",
+                "of",
+                "or",
+                "server",
+                "session",
+                "sessions",
+                "that",
+                "the",
+                "triggered",
+                "waits",
+                "when",
+                "whether",
+                "with"
+            ],
+            "match_count": 40,
+            "entry": {
+                "timeout_id": "mysql84_connection_handshake_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "connection_handshake_timeout",
+                "scope": "global",
+                "official_definition": "The number of seconds that the mysqld server waits for a connect packet before responding with Bad handshake.",
+                "trigger_condition": "A client does not complete the initial connection packet exchange within connect_timeout.",
+                "workload_impact": "The connection attempt fails during handshake.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

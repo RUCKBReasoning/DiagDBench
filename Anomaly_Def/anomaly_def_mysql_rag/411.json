@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + MVCC Version Maintenance Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Composite Definition:\nThe database simultaneously suffers from sub-optimal execution-plan choices, unchecked accumulation of obsolete MVCC row versions, and saturation of the underlying storage throughput budget. The three conditions reinforce each other, producing symptoms that are broader and more severe than any single anomaly alone.\n\nCombined Observable Phenomena:\n• Identical statements oscillate between different or obviously poor plans while response times keep rising.\n• Sequential scans, hash builds, or nested-loop outer scans read far more pages than expected because tables and indexes are bloated with dead tuples.\n• Device-level metrics show queue depths pegged, read and write latency multiples higher than normal, and log-flush or buffer-I/O waits dominating the wait profile even when CPU is idle.\n• Autovacuum/cleanup workers run constantly yet fail to shrink the version store; catalog views report high dead-tuples-to-live-tuples ratios and growing on-disk size.\n• Planner misestimates become more frequent as statistics lag behind the rapidly changing and bloated heap, leading to further plan instability.\n• Business transactions time out, batch windows stretch, and analytic queries executed on the same system observe inconsistent runtimes depending on whether they hit a cached or newly compiled plan.\n\nCausal Chain and Interaction:\n1. MVCC bloat inflates table and index size, distorting cardinality statistics and making cost estimates less reliable.\n2. The optimizer, already prone to plan-selection mistakes, is now working with misleading size estimates, increasing the probability of choosing plans that trigger large table scans, spill to temp, or lose beneficial parallelism.\n3. These poorly chosen plans generate excess physical I/O; the swollen objects mean each scan or index probe touches more pages, quickly saturating the storage subsystem.\n4. Once storage throughput is maxed out, I/O latency rises. Long-running queries hold snapshots open longer, which prevents cleanup workers from advancing the MVCC horizon, so dead versions accumulate even faster.\n5. The growing version store further enlarges the data footprint, feeding back into even worse cost estimates and heavier I/O, creating a self-reinforcing degradation loop that is difficult to attribute to any single layer without holistic analysis.\n",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.48291168100574255,
+            "bm25_score": 17.45242029017293,
+            "lexical_score": 0.12233579817311874,
+            "matched_terms": [
+                "and",
+                "data",
+                "is",
+                "lag",
+                "long",
+                "longer",
+                "or",
+                "out",
+                "than",
+                "the",
+                "times",
+                "to",
+                "waits",
+                "when",
+                "whether"
+            ],
+            "match_count": 20,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

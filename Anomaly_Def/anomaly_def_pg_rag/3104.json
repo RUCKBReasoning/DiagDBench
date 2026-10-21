@@ -1,0 +1,46 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + CPU Resource Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly: The write-ahead logging pipeline—log buffer, log file groups, flush/sync path, archival, or replication retention—cannot keep pace with redo generation, throttling commit throughput.\nCPU Resource Anomaly: Database and host processes saturate available CPU cores, driving up run-queue depth and causing wide-spread latency inflation regardless of statement type.\nNetwork and Connectivity Resource Anomaly: The transport and connection-handling layer (listeners, sockets, authentication, wire encryption, network path) becomes a bottleneck, delaying or dropping client requests and server responses.\n\nWhen all three root causes manifest together, the database exhibits a multi-layer performance collapse: 1) commits stall behind slow log flushes, 2) CPU utilisation stays pinned at or near 100 %, with elevated context switches and scheduler waits, and 3) connection establishment and data-transfer latencies spike, leading to client timeouts, increased retransmissions, and an explosion of idle-in-transaction or socket-wait sessions. Observable symptoms overlap and mask each other—e.g., high commit latency may be misattributed to network RTT, while excessive CPU spin on log-writer and listener threads inflates both wait metrics and OS load. Monitoring dashboards show simultaneous saturation of CPU, log-write waits, and connection backlog queues; alert logs may display frequent log switches, archiver lag, and too-many-connections errors occurring in the same timeframe.\n\nCausally, a feedback loop develops: network slow-downs and connection retries extend transaction lifetimes, inflating the volume of unflushed redo and holding log segments active for longer; the overgrown log and heavier context management load force the log writer, checkpointer, and listener processes to consume more CPU, driving the host toward compute exhaustion. In turn, CPU saturation delays log flushing and socket processing, deepening both the log bottleneck and network backlog. As commits queue behind log I/O and CPU-bound background tasks, application threads remain active longer, further amplifying connection counts and CPU demand. The intertwined contention across log I/O, CPU scheduling, and network endpoints accelerates queue build-ups, risks cluster-wide replica lag or failover, and can precipitate a full write stall or loss of client connectivity unless all three layers are relieved in concert.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 222,
+            "score": 0.21639493200456308,
+            "bm25_score": 10.596320624970584,
+            "lexical_score": 0.10636363636363635,
+            "matched_terms": [
+                "and",
+                "be",
+                "context",
+                "data",
+                "in",
+                "or",
+                "resource",
+                "statement",
+                "the",
+                "to",
+                "together",
+                "type",
+                "with"
+            ],
+            "match_count": 13,
+            "entry": {
+                "error_code": "HV004",
+                "error_name": "fdw_invalid_data_type",
+                "official_description": "fdw invalid data type",
+                "error_class": "Class HV - Foreign Data Wrapper Error (SQL/MED)",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

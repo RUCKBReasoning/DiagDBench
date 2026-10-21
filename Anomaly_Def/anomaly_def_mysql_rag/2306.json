@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Buffer Cache and Latch Contention Anomaly + Storage Space Capacity Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level statements or transaction patterns force the engine to scan, join, or retain far more data and hold locks longer than business logic actually requires.\nBuffer Cache and Latch Contention Anomaly : Hot pages or an undersized/over-tuned buffer manager cause sessions to block or spin on page pins, latches, or dirty-page flush slots rather than progressing.\nStorage Space Capacity Anomaly : Data, log, or temp files exhaust their allocated space, triggering allocation failures, stalled writes, or checkpoint/archiver back-pressure.\n\nWhen all three root causes manifest together, the workload generates excessive and poorly targeted I/O, overloading a limited buffer pool whose hot pages are already points of intense latch contention. The same bloated or long-running SQL repeatedly touches a small set of index root pages and high-churn data blocks, producing long buffer-busy waits, CPU spin cycles, and growing dirty-page queues. Meanwhile, relentless data growth and prolonged transaction lifetimes consume table, index, temp, and log space faster than it can be recycled, leading to near-synchronous space exhaustion. Symptoms surface as \"slow query\" spikes that coincide with buffer-latch wait surges, checkpoint slowdowns, auto-extend failures, and finally \"no space left\" errors or frozen commits. Monitoring tools may struggle to isolate a single layer because latency, buffer contention, and space alerts rise in lock-step.\n\nCausal chain: sub-optimal SQL drives higher row and page touch rates, inflating both logical and physical I/O. This churn heats a few critical pages, intensifying latch competition inside a buffer cache that is already pressured by frequent evictions. The elevated dirty-page volume delays checkpoints and extends the residency of full pages in memory and on disk. Because transactions stay open longer and redo/undo growth accelerates, log segments cannot be recycled, and data files grow rapidly toward configured limits. As free space dwindles, background writers and checkpointers are forced into aggressive flush patterns, further increasing latch holds and I/O latency. Ultimately, the vicious cycle of chatty SQL, buffer contention, and shrinking disk space converges, degrading throughput and threatening abrupt service outages.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.7459235807860262,
+            "bm25_score": 31.32624549060539,
+            "lexical_score": 0.15307860262008732,
+            "matched_terms": [
+                "and",
+                "be",
+                "because",
+                "by",
+                "configured",
+                "contention",
+                "in",
+                "is",
+                "long",
+                "or",
+                "query",
+                "running",
+                "statements",
+                "the",
+                "this",
+                "together",
+                "when",
+                "with",
+                "workload"
+            ],
+            "match_count": 108,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

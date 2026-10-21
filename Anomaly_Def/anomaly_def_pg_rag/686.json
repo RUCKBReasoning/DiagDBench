@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Database Memory Allocation Anomaly + CPU Resource Anomaly",
+            "Description": "Composite Definition: This anomaly occurs when the optimizer persistently selects sub-optimal execution plans (Query Plan Selection Anomaly) while the engine simultaneously over-allocates and exhausts host memory (Database Memory Allocation Anomaly) and the database processes drive the CPUs into sustained saturation (CPU Resource Anomaly). All three root causes are active at the same time, creating a multi-layer failure that degrades throughput and predictability across the entire workload.\n\nCombined Observable Phenomena: • Statements flip between radically different plans, some exploding into full table scans or multi-way nested loops. • Memory usage of buffer cache, work areas, and plan cache grows without bound, pushing the operating system into paging or OOM kills; after each memory reclaim, new plans are recompiled, further inflating the plan cache. • CPU utilization remains near 100 %, run-queue length spikes, and wait events shift from I/O or lock waits to scheduler waits and spin-locks inside memory allocators. • Latency outliers become extreme; short OLTP requests time out while long analytical queries stall in memory pressure throttling. • Node failures or automatic failovers may be triggered by combined memory and CPU stress, masking the underlying plan instability.\n\nCausal Interaction: Sub-optimal plans often require larger hash/sort areas or read far more pages, inflating both per-query work memory and buffer-cache churn. The bloated memory footprint accelerates overall memory exhaustion; when the engine or OS begins paging, CPU cycles are wasted on page-fault handling and plan recompilations, further heating CPU. In turn, CPU saturation slows the optimizer and memory managers, lengthening critical sections and increasing contention on shared allocation latches, which feeds back into even poorer plan choices (e.g., time-outs in adaptive optimization) and larger memory grants issued as guard bands. The positive feedback loop between bad plans, runaway memory growth, and CPU starvation rapidly amplifies resource pressure, causing a system-wide degradation that is much worse than any single anomaly would produce in isolation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.5515104131896907,
+            "bm25_score": 23.306756823755585,
+            "lexical_score": 0.16070261437908495,
+            "matched_terms": [
+                "after",
+                "and",
+                "are",
+                "at",
+                "be",
+                "between",
+                "handling",
+                "is",
+                "latency",
+                "long",
+                "or",
+                "queries",
+                "query",
+                "system",
+                "that",
+                "the",
+                "this",
+                "time",
+                "triggered",
+                "when",
+                "while"
+            ],
+            "match_count": 196,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

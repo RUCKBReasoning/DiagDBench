@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Buffer Cache and Latch Contention Anomaly + CPU Resource Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer repeatedly chooses or reuses a markedly sub-optimal execution plan even though statistics are reasonable, causing excessive logical I/O, wrong join methods, or unnecessary parallelism.\nBuffer Cache and Latch Contention Anomaly: Hot pages, page-latch conflicts, or limited I/O slots force sessions to serialize on buffer-manager structures, inflating page-latch and buffer-busy waits and elongating critical sections.\nCPU Resource Anomaly: Database processes drive the host’s CPU usage to sustained saturation, creating long run-queues, high context-switch rates, and global latency inflation.\n\nCombined manifestation: When a bad plan that over-scans or over-probes data is executed concurrently by many sessions, it floods the buffer pool with unnecessary page touches, hammering a small set of index root or table pages. The resulting latch storms increase wait time while every process also burns CPU cycles in spin loops and plan work operations. Operators observe a toxic mix of symptoms: (1) abrupt plan flips followed by dramatic rises in both page-latch and CPU-scheduler waits; (2) CPU usage pegged near 100 %, yet throughput stagnates because sessions stall on buffer latches; (3) alternating spikes of logical I/O, latch contention, and scheduler delay in performance dashboards; (4) identical SQL text showing different plans and wildly different resource footprints within minutes; and (5) amplified latency variability that is hard to attribute to any single layer because optimizer, buffer manager, and CPU all appear as top consumers.\n\nCausal chain and reinforcement: A sub-optimal plan multiplies the number of page accesses, focusing pressure on a small working set. The intensified page churn heats up specific buffers and latches, extending their hold times. As more sessions queue on those latches, some spin-wait on CPU, driving processor utilization toward saturation. High CPU load in turn lengthens latch spin loops and slows the optimizer’s background tasks, delaying statistics refreshes and plan invalidations, which prolongs the life of the bad plan. Meanwhile, latch contention stalls dirty-page flushes, shrinking effective buffer capacity and further penalizing the plan’s I/O pattern. The feedback loop—bad plan → latch contention → CPU saturation → slower recovery mechanisms—creates a self-reinforcing state where all three anomalies aggravate one another and degrade the entire workload until the root causes are resolved.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 1141,
+            "score": 0.517410143347621,
+            "bm25_score": 43.63433132433258,
+            "lexical_score": 0.1543560606060606,
+            "matched_terms": [
+                "and",
+                "by",
+                "context",
+                "execution",
+                "followed",
+                "in",
+                "is",
+                "more",
+                "one",
+                "or",
+                "pressure",
+                "query",
+                "resource",
+                "sql",
+                "state",
+                "table",
+                "the",
+                "to",
+                "with",
+                "workload"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "3574",
+                "error_name": "ER_CTE_RECURSIVE_REQUIRES_NONRECURSIVE_FIRST",
+                "official_description": "Recursive Common Table Expression '%s' should have one or more non-recursive query blocks followed by one or more recursive ones",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

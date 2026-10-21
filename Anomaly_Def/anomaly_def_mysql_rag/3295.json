@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Database Memory Allocation Anomaly",
+            "Description": "Composite definition: The database simultaneously suffers from excessive accumulation of obsolete MVCC row versions and uncontrolled growth of memory-resident structures, causing both storage-level bloat and host-level memory pressure at the same time.\n\nMVCC Version Maintenance Anomaly: Obsolete row versions, undo/rollback records, and dead index entries pile up faster than background cleanup processes can purge them, inflating on-disk objects and lengthening visibility checks.\nDatabase Memory Allocation Anomaly: Buffer caches, work areas, plan caches, and other memory heaps expand beyond the safe limits of physical RAM, leading to paging, OOM kills, and degraded cache efficiency.\n\nCombined symptoms: • Rapid growth of both on-disk relation size and in-memory buffers devoted to stale row versions and undo, driving the database process’s RSS steadily upward. • Cleanup workers that are chronically scheduled yet starved for RAM, showing frequent restarts or throttling under OS memory pressure. • Elevated I/O due to double handling of data: bloated tables require longer scans while reduced cache effectiveness forces more disk reads; simultaneous swapping further slows I/O paths. • Query latencies become highly variable: readers traverse ever-larger version chains while also stalling on memory allocation, and writers may experience checkpoint or WAL backpressure. • Nodes in clustered/VM environments may be evicted or reboot due to exceeded memory cgroups, with recovery complicated by large undo/redo segments.\n\nCausal interaction: The surge of obsolete versions expands both the persistent heap and the in-memory buffer pool, directly increasing memory consumption. As the memory envelope is exceeded, the operating system begins paging or terminates processes, which in turn slows or interrupts background vacuum/garbage-collection workers, allowing even more dead versions to accumulate—a positive feedback loop. Memory pressure also reduces effective work memory per query, causing hash/sort spills that further inflate temporary files and prolong transactions, keeping old snapshots open and preventing version pruning. Conversely, long-running or memory-hungry queries spawned during memory bloat delay transaction-ID advancement, deepening the MVCC horizon problem. The intertwined effects amplify each other, degrading throughput, increasing crash risk, and making root-cause isolation harder because symptoms of storage bloat and memory exhaustion appear concurrently.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.6716523924902267,
+            "bm25_score": 22.38040154324801,
+            "lexical_score": 0.11770354619658413,
+            "matched_terms": [
+                "and",
+                "be",
+                "because",
+                "by",
+                "for",
+                "is",
+                "long",
+                "or",
+                "other",
+                "query",
+                "running",
+                "the",
+                "time",
+                "with",
+                "work"
+            ],
+            "match_count": 154,
+            "entry": {
+                "timeout_id": "mysql84_regular_expression_time_limit",
+                "parameter_name": "regexp_time_limit",
+                "timeout_category": "expression_evaluation_time_limit",
+                "scope": "global/session",
+                "official_definition": "The time limit for regular expression matching operations performed by the regular expression engine.",
+                "trigger_condition": "A regular expression match operation exceeds regexp_time_limit.",
+                "workload_impact": "The regular expression operation is constrained by the configured time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

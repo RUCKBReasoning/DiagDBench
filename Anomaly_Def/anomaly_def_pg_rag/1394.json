@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + CPU Resource Anomaly",
+            "Description": "Schema and Index Design Anomaly : Physical data-model and indexing choices mismatch workload access paths, forcing otherwise correct SQL to read or write far more data than necessary.\nCPU Resource Anomaly : Host CPU cores become saturated by database processes, throttling all sessions regardless of their individual efficiency.\n\nWhen these root causes strike together, the system displays a blend of I/O-heavy access paths and persistent CPU saturation. Execution plans show full scans, large hash or sort operations, and repeated key lookups, while OS metrics report high run-queue depth, elevated context switches, and spikes in CPU time for the most frequent statements. Latency escalates non-linearly: queries slowed by scan-heavy plans also wait longer in CPU run queues, causing lock hold times, connection pool exhaustion, and sporadic timeouts. Maintenance tasks (auto-vacuum, statistics refresh, checkpoint, log flushing) compete for already scarce CPU, so short stalls ripple into user-visible slowdowns and variance in response times.\n\nCausally, sub-optimal schema and missing or misaligned indexes compel the optimizer to choose resource-hungry plans that read and process excess rows; this inflates per-query CPU demand. The aggregate effect of many such inefficient executions drives CPU Resource Anomaly. Once cores are saturated, the scheduler elongates every CPU quantum, further magnifying the cost of each scan, join, and sort. High CPU pressure delays background tasks that might otherwise mitigate bloat or refresh statistics, locking the system into a feedback loop where degraded physical design and compute starvation reinforce one another, ultimately depressing throughput and threatening stability under both transactional and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.5508522601698224,
+            "bm25_score": 20.209280890063358,
+            "lexical_score": 0.15022150624244862,
+            "matched_terms": [
+                "and",
+                "another",
+                "context",
+                "for",
+                "lock",
+                "longer",
+                "of",
+                "or",
+                "query",
+                "schema",
+                "sessions",
+                "than",
+                "that",
+                "the",
+                "this",
+                "time",
+                "user",
+                "vacuum",
+                "when",
+                "while"
+            ],
+            "match_count": 230,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

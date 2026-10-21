@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Transaction Log Subsystem Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Database Memory Allocation Anomaly : Excessive or runaway allocation of buffer caches, work areas, plan caches, and other engine heaps pushes total database memory demand beyond the safe limits of the host.\nTransaction Log Subsystem Anomaly : The write-ahead logging path—generation, flushing, switching, or archiving of redo—becomes the primary bottleneck, inflating commit latency and stalling write activity.\nStorage I/O Throughput Anomaly : The physical volumes that service data, temp, and log files are saturated in IOPS, bandwidth, or latency, making device service time the limiting factor for I/O.\n\nWhen these three root causes strike simultaneously, the database exhibits a blended failure signature: memory pressure drives aggressive dirty-page eviction and larger, more frequent log flushes just as the log subsystem itself struggles to switch or archive segments on an already saturated storage layer. Observable effects include surging commit and checkpoint latency, oscillating buffer-cache hit ratios, prolonged foreground and background waits on log file sync, buffer IO, and direct path read/write events, escalating paging or swapping on the host, and periods of near-stall where sessions block behind log space or I/O completion while CPU remains under-utilized. Monitoring may show the database process’s resident set swelling, log and data volumes with deep device queues, archive destinations ballooning, and ultimately instance eviction or crash due to out-of-memory or inability to advance the redo pointer.\n\nCausally, excessive memory allocation shortens the usable in-memory write-back window, forcing the engine to flush dirty buffers and large log batches more aggressively. Those extra writes hit a transaction-log subsystem that is already size- or configuration-limited; the backlog there prolongs commit and checkpoint completion, causing yet more buffers to accumulate and further elevating memory pressure. Meanwhile, both the forced buffer flushes and the heavy redo traffic converge on an over-subscribed storage layer whose throughput ceiling amplifies every flush and sync delay. The three anomalies therefore form a positive feedback loop: memory over-consumption accelerates log pressure; log stalls extend buffer lifetimes and increase memory usage; both inflate I/O volume, which hammers the storage subsystem and propagates latency back up the stack, degrading overall database stability and performance.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.4208573608137588,
+            "bm25_score": 14.287806767095615,
+            "lexical_score": 0.11269606392423794,
+            "matched_terms": [
+                "activity",
+                "and",
+                "are",
+                "data",
+                "is",
+                "latency",
+                "may",
+                "on",
+                "or",
+                "remains",
+                "sessions",
+                "the",
+                "time",
+                "when"
+            ],
+            "match_count": 302,
+            "entry": {
+                "timeout_id": "pg16_tcp_user_timeout",
+                "parameter_name": "tcp_user_timeout",
+                "timeout_category": "network_unacknowledged_data_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies how long transmitted data may remain unacknowledged before the TCP connection is forcibly closed.",
+                "trigger_condition": "TCP data sent by PostgreSQL remains unacknowledged longer than tcp_user_timeout on systems supporting TCP_USER_TIMEOUT.",
+                "workload_impact": "The TCP connection is forcibly closed.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

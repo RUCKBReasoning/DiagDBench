@@ -1,0 +1,64 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Replication Synchronization Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Transaction Lock Contention Anomaly: Concurrent transactions hold or request mutually incompatible locks on shared rows, pages, or metadata, creating long blocking chains or deadlocks that stall commit progress.\nReplication Synchronization Anomaly: Stand-by or replica nodes fall behind because they cannot receive, persist, or apply primary-generated log records at the produced rate, inflating replication lag and retaining excess log segments on the primary.\nNetwork and Connectivity Resource Anomaly: Transport or connection-handling bottlenecks—bandwidth saturation, packet loss, socket exhaustion, or authentication backlogs—impede data flow between clients or replicas and the database server.\n\nWhen these three issues arise together, the database exhibits compound symptoms: application sessions pile up in both connection pools and lock wait queues; ordinary statements appear to \"freeze\" as they wait for locks held by transactions whose clients are themselves stalled on sluggish networks; deadlock detector activity and victim rollbacks surge; replica replay lag grows rapidly because lock-intensive transactions commit slowly and because network congestion throttles log shipping; primary WAL or binlog disks fill due to unrecycled segments retained for lagging replicas; monitoring shows simultaneous spikes in lock-wait time, replication apply delay, network retransmissions, and refused or idle sockets, making it difficult to attribute the slowdown to a single layer.\n\nCausally, degraded network paths first throttle both client traffic and replication streaming. Prolonged round-trip times cause application transactions to hold locks longer, increasing the probability of blocking and deadlocks on the primary; these stalled commits in turn reduce commit throughput while still accumulating unflushed WAL. Because the same network impairment also limits the rate at which replicas receive or acknowledge log data, the primary cannot recycle its growing log, further stressing disk subsystems. On the replica side, apply workers encountering lock conflicts left by large or long-running transactions replay even more slowly, amplifying lag. The feedback loop—network-induced latency inflating lock duration, lock contention elongating transactions and generating larger bursts of WAL, and replication backlog preventing log cleanup—drives a systemic degradation that impacts both write and read traffic and complicates root-cause isolation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.7571630204657727,
+            "bm25_score": 38.42815594215519,
+            "lexical_score": 0.19054340155257588,
+            "matched_terms": [
+                "and",
+                "because",
+                "blocking",
+                "cannot",
+                "cleanup",
+                "client",
+                "delay",
+                "for",
+                "idle",
+                "incompatible",
+                "lock",
+                "locks",
+                "long",
+                "longer",
+                "metadata",
+                "of",
+                "or",
+                "preventing",
+                "reduce",
+                "sessions",
+                "that",
+                "the",
+                "time",
+                "transaction",
+                "transactions",
+                "when",
+                "while"
+            ],
+            "match_count": 283,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

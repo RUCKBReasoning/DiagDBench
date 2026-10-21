@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + CPU Resource Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Obsolete row versions, rollback records, and dead index entries accumulate faster than background cleanup workers can reclaim them.\nCPU Resource Anomaly : Database processes sustain near-saturation CPU consumption, starving other work and inflating latency.\nOperating System Resource Limit Anomaly : Database processes hit kernel-enforced ceilings such as file descriptors, shared-memory segments, or thread counts, causing allocation failures.\n\nWhen all three root causes are active, the system shows a compound failure signature: vacuum or purge workers spin at 100 % CPU yet make little progress, overall host load and context-switch rates soar, and the engine begins to log errors about failing to spawn new workers, open files, or extend shared memory. Query latencies rise non-linearly; some sessions stall on visibility checks of bloated tables while others are rejected outright by the kernel. Monitoring views show both a growing version store and a backlog of blocked or aborted background jobs. Administrators may observe that even emergency maintenance commands refuse to start because required handles or processes cannot be created.\n\nCausal chain: heavy UPDATE/DELETE churn inflates the version store, awakening more cleanup workers; these workers consume additional CPU cycles and create more kernel objects (threads, file handles, async-I/O contexts). The extra CPU demand pushes the host to saturation, lengthening task-switch queues and slowing all workers—including those needed for cleanup—so the MVCC bloat worsens. Meanwhile, the multiplication of worker threads and open files drives the process toward OS resource ceilings; once those limits are reached, new vacuum workers and client sessions fail to start, eliminating the very mechanisms that could relieve version pressure. The three anomalies therefore reinforce one another: MVCC bloat triggers CPU saturation, CPU saturation accelerates kernel object creation, OS denials block remediation, and the feedback loop rapidly degrades overall database availability.\n",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.653098366334251,
+            "bm25_score": 23.93436472656292,
+            "lexical_score": 0.14028132992327363,
+            "matched_terms": [
+                "aborted",
+                "and",
+                "another",
+                "be",
+                "because",
+                "block",
+                "cannot",
+                "client",
+                "for",
+                "of",
+                "or",
+                "required",
+                "sessions",
+                "than",
+                "the",
+                "to",
+                "when",
+                "while"
+            ],
+            "match_count": 101,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

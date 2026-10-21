@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Transaction Log Subsystem Anomaly + CPU Resource Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Sessions serialize on hot buffer-cache pages, page pins, and latches, stalling logical I/O even when physical memory is available.\nTransaction Log Subsystem Anomaly : Commit processing is throttled by log buffer flush, log file write, or archiver activity, making the log path the critical choke point.\nCPU Resource Anomaly : Database processes drive host CPU to sustained saturation, starving all threads—including internal background workers—of scheduler time.\n\nWhen all three root causes strike together, the system exhibits an intertwined symptom set:  • End-to-end transaction latency and commit latency rise sharply, with wait-event views showing a mix of LOG-WRITE, LOG-FLUSH, BUFFER-BUSY, and PAGE-LATCH waits.  • CPU usage stays at or near 100 %, yet throughput plateaus or declines; spin loops on buffer latches crowd the run queue while log writer and archiver threads contend for CPU slices to perform synchronous writes.  • Checkpoint storms and rapid log-file switches amplify dirty-buffer pressure, so foreground sessions alternately wait for latch access to hot pages and for log space to be freed.  • Monitoring tools may mis-attribute the slowdown because the dominant symptom—CPU saturation—masks the underlying dual I/O bottlenecks on buffers and the redo log.\n\nCausal interaction: Hot pages and frequent page churn inflate latch acquisition attempts; many of those attempts spin rather than sleep, inflating CPU consumption. The elevated CPU load delays log writer, archiver, and buffer-flush threads, stretching commit latency and prolonging the time dirty pages remain pinned. Those pinned or dirty buffers, in turn, intensify latch contention because they cannot be evicted or reused until the log is persisted, further increasing spin and CPU pressure. Meanwhile, slow log advancement forces aggressive checkpoints, which flush more dirty pages and request additional latches, closing a feedback loop that binds buffer contention, log backlog, and CPU starvation into a self-reinforcing performance collapse.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1666,
+            "score": 0.4475725826680109,
+            "bm25_score": 40.62362905235247,
+            "lexical_score": 0.15702127659574466,
+            "matched_terms": [
+                "access",
+                "and",
+                "be",
+                "buffer",
+                "file",
+                "for",
+                "internal",
+                "is",
+                "latency",
+                "log",
+                "of",
+                "or",
+                "pressure",
+                "that",
+                "the",
+                "to",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "4142",
+                "error_name": "ER_BULK_PARSER_COPY_BUFFER_SIZE_EXCEEDED",
+                "official_description": "The column data that needed to be copied due to escaped characters exceeded the size of the internal copy buffer for file '%s'.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

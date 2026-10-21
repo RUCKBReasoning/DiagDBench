@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Replication Synchronization Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Composite Definition:\nThe system simultaneously suffers from a static schema/index design mismatch, a replication pipeline that cannot consume the generated write-ahead or change-data stream fast enough, and constrained network or connection-handling capacity. Together these faults degrade local query execution, overload the replication channel, and choke both client and replica connectivity.\n\nSchema and Index Design Anomaly: Tables, indexes, partitions, or data types are poorly aligned with workload access patterns, forcing inefficient scans, excessive row lookups, and bloated redo generation during DML.\nReplication Synchronization Anomaly: Standbys or downstream consumers fall behind because they cannot receive, write, or apply the primary’s log stream at production rate, widening replication lag and blocking log recycling.\nNetwork and Connectivity Resource Anomaly: Transport bandwidth, latency, or connection-handling limits between clients/replicas and the primary are saturated or unstable, yielding timeouts, retransmissions, and refused or stalled sessions.\n\nCombined Observed Phenomena:\n• Application queries show high latency from full scans and non-covering index probes, while concurrent updates inflate transaction-log volume.\n• Network queues fill with large result sets and swollen log traffic, driving up RTT, retransmissions, and listener backlog; clients experience slow connect and sporadic \"too many connections\" errors.\n• Replication monitoring shows rapidly growing receive, write, and replay lag; relay or retained WAL/redo files accumulate, consuming primary storage and risking disk-full events.\n• Read replicas deliver stale or inconsistent data, causing application cache inconsistencies and failover unreliability.\n• Performance troubleshooting is complicated: execution plans look inefficient, yet fixing indexes alone does not eliminate end-to-end latency because transport and replica delays persist.\n\nCausal Chain and Interaction:\nInefficient schema and index design forces heavier table scans and larger result sets, increasing data volume sent to clients and the replication log. The inflated traffic saturates network bandwidth and overwhelms connection slots, amplifying Network and Connectivity Resource contention. In turn, network congestion throttles the throughput of replication streams, worsening Replication Synchronization lag. Growing lag prevents log truncation, so enlarged log files further burden storage and I/O, feeding back into longer check- and redo-generation cycles triggered by the poor schema design. The intertwined effects of excessive data generation, constrained transport, and lagging replicas thus reinforce each other, leading to severe, system-wide slowdowns and elevated risk of replica divergence or primary outages.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.7420985155195681,
+            "bm25_score": 35.05978955614029,
+            "lexical_score": 0.14032838506522716,
+            "matched_terms": [
+                "and",
+                "apply",
+                "causing",
+                "channel",
+                "connectivity",
+                "data",
+                "downstream",
+                "is",
+                "lag",
+                "longer",
+                "or",
+                "replica",
+                "replication",
+                "stalled",
+                "the",
+                "to",
+                "triggered"
+            ],
+            "match_count": 110,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

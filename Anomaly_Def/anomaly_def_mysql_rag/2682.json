@@ -1,0 +1,47 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + MVCC Version Maintenance Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently picks a substantially sub-optimal execution plan even though statistics are reasonably accurate and the query text is unchanged.\nMVCC Version Maintenance Anomaly : Obsolete row versions and logically deleted index entries accumulate faster than background cleanup can reclaim them, inflating storage and visibility-check overhead.\nData Block and Index Integrity Anomaly : On-disk heap pages or index structures become physically or logically corrupted, breaking key order, page links, or heap–index correspondence.\n\nCombined phenomena: 1) Sudden plan flips from index probes to full scans on tables whose physical size has exploded from version bloat or whose indexes have become unreliable, 2) huge gaps between estimated and actual row counts because corruption and bloat distort statistics, 3) escalating I/O, CPU, and memory consumption during long-running OLTP statements, 4) vacuum/cleanup workers stuck or failing on corrupted pages while plan cache thrashes with ever-changing bad plans, 5) user-visible symptoms ranging from intermittent wrong-result sets (duplicate or missing rows) to query-timeouts and engine warnings about both wraparound danger and page checksum errors.\n\nCausal chain: MVCC version bloat enlarges tables and skews visibility statistics, which misleads the optimizer into choosing cost-based plans that look cheaper but are disastrous in practice. Corrupted index or heap pages further undermine the optimizer’s cardinality feedback, triggering even worse plan choices or forcing full scans that magnify the impact of the bloated storage layer. In turn, the poor plans often perform wide scans and high-churn updates that generate yet more row versions and touch damaged pages, hampering cleanup workers whose failure allows both bloat and corruption to deepen. The three faults therefore reinforce one another, driving a feedback loop of growing storage, deteriorating plan quality, rising resource usage, and increasing risk of data-access errors in a live OLTP workload.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.3572702816299084,
+            "bm25_score": 15.409460005788771,
+            "lexical_score": 0.09298724954462659,
+            "matched_terms": [
+                "and",
+                "are",
+                "bad",
+                "check",
+                "during",
+                "is",
+                "of",
+                "or",
+                "that",
+                "the",
+                "with"
+            ],
+            "match_count": 106,
+            "entry": {
+                "timeout_id": "mysql84_connection_handshake_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "connection_handshake_timeout",
+                "scope": "global",
+                "official_definition": "The number of seconds that the mysqld server waits for a connect packet before responding with Bad handshake.",
+                "trigger_condition": "A client does not complete the initial connection packet exchange within connect_timeout.",
+                "workload_impact": "The connection attempt fails during handshake.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

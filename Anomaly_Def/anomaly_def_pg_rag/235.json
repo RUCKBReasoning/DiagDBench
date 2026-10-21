@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Transaction Lock Contention Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer chooses a markedly sub-optimal execution plan even though statistics are adequate, leading to inefficient access paths, excessive I/O, or wrong join methods.\nTransaction Lock Contention Anomaly: Concurrent transactions request incompatible locks on the same resources, creating long blocker–waiter chains or deadlocks that stall throughput.\n\nWhen both root causes strike together, an ill-chosen plan dramatically enlarges the lock footprint and execution time of critical statements while the lock manager simultaneously becomes saturated with incompatible requests. Observable symptoms include: sudden shifts from index seeks to full table scans that acquire thousands of row, page, or even table locks; explosive growth of lock queues, deadlock frequency, and victim rollbacks; erratic query runtimes where identical statements alternate between fast, parallel index access and slow, blocking scans; rising CPU and I/O due to the bad plan coupled with application-level timeouts as sessions wait on locks; and volatile throughput with alternating bursts of progress and stalls.\n\nCausally, the optimizer’s poor plan increases both the number and duration of locks it holds—e.g., a hash join that spills or a nested-loop on the wrong join order—thereby lengthening critical-section time and magnifying the probability of conflicts. Conversely, the resulting lock waits and deadlocks prolong transaction lifetimes and inflate table cardinalities seen by later optimizer invocations, which can bias plan selection further toward full scans or conservative join orders. This feedback loop between sub-optimal plan reuse and escalating lock contention amplifies performance degradation, making it difficult to attribute slowness to either component in isolation and potentially driving the database into sustained throughput collapse under transactional workloads.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.29998510739708123,
+            "bm25_score": 15.130622997211702,
+            "lexical_score": 0.1302304469273743,
+            "matched_terms": [
+                "an",
+                "and",
+                "are",
+                "can",
+                "of",
+                "on",
+                "or",
+                "progress",
+                "sessions",
+                "the",
+                "this",
+                "time",
+                "to",
+                "together",
+                "when",
+                "which",
+                "with"
+            ],
+            "match_count": 175,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_idle",
+                "parameter_name": "tcp_keepalives_idle",
+                "timeout_category": "network_idle_keepalive_probe_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time with no network activity after which the operating system should send a TCP keepalive message to the client.",
+                "trigger_condition": "A TCP client connection has no network activity longer than tcp_keepalives_idle on systems supporting TCP_KEEPIDLE or an equivalent socket option.",
+                "workload_impact": "Starts TCP keepalive probing for an otherwise idle client connection; together with interval and count settings this can lead to dead connection detection.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

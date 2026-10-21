@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Database Memory Allocation Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Engine-level parameters are mis-tuned relative to hardware capacity, workload mix, or version defaults, leading to disproportionate waits or bursts of background activity even when physical resources are not fully utilized.\nDatabase Memory Allocation Anomaly : The database process allocates and retains more memory than the host can safely provide, triggering OS pressure, paging, or OOM events and causing volatile cache behavior.\nData Block and Index Integrity Anomaly : On-disk pages or index structures become physically or logically corrupted, breaking key order, page links, or checksums and making persisted data unreliable.\n\nWhen these three root causes coexist, the system exhibits a tangled set of symptoms:  • Sudden memory pressure from oversized work areas or buffer pools coincides with erratic checkpoint storms and aggressive log flushing driven by mis-set parameters, amplifying latency spikes.  • Paging, swap, or forced restarts caused by memory exhaustion interrupt I/O patterns, after which corruption errors, checksum failures, or divergent index/heap row counts surface during crash recovery or routine queries.  • Administrators observe oscillations between CPU-bound spin waits (due to mis-tuned parallelism or background workers), I/O idle periods with heavy log-write waits, and integrity-check failures that force query plan fallbacks to full scans, making performance troubleshooting highly ambiguous.\n\nCausal chain: inappropriate configuration settings (e.g., over-sized shared buffers, unlimited per-session work memory, aggressive checkpoint intervals) drive the engine to claim excessive memory. This sustained pressure provokes OS paging and ungraceful process terminations; the resulting write amplification, incomplete flushes, or aborted background operations heighten the probability of torn pages and index inconsistencies. Conversely, latent corruption can inflate memory usage—repeated retries, error logging, and forced cache invalidations—prompting administrators to further tweak parameters, unintentionally enlarging memory footprints. The feedback loop between bad parameters, runaway memory allocation, and emerging physical corruption degrades both performance and data reliability, placing the database into a progressively unstable state that affects transactional and analytical workloads alike.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.7369770455386894,
+            "bm25_score": 23.487533224770115,
+            "lexical_score": 0.12325681846229791,
+            "matched_terms": [
+                "aborted",
+                "and",
+                "error",
+                "from",
+                "more",
+                "of",
+                "or",
+                "query",
+                "session",
+                "than",
+                "that",
+                "the",
+                "this",
+                "when",
+                "with",
+                "work",
+                "workload"
+            ],
+            "match_count": 190,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

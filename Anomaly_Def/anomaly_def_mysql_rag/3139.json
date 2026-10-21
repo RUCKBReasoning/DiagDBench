@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Transaction Log Subsystem Anomaly + CPU Resource Anomaly",
+            "Description": "Composite definition: The database instance is simultaneously mis-configured at the parameter level, constrained by an overstressed transaction-log subsystem, and suffering from host CPU saturation. The three root causes coexist and interact, so the platform is neither tuned for the hardware nor able to absorb the log-write volume it produces, while CPU time is exhausted trying to keep up with both normal workload processing and log-related background activity.\n\nCombined observable phenomena: 1) Commit latency and log-flush waits rise sharply even when underlying storage metrics show spare IOPS; 2) Checkpoint storms, frequent log-file switches, and growing archive backlogs coincide with OS run-queue spikes and near-100 % CPU utilization; 3) Wait-event views show an interleaving of log-write, CPU scheduler, and configuration-driven background worker waits; 4) After a parameter change or version upgrade, throughput falls off cliff-like, with application threads alternately spinning on CPU and blocking on log-sync, while monitoring tools report buffer pools or per-session work memory either overcommitted or too small; 5) Secondary symptoms such as replication lag, autovacuum/cleanup backlog, and plan-cache thrashing become harder to attribute to a single layer because every mitigation attempt (e.g., raising parallelism or lowering checkpoint frequency) quickly pushes the system into a different but equally constrained state.\n\nCausal chain and interaction: Poorly chosen configuration parameters (e.g., undersized log buffer, aggressive synchronous-commit, or checkpoint-completion target set too low) increase the frequency and immediacy of log flushes. This drives the transaction-log subsystem toward its throughput limit; once the log path slows, foreground sessions hold latches longer and CPU spin-time rises, inflating overall CPU utilization. The elevated CPU demand further delays log-writer and archiver threads, deepening log congestion. Meanwhile, CPU saturation prevents background processes from performing adaptive tuning or deferred I/O, so configuration mis-matches (such as small buffer pools or excessive parallel workers) cannot self-correct and instead generate even more redo. The feedback loop—mis-configuration → log pressure → CPU thrashing → slower log processing—amplifies each individual anomaly, producing a compounded failure mode that is more severe and harder to diagnose than any of the three issues in isolation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.5588700080182814,
+            "bm25_score": 21.4489960479341,
+            "lexical_score": 0.1678766588602654,
+            "matched_terms": [
+                "activity",
+                "and",
+                "for",
+                "from",
+                "is",
+                "latency",
+                "longer",
+                "more",
+                "of",
+                "or",
+                "pools",
+                "replication",
+                "session",
+                "sessions",
+                "than",
+                "the",
+                "this",
+                "time",
+                "to",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 147,
+            "entry": {
+                "timeout_id": "mysql84_replica_network_timeout",
+                "parameter_name": "replica_net_timeout",
+                "timeout_category": "replication_network_timeout",
+                "scope": "global/replication",
+                "official_definition": "The number of seconds to wait for more data from a source/replica connection before aborting the read.",
+                "trigger_condition": "A replica waits longer than replica_net_timeout for more data from the source connection.",
+                "workload_impact": "The replication network read is aborted and the replica considers the connection interrupted.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

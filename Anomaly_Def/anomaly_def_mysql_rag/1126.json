@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Replication Synchronization Anomaly + CPU Resource Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer persistently chooses sub-optimal execution plans even though statistics are valid, leading to excessive resource demand per statement.\nReplication Synchronization Anomaly: Standby or downstream replicas fall behind because they cannot receive, write, or apply WAL/redo as fast as the primary generates it.\nCPU Resource Anomaly: Database processes saturate host CPU, starving other activities and lengthening scheduling latency.\n\nWhen these three root causes coincide, the sub-optimal plans inflate CPU consumption on the primary and, once shipped, on every replica that must re-execute the same inefficient SQL during logical or physical apply. The resulting CPU saturation slows local query execution, background housekeeping, and the replica apply threads simultaneously. In parallel, the replication channel begins to lag; monitoring views show rapidly widening LSN/SCN gaps, growing retained logs, and increasing replica staleness. On both primary and replicas, users observe longer query latencies, stalled failover readiness, and escalating disk usage as log recycling is blocked by outstanding replication positions.\n\nCausally, poor plan selection is the ignition point: inflated row loops, missing pruning, or mis-estimated joins drive CPU and generate larger transaction logs. The surge in CPU demand pushes the host to saturation, lengthening process run-queue times and slowing the single-threaded or lightly parallelized apply workers on replicas. As apply throughput falls behind the primary’s heightened log generation rate, replication lag compounds, which in turn prevents log truncation and keeps more redo on disk, increasing I/O pressure. The feedback loop—sub-optimal plans → CPU exhaustion → slower apply → larger backlogs—propagates across all nodes, making each individual anomaly harder to diagnose in isolation and severely degrading overall database performance and resilience.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.7407112375533428,
+            "bm25_score": 29.30114626483953,
+            "lexical_score": 0.1357041251778094,
+            "matched_terms": [
+                "and",
+                "apply",
+                "channel",
+                "downstream",
+                "is",
+                "lag",
+                "longer",
+                "or",
+                "replica",
+                "replication",
+                "stalled",
+                "the",
+                "times",
+                "to",
+                "when"
+            ],
+            "match_count": 52,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

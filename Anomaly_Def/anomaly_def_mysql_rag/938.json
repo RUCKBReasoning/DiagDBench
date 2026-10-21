@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + MVCC Version Maintenance Anomaly + CPU Resource Anomaly",
+            "Description": "SQL Workload Logic Anomaly : The application issues queries or transactions whose written logic obliges the engine to scan, join, or hold far more data and time than the functional requirement dictates.\nMVCC Version Maintenance Anomaly : Obsolete row versions and undo records pile up faster than background cleaners can reclaim them, inflating storage and visibility-check costs.\nCPU Resource Anomaly : Database processes drive host CPU utilisation to sustained saturation, exhausting compute cycles needed for timely request processing.\n\nWhen these three root causes co-exist, the system experiences a compounded failure mode: chatty or over-broad application statements generate excessive row touches and protracted transactions; the resulting surge of updates and long-lived snapshots accelerates MVCC version bloat; the enlarged heaps and indexes make every future scan, probe, and visibility check more expensive, which in turn magnifies CPU consumption. Observable symptoms include: 1) rapidly rising table and index sizes despite stable business data volume, 2) a growing backlog of vacuum/clean-up tasks with workers permanently active yet unable to keep up, 3) host CPU utilisation pinned near 100 % with high run-queue lengths and scheduler waits, 4) widespread statement-level latency spikes and application timeouts even for read-only operations, and 5) repetitive slow-query log entries for the same logically simple but physically heavy statements.\n\nCausally, inefficient SQL constructs (wide scans, missing predicates, oversized batches, long transactions) create high write-amplification and leave snapshots open, which delays version pruning. The swelling version store bloats on-disk and in-memory structures, causing each subsequent query—many of which are already sub-optimal—to traverse more pages and perform more visibility checks. This elevates CPU demand; once cores saturate, background cleaners are deprived of cycles, letting version debris accumulate further. The feedback loop between poor workload logic, MVCC housekeeping debt, and CPU exhaustion drives an escalating degradation that is difficult to disentangle unless all three contributing root causes are addressed together.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 15,
+            "score": 0.4607689643475005,
+            "bm25_score": 15.749577792164182,
+            "lexical_score": 0.12787081339712916,
+            "matched_terms": [
+                "and",
+                "are",
+                "data",
+                "for",
+                "is",
+                "latency",
+                "level",
+                "or",
+                "read",
+                "slow",
+                "the",
+                "this",
+                "when",
+                "write",
+                "written"
+            ],
+            "match_count": 18,
+            "entry": {
+                "timeout_id": "mysql84_xplugin_read_timeout",
+                "parameter_name": "mysqlx_read_timeout",
+                "timeout_category": "x_protocol_network_read_timeout",
+                "scope": "global/session/X Plugin",
+                "official_definition": "Read timeout for X Plugin network communication.",
+                "trigger_condition": "A MySQL X Protocol read operation exceeds mysqlx_read_timeout.",
+                "workload_impact": "The X Protocol network read operation times out.",
+                "default_behavior": "Defined as a MySQL X Plugin system variable.",
+                "system_domain": "network_transport",
+                "cause_analysis": "This timeout is usually triggered when network data is not acknowledged, received, or written within the configured transport-level waiting window.",
+                "solution_guidance": "Inspect packet loss, transport latency, client responsiveness, proxy behavior, and whether slow consumers or unstable links are delaying network progress.",
+                "observable_symptoms": [
+                    "network timeout",
+                    "disconnect",
+                    "read/write interruption"
+                ]
+            }
+        }
+    }
+]

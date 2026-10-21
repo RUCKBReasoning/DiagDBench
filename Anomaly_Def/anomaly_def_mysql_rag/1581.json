@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Query Plan Selection Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "SQL Workload Logic Anomaly: Application-level statement or transaction design that forces the engine to read, change, or hold on to more data and for longer than business logic requires.\nQuery Plan Selection Anomaly: The optimizer chooses or reuses a markedly sub-optimal execution plan even though statistics are adequate, leading to excessive resource use.\nTransaction Log Subsystem Anomaly: The write-ahead log generation, flushing, or archival path cannot keep pace with the redo volume, making commit processing a throughput limiter.\n\nComposite definition – This composite anomaly represents an OLTP workload in which (1) the application issues over-broad or poorly structured SQL and long-running transactions, (2) the optimizer compounds the problem by selecting inefficient execution plans for those very statements, and (3) the resulting surge in redo activity saturates the transaction-log subsystem, so both execution time and commit latency deteriorate simultaneously.\n\nCombined anomalous phenomena – Operators observe erratic but generally rising statement and transaction latency, with some executions stalling specifically at COMMIT or during log-flush waits. Slow-query logs show the same SQL alternating between different, sometimes dramatically slower plans. Monitoring dashboards report spikes in logical I/O, buffer gets, and row versions together with sustained log write/sync wait events, frequent log-file switches, and backlog in archiving or replication shipping. Application tiers show a mix of CPU saturation (from bad plans), lock contention (from long transactions), and timeout-driven retries that further inflate redo generation and heap usage.\n\nCausal chain – Verbose or chatty workload logic first inflates data touched per transaction; when the optimizer then mis-estimates costs or reuses a non-optimal cached plan, scans and join explosions amplify the physical and logical I/O as well as the amount of undo/redo produced. The multiplied redo volume quickly pushes the log buffer to its limits, triggering more frequent flushes and log-file switches. As the log device or archiver falls behind, commits stall, prolonging transaction lifetimes and keeping locks and latches held longer. These delays increase concurrency pressure, raising the likelihood of further plan invalidations and causing the application to retry, feeding back into even higher write and redo rates. The intertwined effects of bloated workload semantics, poor plan choices, and a saturated log path create a reinforcing loop that degrades overall OLTP performance and stability far more severely than any of the individual anomalies would in isolation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 698,
+            "score": 0.49708952523367206,
+            "bm25_score": 49.95716400233495,
+            "lexical_score": 0.1449969068976183,
+            "matched_terms": [
+                "and",
+                "are",
+                "between",
+                "but",
+                "events",
+                "in",
+                "keep",
+                "log",
+                "or",
+                "replication",
+                "row",
+                "shipping",
+                "stability",
+                "statements",
+                "the",
+                "to",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "1723",
+                "error_name": "ER_ONLY_FD_AND_RBR_EVENTS_ALLOWED_IN_BINLOG_STATEMENT",
+                "official_description": "Only Format_description_log_event and row events are allowed in BINLOG statements (but %s was provided)",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

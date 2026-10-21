@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Replication Synchronization Anomaly + Data Block and Index Integrity Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Replication Synchronization Anomaly : Standbys or downstream consumers cannot receive, persist, or apply WAL/redo as fast as the primary generates it, leading to widening log-position gaps and replay lag.\nData Block and Index Integrity Anomaly : On-disk data or index pages become physically or logically corrupted, breaking checksums, key order, or page links and making structures untrustworthy.\nNetwork and Connectivity Resource Anomaly : Transport or connection-handling resources between clients/peers and the database are saturated or unreliable, causing retransmissions, timeouts, or refusal of new sessions.\n\nWhen all three conditions co-exist, the system exhibits a tangled symptom set: replicas show rapidly growing write/flush/replay lag while simultaneously logging page-checksum or index-consistency errors during apply; replication workers disconnect or time out because of packet loss or listener backlog exhaustion, and repeatedly restart just to hit the same corrupted page, creating flapping apply states. Primary-side WAL archives accumulate because neither standbys nor downstream consumers can keep up, swelling disk usage and threatening outage-triggering disk-full scenarios. Client traffic may also suffer from elevated connection failures and erratic query results—some replicas return stale or incomplete data due to skipped or corrupted pages, while others are unavailable due to connectivity exhaustion. Monitoring views become noisy and ambiguous, mixing network wait spikes, replication slot bloat, and corruption alarms, complicating diagnosis.\n\nCausally, network congestion or socket exhaustion first throttles WAL shipping, stretching replica lag. The prolonged retention of un-replayed log segments on standbys increases the time window during which any latent page or index corruption can surface; once a corrupted block is encountered, the apply process aborts and retries, further amplifying synchronization delay. Each retry re-reads the same bad page and retransmits the same WAL across an already constrained network, compounding bandwidth pressure and connection churn. Conversely, corruption on the primary can generate invalid WAL that stalls apply; the standbys repeatedly disconnect and reconnect over an overloaded network, intensifying listener and socket pressure. The intertwined feedback loops—corruption-induced replay failures and network-induced transport stalls—mutually reinforce, accelerating replica divergence, exhausting storage with retained WAL, and degrading both HA posture and client-facing performance.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 15,
+            "score": 0.5795931989670268,
+            "bm25_score": 23.23506939490465,
+            "lexical_score": 0.1536884261113336,
+            "matched_terms": [
+                "and",
+                "are",
+                "client",
+                "consumers",
+                "data",
+                "disconnect",
+                "is",
+                "links",
+                "loss",
+                "network",
+                "or",
+                "out",
+                "packet",
+                "the",
+                "transport",
+                "when",
+                "window",
+                "write"
+            ],
+            "match_count": 69,
+            "entry": {
+                "timeout_id": "mysql84_xplugin_read_timeout",
+                "parameter_name": "mysqlx_read_timeout",
+                "timeout_category": "x_protocol_network_read_timeout",
+                "scope": "global/session/X Plugin",
+                "official_definition": "Read timeout for X Plugin network communication.",
+                "trigger_condition": "A MySQL X Protocol read operation exceeds mysqlx_read_timeout.",
+                "workload_impact": "The X Protocol network read operation times out.",
+                "default_behavior": "Defined as a MySQL X Plugin system variable.",
+                "system_domain": "network_transport",
+                "cause_analysis": "This timeout is usually triggered when network data is not acknowledged, received, or written within the configured transport-level waiting window.",
+                "solution_guidance": "Inspect packet loss, transport latency, client responsiveness, proxy behavior, and whether slow consumers or unstable links are delaying network progress.",
+                "observable_symptoms": [
+                    "network timeout",
+                    "disconnect",
+                    "read/write interruption"
+                ]
+            }
+        }
+    }
+]

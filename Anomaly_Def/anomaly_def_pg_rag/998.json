@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Buffer Cache and Latch Contention Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Database Memory Allocation Anomaly: Excessive or poorly governed growth of buffer caches, plan caches, work areas, and other in-memory structures pushes the database process and host beyond safe physical- or virtual-memory limits.\nBuffer Cache and Latch Contention Anomaly: Hot or rapidly churning buffer pages provoke intense latch, pin, or buffer-busy waits, causing CPU spin and latency spikes as sessions serialize on page access rather than on logical row locks.\nStorage Space Capacity Anomaly: Data files, temp areas, or log/archival destinations approach or reach full allocation, halting further writes, auto-extension, or log recycling and thereby stalling foreground activity.\n\nWhen these three conditions arise together, the system exhibits compounded symptoms: memory pressure drives frequent page evictions while latch contention inflates CPU usage and response-time variance; escalated dirty-page churn collides with shrinking free disk space, triggering aggressive checkpointing, prolonged flush cycles, and \"out-of-space\" or \"cannot extend\" errors. Concurrently, cache blow-out and swap activity magnify latch hold times, while blocked writes caused by full data, temp, or log areas propagate back to buffer flushers and user sessions, producing a mixture of memory OOM events, page-latch stalls, checkpoint storms, and transaction timeouts that are difficult to attribute to a single layer.\n\nCausally, runaway memory allocation shrinks effective buffer-pool headroom, forcing hotter pages to be recycled more often and increasing latch pressure on the remaining working set. Heightened latch contention keeps pages pinned longer, decelerating flush threads; the resulting backlog inflates dirty-page counts, accelerating file growth and temp/log consumption. As storage capacity tightens, checkpoints lengthen, extension or log-archive failures freeze buffer write-out, causing even more resident-set growth (as dirty pages cannot be freed) and further latch congestion. Each anomaly thus reinforces the others—memory bloat fuels contention, contention inflates dirty buffers, and space exhaustion blocks relief paths—culminating in system-wide stalls, crashes, or node evictions.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.7443785714285713,
+            "bm25_score": 27.289456642650478,
+            "lexical_score": 0.1479285714285714,
+            "matched_terms": [
+                "and",
+                "cannot",
+                "database",
+                "longer",
+                "of",
+                "or",
+                "other",
+                "row",
+                "sessions",
+                "than",
+                "that",
+                "the",
+                "time",
+                "to",
+                "transaction",
+                "user",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 211,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Replication Synchronization Anomaly + CPU Resource Anomaly",
+            "Description": "Schema and Index Design Anomaly: Static mismatch between physical data model (tables, indexes, partitions, data types, constraints) and workload access patterns forces inefficient access paths and excessive I/O. \nReplication Synchronization Anomaly: Standby or downstream replicas cannot receive, write, or apply primary log records fast enough, producing widening replication lag and retained logs. \nCPU Resource Anomaly: Database processes saturate host CPU, driving high run-queue lengths and system-wide latency once compute capacity is exhausted.\n\nWhen all three root causes coincide, the system exhibits a blend of severe symptoms: primary queries show full-table scans and multiple non-covering index lookups that spike CPU consumption; CPUs on both primary and replicas run near 100 %, inflating context switches and scheduler waits; replication lag explodes as replicas choke on compute-heavy, poorly indexed redo application; primary retains ever-growing write-ahead logs, leading to disk-space pressure and prolonged failover times; application requests observe erratic latency due to CPU starvation, while read replicas deliver increasingly stale or inconsistent data. Performance troubleshooting becomes difficult because each layer (query design, system load, and replication health) appears to be the bottleneck at different moments.\n\nCausally, sub-optimal schema and missing/inefficient indexes inflate the CPU cost of every read and write. The excess CPU load on the primary slows transaction processing and inflates generated redo volume through larger scan and update operations. The same flawed schema exists on replicas, so their single-threaded or limited-parallelism apply processes struggle even more, consuming CPU cycles to re-execute costly statements and intensifying replication lag. Growing lag prevents log recycling on the primary, increasing disk pressure and forcing additional checkpoints that further tax CPU. The sustained high CPU utilization on both primary and replicas feeds back into longer query times and slower replication apply, forming a reinforcing loop that degrades throughput and jeopardizes recovery objectives.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.6367100588095881,
+            "bm25_score": 21.492043187848836,
+            "lexical_score": 0.12549019607843137,
+            "matched_terms": [
+                "and",
+                "be",
+                "because",
+                "cannot",
+                "is",
+                "longer",
+                "of",
+                "or",
+                "schema",
+                "the",
+                "to",
+                "transaction",
+                "waits",
+                "when",
+                "while",
+                "write"
+            ],
+            "match_count": 38,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Buffer Cache and Latch Contention Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Database Configuration Parameter Anomaly: Critical engine parameters (memory, checkpoint cadence, parallelism, durability, etc.) are mis-tuned relative to hardware and workload, so bottlenecks arise from the settings themselves rather than from true resource exhaustion.\nBuffer Cache and Latch Contention Anomaly: Concurrent sessions serialize on buffer-cache pages, latches, or I/O slots, producing elevated buffer-busy and page-latch waits, CPU spinning, and stalled throughput.\nData Block and Index Integrity Anomaly: On-disk data or index structures become physically or logically corrupt, causing checksum failures, mismatched row counts, or engine-reported corruption errors.\n\nWhen all three root causes are present simultaneously, the system exhibits a confusing blend of symptoms: bursts of log-write or checkpoint waits coexist with idle hardware, latch waits skyrocket on a small set of pages, and queries intermittently return wrong or missing rows. Integrity-check utilities report corruption while ordinary workload execution shows latency spikes and throughput collapse. Checkpoint or background-writer storms triggered by mis-tuned parameters keep dirty pages in memory longer, amplifying latch contention, while corruption on hot pages forces repeated latch retries, buffer invalidations, or emergency page reads, further inflating wait events. Operators may observe oscillating CPU usage—periods of spin-loop contention followed by long I/O stalls during corruption-induced page rereads—and error logs filled with both configuration warnings and corruption messages.\n\nCausal chain: Misconfigured parameters (e.g., undersized buffer pool, overly aggressive checkpoint cadence, disabled or weakened page-verification settings) increase page churn and expand the window during which pages remain dirty, raising the probability that any latent storage fault or power loss will leave unfinished writes and introduce data corruption. The resulting corrupt pages tend to be hot root or index pages that are already under heavy access, so each access attempt collides on the same latches, multiplying contention. In turn, the elevated latch waits and stalled I/Os mislead adaptive tuning components, which may further adjust memory or background-worker settings in harmful directions, reinforcing the misconfiguration. The three anomalies therefore feed into one another: bad parameters create stress that promotes corruption, corruption localizes workload on a few damaged pages that intensify latch contention, and the intensified contention drives further reactive parameter changes or workload shifts that deepen the misconfiguration loop.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 185,
+            "score": 0.1416283967865623,
+            "bm25_score": 7.888801836835278,
+            "lexical_score": 0.1268173198482933,
+            "matched_terms": [
+                "and",
+                "be",
+                "by",
+                "check",
+                "configuration",
+                "engine",
+                "error",
+                "execution",
+                "in",
+                "or",
+                "resource",
+                "the",
+                "to",
+                "with",
+                "workload"
+            ],
+            "match_count": 9,
+            "entry": {
+                "error_code": "44000",
+                "error_name": "with_check_option_violation",
+                "official_description": "with check option violation",
+                "error_class": "Class 44 - WITH CHECK OPTION Violation",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

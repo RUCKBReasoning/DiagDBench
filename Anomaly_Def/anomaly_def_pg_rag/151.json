@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Optimizer Statistics Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level statements and transaction scopes are written in a way that forces the engine to process, lock, or return more data than the business logic actually requires.\nOptimizer Statistics Anomaly : The optimizer’s metadata is stale or incomplete, leading to systematic cardinality misestimation and poor plan choices.\nData Block and Index Integrity Anomaly : Physical pages or index structures are corrupted or internally inconsistent, making on-disk data no longer fully trustworthy.\n\nWhen these three root causes coexist, the database can exhibit an unusually wide spectrum of symptoms: extreme and highly variable statement latency, repeated slow-query log entries, sudden switches from index seeks to full table scans, estimator-vs-actual row count gaps that grow with each plan execution, unexpected duplicate or missing rows in result sets, CRC or page-checksum errors surfacing only on certain access paths, frequent plan recompilations, and cascading application timeouts or deadlocks as long-running transactions collide with corruption-triggered lock escalations or error retries. Because each anomaly can mask or amplify the others, the operational picture becomes noisy—making it difficult to tell whether performance, correctness, or physical health is the primary issue on any given statement.\n\nCausal interaction: poorly written workload patterns generate oversized scans, floods of singleton lookups, and long-lived transactions that churn large portions of the data set. This high change rate prevents automatic statistics thresholds from firing in time and accelerates divergence between real and recorded data distributions, which in turn pushes the optimizer toward plans that touch even more pages. The broadened I/O surface area increases the likelihood of hitting latent corrupt pages or split-brain index chains. Once corruption is encountered, the engine may invalidate or bypass indexes, forcing further full scans that magnify both the workload stress and the statistical drift. The feedback loop—inefficient workload causing stale statistics, stale statistics producing expansionary plans, and those plans exposing corruption that then eliminates efficient access paths—rapidly degrades overall performance and reliability, while making root-cause isolation far more complex.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.4234051392658308,
+            "bm25_score": 22.132804505782225,
+            "lexical_score": 0.14937066529668636,
+            "matched_terms": [
+                "and",
+                "are",
+                "between",
+                "can",
+                "is",
+                "latency",
+                "long",
+                "or",
+                "query",
+                "running",
+                "sets",
+                "stale",
+                "that",
+                "the",
+                "this",
+                "time",
+                "triggered",
+                "when",
+                "whether",
+                "while"
+            ],
+            "match_count": 171,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

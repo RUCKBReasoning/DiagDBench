@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Replication Synchronization Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Runtime settings governing memory, checkpoints, parallelism, etc. are mis-tuned relative to hardware, workload, or version defaults.\nReplication Synchronization Anomaly : Standbys or downstream consumers cannot receive or apply WAL/redo at the rate the primary produces it, leading to widening log-position gaps and replay lag.\nData Block and Index Integrity Anomaly : On-disk pages and index structures are physically or logically corrupted, causing checksums, ordering, or mappings to diverge from expected states.\n\nWhen these three root causes manifest together, the system exhibits an intertwined symptom set: replication lag grows erratically while the primary shows unusual wait patterns (e.g., log-write stalls without storage saturation), standby apply threads hit corruption errors that pause or crash replay, primary log segments are retained far beyond normal because corruption prevents truncation and replication prevents recycling, checkpoint storms triggered by mis-configured parameters stress I/O, and replicas remain perpetually behind, delivering stale or inconsistent reads and jeopardizing failover readiness. Administrators may observe cascading alert storms—parameter-related wait events, replication lag metrics, and integrity-check failures—without an obvious single point of failure, and traditional tuning or repair actions taken in isolation fail to restore stability.\n\nCausally, mis-tuned engine parameters can inflate checkpoint frequency or shrink log buffers, increasing the volume and burstiness of WAL traffic that replicas must ingest. This amplified throughput collides with latent data-page or index corruption on standbys—or surfaces hidden corruption on the primary—which forces replication apply processes to halt or retry, further widening lag. Simultaneously, corruption that blocks log recycling holds additional segments on the primary, exacerbating space pressure and triggering even more aggressive checkpointing dictated by the misguided configuration. The feedback loop between excessive WAL generation, replication backlog, and corruption-induced replay failures drives the system into a degraded state that neither single-dimension tuning nor isolated page repair can resolve.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.49243702661805033,
+            "bm25_score": 15.967868314744084,
+            "lexical_score": 0.11173076923076922,
+            "matched_terms": [
+                "an",
+                "and",
+                "because",
+                "cannot",
+                "configured",
+                "in",
+                "or",
+                "retry",
+                "the",
+                "this",
+                "to",
+                "triggered",
+                "when",
+                "while"
+            ],
+            "match_count": 89,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

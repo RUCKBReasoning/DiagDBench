@@ -1,0 +1,61 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Storage I/O Throughput Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer persistently selects sub-optimal execution plans even though statistics are adequate, leading to disproportionate resource consumption per statement.\nStorage I/O Throughput Anomaly: The physical storage layer cannot deliver the read/write throughput, IOPS, or latency required by the workload, producing device-level wait inflation.\nNetwork and Connectivity Resource Anomaly: Client–server transport or connection-handling capacity is exhausted, causing connection establishment delays, socket backlog growth, and stalled data transfer.\n\nWhen all three root causes coexist, the database exhibits compound symptoms: queries flip to full-table scans or poorly chosen join orders that inflate page reads; the surge in random and sequential I/O collides with an already saturated storage subsystem, driving disk queues and read/write latencies even higher. Prolonged statement runtimes hold server processes and sockets open, so listener backlogs, half-open TCP sessions, and client-side timeouts escalate. End-to-end response times swing wildly, and performance graphs show intertwined peaks of I/O waits, client-read/client-write waits, and hard-parse or plan-change events. Administrators may mis-attribute slowdowns to a single layer because each bottleneck masks and amplifies the others.\n\nCausally, a bad plan is the spark: it multiplies physical I/O demand, pushing the storage layer past its throughput ceiling. The resulting I/O stalls extend query execution and result-set streaming time, which ties up server worker threads and keeps network sockets active longer. As active connections swell and data trickles slowly over the congested network, handshake retries and backlog overflows appear, feeding further delays that lengthen query runtimes and increase optimizer re-parses, perpetuating the selection of the same poor plan. This feedback loop between plan inefficiency, storage saturation, and network congestion degrades overall capacity far more severely than any single anomaly acting alone.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.7562307252998286,
+            "bm25_score": 26.612055736253375,
+            "lexical_score": 0.18743575099942889,
+            "matched_terms": [
+                "an",
+                "and",
+                "because",
+                "cannot",
+                "change",
+                "client",
+                "connection",
+                "is",
+                "longer",
+                "network",
+                "of",
+                "or",
+                "required",
+                "server",
+                "sessions",
+                "statement",
+                "than",
+                "the",
+                "this",
+                "to",
+                "wait",
+                "waits",
+                "when",
+                "write"
+            ],
+            "match_count": 103,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

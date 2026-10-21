@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Engine-level knobs such as log-buffer size, checkpoint cadence, and background-writer limits are mis-tuned relative to hardware capacity and workload characteristics.\nTransaction Log Subsystem Anomaly : The write-ahead logging path itself—log buffer, files, flush/sync operations, archiver, and retention pipeline—becomes the primary bottleneck on commit-intensive activity.\n\nWhen both root causes are present, the instance shows a compound failure pattern: commit latency, LOG_WRITE/LOG_SYNC waits, and checkpoint storms spike at the same time that CPU, IOPS, or memory remain oddly under-utilised. Log segments switch or fill far faster than they can be flushed or archived, causing cascading stalls that propagate to foreground sessions. Monitoring dashboards report contradictory signals—threads spinning on log mutexes while disks appear idle, or sudden surges in dirty-page flushes that evict useful cache. Application symptoms include intermittent but severe slowdowns, dead-letter queues growing on synchronous replication links, and runaway log-directory growth that forces emergency space-reclaim operations.\n\nThe causal chain is self-reinforcing: undersized log buffers, too-frequent checkpoints, or minimal log-file sizes (configuration anomaly) drive an excessive rate of flushes and file switches, exposing any latent throughput limits in the transaction-log subsystem. Each forced flush stalls user commits, which in turn increases concurrency and amplifies redo generation, further saturating the log path and triggering even more aggressive checkpoint activity. Conversely, once the log subsystem begins to lag—due to device placement, limited log groups, or slow archiving—the engine’s adaptive algorithms may shorten checkpoint intervals or throttle background writers, making the earlier mis-tuned parameters even more harmful. The interaction locks the system into a feedback loop where neither adjusting workload pace nor adding raw hardware helps until both the misconfiguration and the log bottleneck are addressed together.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5443,
+            "score": 0.43233852180024673,
+            "bm25_score": 40.85235078368162,
+            "lexical_score": 0.14392059553349876,
+            "matched_terms": [
+                "and",
+                "archived",
+                "are",
+                "capacity",
+                "engine",
+                "failure",
+                "file",
+                "growth",
+                "is",
+                "latency",
+                "log",
+                "or",
+                "placement",
+                "the",
+                "to",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013581",
+                "error_name": "ER_IB_ERR_PAGE_ARCH_INVALID_FORMAT",
+                "official_description": "Invalid archived file name format. The archived file is supposed to have the format %s + [0-9]*.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

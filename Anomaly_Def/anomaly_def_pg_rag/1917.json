@@ -1,0 +1,45 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Buffer Cache and Latch Contention Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Obsolete row versions and dead index entries accumulate faster than background cleanup can reclaim them, inflating table and index size and lengthening visibility checks.\nBuffer Cache and Latch Contention Anomaly : Concurrent sessions fight for access to hot buffer-cache pages and their associated latches, causing spin-waiting, prolonged page pins, and I/O slot starvation.\nOperating System Resource Limit Anomaly : Database back-end or auxiliary processes exhaust kernel-enforced quotas on file descriptors, shared memory, semaphores, threads, or AIO contexts, leading to failed allocations and worker start-ups.\n\nCombined phenomena: A system suffering all three anomalies simultaneously shows explosive growth of the version store and on-disk relation size, steadily rising buffer-busy/latch wait times, and sporadic but escalating OS-level \"too many open files\", \"cannot allocate shared memory\", or \"failed to create thread\" errors. Autovacuum, purge, or undo-cleanup workers run continuously yet make little progress, while their attempts to fork new workers or open additional segments are rejected by the kernel. Checkpoints slow down, dirty pages linger, and hot root or freelist pages become choke points, pushing CPU usage into spin loops. Application sessions pile up behind both MVCC visibility checks and latch waits; some fail to connect at all once OS limits are hit, producing partial outages and time-outs that are hard to attribute to a single subsystem.\n\nCausal chain: Heavy OLTP update/delete churn inflates the MVCC version store, enlarging heaps and indexes so that more pages must reside in the buffer cache. The expanded working set and incessant background cleanup amplify buffer churn and concentrate access on hot meta-pages, triggering latch contention. As latch waits lengthen, session counts rise and the engine spawns additional cleanup, checkpoint, and I/O helper processes; the surge in file handles, shared memory, and threads pushes the host kernel over its configured limits. Once the kernel starts denying resources, cleanup workers terminate or fail to start, allowing even more version bloat, while existing sessions hold latches longer, further intensifying contention. Thus each anomaly feeds the next in a reinforcing loop that degrades throughput, inflates latency, and risks complete service saturation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 172,
+            "score": 0.22073581555539212,
+            "bm25_score": 12.246080224396303,
+            "lexical_score": 0.10478634073521179,
+            "matched_terms": [
+                "access",
+                "and",
+                "as",
+                "associated",
+                "cannot",
+                "engine",
+                "or",
+                "that",
+                "the",
+                "usage",
+                "version"
+            ],
+            "match_count": 12,
+            "entry": {
+                "error_code": "42702",
+                "error_name": "ambiguous_column",
+                "official_description": "ambiguous column",
+                "error_class": "Class 42 - Syntax Error or Access Rule Violation",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "sql_and_parser",
+                "cause_analysis": "The failure is typically associated with unsupported syntax, invalid statement structure, or feature usage that the target engine version cannot execute as written.",
+                "solution_guidance": "Validate SQL syntax, target-engine compatibility, statement shape, and whether the feature is supported under the current engine version or execution context.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "syntax error",
+                    "feature rejection"
+                ]
+            }
+        }
+    }
+]

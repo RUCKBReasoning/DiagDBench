@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Database Configuration Parameter Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Composite Definition: The database concurrently suffers from runaway MVCC version-store bloat, mis-tuned engine parameters that distort internal housekeeping cadence, and hard ceilings imposed by operating-system resource limits. The result is a compound failure mode where version cleanup cannot catch up, engine subsystems are configured in ways that mask or worsen the backlog, and the kernel refuses additional resources just when the database tries to recover.\n\nCombined Observable Phenomena: Administrators observe steep growth of obsolete row versions and rollback records while autovacuum/cleanup workers stay permanently busy yet ineffective. Checkpoint, log-flush, or background-worker waits spike despite storage and CPU still showing spare capacity; at the same time, new parallel workers, back-end processes, or I/O contexts intermittently fail to start with kernel-level \"too many open files\", \"cannot allocate shared memory\", or \"resource temporarily unavailable\" errors. Page and index sizes expand quickly, sequential scans slow down, and the planner misestimates row counts, all while wait-event samples oscillate between engine-level maintenance waits and kernel-level allocation failures. After manual restarts or configuration tweaks, short periods of relief are followed by even faster deterioration because workers launched to catch up immediately collide with OS quotas.\n\nCausal Chain and Interaction: Heavy update/delete churn produces large numbers of dead versions (MVCC anomaly). Misaligned configuration parameters—such as an undersized buffer pool, too-low autovacuum cost limits, or overly aggressive parallel-worker settings—delay cleanup and inflate the number of background workers the engine tries to spawn (configuration anomaly). These extra workers demand more file descriptors, shared memory segments, and threads; when host-level limits are set conservatively or have been exhausted by lingering handles from earlier crashes, the kernel denies the requests (OS-limit anomaly). Each denial prevents cleanup or checkpoint activity from scaling, causing further version buildup, larger tables, longer checkpoints, and yet more worker spawn attempts, forming a positive feedback loop that rapidly degrades transactional throughput and risks complete stall.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.7431818181818182,
+            "bm25_score": 30.326043437783667,
+            "lexical_score": 0.14393939393939392,
+            "matched_terms": [
+                "an",
+                "and",
+                "back",
+                "because",
+                "by",
+                "cannot",
+                "configured",
+                "delay",
+                "in",
+                "is",
+                "longer",
+                "of",
+                "or",
+                "row",
+                "the",
+                "time",
+                "up",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 7,
+            "entry": {
+                "timeout_id": "mysql84_innodb_row_lock_wait_timeout",
+                "parameter_name": "innodb_lock_wait_timeout",
+                "timeout_category": "innodb_row_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "The length of time in seconds an InnoDB transaction waits for a row lock before giving up.",
+                "trigger_condition": "An InnoDB transaction waits longer than innodb_lock_wait_timeout for a row lock.",
+                "workload_impact": "The lock wait gives up; by default only the current statement is rolled back unless innodb_rollback_on_timeout is enabled.",
+                "default_behavior": "Defined as an InnoDB system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

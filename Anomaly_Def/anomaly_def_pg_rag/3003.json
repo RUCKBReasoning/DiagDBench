@@ -1,0 +1,60 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Transaction Log Subsystem Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Optimizer Statistics Anomaly : The optimizer is fed with stale, incomplete, or misleading statistics, leading to systematic cardinality misestimates and sub-optimal execution plan choices.\nTransaction Log Subsystem Anomaly : The write-ahead log generation, flushing, or archiving path becomes the critical bottleneck, inflating commit latency and stalling write workloads.\nData Block and Index Integrity Anomaly : Physical pages or index structures on disk are corrupted or internally inconsistent, causing incorrect or failed row retrieval and forcing fallback access methods.\n\nWhen all three conditions coexist, the database may exhibit an erratic mix of severe symptoms:  • Queries oscillate between long-running full scans (chosen because of bad statistics or disabled indexes) and repeatedly aborted index scans (failing integrity checks).  • Commit operations intermittently freeze behind log-flush waits, causing application time-outs and holding locks that magnify contention.  • Emergency index rebuilds triggered by detected corruption generate bursts of redo that saturate the already constrained log subsystem, further delaying recovery operations and increasing checkpoint frequency.  • Repeated recompilations show wildly divergent cost estimates, and execution plans flip-flop after every statistics refresh or corruption-induced index disablement.  • Integrity-check utilities and alert logs report page verification errors alongside \"log file switch/archive required\" warnings, making it difficult to distinguish performance from correctness issues.\n\nCausal interaction: (1) Stale or skewed statistics drive the optimizer to prefer damaged indexes or overly aggressive join orders, which in turn surface latent corruption through run-time errors. (2) Detection of corruption prompts index rebuilds or table rewrites that emit large volumes of redo, rapidly filling and switching log files. (3) The already throttled transaction-log subsystem becomes saturated, extending checkpoint and commit times; these elongated transactions prevent timely automatic statistics refresh and keep locks active, producing more contention and blocking DML. (4) Elevated redo pressure increases the risk of incomplete flushes during failures, potentially widening the corruption footprint and perpetuating the statistics/plan instability cycle. Collectively, the intertwined failures in metadata accuracy, physical data integrity, and log throughput degrade both performance and reliability, making diagnosis and recovery substantially harder.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.7506631316281971,
+            "bm25_score": 36.3446460063372,
+            "lexical_score": 0.16887710542732376,
+            "matched_terms": [
+                "aborted",
+                "an",
+                "and",
+                "because",
+                "blocking",
+                "database",
+                "holding",
+                "index",
+                "is",
+                "metadata",
+                "of",
+                "or",
+                "required",
+                "row",
+                "table",
+                "that",
+                "the",
+                "time",
+                "to",
+                "transaction",
+                "triggered",
+                "waits",
+                "when"
+            ],
+            "match_count": 310,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

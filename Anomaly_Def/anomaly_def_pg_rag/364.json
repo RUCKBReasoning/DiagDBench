@@ -1,0 +1,47 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + MVCC Version Maintenance Anomaly + Database Configuration Parameter Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Simultaneous transactions acquire mutually incompatible locks on shared rows, pages, or metadata, creating long blocker–waiter chains or deadlocks that stall commit progress.\nMVCC Version Maintenance Anomaly : Obsolete row versions and undo records pile up faster than background cleaners can reclaim them, bloating storage and slowing visibility checks.\nDatabase Configuration Parameter Anomaly : Mis-tuned engine parameters (memory, checkpointing, worker limits, etc.) leave critical subsystems over- or under-provisioned relative to the workload and hardware.\n\nWhen all three conditions coexist, workloads suffer a compounded failure mode: lock wait times and deadlock frequency escalate while the heap and indexes swell with unreclaimed versions, and configuration mis-settings prevent the buffer pool, cleanup workers, and lock-manager from recovering. Symptoms include: 1) exploding lock-wait and deadlock logs paired with rising application timeouts; 2) rapidly growing table and version-store size that degrades cache hit ratios and forces more physical I/O; 3) nonstop or thrashing background processes (autovacuum, purge, checkpoint, lock-deadlock detectors) consuming CPU yet failing to make headway; 4) paradoxical hardware metrics—disks idle during log-write stalls or CPUs under-utilised while sessions spin on locks—because memory, worker, or checkpoint parameters throttle true resource use; and 5) planner misestimates from bloat and outdated stats, leading to scans that further extend lock hold times and version churn.\n\nCausally, sub-optimal configuration settings (e.g., undersized buffer pool, too few cleanup workers, aggressive checkpoint timeout) slow version reclamation and increase physical I/O, lengthening transaction runtimes and the duration locks are held. The resulting longer lock lifetimes raise the probability of collisions and deadlocks, which in turn cause rollbacks that create yet more undo records and garbage. Meanwhile, the same mis-configurations may starve both the lock manager (e.g., limited lock table memory) and MVCC cleaners of resources, so neither contention nor bloat can self-resolve. The feedback loop—bloat inflating I/O and lock duration, contention spawning additional deadlocks, and ill-sized parameters limiting recovery throughput—drives a severe throughput collapse and instability in OLTP workloads.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 39,
+            "score": 0.284516645018864,
+            "bm25_score": 15.472340782049761,
+            "lexical_score": 0.11434389140271492,
+            "matched_terms": [
+                "and",
+                "configuration",
+                "engine",
+                "failure",
+                "in",
+                "instability",
+                "of",
+                "or",
+                "resource",
+                "the",
+                "to",
+                "use",
+                "with",
+                "workload"
+            ],
+            "match_count": 9,
+            "entry": {
+                "error_code": "22P06",
+                "error_name": "nonstandard_use_of_escape_character",
+                "official_description": "nonstandard use of escape character",
+                "error_class": "Class 22 - Data Exception",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

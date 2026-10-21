@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Storage I/O Throughput Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Composite definition: The system is concurrently suffering from lock-manager contention, saturation of physical I/O throughput on the underlying storage, and dwindling or exhausted storage space. All three root causes are active at the same time, so sessions are blocked both by lock waits and by slow or failed I/O operations that themselves stem from bandwidth exhaustion and near-full devices. \n\nTransaction Lock Contention Anomaly: Concurrent transactions hold or request mutually incompatible locks, producing long blocking chains or deadlocks that stall commit progress and force rollbacks.\nStorage I/O Throughput Anomaly: Physical read/write demand exceeds the bandwidth, IOPS, or latency capacity of the disks or storage layer, inflating I/O wait time and slowing buffer flushes, checkpoint writes, and log appends.\nStorage Space Capacity Anomaly: Free space on data, log, temp, or archive volumes falls to critical levels or is exhausted, causing allocation failures, auto-extend errors, and stalled background tasks that depend on space availability.\n\nCombined phenomena: Users observe sharply rising response times, frequent timeouts, and sporadic deadlock or \"out of space\" errors. Lock-wait graphs show blockers whose own progress is impeded by slow or failed disk writes; buffer pools accumulate dirty pages because checkpoints and log flushes crawl, extending lock hold times. Log file growth pauses when volumes fill, causing transactions to freeze in the COMMIT phase while holding locks. Monitoring dashboards reveal CPU under-utilization, I/O wait percentages spiking, device queue depths at maximum, escalating lock-wait seconds, and rapidly declining free-space alarms. Batch jobs, index maintenance, and purge tasks slow or abort, further extending space and lock pressure.\n\nCausal interaction: Saturated or failing storage throughput prolongs page reads, log flushes, and checkpoint writes, stretching the duration that transactions retain locks and thus magnifying lock contention. Prolonged transactions increase the rate of concurrent lock requests and exacerbate deadlock probability. In parallel, near-exhausted disk space blocks file growth and log archiving, which can force the engine to halt checkpoints or suspend transactions while still holding locks, freezing other sessions in wait queues. The stall cascades: blocked transactions keep undo and redo space allocated, accelerating space exhaustion; full disks prevent I/O operations that could relieve lock pressure; and ongoing lock contention prevents housekeeping tasks (e.g., purges, truncations) from reclaiming space. The mutual reinforcement of these three bottlenecks drives the database into a degraded or unrecoverable state unless all contributing layers—concurrency control, I/O bandwidth, and capacity—are jointly remediated.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.4743090958838799,
+            "bm25_score": 20.1964530104933,
+            "lexical_score": 0.14904718693284935,
+            "matched_terms": [
+                "and",
+                "are",
+                "exceeds",
+                "holding",
+                "in",
+                "is",
+                "latency",
+                "maximum",
+                "of",
+                "or",
+                "pools",
+                "progress",
+                "seconds",
+                "sessions",
+                "the",
+                "time",
+                "wait",
+                "when"
+            ],
+            "match_count": 195,
+            "entry": {
+                "timeout_id": "pg16_libpq_connection_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "client_connection_establishment_timeout",
+                "scope": "libpq/client connection parameter",
+                "official_definition": "Maximum wait for connection, in seconds; zero or not specified means wait indefinitely.",
+                "trigger_condition": "A libpq client connection attempt exceeds connect_timeout seconds.",
+                "workload_impact": "The client connection attempt fails instead of waiting indefinitely.",
+                "default_behavior": "Zero or absent value means wait indefinitely.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

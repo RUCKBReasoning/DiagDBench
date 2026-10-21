@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Database Configuration Parameter Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Schema and Index Design Anomaly : Static mismatch between the physical data model (tables, indexes, partitions, constraints, data types) and the workload’s access patterns, forcing inefficient access paths even when plans are correctly chosen.\nDatabase Configuration Parameter Anomaly : Mis-tuned instance parameters (memory, parallelism, logging, checkpointing, worker pools, etc.) that make the engine behave sub-optimally compared with the hardware and workload characteristics.\nNetwork and Connectivity Resource Anomaly : Insufficient or unstable network/connection capacity between clients and the DBMS, leading to slow or failed session establishment and data transfer.\n\nWhen all three root causes coexist, the workload experiences compounding symptoms across execution, engine, and transport layers:  • Queries already slowed by full table scans or non-covering index probes take longer to acquire scarce buffer-pool pages or work memory, then stall again while transmitting large intermediate result sets over congested network links.  • Wait-event profiles show an interleaving of I/O reads, buffer-pin or work-mem spills, log-write or checkpoint waits, and client read/write or socket waits, none of which individually reach hardware saturation, making diagnosis difficult.  • Connection pools observe sporadic timeouts and elevated latency; back-end processes accumulate in idle-in-transaction or client send waits, yet CPU and disk metrics appear under-utilised.  • After configuration changes meant to relieve memory or parallelism pressure, checkpoint storms or background-worker starvation may coincide with network retransmissions, causing sudden throughput collapses and erratic response-time outliers.\n\nCausally, poor schema/index design inflates I/O volume and row counts per query, bloating memory demand and increasing result-set sizes that must traverse the network. Mis-sized memory pools, work-mem, or parallelism settings then exacerbate this by triggering spills, excessive checkpoints, or worker thrashing, extending execution windows and keeping connections open longer. The prolonged sessions and enlarged result streams intensify network utilisation, pushing listener queues, socket buffers, and client pools toward exhaustion; in turn, elevated connection delays amplify application retry storms that further load the database. Meanwhile, network slowdowns lengthen query elapsed time, which feeds back into higher concurrency, larger working-set pressure, and more aggressive background activity driven by sub-optimal parameters. The positive feedback among design inefficiencies, misconfiguration, and connectivity constraints compounds latency and throughput degradation beyond what any single anomaly would cause.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.6430037426631012,
+            "bm25_score": 23.88124025744241,
+            "lexical_score": 0.1254971115840681,
+            "matched_terms": [
+                "acquire",
+                "an",
+                "and",
+                "in",
+                "longer",
+                "or",
+                "retry",
+                "schema",
+                "session",
+                "sessions",
+                "the",
+                "this",
+                "to",
+                "transaction",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 10,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

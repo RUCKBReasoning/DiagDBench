@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Query Plan Selection Anomaly + Replication Synchronization Anomaly",
+            "Description": "Optimizer Statistics Anomaly: Critical metadata about row counts, data distribution, and correlations is stale, missing, or inaccurate, causing systematic cardinality misestimation by the optimizer.\nQuery Plan Selection Anomaly: Despite acceptable or refreshed statistics, the optimizer’s plan–choice logic (cost model, parameter sniffing, cache reuse, hinting, etc.) selects execution plans that are substantially sub-optimal for the current runtime context.\nReplication Synchronization Anomaly: Downstream replicas or subscribers cannot receive, write, or apply redo at the rate the primary generates it, producing widening log-position gaps, replay lag, and retention of excessive log files on the primary.\n\nWhen these three root causes manifest simultaneously, a workload may show oscillating or chronically poor query performance on the primary, skyrocketing redo generation, and rapidly growing replication lag. Stale or incomplete statistics combine with an already fragile plan-selection process to create highly variable, often bloated execution plans—e.g., hash joins degraded to nested loops or full-table scans materializing large intermediate results. The resultant surge in I/O, CPU, and log volume prolongs transaction durations and inflates redo streams. Replicas struggle to keep pace, leading to seconds-to-hours of apply lag, swollen relay/WAL files, stale read-only query results, and reduced failover readiness. Because replicas replay long-running, poorly planned transactions serially, their apply workers may become backlogged or blocked by lock contention, further compounding lag.\n\nCausally, inaccurate statistics seed cardinality errors that steer the optimizer toward fragile plans; even if statistics are corrected, plan-selection anomalies (e.g., parameter sniffing or cost-model quirks) may continue to favor inefficient strategies. These inefficient plans inflate resource consumption and transaction sizes, multiplying redo output. The heavier the write volume and transaction duration, the more pressure is placed on the replication pipeline. Conversely, replication lag prevents timely feedback such as replicated statistics refreshes or plan–stability hint deployments on replicas, allowing bad plans to persist there as well. The intertwined feedback loop—bad stats ⇒ bad plans ⇒ high redo ⇒ replication backlog ⇒ delayed metadata convergence—drives a self-reinforcing degradation that affects both primary performance and replica consistency.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.6504743728856436,
+            "bm25_score": 29.57366826284502,
+            "lexical_score": 0.12711250603573154,
+            "matched_terms": [
+                "and",
+                "apply",
+                "causing",
+                "data",
+                "downstream",
+                "is",
+                "lag",
+                "long",
+                "or",
+                "replica",
+                "replication",
+                "the",
+                "timely",
+                "to",
+                "when"
+            ],
+            "match_count": 81,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

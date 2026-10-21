@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Replication Synchronization Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Composite Definition:\nThe system simultaneously suffers from a static schema/index design mismatch, a replication pipeline that cannot consume the generated write-ahead or change-data stream fast enough, and constrained network or connection-handling capacity. Together these faults degrade local query execution, overload the replication channel, and choke both client and replica connectivity.\n\nSchema and Index Design Anomaly: Tables, indexes, partitions, or data types are poorly aligned with workload access patterns, forcing inefficient scans, excessive row lookups, and bloated redo generation during DML.\nReplication Synchronization Anomaly: Standbys or downstream consumers fall behind because they cannot receive, write, or apply the primary’s log stream at production rate, widening replication lag and blocking log recycling.\nNetwork and Connectivity Resource Anomaly: Transport bandwidth, latency, or connection-handling limits between clients/replicas and the primary are saturated or unstable, yielding timeouts, retransmissions, and refused or stalled sessions.\n\nCombined Observed Phenomena:\n• Application queries show high latency from full scans and non-covering index probes, while concurrent updates inflate transaction-log volume.\n• Network queues fill with large result sets and swollen log traffic, driving up RTT, retransmissions, and listener backlog; clients experience slow connect and sporadic \"too many connections\" errors.\n• Replication monitoring shows rapidly growing receive, write, and replay lag; relay or retained WAL/redo files accumulate, consuming primary storage and risking disk-full events.\n• Read replicas deliver stale or inconsistent data, causing application cache inconsistencies and failover unreliability.\n• Performance troubleshooting is complicated: execution plans look inefficient, yet fixing indexes alone does not eliminate end-to-end latency because transport and replica delays persist.\n\nCausal Chain and Interaction:\nInefficient schema and index design forces heavier table scans and larger result sets, increasing data volume sent to clients and the replication log. The inflated traffic saturates network bandwidth and overwhelms connection slots, amplifying Network and Connectivity Resource contention. In turn, network congestion throttles the throughput of replication streams, worsening Replication Synchronization lag. Growing lag prevents log truncation, so enlarged log files further burden storage and I/O, feeding back into longer check- and redo-generation cycles triggered by the poor schema design. The intertwined effects of excessive data generation, constrained transport, and lagging replicas thus reinforce each other, leading to severe, system-wide slowdowns and elevated risk of replica divergence or primary outages.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.7443866943866944,
+            "bm25_score": 32.58250936423602,
+            "lexical_score": 0.14795564795564795,
+            "matched_terms": [
+                "access",
+                "and",
+                "because",
+                "behind",
+                "contention",
+                "execution",
+                "from",
+                "is",
+                "longer",
+                "of",
+                "or",
+                "other",
+                "query",
+                "resource",
+                "that",
+                "the",
+                "together",
+                "too",
+                "triggered",
+                "with",
+                "workload"
+            ],
+            "match_count": 277,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

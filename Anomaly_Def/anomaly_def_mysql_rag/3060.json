@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Storage Space Capacity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer consistently or intermittently chooses a sub-optimal execution plan even though statistics are adequate, leading to excessive CPU, I/O, and memory consumption per statement.\nStorage Space Capacity Anomaly : The database exhausts or is about to exhaust physical or logical free space in data files, log destinations, or temporary areas, triggering allocation failures and stalls rather than pure latency slow-downs.\nOperating System Resource Limit Anomaly : Database processes or sessions reach kernel-level ceilings for file handles, shared memory, semaphores, threads, or other OS-governed objects, causing hard errors when attempting to allocate additional kernel resources.\n\nWhen all three root causes strike simultaneously, symptoms become intertwined and harder to triage:  • Queries may flip unpredictably between different bad plans as plan-cache invalidations occur after space-related DDL, or as failed worker spawns force the optimizer to re-cost without parallelism.  • Sub-optimal plans generate ballooning intermediate results that overflow into TEMP, growing files faster than auto-extension can provide and amplifying space exhaustion.  • Log growth from long-running, poorly planned transactions collides with already constrained file-handle limits, producing alternating \"no space\" and \"cannot open file\" errors.  • Existing sessions may hang on waits for space or kernel objects, while new sessions fail to start because OS quotas are reached, producing a mix of engine-level and kernel-level error messages.  • Overall throughput collapses as the database oscillates between plan re-compilations, space allocation retries, and kernel denials.\n\nCausal chain: a bad plan inflates I/O and temp-space usage, accelerating the consumption of data, log, and TEMP files. Growing files and frequent auto-extend operations open many new file handles, pushing the process toward OS handle and inode limits. Once these kernel limits are hit, further file growth or parallel-worker creation fails, forcing the optimizer to fall back to even less efficient serial plans, which in turn run longer and generate more redo, worsening space pressure. Simultaneously, space exhaustion triggers background cleanup and checkpoint activity that opens additional files and semaphores, further stressing OS quotas. The mutual reinforcement among poor plan selection, space depletion, and kernel-level resource starvation drives the database into a compounded failure state that is more severe than any individual anomaly acting alone.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5565,
+            "score": 0.3993118856635713,
+            "bm25_score": 43.404656561576886,
+            "lexical_score": 0.20136054421768707,
+            "matched_terms": [
+                "and",
+                "are",
+                "auto",
+                "capacity",
+                "creation",
+                "data",
+                "engine",
+                "error",
+                "failed",
+                "failure",
+                "failures",
+                "file",
+                "growth",
+                "is",
+                "latency",
+                "log",
+                "or",
+                "pressure",
+                "storage",
+                "the",
+                "to",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013706",
+                "error_name": "ER_AUDIT_LOG_FILE_PRUNE_FAILED",
+                "official_description": "Failed to auto-prune file '%s', Error (%d): %s",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

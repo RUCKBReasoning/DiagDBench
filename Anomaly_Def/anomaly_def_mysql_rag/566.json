@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Composite anomaly definition: The database simultaneously suffers from unchecked growth of obsolete MVCC row versions and rollback records while also exhausting critical kernel-level resources (file descriptors, shared-memory segments, threads, etc.) enforced by the operating system. The two root causes coexist and interact, producing a compound failure mode that is more severe than either anomaly on its own.\n\nCombined anomalous phenomena: Administrators observe rapidly increasing dead-tuple ratios, bloated tables and indexes, and cleanup workers that are unable to keep pace; at the same time the engine begins to emit errors about failing to open files, create background or parallel workers, or attach to shared memory. Autovacuum/VACUUM jobs may start and immediately abort due to inability to acquire additional file handles or shared-memory slots, causing the version store to grow even faster. Long-running queries and replication slots hold old snapshots, while new sessions intermittently fail to connect. Query latencies rise because of swollen page scans, and partial outages emerge where existing back-ends remain active but maintenance and new work cannot proceed.\n\nCausal interaction: MVCC bloat drives increased I/O, additional temporary files, more background vacuum workers, and larger shared-memory requests—directly inflating consumption of kernel resources such as file descriptors and shm segments. Simultaneously, hitting OS limits throttles or terminates the very maintenance workers needed to reclaim dead versions, so version accumulation accelerates. Each anomaly therefore reinforces the other: MVCC churn pushes the system toward OS ceilings, and the OS ceilings prevent cleanup, creating a feedback loop that rapidly degrades performance, threatens transaction-ID wraparound, and can culminate in a service-level outage.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.43112916291355124,
+            "bm25_score": 16.410231677889097,
+            "lexical_score": 0.11215025906735751,
+            "matched_terms": [
+                "additional",
+                "and",
+                "are",
+                "from",
+                "is",
+                "more",
+                "of",
+                "or",
+                "sessions",
+                "than",
+                "the",
+                "time",
+                "to"
+            ],
+            "match_count": 27,
+            "entry": {
+                "timeout_id": "mysql84_network_read_timeout",
+                "parameter_name": "net_read_timeout",
+                "timeout_category": "network_read_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for more data from a connection before aborting the read.",
+                "trigger_condition": "The server waits for additional data from a connection longer than net_read_timeout.",
+                "workload_impact": "The network read is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

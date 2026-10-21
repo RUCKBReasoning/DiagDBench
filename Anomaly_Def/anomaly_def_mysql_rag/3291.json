@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Optimizer Statistics Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-layer statements or transaction boundaries are written in a way that forces the engine to process more data or hold resources longer than the business logic actually requires.\nOptimizer Statistics Anomaly : The optimizer relies on stale, incomplete, or misleading statistics, causing systematic misestimation of cardinalities and selection of sub-optimal execution plans.\nOperating System Resource Limit Anomaly : Kernel-level quotas on file handles, shared memory, threads, or similar objects are exhausted, preventing the database from allocating the OS resources it needs.\n\nWhen these three root causes occur together, the database exhibits amplified performance degradation and intermittent failures:  • Queries already bloated by poor workload design are further misplanned because of bad statistics, resulting in massive full scans, spill-to-disk sorts, and runaway parallelism.  • The excessive I/O, memory, and worker-thread demand drives the process toward OS-enforced ceilings; once limits are hit, new sessions, parallel workers, or I/O contexts fail to start, causing sudden spikes of errors, timeouts, and transaction rollbacks.  • Monitoring shows chronic long-tail latency, repeated slow-query entries, wide gaps between estimated and actual rows, frequent plan recompiles, and concurrent kernel messages about resource-allocation failures.  • Symptoms can be mistaken for pure workload, optimizer, or system issues in isolation, obscuring the intertwined nature of the problem.\n\nCausal chain: inefficient SQL logic inflates data volume and resource consumption, magnifying the impact of any cardinality misestimates produced by stale or inadequate statistics. The misestimates lead the optimizer to pick plans that consume even more CPU, memory, and I/O than the inflated workload already demands. This burst of resource pressure accelerates exhaustion of kernel-level quotas; once OS limits are reached, the database can no longer grow its worker or I/O pools, which in turn feeds back into longer queue times and more application retries, keeping transactions open even longer and compounding the statistics staleness. Thus each root cause reinforces the others, creating a self-amplifying loop that degrades performance and availability across both transactional and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.7443394495412844,
+            "bm25_score": 33.23974441285187,
+            "lexical_score": 0.14779816513761468,
+            "matched_terms": [
+                "and",
+                "be",
+                "because",
+                "by",
+                "execution",
+                "for",
+                "in",
+                "limit",
+                "long",
+                "or",
+                "query",
+                "resource",
+                "statements",
+                "the",
+                "this",
+                "together",
+                "when",
+                "workload"
+            ],
+            "match_count": 154,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Replication Synchronization Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Runtime parameters are mis-tuned relative to hardware capacity, workload characteristics, or version defaults, causing sub-optimal use of memory, log, checkpoint, worker, or parallelism resources.\nReplication Synchronization Anomaly : Standby or downstream nodes cannot receive, persist, or apply primary log records fast enough, leading to widening log-position gaps, retention of old log segments, and increasing fail-over risk.\nStorage I/O Throughput Anomaly : The underlying storage layer is saturated on throughput, IOPS, or latency budget, elevating read/write service times for data, temp, and log files.\n\nWhen all three anomalies coexist, the database exhibits a multi-layer performance collapse: replication lag grows explosively while primary-side log segments pile up because mis-sized checkpoint and log parameters generate larger bursts of I/O that the saturated storage cannot absorb, and replicas cannot catch up. Primary sessions see erratic response times dominated by log-write, buffer-flush, and replication-slot waits; replicas show both apply-worker CPU stalls and severe I/O waits. Monitoring dashboards may misleadingly report normal CPU headroom yet display runaway disk-space consumption on the primary, high network utilization without corresponding replay progress on standbys, oscillating checkpoint duration, and sudden spikes of background cleanup debt.\n\nCausal chain: mis-tuned configuration (e.g., oversized shared buffers, undersized WAL segments, aggressive checkpoint timeout, or insufficient parallel replay workers) amplifies the volume and burstiness of redo generation. This inflates the write pressure on an already throughput-bound storage subsystem, elongating local commit latency. The same storage bottleneck throttles replica apply speed, while the configuration’s limited replication worker parallelism and fragmented checkpoints further slow downstream consumption. The resulting backlog prevents WAL recycling, which pushes even more I/O to the stressed disks and forces emergency checkpoints, creating a feedback loop that aggravates both storage saturation and replication delay, ultimately threatening availability and performance for both OLTP and analytical queries.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 16,
+            "score": 0.44512930593582223,
+            "bm25_score": 15.692567768586976,
+            "lexical_score": 0.15134796238244513,
+            "matched_terms": [
+                "and",
+                "are",
+                "data",
+                "for",
+                "is",
+                "latency",
+                "network",
+                "or",
+                "progress",
+                "read",
+                "slow",
+                "the",
+                "this",
+                "timeout",
+                "times",
+                "when",
+                "write"
+            ],
+            "match_count": 81,
+            "entry": {
+                "timeout_id": "mysql84_xplugin_write_timeout",
+                "parameter_name": "mysqlx_write_timeout",
+                "timeout_category": "x_protocol_network_write_timeout",
+                "scope": "global/session/X Plugin",
+                "official_definition": "Write timeout for X Plugin network communication.",
+                "trigger_condition": "A MySQL X Protocol write operation exceeds mysqlx_write_timeout.",
+                "workload_impact": "The X Protocol network write operation times out.",
+                "default_behavior": "Defined as a MySQL X Plugin system variable.",
+                "system_domain": "network_transport",
+                "cause_analysis": "This timeout is usually triggered when network data is not acknowledged, received, or written within the configured transport-level waiting window.",
+                "solution_guidance": "Inspect packet loss, transport latency, client responsiveness, proxy behavior, and whether slow consumers or unstable links are delaying network progress.",
+                "observable_symptoms": [
+                    "network timeout",
+                    "disconnect",
+                    "read/write interruption"
+                ]
+            }
+        }
+    }
+]

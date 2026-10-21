@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Optimizer Statistics Anomaly + CPU Resource Anomaly",
+            "Description": "Schema and Index Design Anomaly : Physical data model and indexing choices do not align with workload access patterns, forcing inefficient access paths even when statements are well written.\nOptimizer Statistics Anomaly : Catalog statistics are stale, incomplete, or inaccurate, causing the optimizer to mis-estimate cardinalities and pick sub-optimal plans.\nCPU Resource Anomaly : Database processes saturate host CPU cores, leaving insufficient compute capacity for the rest of the workload.\n\nComposite definition: The database simultaneously suffers from a mis-aligned physical schema, misleading optimizer statistics, and sustained CPU saturation. Together these root causes make queries both logically and physically inefficient while the engine lacks compute headroom to mask the deficiencies.\n\nCombined phenomena:  • Execution plans show full scans or nested-loop cascades on large tables where selective index probes should occur, with estimated row counts far from the actual figures.  • Plan shapes flip unpredictably after data changes or recompiles, yet all alternatives consume abnormally high CPU, driving overall host utilization to near 100 %.  • Wait-event views alternate between CPU-bound waits and I/O stemming from unnecessary scans; end-user latency spikes sharply during peak periods, and tuning changes that address only one layer (e.g., adding an index or updating stats) yield partial or short-lived relief.  • Automatic statistics jobs or index-rebuild tasks themselves compete for CPU, lengthening maintenance windows and creating further contention.\n\nCausal chain: Poor schema and index design expands the amount of data each statement must touch. Stale or inadequate statistics then mislead the optimizer into believing these wide scans or non-covering lookups are cheaper than they are, cementing inefficient plans. The inflated work per statement aggregates into heavy CPU demand; as CPU saturates, collection of fresh statistics and index-creation tasks are delayed or throttled, allowing statistics to drift even further from reality. The reinforcing cycle—bad design → bad estimates → bad plans → CPU saturation → deferred maintenance → even worse estimates—amplifies performance degradation across both transactional and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.43317394568806256,
+            "bm25_score": 17.165026103331858,
+            "lexical_score": 0.10692599620493358,
+            "matched_terms": [
+                "after",
+                "and",
+                "are",
+                "between",
+                "during",
+                "latency",
+                "not",
+                "or",
+                "queries",
+                "stale",
+                "that",
+                "the",
+                "when",
+                "while"
+            ],
+            "match_count": 320,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

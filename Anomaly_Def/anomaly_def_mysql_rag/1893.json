@@ -1,0 +1,47 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Database Configuration Parameter Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Optimizer Statistics Anomaly: Stale, missing, or insufficiently detailed optimizer statistics misrepresent actual data distribution, causing systematic cardinality errors and mis-costed plan choices.\nDatabase Configuration Parameter Anomaly: Engine-level parameters (memory pools, checkpoint cadence, parallelism, etc.) are mis-tuned for the hardware or workload, distorting internal behaviors without any true resource exhaustion.\nBuffer Cache and Latch Contention Anomaly: Sessions contend for shared buffer pages, latches, or I/O slots inside the buffer manager, leading to wait-state storms and CPU spin that serialize access at the page level.\n\nWhen all three root causes coexist, the symptoms overlap and intensify: queries chosen by a misinformed optimizer funnel excessive traffic onto a small set of index or heap pages, while an undersized or aggressively flushed buffer pool (the result of bad configuration parameters) keeps those pages hot, repeatedly evicting and reloading them. The amplified page churn widens the gap between estimated and actual row counts, triggers frequent plan recompilations, and pushes latch and buffer-busy waits to the top of the wait-event profile. Observables include wildly inaccurate cardinality estimates in plans, sudden spikes in page-latch and buffer-busy waits despite low overall CPU or I/O utilization, checkpoint or flush storms immediately after DML bursts, and erratic throughput that worsens after configuration or data-loading events.\n\nCausally, stale or incomplete statistics misdirect the optimizer toward plan shapes (e.g., nested loops or single-threaded index probes) that hammer a narrow set of pages. Misconfigured parameters—such as an undersized buffer cache, overly frequent checkpoints, or excessive per-session work memory—reduce the cache residency of those hot pages and increase dirty-page pressure, provoking more latch acquisitions and longer retention times. The resulting latch contention inflates query runtimes, holding locks and pins longer, which in turn delays background processes that would otherwise refresh statistics or advance checkpoints. This feedback loop deepens cardinality inaccuracy, aggravates configuration stress points, and drives the system into a persistent high-latency, low-throughput state.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2609,
+            "score": 0.4257618205840488,
+            "bm25_score": 40.0082493785438,
+            "lexical_score": 0.10545454545454544,
+            "matched_terms": [
+                "and",
+                "between",
+                "configuration",
+                "event",
+                "or",
+                "retention",
+                "stale",
+                "state",
+                "the",
+                "threaded",
+                "times",
+                "to"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010722",
+                "error_name": "ER_RPL_MTA_REPLICA_COORDINATOR_HAS_WAITED",
+                "official_description": "Multi-threaded replica: Coordinator has waited %lu times hitting replica_pending_jobs_size_max; current event size = %zu.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

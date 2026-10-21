@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly : The write-ahead logging pipeline—covering in-memory log buffers, log file groups, flushing, switching, archiving, and replication retention—cannot keep pace with commit generation, making the log subsystem the primary bottleneck on the write path.\nStorage Space Capacity Anomaly : One or more storage areas (data, log, archive, temp, backup, diagnostic) reach or approach physical or logical space exhaustion, causing allocation failures and stalling operations that require additional space.\n\nWhen both anomalies are active, the database experiences compounding symptoms: commit latency and log-flush waits rise while free space in the online redo or archive destinations simultaneously plummets; log switches become abnormally frequent yet stall because the next log segment cannot be created; archiver or replication processes back up, filling remaining disk quickly; checkpoints and background writers thrash to reclaim space; DML sessions encounter \"cannot allocate log\", \"out of space\", or \"archive destination full\" errors; temporary-space and data-file growth operations may also fail, leading to widespread transaction timeouts, lock contention, and potential instance-wide freeze.\n\nCausally, an overloaded log subsystem emits log data faster than it can be flushed or archived, accelerating space consumption in the log and archive areas. As space dwindles, the storage capacity anomaly prevents new log segments or archives from being created, which in turn blocks log switches and commit processing, amplifying log-write latency. The stalled log pipeline then prolongs transaction hold times, increases in-memory pressure, and may force emergency checkpoints that further inflate I/O and space demand. Thus each root cause feeds the other: slow or stuck log handling hastens space exhaustion, while space exhaustion further degrades log throughput, spiraling the database into a hard stop unless both logging performance and free-space availability are simultaneously remediated.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.2996882434817683,
+            "bm25_score": 10.719964883543492,
+            "lexical_score": 0.11581860762188631,
+            "matched_terms": [
+                "an",
+                "and",
+                "are",
+                "be",
+                "handling",
+                "latency",
+                "of",
+                "on",
+                "or",
+                "sessions",
+                "that",
+                "the",
+                "to",
+                "when",
+                "which"
+            ],
+            "match_count": 272,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_interval",
+                "parameter_name": "tcp_keepalives_interval",
+                "timeout_category": "network_keepalive_retry_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time after which a TCP keepalive message that has not been acknowledged by the client should be retransmitted.",
+                "trigger_condition": "A TCP keepalive probe is not acknowledged for tcp_keepalives_interval on systems supporting TCP_KEEPINTVL or an equivalent socket option.",
+                "workload_impact": "Controls retry timing for keepalive probes used to detect unresponsive client connections.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

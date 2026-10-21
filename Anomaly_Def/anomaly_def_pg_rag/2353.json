@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Database Configuration Parameter Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Composite Definition: The database concurrently suffers from a sub-optimal execution-plan selection by the optimizer, mis-tuned engine configuration parameters, and restrictive operating-system resource limits. Although each factor alone can cause performance degradation, their simultaneous presence creates a multifaceted failure in which query plans are poor, engine subsystems are ill-provisioned, and the host kernel blocks further resource allocation.\n\nCombined Observable Phenomena: Workloads exhibit erratic performance with the same SQL sometimes using efficient index probes and other times reverting to table scans or serial plans. CPU and I/O utilization metrics look inconsistent with wait-event reports—sessions show long log-write or memory allocation waits while disks and CPUs are under-utilized. Sudden bursts of checkpoints or background-writer activity coincide with spikes of \"cannot allocate shared memory,\" \"too many open files,\" or \"failed to create thread\" errors coming from the OS. Parallel queries intermittently fall back to single-threaded execution because worker pools cannot grow, causing unpredictable query runtimes. Plan cache churn grows as failed worker creation or memory shortages force frequent recompilations, and overall throughput collapses in waves rather than gradually.\n\nCausal Chain and Interaction: Mis-set database parameters (e.g., undersized buffer pool, aggressive work-memory limits, or overly frequent checkpoints) inflate true execution costs, but the optimizer—already prone to selecting borderline plans—may overestimate or underestimate those costs and choose plans that rely on resources the engine cannot effectively supply. When such a plan attempts to allocate additional memory, workers, or I/O contexts, it collides with tight operating-system limits on file handles, shared memory, or threads, resulting in run-time errors or implicit plan downgrades. These failures invalidate or evict plans, prompting fresh compilations that again suffer from the same flawed cost model and parameter landscape, creating a feedback loop. Meanwhile, engine background tasks triggered by the mis-configuration (e.g., checkpoint storms) consume the very kernel resources that user queries lack, amplifying contention and making the overall performance regression sharper and harder to diagnose.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 150,
+            "score": 0.4095217261298965,
+            "bm25_score": 22.06355609500907,
+            "lexical_score": 0.13215646195298708,
+            "matched_terms": [
+                "and",
+                "as",
+                "cannot",
+                "engine",
+                "execution",
+                "failure",
+                "long",
+                "or",
+                "sql",
+                "that",
+                "the",
+                "too",
+                "under",
+                "with"
+            ],
+            "match_count": 14,
+            "entry": {
+                "error_code": "42622",
+                "error_name": "name_too_long",
+                "official_description": "name too long",
+                "error_class": "Class 42 - Syntax Error or Access Rule Violation",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "sql_and_parser",
+                "cause_analysis": "The failure is typically associated with unsupported syntax, invalid statement structure, or feature usage that the target engine version cannot execute as written.",
+                "solution_guidance": "Validate SQL syntax, target-engine compatibility, statement shape, and whether the feature is supported under the current engine version or execution context.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "syntax error",
+                    "feature rejection"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Replication Synchronization Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Critical engine settings (memory, logging, parallelism, checkpoint cadence, etc.) are mis-tuned relative to hardware capacity and workload needs.\nReplication Synchronization Anomaly : Standbys or downstream consumers cannot receive or apply WAL/redo at the rate the primary produces it, causing ever-growing replication lag.\nOperating System Resource Limit Anomaly : Kernel-enforced quotas on file descriptors, shared memory, processes, or other OS objects throttle the database independently of its own internal resource management.\n\nWhen all three faults coexist, the system exhibits a blended failure signature: replication slots stall and retain large volumes of primary WAL, checkpoint frequency spikes yet log recycling is blocked, background workers or apply processes fail to start due to exhausted OS handles, and wait-event statistics show both idle hardware and intense spin or log-write waits. End-users observe increasing replica staleness, sudden session or worker creation errors, erratic latency on the primary, and rapid disk-space consumption from unrecycled logs. Troubleshooting is complicated because each layer (engine parameters, replication, kernel) shows partial symptoms that mask or mimic the others.\n\nCausally, an undersized checkpoint or work-memory setting can inflate WAL generation and stall autovacuum, pushing more redo toward replicas. If OS limits simultaneously cap network sockets, async-I/O contexts, or background threads, the apply side or even the primary’s replication sender processes cannot keep pace, amplifying lag. The growing log backlog prevents log truncation, which in turn triggers aggressive checkpoints per the misconfigured parameters, intensifying I/O surges and memory pressure. Each layer’s throttling therefore compounds the next: mis-tuned engine parameters accelerate load, OS limits restrict the threads and kernel objects needed to digest that load, and replication becomes the visible bottleneck while the primary itself edges toward resource exhaustion. Together they create a self-reinforcing loop that degrades throughput, threatens availability, and obscures root-cause isolation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.3987452853991143,
+            "bm25_score": 13.747720489588126,
+            "lexical_score": 0.12057416267942583,
+            "matched_terms": [
+                "an",
+                "and",
+                "are",
+                "idle",
+                "is",
+                "it",
+                "latency",
+                "of",
+                "on",
+                "or",
+                "session",
+                "the",
+                "waits",
+                "when"
+            ],
+            "match_count": 27,
+            "entry": {
+                "timeout_id": "mysql84_idle_interactive_session_timeout",
+                "parameter_name": "interactive_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds the server waits for activity on an interactive connection before closing it.",
+                "trigger_condition": "An interactive session remains idle longer than interactive_timeout.",
+                "workload_impact": "The server closes the idle interactive connection.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

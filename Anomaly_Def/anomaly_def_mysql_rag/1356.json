@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Composite definition: The database is simultaneously impaired by (1) a bottleneck in the write-ahead logging subsystem that restricts log generation, flushing, switching, archiving, or retention capacity, and (2) physical corruption or logical inconsistency inside on-disk data blocks and index structures. The system must therefore cope with both stalled commit processing and unreliable persistent structures at the same time.\n\nCombined observable phenomena: Users experience rising commit and DML latency, \"log write / log sync\" wait spikes, and frequent log-file switch or archive backlog messages while, in parallel, queries randomly miss or duplicate rows, integrity-check utilities flag page-checksum or index-ordering errors, and the engine emits corruption or recovery warnings. Recovery or redo‐apply operations may loop or slow dramatically, checkpoints can thrash, and replication or backup jobs may halt because damaged pages cannot be read while required log segments remain unarchived, causing log directories to grow uncontrollably. The overlap of symptoms makes it difficult to attribute stalls solely to I/O or corruption, as each condition amplifies the other.\n\nCausal interaction: Corrupted pages or broken index links often trigger extra page reads, forced validation scans, repetitious page splits, or emergency repairs, all of which generate surges of redo records that saturate an already constrained log subsystem. The resulting log backlog delays checkpoints and archive operations, extending the time that corrupted pages stay in service and increasing the risk of additional inconsistencies. Conversely, when the log device reaches capacity or flush latency grows, incomplete commits and prolonged recovery windows raise the likelihood of torn-page or lost-write scenarios, seeding further data and index corruption. Replication or backup retries against corrupt pages can pin log segments for longer retention, intensifying log file exhaustion. Thus the two root causes form a feedback loop that progressively degrades write throughput, data correctness, recovery time, and overall system availability.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 315,
+            "score": 0.5488601717655268,
+            "bm25_score": 58.80572295965311,
+            "lexical_score": 0.15924978687127023,
+            "matched_terms": [
+                "and",
+                "by",
+                "check",
+                "condition",
+                "corruption",
+                "data",
+                "duplicate",
+                "inconsistency",
+                "index",
+                "integrity",
+                "is",
+                "logical",
+                "or",
+                "required",
+                "the",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "1331",
+                "error_name": "ER_SP_DUP_COND",
+                "official_description": "Duplicate condition: %s",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "integrity_and_constraints",
+                "cause_analysis": "The failure is typically associated with logical data inconsistency, structural corruption, uniqueness conflicts, or referential-integrity rules being violated by the workload or storage state.",
+                "solution_guidance": "Validate data consistency, inspect constraints and index integrity, and check whether data-cleaning, repair, or workload correction is required before retrying.",
+                "observable_symptoms": [
+                    "constraint failure",
+                    "duplicate data rejection",
+                    "corruption warning"
+                ]
+            }
+        }
+    }
+]

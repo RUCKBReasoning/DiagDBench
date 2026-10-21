@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Database Configuration Parameter Anomaly + Replication Synchronization Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Costing inputs (row counts, histograms, correlations) are stale or incomplete, causing systematic cardinality misestimation and sub-optimal plans.\nDatabase Configuration Parameter Anomaly : Engine-level memory, I/O, parallelism, and checkpoint/redo settings are mis-tuned for the actual hardware and workload, distorting runtime behavior regardless of physical capacity.\nReplication Synchronization Anomaly : Standby or downstream replicas cannot receive or apply WAL/redo as fast as the primary generates it, leading to growing replication lag and log-retention pressure.\n\nComposite definition: The database concurrently suffers from inaccurate optimizer statistics, ill-calibrated configuration parameters, and impaired replication throughput. Together they create a multi-layer performance and availability degradation in which poor plan quality, resource misallocation, and backlog in the replication pipeline reinforce one another.\n\nCombined anomalous phenomena: 1) Queries on the primary intermittently swing between very fast and severely slow executions, with explain plans showing grossly off row-count estimates, high memory spills, or runaway parallelism. 2) Mis-sized buffers, work-mem, or checkpoint intervals inflate redo generation and increase flush storms, amplifying log-write waits even while CPU or storage remain under-utilised. 3) Replication monitor views show widening receive/replay lag, growing retained log segments, and replicas serving progressively staler data; failovers become risky as retained logs approach disk limits. 4) After bulk loads or schema changes, statistics staleness triggers massive sequential scans whose bloated I/O, memory, and redo output collide with poorly tuned background writer and WAL parameters, further starving replication workers and extending apply latency. Symptoms cross domains, obscuring root causes: log bloat may be misattributed to storage when it is jointly driven by bad plans and sub-optimal checkpoint sizing.\n\nCausal interaction: Stale or missing statistics generate inefficient plans (e.g., full-table scans, oversized hash aggregates) that explode I/O and redo volume. Because configuration parameters (buffer pool, work_mem, checkpoint_timeout, wal_buffers, parallelism limits) are mis-set, the engine cannot absorb the extra load, leading to more frequent checkpoints, longer log flush times, and head-of-line blocking. The surge in WAL traffic overwhelms replication channels already operating near capacity; as replicas fall behind, the primary must retain additional log segments, increasing disk pressure and further lengthening checkpoints. Elevated write and memory contention from mis-configured resources slows statistics auto-collection, perpetuating staleness and creating a reinforcing loop where each anomaly exacerbates the others, culminating in severe performance volatility, storage exhaustion risk, and degraded high-availability posture.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.7039965956755673,
+            "bm25_score": 26.558237797700684,
+            "lexical_score": 0.13454944178628386,
+            "matched_terms": [
+                "and",
+                "apply",
+                "be",
+                "causing",
+                "configured",
+                "data",
+                "downstream",
+                "is",
+                "lag",
+                "longer",
+                "or",
+                "replication",
+                "the",
+                "times",
+                "to",
+                "waits",
+                "when"
+            ],
+            "match_count": 67,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

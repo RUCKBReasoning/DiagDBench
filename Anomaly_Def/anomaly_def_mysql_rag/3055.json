@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Operating System Resource Limit Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Simultaneous transactions hold or request mutually incompatible locks on the same data items, creating long blocking chains or deadlocks inside the lock-manager layer and stalling statement execution. \nOperating System Resource Limit Anomaly : The database process or its children hit kernel-enforced ceilings for file descriptors, shared memory, semaphores, threads, or other OS-level objects, preventing creation of new backends, workers, or I/O contexts. \nNetwork and Connectivity Resource Anomaly : Server- or network-side constraints on sockets, listener backlogs, authentication threads, or transport capacity limit the establishment and servicing of client connections.\n\nWhen these three root causes co-exist, the system exhibits a blended failure pattern: existing sessions become trapped in prolonged lock waits or cyclical deadlocks while new clients experience connection refusals, timeouts, or prolonged authentication delays. Lock-bound backends that cannot complete free their locks slowly or hold them indefinitely if OS limits block their ability to write to WAL, open extra files, or spawn background workers; this prolongs blocking chains and inflates wait-event and deadlock counters. Concurrently, exhausted file-handle or thread quotas reduce the pool of accept()able sockets, so the listener queues overflow, causing TCP resets and application-level connection storms that repeatedly retry and further raise incoming connection pressure. Monitoring shows runaway lock-wait times, rising deadlock victim counts, sharp drops in completed transactions per second, escalating OS error messages about \"too many open files\" or \"cannot create thread\", and surges in half-open sockets and retransmissions.\n\nCausally, heavy lock contention increases backend counts and prolongs session lifetimes, accelerating consumption of OS resources (descriptors, semaphores, threads). Once kernel limits are hit, the database cannot create additional server processes or worker threads, which in turn prevents deadlock detectors, autovacuum workers, or I/O helpers from starting, delaying lock resolution and log flushing and deepening the backlog. Simultaneously, socket and backlog exhaustion triggered by the same OS limits or by retry storms prevents blocked applications from reconnecting to roll back or retry, leaving their orphaned transactions and locks in limbo. The feedback loop between in-engine lock stalls, OS-level exhaustion, and network-layer connection failures amplifies service degradation, potentially leading to a full outage even though each individual anomaly might have been survivable on its own.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.6390537779827905,
+            "bm25_score": 34.764189545127614,
+            "lexical_score": 0.16702531645569618,
+            "matched_terms": [
+                "and",
+                "blocked",
+                "by",
+                "contention",
+                "error",
+                "execution",
+                "for",
+                "in",
+                "limit",
+                "long",
+                "or",
+                "other",
+                "pattern",
+                "resource",
+                "session",
+                "statement",
+                "the",
+                "this",
+                "too",
+                "triggered",
+                "when"
+            ],
+            "match_count": 143,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

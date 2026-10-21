@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Database Configuration Parameter Anomaly + Replication Synchronization Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer repeatedly chooses sub-optimal execution plans despite having reasonably accurate statistics, leading to erratic or inefficient statement performance.\nDatabase Configuration Parameter Anomaly : Engine-level settings for memory, logging, parallelism, and background workers are mis-tuned relative to hardware capacity and workload needs, causing systemic inefficiencies that are not rooted in actual resource exhaustion.\nReplication Synchronization Anomaly : Downstream replicas cannot receive, persist, or apply WAL / redo data as quickly as the primary produces it, resulting in widening replay lag and retention of log segments.\n\nWhen all three root causes coexist, the database exhibits compound symptoms: 1) the same query may oscillate between fast and slow executions or fall back to full scans, 2) CPU, memory, or I/O usage appears either under-utilized or intermittently saturated without a clear pattern, 3) checkpoint storms or oversized log bursts coincide with sudden optimizer plan flips, and 4) replica lag spikes unpredictably, with large log backlogs held open by long-running or poorly planned queries whose resource footprints are inflated by mis-configured memory and parallelism settings. Administrators may observe plan-cache churn, bloated work-memory allocations, growing un-recycled WAL segments, and replicas stuck replaying expensive plans that amplify apply latency.\n\nCausally, misaligned configuration parameters (e.g., overly large work_mem, insufficient shared buffers, aggressive checkpoint intervals, or excessively high max_parallelism) skew the optimizer’s cost model, leading it to prefer plans that assume more memory, CPU, or I/O bandwidth than the system can actually deliver. These bloated plans run longer and generate disproportionate redo, inflating the primary’s transaction log volume. The surge of log output must traverse the replication channel, but downstream nodes already constrained by sub-optimal apply plans and limited resources fall behind, deepening replication lag. The growing backlog prevents log truncation on the primary, which in turn increases disk usage and can trigger further emergency checkpoints, compounding pressure on the mis-tuned buffer and I/O subsystems. Thus, the initial mis-configuration amplifies poor plan choices, both of which magnify redo generation and hinder replication, creating a feedback loop that degrades performance and availability across the entire deployment.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.383907472183278,
+            "bm25_score": 18.31802908649831,
+            "lexical_score": 0.12808446848725802,
+            "matched_terms": [
+                "and",
+                "are",
+                "but",
+                "configured",
+                "for",
+                "latency",
+                "longer",
+                "not",
+                "of",
+                "open",
+                "or",
+                "than",
+                "that",
+                "the",
+                "transaction",
+                "when",
+                "with"
+            ],
+            "match_count": 270,
+            "entry": {
+                "timeout_id": "pg16_idle_session_timeout",
+                "parameter_name": "idle_session_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle, but not within an open transaction, for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle and not inside an open transaction longer than the configured threshold.",
+                "workload_impact": "The session is terminated; the documentation warns about using this with connection pools or middleware.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

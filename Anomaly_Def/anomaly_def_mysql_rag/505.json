@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Replication Synchronization Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly : The write-ahead log generation, buffering, flushing, switching, or archiving path on the primary becomes the main bottleneck, inflating commit latency and preventing timely log-space reuse.\nReplication Synchronization Anomaly : Downstream replicas or change-data consumers cannot receive, store, or apply the primary’s log stream at the required rate, producing widening log-position gaps and retaining old log segments on the primary.\nOperating System Resource Limit Anomaly : Kernel-level caps on file descriptors, processes, shared memory, or other OS resources are reached, hindering the database and its background workers from allocating essential kernel objects.\n\nWhen these three root causes manifest together, the database shows a compound failure pattern: transaction commits slow or stall while replication lag expands in lock-step; alert logs fill with log-flush, log-sync, and replication-apply wait events alongside OS errors such as “too many open files” or “cannot allocate shared memory.” Log files, archive destinations, and relay logs balloon because log recycling is blocked both by replication retention and by the engine’s inability to create or close files under exhausted OS limits. Checkpoints and log switches become more frequent yet less effective, replicas fall progressively further behind, and failover readiness degrades. Administrators observe simultaneous pressure on primary I/O, soaring disk consumption, throttled network throughput to replicas, and sporadic failures to start new background or apply processes.\n\nCausal chain: slow log flush/switch operations leave less headroom in the active log area, forcing the primary to retain segments longer. The growing backlog magnifies replication workload; replicas already constrained by I/O or apply throughput fall even further behind, extending the retention window. Both effects cause the primary and archiver to open ever-more log, archive, and relay files while keeping existing ones pinned. As file handles, asynchronous-I/O contexts, and process slots accumulate, they collide with OS-level limits, triggering allocation failures that in turn further impede log writes and replication apply threads. The three anomalies reinforce each other in a feedback loop: log pressure → replication lag → handle/process accumulation → OS denials → even slower log/replication progress, eventually leading to transaction freezes, replica disconnects, and potential outage.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2699,
+            "score": 0.6193400594384468,
+            "bm25_score": 62.024356547826386,
+            "lexical_score": 0.18154766469821304,
+            "matched_terms": [
+                "and",
+                "archiving",
+                "are",
+                "by",
+                "data",
+                "disk",
+                "engine",
+                "failure",
+                "failures",
+                "file",
+                "files",
+                "is",
+                "latency",
+                "log",
+                "logs",
+                "old",
+                "or",
+                "pressure",
+                "the",
+                "too",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010814",
+                "error_name": "ER_BINLOG_FILE_NAME_TOO_LONG",
+                "official_description": "Log filename too large: %s%s (%zu). Please fix this by archiving old logs and updating the index files.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

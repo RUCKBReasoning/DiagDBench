@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + CPU Resource Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly: The write-ahead logging pipeline—log buffer, log file groups, flush/sync path, archival, or replication retention—cannot keep pace with redo generation, throttling commit throughput.\nCPU Resource Anomaly: Database and host processes saturate available CPU cores, driving up run-queue depth and causing wide-spread latency inflation regardless of statement type.\nNetwork and Connectivity Resource Anomaly: The transport and connection-handling layer (listeners, sockets, authentication, wire encryption, network path) becomes a bottleneck, delaying or dropping client requests and server responses.\n\nWhen all three root causes manifest together, the database exhibits a multi-layer performance collapse: 1) commits stall behind slow log flushes, 2) CPU utilisation stays pinned at or near 100 %, with elevated context switches and scheduler waits, and 3) connection establishment and data-transfer latencies spike, leading to client timeouts, increased retransmissions, and an explosion of idle-in-transaction or socket-wait sessions. Observable symptoms overlap and mask each other—e.g., high commit latency may be misattributed to network RTT, while excessive CPU spin on log-writer and listener threads inflates both wait metrics and OS load. Monitoring dashboards show simultaneous saturation of CPU, log-write waits, and connection backlog queues; alert logs may display frequent log switches, archiver lag, and too-many-connections errors occurring in the same timeframe.\n\nCausally, a feedback loop develops: network slow-downs and connection retries extend transaction lifetimes, inflating the volume of unflushed redo and holding log segments active for longer; the overgrown log and heavier context management load force the log writer, checkpointer, and listener processes to consume more CPU, driving the host toward compute exhaustion. In turn, CPU saturation delays log flushing and socket processing, deepening both the log bottleneck and network backlog. As commits queue behind log I/O and CPU-bound background tasks, application threads remain active longer, further amplifying connection counts and CPU demand. The intertwined contention across log I/O, CPU scheduling, and network endpoints accelerates queue build-ups, risks cluster-wide replica lag or failover, and can precipitate a full write stall or loss of client connectivity unless all three layers are relieved in concert.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5371,
+            "score": 0.4911188686203617,
+            "bm25_score": 46.69682129748857,
+            "lexical_score": 0.1503173241852487,
+            "matched_terms": [
+                "and",
+                "be",
+                "can",
+                "endpoints",
+                "for",
+                "keep",
+                "lag",
+                "log",
+                "network",
+                "or",
+                "replica",
+                "replication",
+                "retention",
+                "the",
+                "to",
+                "unless",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013508",
+                "error_name": "ER_LOG_PRIV_CHECKS_REQUIRE_ROW_FORMAT_NOT_SET",
+                "official_description": "PRIVILEGE_CHECKS_USER for replication channel '%.192s' can't be set to `%.64s`@`%.255s` unless REQUIRE_ROW_FORMAT is also set to %d.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

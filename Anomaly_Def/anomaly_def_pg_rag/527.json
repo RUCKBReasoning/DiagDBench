@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Query Plan Selection Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Critical metadata such as row-count, histogram, and correlation statistics are stale, missing, or too coarse, causing systematic cardinality misestimation.\nQuery Plan Selection Anomaly : The optimizer’s costing logic or plan-cache reuse chooses a sub-optimal execution plan even when statistical inputs would in principle allow a better one.\nTransaction Log Subsystem Anomaly : The write-ahead log path—generation, buffering, flushing, switching, or archiving—cannot keep up with the volume of redo, becoming the primary bottleneck for commits and checkpoints.\n\nWhen all three anomalies coexist, symptoms multiply and overlap:  \n• Queries may oscillate between very different plans, often landing on an inefficient plan that amplifies row counts and random I/O because statistics are stale and the cost model mis-ranks alternatives.  \n• Poor plans drive excessive row versioning, large sort runs, and wide index or table scans, sharply increasing redo generation; meanwhile the saturated log subsystem lengthens commit latency and holds locks longer, feeding back into even larger active-row sets sampled by future statistics or plan captures.  \n• Execution plans show grossly inaccurate estimates, high actual vs. estimated rows, and unexpected operators (full scans, nested loops) together with surging LOG WRITE/LOG FLUSH waits, frequent log-file switches, and checkpoint storms.  \n• Application perspective: sporadic but severe slowdowns on both read and write statements, timeouts during peak write bursts, and dramatic variance between executions of the same SQL text.\n\nCausal chain and interaction: Stale or incomplete statistics mislead the optimizer, increasing the probability that the cost model will pick an already risky plan; the resulting plan then produces outsized data modifications, UNDO/REDO, and temp spill volume. This surge in redo overwhelms an undersized or poorly configured transaction-log subsystem, elongating commit and flush times. Extended commit latency lengthens transaction lifetimes, preventing timely auto-statistics refresh, and keeps heavily modified objects locked or pinned, which in turn skews future sampling and encourages further plan mis-selection. The feedback loop thus reinforces both the optimizer’s blindness and the log bottleneck, degrading throughput and predictability across the entire OLTP workload.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.6637967727627543,
+            "bm25_score": 27.42389771464695,
+            "lexical_score": 0.1385970857336496,
+            "matched_terms": [
+                "active",
+                "an",
+                "and",
+                "because",
+                "cannot",
+                "configured",
+                "for",
+                "locks",
+                "longer",
+                "metadata",
+                "of",
+                "or",
+                "overlap",
+                "preventing",
+                "query",
+                "that",
+                "the",
+                "this",
+                "transaction",
+                "when"
+            ],
+            "match_count": 188,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

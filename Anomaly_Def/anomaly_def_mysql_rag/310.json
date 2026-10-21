@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "CPU Resource Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "CPU Resource Anomaly: Database-related processes saturate host CPU capacity, driving run-queue growth and system-wide latency.\nOperating System Resource Limit Anomaly: Database processes exhaust kernel-enforced quotas such as file descriptors, threads, or shared-memory segments, blocking further allocations.\n\nComposite definition:\nThe system simultaneously suffers from severe CPU saturation and the exhaustion of one or more operating-system resource limits, creating a multi-layer bottleneck where compute cycles are scarce and new kernel objects cannot be obtained. \n\nCombined anomalous phenomena:\n• Sustained 90-100 % CPU utilization, long run queues, and increased context switches coincide with frequent engine or kernel errors about \"unable to create thread\", \"cannot allocate shared memory\", or \"too many open files\".\n• Session creation, parallel-worker spawning, or I/O submission intermittently fails; surviving sessions run slowly because every task competes both for CPU time-slices and for scarce kernel objects.\n• Wait-event views show a mix of CPU run-queue waits and kernel-resource waits; application logs show unexplained timeouts alongside low-level allocation failures.\n• Latency spikes and throughput collapse spread across otherwise unrelated queries, making performance degradation appear chaotic and difficult to attribute to a single layer.\n\nCausal chain and interaction:\nHigh CPU demand causes threads to execute longer and context-switch more frequently, accelerating consumption of per-process file descriptors, async-I/O contexts, and thread IDs. As these kernel limits are approached or reached, the database attempts to spawn additional workers or open more files to cope with the workload, but the kernel denies the requests, forcing retries and idle waits that further extend CPU hold times. The longer each thread sits runnable but unscheduled, the more the run queue grows, intensifying CPU saturation. Conversely, when kernel limits block thread or I/O creation, existing threads must shoulder more work, increasing CPU load even further. This feedback loop amplifies both anomalies, rapidly degrading overall throughput and potentially leading to partial or complete service outage.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.5260363961062783,
+            "bm25_score": 17.62069979876802,
+            "lexical_score": 0.14998800479808075,
+            "matched_terms": [
+                "and",
+                "are",
+                "complete",
+                "fails",
+                "for",
+                "idle",
+                "latency",
+                "of",
+                "or",
+                "session",
+                "sessions",
+                "that",
+                "the",
+                "this",
+                "time",
+                "waits",
+                "when",
+                "with"
+            ],
+            "match_count": 15,
+            "entry": {
+                "timeout_id": "mysql84_connection_handshake_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "connection_handshake_timeout",
+                "scope": "global",
+                "official_definition": "The number of seconds that the mysqld server waits for a connect packet before responding with Bad handshake.",
+                "trigger_condition": "A client does not complete the initial connection packet exchange within connect_timeout.",
+                "workload_impact": "The connection attempt fails during handshake.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

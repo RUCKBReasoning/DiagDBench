@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Database Memory Allocation Anomaly + Replication Synchronization Anomaly",
+            "Description": "Composite definition: The database simultaneously suffers from (1) backlog in removing obsolete MVCC versions, (2) uncontrolled growth of in-process and shared memory allocations, and (3) replication receivers or apply workers that cannot keep pace with the primary’s WAL stream. The three issues coexist and interact, producing a compound failure mode that crosses the storage, memory, and replication subsystems.\n\nCombined observable phenomena: Dead-tuple density, version-store or rollback-segment length, and table/index sizes all rise quickly while autovacuum or purge workers remain constantly busy yet ineffective. At the same time the database processes’ resident memory and swap usage climb, leading to OS-level memory pressure, cache-eviction churn, and occasional OOM kills. On both primary and replicas the WAL/redo backlog grows; replication lag and relay-log retention widen, preventing log recycling and inflating disk usage. Administrators may see query slowdowns from bloated scans, erratic execution plans due to stale statistics, elevated CPU usage from memory thrashing, and degraded failover readiness because replicas are minutes or hours behind.\n\nCausal chain and reinforcement: Heavy OLTP update/delete churn creates excessive dead versions, inflating table size and producing larger WAL records. The enlarged working set must reside in buffer caches and plan/work areas, pushing total memory consumption beyond safe limits; memory pressure throttles autovacuum, purge, and replication apply workers, further delaying version cleanup and redo replay. Simultaneously, replication lag keeps old snapshots open on replicas (or via synchronous feedback slots), which in turn blocks HOT pruning and vacuum on the primary, locking more dead versions in place. The stranded WAL segments required for lagging replicas consume additional memory and disk, and their accumulation further stresses the memory allocator and I/O subsystem. This positive feedback loop makes each individual anomaly harder to remediate, accelerating systemic degradation until throughput collapses or the cluster experiences forced restarts.\n",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2339,
+            "score": 0.573486414013626,
+            "bm25_score": 57.882919749242006,
+            "lexical_score": 0.15966824644549762,
+            "matched_terms": [
+                "and",
+                "apply",
+                "failure",
+                "for",
+                "from",
+                "in",
+                "keep",
+                "lag",
+                "log",
+                "mode",
+                "old",
+                "on",
+                "or",
+                "replication",
+                "retention",
+                "stale",
+                "table",
+                "the",
+                "to",
+                "while",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010452",
+                "error_name": "ER_RPL_INCOMPATIBLE_DECIMAL_IN_RBR",
+                "official_description": "In RBR mode, Replica received incompatible DECIMAL field (old-style decimal field) from Source while creating conversion table. Please consider changing datatype on Source to new style decimal by executing ALTER command for column Name: %s.%s.%s.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

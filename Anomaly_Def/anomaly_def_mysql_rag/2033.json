@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Data Block and Index Integrity Anomaly + CPU Resource Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Pages or their associated latches become hot, forcing concurrent sessions to serialize on buffer-cache access and stall on lightweight synchronization primitives.\nData Block and Index Integrity Anomaly : Persisted data or index pages are physically or logically corrupt, making on-disk structures unreliable and provoking verification or consistency failures.\nCPU Resource Anomaly : Database processes monopolize host CPU cycles, driving the machine toward saturation and elongating every code path that needs scheduler time.\n\nWhen all three conditions arise together, the system exhibits a toxic blend of symptoms: 1) extreme buffer-busy and page-latch waits as sessions spin to acquire contended buffers, 2) intermittent or repeated checksum, page-link, or index-key errors as the same hot pages are found to be corrupt, 3) host CPU utilization pegged near 100 %, with spin-loops and retry logic crowding the run queue, and 4) workload-wide latency spikes or complete hang because threads waiting on latches are starved by other threads burning CPU on corruption retries or background verification tasks. Error logs may oscillate between latch time-out messages and corruption alerts; execution plans may flip from index to full scans, further inflating both latch pressure and CPU consumption.\n\nCausal chain: corruption in a frequently accessed page forces the engine to re-read, re-verify, or fail-and-retry the page, extending the time that its buffer and latch are held. The prolonged hold amplifies latch contention, causing additional sessions to spin or sleep while the corrupt page is examined. Those spin loops translate directly into elevated CPU demand, which in turn slows the OS scheduler and lengthens latch wait times even more. The spiraling CPU saturation also delays background writer and check-pointer threads, impeding dirty-page eviction and increasing buffer-pool turnover, which raises the probability of repeatedly touching the same corrupt pages. Thus each anomaly reinforces the others, progressively degrading throughput and making root-cause isolation difficult until the corruption is repaired, latch pressure relieved, and CPU usage normalized.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2223,
+            "score": 0.4594448524473966,
+            "bm25_score": 38.598659694976355,
+            "lexical_score": 0.1873397435897436,
+            "matched_terms": [
+                "access",
+                "and",
+                "are",
+                "as",
+                "associated",
+                "check",
+                "data",
+                "disk",
+                "engine",
+                "error",
+                "failures",
+                "found",
+                "is",
+                "latency",
+                "of",
+                "or",
+                "pressure",
+                "same",
+                "the",
+                "verify",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010336",
+                "error_name": "ER_DD_FRM_EXISTS_FOR_TABLE",
+                "official_description": "Found .frm file with same name as one of the Dictionary Tables.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

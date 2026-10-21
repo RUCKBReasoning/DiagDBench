@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Transaction Log Subsystem Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Database Configuration Parameter Anomaly: Engine-level settings such as buffer size, checkpoint cadence, log-file size, and parallel I/O limits are mis-tuned for the hardware and workload, becoming a root cause of inefficiency on their own.\nTransaction Log Subsystem Anomaly: The write-ahead logging path—log buffer, log files, flush/sync, archiving, or replication retention—cannot sustain the commit rate, throttling transactional progress.\nStorage I/O Throughput Anomaly: The physical storage layer is saturated in throughput or IOPS, driving up latency for reads and writes across data, temp, and log files.\n\nWhen these three root causes coexist, the database experiences a compound failure pattern: commit latency and log-write waits soar while device-level I/O queues remain full, checkpoints and log-file switches occur in rapid succession, and background tasks such as archiving or replication fall behind, causing log directories to bloat. Application sessions observe timeouts, fluctuating throughput, and sharp CPU spikes as processes spin waiting for log buffer space or redo flush completion. Administrators may see paradoxical metrics—e.g., large idle memory yet aggressive checkpoint storms, or high log flush counts on already saturated disks—making diagnosis ambiguous.\n\nCausal chain: Mis-sized configuration parameters (tiny log buffers, small/maxed-out log files, overly aggressive checkpoint intervals, insufficient async I/O slots) force the engine to flush and switch logs more frequently. This amplified write churn overwhelms an already bandwidth-constrained storage subsystem. The storage saturation in turn slows each flush and file switch, deepening log backlog and extending critical sections that hold locks, thereby magnifying the Transaction Log Subsystem bottleneck. The log stall propagates up the stack, blocking write transactions, stalling background cleaners, and triggering further emergency checkpoints—closing a feedback loop where poor configuration exacerbates log pressure, which overloads limited storage, which further delays logging, culminating in severe OLTP performance collapse and elevated risk of crash-recovery or data-loss windows.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.7440837438423645,
+            "bm25_score": 25.988278292923106,
+            "lexical_score": 0.14694581280788177,
+            "matched_terms": [
+                "an",
+                "and",
+                "blocking",
+                "cannot",
+                "database",
+                "for",
+                "is",
+                "of",
+                "or",
+                "sessions",
+                "that",
+                "the",
+                "this",
+                "to",
+                "transaction",
+                "waiting",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 190,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

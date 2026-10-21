@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Database Memory Allocation Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Engine-level parameters are mis-tuned relative to hardware capacity, workload intensity, or version defaults, creating artificial bottlenecks that do not reflect true resource exhaustion.\nDatabase Memory Allocation Anomaly : Database memory structures (buffer cache, work areas, plan cache, background heaps, etc.) grow beyond the safe physical or virtual memory envelope, leading to OS pressure, paging, or OOM events.\nTransaction Log Subsystem Anomaly : The write-ahead logging pipeline (log buffer, log files, archiver, replication retention) becomes the throughput or latency bottleneck on the write path, stalling commits and checkpoints.\n\nWhen these three root causes co-exist, the system exhibits a blended symptom pattern that is louder and harder to attribute:  • Commit latency and log-flush waits rise while CPUs and disks oscillate between idle and 100 % utilization;  • Memory pressure causes buffer eviction and plan-cache churn, inflating redo generation and checkpoint frequency, which in turn amplifies log-write peaks;  • Sudden log-file switches, archive backlogs, or replication gaps coincide with kernel swap bursts, background autovacuum/cleaner backlog, and sharp drops in cache hit ratio;  • Instance restarts or node evictions may occur when OOM killers intervene during a prolonged log-flush stall;  • Wait-event histograms show an unusual mix of memory-allocation stalls, log-sync waits, and configuration-driven spin loops, masking the primary culprit.\n\nCausal chain: Mis-set parameters (e.g., oversized per-session work memory, undersized log buffer, aggressive checkpoint timeout) trigger excessive allocation that pushes the host into swap. Memory pressure elongates dirty-buffer flush times and forces more frequent checkpoints, driving up redo volume. The swollen redo stream overwhelms the already under-provisioned log subsystem, further delaying commits and causing the checkpointer to fall behind. Each delay prolongs the lifetime of in-memory modified pages and private work areas, escalating memory consumption even more. The vicious cycle—mis-tuned settings → runaway memory usage → heavier log workload → log subsystem saturation → further memory retention—results in a self-reinforcing feedback loop that degrades OLTP throughput and stability far beyond what any single anomaly would produce alone.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5785,
+            "score": 0.5268128351601087,
+            "bm25_score": 58.91166630340865,
+            "lexical_score": 0.1751760881343688,
+            "matched_terms": [
+                "allocation",
+                "and",
+                "buffer",
+                "consumption",
+                "engine",
+                "is",
+                "latency",
+                "memory",
+                "of",
+                "or",
+                "oversized",
+                "per",
+                "pressure",
+                "private",
+                "session",
+                "settings",
+                "the",
+                "with",
+                "workload"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013942",
+                "error_name": "ER_COMPONENT_KEYRING_OCI_CREATE_PRIVATE_KEY",
+                "official_description": "Out of memory! Cannot create private key.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "memory_and_buffer",
+                "cause_analysis": "The failure is typically associated with insufficient memory headroom, buffer pressure, oversized intermediate state, or memory-allocation constraints inside the engine or client library.",
+                "solution_guidance": "Check memory availability, per-session memory settings, large sorts or hashes, and whether workload concurrency is amplifying memory consumption.",
+                "observable_symptoms": [
+                    "memory pressure",
+                    "allocation failure",
+                    "spill",
+                    "unstable latency"
+                ]
+            }
+        }
+    }
+]

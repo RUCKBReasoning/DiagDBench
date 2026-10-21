@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Replication Synchronization Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently chooses a highly sub-optimal execution plan even though statistics are adequate, inflating resource consumption per statement.\nReplication Synchronization Anomaly : Standbys or downstream consumers cannot receive or apply WAL / redo records at the rate the primary produces them, causing widening replication lag.\nStorage I/O Throughput Anomaly : The physical storage layer is saturated in bandwidth, IOPS, or latency, throttling database reads and writes.\n\nWhen all three surface together, the database exhibits extreme and hard-to-diagnose slowdown: suddenly changed plans trigger large table scans, hash spills, or explosion of nested-loop iterations that issue far more physical I/O and generate excessive redo. The bloated I/O stream collides with an already-constrained storage subsystem, driving up queue depths and latency on both data and log devices. As commit latency grows, the primary’s WAL archive accumulates, replicas fall minutes to hours behind, their replay workers stall on the same saturated disks, and read-only workloads on replicas see stale or inconsistent data. Monitoring shows simultaneous spikes in logical I/O from plan churn, physical I/O wait from device saturation, and steep climbs in replication send, write, and replay lag, making it unclear which layer is primary.\n\nCausally, a bad plan magnifies data-page and log traffic, pushing the storage layer past its throughput ceiling. Prolonged storage saturation lengthens commit times and slows WAL shipping, directly aggravating replication lag. In turn, the replica’s delayed apply holds WAL segments open on the primary, preventing log recycling and forcing yet more physical writes to already bottlenecked volumes. The feedback loop—poor plan → excess I/O → storage saturation → replication backlog → retained WAL → further I/O pressure—creates a self-reinforcing degradation that compromises both OLTP responsiveness and analytical query SLAs.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 852,
+            "score": 0.6033927119179494,
+            "bm25_score": 62.14895084774194,
+            "lexical_score": 0.15978835978835976,
+            "matched_terms": [
+                "and",
+                "apply",
+                "are",
+                "at",
+                "downstream",
+                "inconsistent",
+                "is",
+                "lag",
+                "log",
+                "on",
+                "or",
+                "query",
+                "replica",
+                "replication",
+                "shipping",
+                "stale",
+                "that",
+                "the",
+                "to",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "3001",
+                "error_name": "ER_ERROR_ON_SOURCE",
+                "official_description": "Query partially completed on the source (error on source: %d) and was aborted. There is a chance that your source is inconsistent at this point. If you are sure that your source is ok, run this query manually on the replica and then restart the replica with SET GLOBAL SQL_REPLICA_SKIP_COUNTER=1; START REPLICA;. Query:'%s'",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

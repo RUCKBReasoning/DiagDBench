@@ -1,0 +1,47 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Replication Synchronization Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Replication Synchronization Anomaly: Standbys, read replicas, or downstream consumers cannot receive, persist, or apply WAL/redo records as fast as the primary produces them, causing widening log-position gaps and replay lag.\nStorage I/O Throughput Anomaly: The physical devices that host data, temp, and log files are saturated in bandwidth, IOPS, or latency, driving up read/write wait times and elongating database operations.\n\nWhen both root causes strike together, the system exhibits extreme and intertwined symptoms: commit latency on the primary increases as log flushes queue behind a congested storage layer, while replicas fall increasingly behind because their own disks cannot ingest or replay the incoming log stream. WAL segments pile up on the primary and relay logs balloon on replicas, accelerating disk-space consumption and triggering emergency retention policies. Monitoring shows simultaneous spikes in storage wait events (data-file, log-file, durability flush) and replication metrics (send/receive/replay lag). Failover readiness rapidly degrades, read-only workload freshness collapses, and maintenance windows overrun as both I/O stalls and replication gaps reinforce each other.\n\nCausally, inadequate storage throughput throttles the very I/O operations—log writes on the primary and log reads/writes on replicas—needed for timely replication. As disks struggle, primary commit flushes slow, lengthening the log queue to replicas; the larger backlog forces replicas to perform bursty catch-up replays that in turn spike their own I/O demand on already saturated volumes, further delaying apply. The growing backlog prevents log recycling, inflating disk usage and deepening the storage bottleneck on the primary, while replica lag perpetuates retention of old segments. This feedback loop magnifies both anomalies, making the overall database increasingly unstable and at risk of outage.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 12,
+            "score": 0.4047489443954691,
+            "bm25_score": 8.74317422437978,
+            "lexical_score": 0.10667324128862589,
+            "matched_terms": [
+                "and",
+                "are",
+                "latency",
+                "of",
+                "or",
+                "replication",
+                "that",
+                "the",
+                "this",
+                "wal",
+                "when"
+            ],
+            "match_count": 26,
+            "entry": {
+                "timeout_id": "pg16_wal_receiver_timeout",
+                "parameter_name": "wal_receiver_timeout",
+                "timeout_category": "replication_receiver_timeout",
+                "scope": "server/replication",
+                "official_definition": "Terminates replication connections that are inactive longer than the specified amount of time.",
+                "trigger_condition": "A WAL receiver replication connection is inactive longer than wal_receiver_timeout.",
+                "workload_impact": "The replication connection is terminated.",
+                "default_behavior": "PostgreSQL documentation defines the parameter under standby server settings.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

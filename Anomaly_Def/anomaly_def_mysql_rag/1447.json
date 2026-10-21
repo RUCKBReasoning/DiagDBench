@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Data Block and Index Integrity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Composite Definition: The database simultaneously suffers from (1) a physical-schema and indexing design that is misaligned with workload access patterns, (2) low-level corruption or inconsistency of data pages and index structures on disk, and (3) exhaustion of critical operating-system resources such as file descriptors, shared-memory segments, or process/thread quotas. Together these conditions force even well-written queries onto inefficient paths, operate on unreliable physical structures, and contend with kernel-level hard limits, creating a multi-layer failure state that degrades performance, correctness, and availability.\n\nCombined Observable Phenomena: • Queries expected to use selective, covering indexes instead perform full scans or revert to table scans after detecting corrupted index pages. • Result sets show missing or duplicated rows, while concurrent integrity-check utilities or background workers intermittently fail to start because the engine cannot obtain additional processes, semaphores, or AIO contexts. • Rebuild or reindex commands abort with both corruption messages and \"cannot open file\" / \"cannot allocate shared memory\" errors. • Latency is erratic: some sessions hang during I/O retries, others are denied connection; meanwhile write workloads slow dramatically due to bloated or redundant indexes that the optimizer cannot safely ignore because of suspected corruption. • Engine and kernel logs interleave checksum or key-order errors with ENFILE/EMFILE, ENOMEM, or EAGAIN denials, making the original root causes hard to isolate.\n\nCausal Interaction: The poor schema and indexing strategy amplifies I/O volume and maintenance traffic, expanding the number of active files, index pages, and background workers the engine must handle; this drives the process toward operating-system limits. Once those limits are reached, critical maintenance tasks such as index rebuilds, auto-vacuum, or corruption-repair threads fail to start or complete, allowing latent on-disk inconsistencies to persist and spread. Conversely, existing corruption forces the optimizer to discard damaged indexes, further exposing the inefficiencies of the design anomaly and increasing load on heap scans and temporary files, which in turn consumes even more OS resources. The mutual reinforcement of heavy, poorly targeted I/O, unreliable physical structures, and kernel-level resource starvation accelerates degradation, leading to cascading performance collapse, data-consistency risks, and partial or total service outage.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.6034127823731127,
+            "bm25_score": 21.180806538364646,
+            "lexical_score": 0.13607296137339053,
+            "matched_terms": [
+                "additional",
+                "and",
+                "are",
+                "check",
+                "connection",
+                "data",
+                "from",
+                "is",
+                "latency",
+                "more",
+                "number",
+                "of",
+                "or",
+                "sessions",
+                "the",
+                "this",
+                "to"
+            ],
+            "match_count": 69,
+            "entry": {
+                "timeout_id": "mysql84_network_read_timeout",
+                "parameter_name": "net_read_timeout",
+                "timeout_category": "network_read_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for more data from a connection before aborting the read.",
+                "trigger_condition": "The server waits for additional data from a connection longer than net_read_timeout.",
+                "workload_impact": "The network read is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

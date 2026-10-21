@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Buffer Cache and Latch Contention Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer keeps selecting or re-using an execution plan whose estimated cost is low but whose actual runtime is high, despite reasonably accurate statistics.\nBuffer Cache and Latch Contention Anomaly : Concurrent sessions serialize on hot buffer pages and their protecting latches, causing excessive buffer-busy and page-latch waits rather than outright memory shortage.\nOperating System Resource Limit Anomaly : Database processes hit kernel-enforced ceilings such as file-descriptor, shared-memory, semaphore, or thread limits, restricting the engine’s ability to allocate or grow critical resources.\n\nWhen these three root causes manifest together, symptoms appear in multiple layers: 1) unstable plans suddenly flip from index to full table scans or from parallel to serial execution; 2) the sub-optimal plan amplifies touch rates on a few index or table pages, so latch and buffer-busy waits surge and CPU spins without throughput gain; 3) as the engine tries to spawn extra workers, open more files, or enlarge shared memory to compensate, it is blocked by OS limits, resulting in errors for new sessions, failures to start parallel workers, and bursts of \"cannot allocate resource\" messages in system logs. Overall latency oscillates unpredictably, with apparent optimizer issues, internal latch storms, and sporadic OS-level allocation failures all visible yet hard to disentangle.\n\nCausally, a poor plan (e.g., full scan or nested-loop with high outer cardinality) dramatically increases buffer-cache pressure and concentrates access on a narrow set of pages. This fuels latch contention, prolonging critical-section hold times and driving up request queues. The prolonged waits expand task runtimes, which in turn prolongs plan age and keeps the hot pages in constant circulation, reinforcing contention. As the engine reacts—attempting more parallelism, larger I/O queues, or additional background flushers—it consumes extra file handles, threads, and shared-memory segments, quickly exhausting kernel quotas. Once OS ceilings are hit, the database cannot spawn the very workers or I/O contexts that could alleviate contention, so both plan inefficiency and buffer hot-spotting persist, creating a vicious loop that degrades overall throughput and stability.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2328,
+            "score": 0.4947491405106014,
+            "bm25_score": 44.51238071753249,
+            "lexical_score": 0.15956618464961064,
+            "matched_terms": [
+                "and",
+                "but",
+                "by",
+                "constant",
+                "cost",
+                "engine",
+                "execution",
+                "in",
+                "is",
+                "level",
+                "open",
+                "optimizer",
+                "or",
+                "pressure",
+                "resource",
+                "the",
+                "to",
+                "together",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010441",
+                "error_name": "ER_FAILED_TO_OPEN_COST_CONSTANT_TABLES",
+                "official_description": "Failed to open optimizer cost constant tables",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

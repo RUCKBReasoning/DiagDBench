@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Query Plan Selection Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Optimizer Statistics Anomaly: Inaccurate, stale, or missing statistics distort the optimizer’s view of data distribution and cardinalities.\nQuery Plan Selection Anomaly: The optimizer, even when given acceptable statistics, may pick or reuse a sub-optimal plan because of cost-model or plan-cache issues.\nBuffer Cache and Latch Contention Anomaly: Highly contended buffer pages or latches force sessions to stall or spin, causing severe throughput and latency degradation.\n\nWhen these three root causes coexist, the database exhibits compounding symptoms: queries oscillate between wildly different plans, some suddenly regressing to full-table scans or explosive nested-loop joins that read or update the same hot pages. Estimated vs. actual row counts diverge sharply, execution plans fluctuate across executions, and wait-event dashboards show simultaneous spikes in page-latch, buffer-busy, and CPU-spin waits. Bulk loads or skewed parameter runs can trigger immediate plan flips followed by a surge in latch contention as many sessions converge on a small set of blocks or index root pages. Overall response times become erratic, with occasional stalls that resemble deadlocks but are actually latch storms aggravated by poor plan choices.\n\nCausally, stale statistics mislead the optimizer into misestimating cardinalities; this misestimation either pushes the optimizer toward sub-optimal join orders or causes it to rely on previously cached plans that are no longer appropriate. The resulting plans often concentrate I/O on a narrow working set (e.g., single-root index lookups, hotspot ranges, or repeated table rescans). This access pattern heats up a small subset of buffer pages, driving up contention for buffer pins and latches. Conversely, the latch congestion slows data access and prolongs query execution, delaying automatic statistics refresh operations and keeping the statistics stale, which perpetuates the misestimation and plan instability loop. Together, inaccurate statistics, poor plan selection, and buffer-level contention reinforce each other, producing a self-sustaining performance spiral that is harder to diagnose than any individual anomaly alone.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.5065406014536967,
+            "bm25_score": 20.258047477528628,
+            "lexical_score": 0.15045731707317073,
+            "matched_terms": [
+                "and",
+                "are",
+                "can",
+                "for",
+                "is",
+                "latency",
+                "longer",
+                "no",
+                "of",
+                "on",
+                "or",
+                "sessions",
+                "stale",
+                "than",
+                "the",
+                "this",
+                "to",
+                "together",
+                "when",
+                "which",
+                "with"
+            ],
+            "match_count": 269,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_idle",
+                "parameter_name": "tcp_keepalives_idle",
+                "timeout_category": "network_idle_keepalive_probe_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time with no network activity after which the operating system should send a TCP keepalive message to the client.",
+                "trigger_condition": "A TCP client connection has no network activity longer than tcp_keepalives_idle on systems supporting TCP_KEEPIDLE or an equivalent socket option.",
+                "workload_impact": "Starts TCP keepalive probing for an otherwise idle client connection; together with interval and count settings this can lead to dead connection detection.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

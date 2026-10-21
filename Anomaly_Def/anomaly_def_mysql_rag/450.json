@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Storage I/O Throughput Anomaly + CPU Resource Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly: Accumulation of obsolete row versions and index entries outpaces background cleanup, inflating the version store and visibility-check work per statement.\nStorage I/O Throughput Anomaly: Physical devices or virtual volumes cannot deliver the read/write bandwidth, IOPS, or latency budget demanded by the database workload.\nCPU Resource Anomaly: Host CPU cores are driven to sustained saturation by database processes, leaving little headroom for other tasks.\n\nWhen all three root causes manifest simultaneously, the system shows a blended pathology: data and indexes grow rapidly while auto-vacuum or purge workers run constantly yet make no headway; buffer-pool miss rates climb, leading to more physical reads that wait in long device queues; foreground sessions exhibit both high I/O wait and elevated CPU run-queue latency; query plans that must scan bloated heaps spend extra CPU cycles on version visibility checks, only to stall again on slow block delivery; background writer, checkpointer, and log-flush threads extend commit latency, and overall transaction response times and batch windows stretch unpredictably. Monitoring views reveal swollen rollback segments, disk queues pegged, and CPU usage near 100 %, making it difficult to isolate any single dominant wait class.\n\nCausally, heavy update/delete churn expands the version store, inflating table and index footprints. The larger on-disk working set overwhelms the storage subsystem, elevating I/O latency. Slow I/O in turn delays cleanup workers, allowing even more dead versions to accumulate and further bloat storage. As each user query now touches more pages and performs extra visibility checks, CPU demand rises. With CPUs already saturated, context-switch overhead grows, further slowing background tasks such as vacuuming and checkpoint flushing, which then generate burstier I/O patterns that intensify storage contention. The feedback loop among unchecked version buildup, degraded I/O throughput, and exhausted CPU cycles drives the database into a self-reinforcing degradation spiral that is difficult to recover from without addressing all three underlying resource constraints together.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.4018742407028283,
+            "bm25_score": 16.018119127284937,
+            "lexical_score": 0.09973799126637554,
+            "matched_terms": [
+                "and",
+                "cannot",
+                "for",
+                "in",
+                "is",
+                "or",
+                "sessions",
+                "statement",
+                "the",
+                "to",
+                "transaction",
+                "when",
+                "while"
+            ],
+            "match_count": 22,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

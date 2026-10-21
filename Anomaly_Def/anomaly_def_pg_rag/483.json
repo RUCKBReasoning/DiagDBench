@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Database Configuration Parameter Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Optimizer Statistics Anomaly : The optimizer relies on stale, incomplete, or inaccurate statistics, producing systematic cardinality misestimates that drive poor plan choices.\nDatabase Configuration Parameter Anomaly : Engine-level memory, I/O, parallelism, and background-worker parameters are mis-tuned relative to hardware and workload, introducing artificial resource pressure or throttling that is unrelated to true capacity limits.\nData Block and Index Integrity Anomaly : Physical table or index pages contain corruption or logical inconsistencies, making access paths unreliable and causing incorrect or missing data to surface at execution time.\n\nWhen these three root causes coexist, symptoms multiply and blur: queries may oscillate between unexpectedly slow full scans (from misestimation) and erroneous, partial, or duplicated result sets (from corrupted indexes or pages). Repeated plan changes, sudden plan regressions after data loads, and frequent statement or transaction aborts appear alongside unusual wait-event patterns—e.g., excessive buffer-busy or log-write waits—even when CPU and I/O utilization remain low due to mis-set memory pools, checkpoint intervals, or parallelism caps. Integrity checkers may intermittently report page or key-order errors, yet operators may misinterpret them as fallout from the performance issues, delaying corrective action. Overall, troubleshooting becomes difficult because each symptom (poor plans, resource imbalance, data errors) can masquerade as the sole culprit while actually stemming from their interaction.\n\nCausally, stale or missing statistics push the optimizer toward plans (such as narrow-range index probes or large hash joins) whose effectiveness depends on healthy index structures and adequate memory. If indexes are internally corrupt, these plans return wrong results or trigger run-time error handling that forces full scans, amplifying the cost of the original misestimation. Simultaneously, misconfigured memory or checkpoint parameters can starve the buffer cache, inflate I/O latency, and induce frequent background flushes, magnifying the performance penalty of the unexpected scans and heightening the likelihood of torn pages or incomplete writes that deepen existing corruption. Conversely, corruption-induced retries and long-running error-handling paths inflate workload variability, thwarting auto-tuning heuristics and preventing statistics refresh jobs or autovacuum-style maintenance from completing. The feedback loop between bad statistics, harmful configuration, and structural corruption accelerates degradation of both performance and data correctness, threatening overall system stability.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.7262253484043841,
+            "bm25_score": 30.189943398528484,
+            "lexical_score": 0.16095923846717108,
+            "matched_terms": [
+                "after",
+                "and",
+                "are",
+                "at",
+                "between",
+                "can",
+                "handling",
+                "is",
+                "latency",
+                "long",
+                "or",
+                "pools",
+                "queries",
+                "running",
+                "sets",
+                "stale",
+                "system",
+                "that",
+                "the",
+                "time",
+                "when",
+                "while"
+            ],
+            "match_count": 186,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

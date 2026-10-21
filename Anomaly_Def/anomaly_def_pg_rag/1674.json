@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Replication Synchronization Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Replication Synchronization Anomaly : Standbys or downstream consumers cannot receive, store, or replay transaction-log records as fast as the primary generates them, causing sustained replication lag.\nStorage Space Capacity Anomaly : Allocated disk or logical free space for datafiles, logs, archives, temp areas, or backups is exhausted, leading to allocation failures and stalled database operations.\n\nComposite definition: Both anomalies manifest concurrently—the replication pipeline is backlogged while one or more nodes (primary or replicas) are simultaneously running out of space needed to write or retain log and data blocks.\n\nCombined phenomena: 1) Rapidly widening replication-position gaps alongside shrinking free space on primary and/or replica volumes. 2) Retained WAL/redo or relay-log files piling up because they cannot be recycled until replicas catch up, hastening space exhaustion on the primary. 3) On replicas, full disks prevent new relay logs from being written, which in turn halts apply threads and pushes lag even higher. 4) Error messages such as \"no space left on device,\" \"cannot allocate WAL segment,\" or \"replication receiver stalled\" appear together, and failover readiness metrics degrade sharply. 5) User transactions may start failing when the primary can no longer allocate new log segments or when temporary-space shortages collide with long-running queries.\n\nCausal chain: Replication lag forces the primary to retain extra log segments; these retained files consume space that would normally be reclaimed, accelerating space depletion. Once storage reaches critical thresholds, archive, backup, or checkpoint processes fail, further preventing log recycling and deepening the lag. Conversely, initial space pressure on a replica (e.g., from unchecked data growth or oversized temp usage) can block the writing of incoming relay logs, which stalls replay and propagates back to the primary, increasing file retention there. The two root causes thus reinforce each other in a feedback loop that escalates from mild lag or moderate disk usage into a compound failure affecting durability, availability, and recovery objectives.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.453389509524861,
+            "bm25_score": 18.823282579101004,
+            "lexical_score": 0.11739598278335725,
+            "matched_terms": [
+                "and",
+                "are",
+                "be",
+                "can",
+                "failure",
+                "is",
+                "messages",
+                "of",
+                "on",
+                "or",
+                "reaches",
+                "that",
+                "the",
+                "to",
+                "when"
+            ],
+            "match_count": 241,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_count",
+                "parameter_name": "tcp_keepalives_count",
+                "timeout_category": "network_keepalive_failure_threshold",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the number of TCP keepalive messages that can be lost before the server connection to the client is considered dead.",
+                "trigger_condition": "The number of lost TCP keepalive probes reaches tcp_keepalives_count on systems supporting TCP_KEEPCNT.",
+                "workload_impact": "The server can consider the client connection dead after the configured keepalive failure threshold.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Replication Synchronization Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Composite definition: The database system simultaneously suffers from delayed or stalled replication apply pipelines (Replication Synchronization Anomaly) while also hitting host-level kernel or container resource ceilings that prevent the database processes from obtaining additional file descriptors, shared-memory segments, threads, or other kernel objects (Operating System Resource Limit Anomaly).\n\nCombined anomalous phenomena: Replica lag metrics rise sharply and remain stuck; relay logs, retained WAL/redo segments, or primary-side pg_wal/* archives accumulate faster than they can be recycled.  At the same time, error logs show \"could not open file\", \"too many open files\", \"failed to allocate shared memory\", or \"cannot fork thread\" messages.  New replication workers, logical decoding slots, or parallel apply processes fail to start, and primary sessions that try to commit large transactions may block waiting for replication-confirmation feedback that never arrives.  Existing sessions continue to run but VACUUM, CHECKPOINT, or background writer processes intermittently abort, making disk usage and replica delay grow in lockstep.  Monitoring may show CPU and I/O under-utilized even though throughput collapses, because the bottleneck is hidden in the kernel limit layer.\n\nCausal chain and interaction: Replication lag forces the engine to keep more WAL segments open, more file descriptors in use, and more background apply workers alive on both the primary and replicas.  This surge in kernel-object demand pushes the database up against fixed per-process or cgroup limits; once those limits are reached, new apply workers or WAL sender processes cannot be spawned, causing replication to fall even further behind.  Conversely, the resource-limit anomaly can independently block the creation of parallel replay or logical decoding workers, immediately throttling the replica’s ability to catch up.  Each condition therefore amplifies the other: replication delay increases kernel object pressure, while kernel denials exacerbate replication delay, eventually leading to a feedback loop that endangers failover readiness, increases primary disk consumption, and risks service outage if the primary runs out of space or the replicas time out.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.3543799001630245,
+            "bm25_score": 13.765093825802053,
+            "lexical_score": 0.13557213930348258,
+            "matched_terms": [
+                "and",
+                "are",
+                "is",
+                "not",
+                "of",
+                "or",
+                "replication",
+                "sender",
+                "sessions",
+                "than",
+                "that",
+                "the",
+                "this",
+                "time",
+                "wal"
+            ],
+            "match_count": 26,
+            "entry": {
+                "timeout_id": "pg16_wal_sender_timeout",
+                "parameter_name": "wal_sender_timeout",
+                "timeout_category": "replication_sender_timeout",
+                "scope": "server/replication",
+                "official_definition": "Terminates replication connections that are inactive longer than the specified amount of time.",
+                "trigger_condition": "A WAL sender replication connection is inactive longer than wal_sender_timeout.",
+                "workload_impact": "The replication connection is terminated.",
+                "default_behavior": "PostgreSQL documentation defines the parameter under replication sending server settings.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

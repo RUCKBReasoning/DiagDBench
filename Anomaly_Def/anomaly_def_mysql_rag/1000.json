@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Buffer Cache and Latch Contention Anomaly + Replication Synchronization Anomaly",
+            "Description": "Schema and Index Design Anomaly : The physical data model does not align with workload access patterns, forcing queries into inefficient full-scan or non-covering-index paths and creating write hot-spots.\nBuffer Cache and Latch Contention Anomaly : Concurrent sessions serialize on hot buffer pages, latches, or I/O slots, causing CPU spin and wait spikes even when total memory is sufficient.\nReplication Synchronization Anomaly : Downstream replicas cannot ingest or apply primary-side log traffic fast enough, leading to widening log-position gaps and retention of un-recycled log segments.\n\nWhen these three root causes strike simultaneously, the system exhibits compounded symptoms: 1) queries and DML repeatedly hammer a small set of ill-designed tables or index root pages, inflating buffer-busy and page-latch waits; 2) the resulting stall and retry behaviour increases transaction duration and the volume of generated redo, so the primary’s log grows faster while flush cycles are lengthened by buffer contention; 3) replicas fall further behind because they must replay the same inefficient access patterns and also compete for their own buffer latches, showing escalating replay lag and ballooning relay-log or retained WAL storage. End-user latency oscillates with both local latch storms and downstream back-pressure, and administrative alarms may simultaneously report buffer-cache hotspots, high WAL retention, and replication lag, making the root cause hard to pinpoint.\n\nCausally, the sub-optimal schema design creates concentrated page accesses that become latch hot-spots; this latch contention slows foreground DML and prolongs checkpoints, generating bursts of dirty pages and large transaction logs. The enlarged and sustained log volume overloads the replication pipeline, whose own apply threads are further hampered by the same poor index layout, re-creating latch contention on the replica side and reducing catch-up throughput. As replicas lag, the primary is forced to retain additional log segments, keeping more pages dirty and resident, which intensifies buffer churn and latch pressure—forming a reinforcing loop that degrades both primary performance and replica freshness.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5319,
+            "score": 0.5676418238498127,
+            "bm25_score": 64.03284211651457,
+            "lexical_score": 0.13524841915085817,
+            "matched_terms": [
+                "and",
+                "by",
+                "data",
+                "does",
+                "is",
+                "layout",
+                "must",
+                "not",
+                "of",
+                "or",
+                "pressure",
+                "re",
+                "tables",
+                "the",
+                "these",
+                "they",
+                "to",
+                "with",
+                "workload"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013448",
+                "error_name": "ER_ACL_WRONG_OR_MISSING_ACL_TABLES_LOG",
+                "official_description": "The current layout of the ACL tables does not conform to the server's expected layout. They're either altered, missing or not upgraded from a previous version. However a best effort attempt to read data from these tables will still be made.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + MVCC Version Maintenance Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Schema and Index Design Anomaly : Static mismatch between physical table / index layout and workload access patterns that forces inefficient full-object operations and excessive write amplification.\nMVCC Version Maintenance Anomaly : Accumulation of obsolete row versions and index entries because background cleanup workers cannot keep up with update/delete churn.\nOperating System Resource Limit Anomaly : Exhaustion of kernel-managed objects (file descriptors, shared-memory segments, threads, etc.) that prevents the database from allocating additional resources even though engine-level quotas are not reached.\n\nWhen all three root causes are present, the database exhibits a blended failure mode: queries that should be selective devolve into wide scans across bloated heaps and non-covering indexes, each scan having to wade through layers of dead tuples. Cleanup workers try to reclaim space but can neither keep pace with the churn nor obtain the extra worker processes, file handles, or shared-memory slices they need because OS-level limits have been hit. Administrators observe rapidly growing table and index sizes, misestimated row counts, escalating I/O per query, chronic checkpoint and autovacuum backlogs, and intermittent \"cannot open file\" or \"cannot spawn worker\" errors. Performance degrades non-linearly—latency spikes on both reads and writes, maintenance jobs are canceled or throttled, and partial outages occur when new sessions or parallel workers are refused despite apparent headroom inside the database.\n\nCausal chain: missing or sub-optimal indexes force queries and batch modifications to touch far more pages than necessary, dramatically increasing update/delete traffic and hence MVCC version creation. The resulting version bloat inflates on-disk structures, further slowing already inefficient scans and generating even more cleanup work. To catch up, the engine attempts to launch additional autovacuum, compaction, or parallel I/O workers, but these requests collide with tight kernel limits on file handles, threads, or shared memory that may already be strained by the enlarged object set. The OS denials stall maintenance tasks, letting version bloat grow unchecked, which in turn amplifies the workload on the poorly designed schema. This positive feedback loop between design inefficiency, version accumulation, and resource exhaustion pushes the system toward steady-state overload or cascading failure.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 83,
+            "score": 0.23124233657522253,
+            "bm25_score": 12.538050575792802,
+            "lexical_score": 0.1370789758384421,
+            "matched_terms": [
+                "and",
+                "be",
+                "but",
+                "by",
+                "engine",
+                "failure",
+                "in",
+                "level",
+                "not",
+                "object",
+                "or",
+                "resource",
+                "state",
+                "the",
+                "to",
+                "with",
+                "workload"
+            ],
+            "match_count": 10,
+            "entry": {
+                "error_code": "2203C",
+                "error_name": "sql_json_object_not_found",
+                "official_description": "sql json object not found",
+                "error_class": "Class 22 - Data Exception",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

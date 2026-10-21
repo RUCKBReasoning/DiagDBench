@@ -1,0 +1,47 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + MVCC Version Maintenance Anomaly + CPU Resource Anomaly",
+            "Description": "Optimizer Statistics Anomaly: Optimizer metadata (row counts, histograms, correlation data) is stale or incomplete, driving systematic cardinality misestimates and sub-optimal plan selection.\nMVCC Version Maintenance Anomaly: Obsolete row versions and deleted index entries accumulate faster than background cleanup can reclaim them, inflating on-disk and in-memory structures and lengthening visibility checks.\nCPU Resource Anomaly: Database processes consume an abnormally high share of CPU cycles, pushing the host toward saturation and broadening latency across the workload.\n\nWhen all three root causes coexist, the system exhibits a blended failure pattern: execution plans built on outdated statistics must traverse massively bloated heaps and indexes, amplifying I/O and visibility-check work per statement; the excess work drives CPU utilisation to sustained saturation, which in turn slows the very maintenance workers (autovacuum, garbage collection, statistics refresh) needed to correct the bloat and the stale statistics. Symptoms include extreme divergence between estimated and actual row counts, sudden plan flips toward full-table scans or deeply nested loops, rapidly growing table sizes even without data growth, rising CPU run-queue depth, frequent scheduler/runqueue wait events inside the database, and escalating response-time variance for both read and write transactions.\n\nCausally, heavy update/delete churn first causes MVCC bloat. The enlarged relation footprints and visibility checks lengthen scan times, but the optimizer—relying on stale statistics—continues to believe the tables are smaller or differently distributed, selecting plans that magnify CPU demand. The resulting CPU saturation deprioritises or starves background cleaners and statistics gatherers, letting bloat and statistics staleness spiral further. Each component therefore reinforces the next: bloat corrupts statistics accuracy, bad statistics trigger CPU-hungry plans, and CPU starvation blocks the maintenance required to arrest bloat, producing a self-amplifying performance collapse in high-churn OLTP environments.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2498,
+            "score": 0.3698951481676906,
+            "bm25_score": 34.52714731145703,
+            "lexical_score": 0.1196078431372549,
+            "matched_terms": [
+                "and",
+                "checks",
+                "distributed",
+                "execution",
+                "failure",
+                "in",
+                "is",
+                "or",
+                "statement",
+                "table",
+                "tables",
+                "the",
+                "time"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010611",
+                "error_name": "OBSOLETE_ER_NDB_TABLE_IS_NOT_DISTRIBUTED",
+                "official_description": "NDB: Inconsistency detected in distributed privilege tables. Table '%s.%s' is not distributed",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "authentication_and_authorization",
+                "cause_analysis": "The failure is typically associated with user identity, privilege scope, object access checks, or credential validation at session establishment or statement execution time.",
+                "solution_guidance": "Verify account credentials, privilege grants, object ownership, role settings, and whether the execution context has sufficient access rights.",
+                "observable_symptoms": [
+                    "access denied",
+                    "authentication failure",
+                    "permission error"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,47 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Buffer Cache and Latch Contention Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer chooses a markedly sub-optimal execution plan even though statistics are accurate, inflating logical I/O, work-set size, and concurrency demand.\nBuffer Cache and Latch Contention Anomaly: Multiple sessions compete for hot buffer pages, latches, or page-pin resources, stalling on shared memory structures below the lock manager.\nStorage I/O Throughput Anomaly: The underlying storage subsystem is saturated so that physical read/write latency, IOPS, or throughput no longer meet the database engine’s demand.\n\nWhen these three root causes strike together, the workload experiences runaway response times and throughput collapse. Poorly chosen plans generate excessive and often non-sequential page access, rapidly rotating working sets through an already stressed buffer pool. As the same hot index or data pages are repeatedly loaded and evicted, latch and buffer-busy waits spike, while the engine simultaneously floods the storage layer with redundant physical I/O that it cannot sustain. Observable symptoms include: frequent plan flips coinciding with bursts of PAGE-LATCH or BUFFER_BUSY waits, CPU cores spinning while others idle in I/O wait, oscillating throughput, dramatic variance between executions of the same statement, inflated physical I/O counts despite a high logical read footprint, and sustained device queue depths with increasing storage latency. Monitoring views will show intertwined wait classes—optimizer-induced re-compilations, buffer latch stalls, and disk I/O waits—making single-root attribution difficult.\n\nCausal chain: a sub-optimal plan widens scans or drives high-fan-out nested loops, multiplying page requests. The surge in page fetches thrashes an undersized or already hot buffer cache, forcing frequent page replacements and intensifying latch acquisition on root and leaf pages. Each latch stall lengthens statement duration, keeping pages pinned longer and raising concurrency on the same hot structures. The inflated physical read/write demand then overruns storage throughput limits, elongating I/O service times; the slower I/O further extends page residency in the buffer and prolongs latch holds, feeding back into even more contention and reinforcing the optimizer’s incentive to keep or regenerate bad plans. The intertwined feedback loops between inefficient plans, memory-level contention, and storage saturation magnify latency and can lead to systemic slowdown or near-stall conditions under both OLTP and hybrid analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 116,
+            "score": 0.2719562357233246,
+            "bm25_score": 14.016576731339859,
+            "lexical_score": 0.12306682913112756,
+            "matched_terms": [
+                "and",
+                "as",
+                "cannot",
+                "engine",
+                "execution",
+                "is",
+                "no",
+                "or",
+                "statement",
+                "that",
+                "the",
+                "under",
+                "with"
+            ],
+            "match_count": 10,
+            "entry": {
+                "error_code": "2F005",
+                "error_name": "function_executed_no_return_statement",
+                "official_description": "function executed no return statement",
+                "error_class": "Class 2F - SQL Routine Exception",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "sql_and_parser",
+                "cause_analysis": "The failure is typically associated with unsupported syntax, invalid statement structure, or feature usage that the target engine version cannot execute as written.",
+                "solution_guidance": "Validate SQL syntax, target-engine compatibility, statement shape, and whether the feature is supported under the current engine version or execution context.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "syntax error",
+                    "feature rejection"
+                ]
+            }
+        }
+    }
+]

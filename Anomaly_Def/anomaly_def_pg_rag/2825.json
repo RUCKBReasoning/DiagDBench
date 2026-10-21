@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Replication Synchronization Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions on the primary database compete for mutually incompatible locks on the same rows, pages, or metadata, creating long blocker-waiter chains or deadlocks that inflate wait time and suppress throughput.\nReplication Synchronization Anomaly : Standby or subscriber nodes fall behind because they cannot receive, write, or apply the primary’s log stream fast enough, enlarging log-position gaps and delaying replica replay.\n\nWhen both root causes manifest together, the database experiences compounded symptoms: on the primary, sessions stall behind lock queues while commit latency rises; simultaneously, the replication pipeline shows rapidly growing receive/replay lag, bloated log retention, and stale read replicas. Application traffic may shift to the primary as replicas become outdated, further intensifying lock pressure. Deadlock-victim rollbacks, connection-pool exhaustion, and sudden surges of catch-up I/O on replicas appear concurrently, making it difficult to attribute slowdowns to either subsystem alone.\n\nCausally, heavy lock contention slows transaction completion, prolonging the lifespan of open transactions and delaying log generation, flush, and truncation. These lingering transactions prevent log recycling and force the primary to retain ever-larger log segments, which must still be shipped to replicas. On the replica side, apply workers encountering the same conflicting lock patterns (e.g., hot-spot updates or DDL) are blocked, reducing apply throughput and amplifying replication lag. The growing lag, in turn, prompts read workloads to be redirected to the already lock-saturated primary or triggers administrative actions (e.g., pausing apply, promoting a lagging standby) that further disturb lock ordering, creating a feedback loop that worsens both locking and synchronization delays. The intertwined effects degrade overall OLTP performance and erode high-availability guarantees.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 213,
+            "score": 0.6258689992988274,
+            "bm25_score": 42.73085682015609,
+            "lexical_score": 0.1222222222222222,
+            "matched_terms": [
+                "and",
+                "chains",
+                "concurrent",
+                "conflicting",
+                "for",
+                "incompatible",
+                "lock",
+                "or",
+                "same",
+                "the",
+                "transaction",
+                "transactions",
+                "write"
+            ],
+            "match_count": 15,
+            "entry": {
+                "error_code": "F0001",
+                "error_name": "lock_file_exists",
+                "official_description": "lock file exists",
+                "error_class": "Class F0 - Configuration File Error",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "concurrency_and_transaction",
+                "cause_analysis": "The failure is typically associated with concurrent transactions contending for the same logical resources, incompatible lock acquisition order, or transaction-state conflicts surfaced by the engine.",
+                "solution_guidance": "Inspect blocking chains, reduce conflicting write overlap, shorten transaction lifetime, review lock acquisition order, and verify whether transaction scheduling or retry logic needs adjustment.",
+                "observable_symptoms": [
+                    "blocking",
+                    "rollback",
+                    "retry",
+                    "stalled transaction"
+                ]
+            }
+        }
+    }
+]

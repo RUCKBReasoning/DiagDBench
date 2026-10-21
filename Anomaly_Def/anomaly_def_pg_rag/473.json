@@ -1,0 +1,41 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Transaction Lock Contention Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Stale, missing, or insufficient statistics distort the optimizer’s cardinality estimates and costing inputs, driving systematically poor plan choices.\nTransaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same resources, producing long blocking chains or deadlocks that stall throughput.\nOperating System Resource Limit Anomaly : Database processes hit kernel-enforced ceilings for handles, memory segments, semaphores, threads, or similar OS objects, preventing new allocations and halting growth of work.\n\nCombined phenomena: When all three root causes coexist, the system exhibits severe and erratic slowdowns. Misestimated row counts lead the optimizer to pick plans that scan or update far more data than necessary, inflating lock footprints, extending lock hold times, and triggering cascades of blocking and deadlocks. Sessions that become stuck waiting on locks or deadlock retries remain logged in, consuming connections, file descriptors, shared-memory slots, or semaphore entries until global OS quotas are exhausted. Once kernel limits are reached, new client logins, background workers, or parallel query processes fail to start, causing partial outages and amplifying application time-outs. Monitoring may show exploding lock-wait queues, skyrocketing wait-on-OS resource allocation failures, drastic drops in throughput, and sudden bursts of deadlock victim errors, all while execution plans display grossly inaccurate cardinality estimates.\n\nCausal chain: (1) Stale or missing statistics mislead the optimizer into choosing high-cost, bulk-locking execution plans (e.g., full table scans without useful indexes), thereby lengthening transaction duration and widening the scope of acquired locks; (2) the prolonged and enlarged lock holding intensifies lock contention, inducing blocker-waiter trees and frequent deadlocks; (3) each blocked or orphaned backend continues to hold kernel objects—file handles, semaphores, threads—pushing the database toward OS resource limits; (4) once those limits are hit, new sessions and maintenance workers (including auto-statistics refresh jobs) cannot start, preventing correction of the stale statistics and forcing more sessions into lock waits. This feedback loop compounds latency, throughput collapse, and availability degradation in OLTP workloads.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 19,
+            "score": 0.16372333531471886,
+            "bm25_score": 10.955456297654646,
+            "lexical_score": 0.06980458793542905,
+            "matched_terms": [
+                "and",
+                "cardinality",
+                "execution",
+                "in",
+                "or",
+                "resource",
+                "the",
+                "to"
+            ],
+            "match_count": 9,
+            "entry": {
+                "error_code": "21000",
+                "error_name": "cardinality_violation",
+                "official_description": "cardinality violation",
+                "error_class": "Class 21 - Cardinality Violation",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

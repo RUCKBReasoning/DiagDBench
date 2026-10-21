@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Data Block and Index Integrity Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly: Excessive accumulation of obsolete row versions, rollback records, and deleted index entries because background cleaners cannot keep up.\nData Block and Index Integrity Anomaly: On-disk data pages or index structures become physically or logically corrupt, breaking key order, page links, or heap–index mappings.\nStorage I/O Throughput Anomaly: The physical storage layer is saturated in bandwidth, IOPS, or latency, causing prolonged waits on reads, writes, and durability flushes.\n\nWhen all three root causes are present, the database exhibits a blended symptom set: version stores and rollback segments expand rapidly while VACUUM or purge workers are throttled by slow I/O, causing autovacuum backlogs and rising transaction-ID age. Concurrently, corruption in indexes or data pages yields mismatches between index and heap counts, checksum errors, and sudden plan shifts to sequential scans. The shift to full scans and repeated page re-reads inflate I/O demand, further overwhelming an already saturated storage subsystem; meanwhile corruption-induced retries, double-reads for verification, or forced page repairs increase latency variability and queue depth. Administrators observe a vicious cycle of longer query response times, high I/O wait, bloated tables, integrity-check failures, and relentless engine warnings about wraparound, corruption, and I/O stalls—making it difficult to distinguish which subsystem is primarily at fault.\n\nCausally, saturated storage slows the purge and vacuum processes needed to reclaim obsolete versions, allowing version bloat to escalate. The larger heaps and indexes produced by this bloat in turn require more pages to be read and written, amplifying I/O pressure. Simultaneously, any latent corruption—perhaps triggered by prior I/O errors or abrupt shutdowns—causes index lookups to fail and the planner to fall back to heap scans, dramatically multiplying I/O volume and exposing additional corrupt pages. Each corrupt-page encounter can force re-reads or page-level recovery writes, further congesting the storage path. The compounded effect is a reinforcing feedback loop where I/O saturation, version bloat, and structural corruption mutually aggravate one another, accelerating performance degradation and threatening data availability.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.3088643861004521,
+            "bm25_score": 12.859054255519794,
+            "lexical_score": 0.13070655894837738,
+            "matched_terms": [
+                "about",
+                "an",
+                "and",
+                "any",
+                "are",
+                "check",
+                "for",
+                "is",
+                "latency",
+                "longer",
+                "of",
+                "or",
+                "the",
+                "this",
+                "transaction",
+                "triggered",
+                "when"
+            ],
+            "match_count": 288,
+            "entry": {
+                "timeout_id": "pg16_idle_session_timeout",
+                "parameter_name": "idle_session_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle, but not within an open transaction, for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle and not inside an open transaction longer than the configured threshold.",
+                "workload_impact": "The session is terminated; the documentation warns about using this with connection pools or middleware.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

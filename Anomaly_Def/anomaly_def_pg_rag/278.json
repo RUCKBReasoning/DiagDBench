@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Database Memory Allocation Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently picks a sub-optimal execution plan even though statistics are adequate, often because of cost-model issues, plan reuse pathologies, or version/configuration changes.\nDatabase Memory Allocation Anomaly : The database engine allocates or leaks memory beyond safe host limits, producing OS pressure, swapping, and cache churn due to unbounded work areas, plan-cache bloat, or excessive parallelism.\n\nComposite anomaly definition: Both a poor plan choice and runaway memory consumption coexist, so the workload executes under an execution plan that is already inefficient while the engine is simultaneously stressed by memory over-allocation.\n\nCombined observable phenomena: SQLs that abruptly switch from efficient indexed access to broad scans or high-fan-out nested loops also show exploding memory footprints for hash joins, sorts, or parallel worker buffers. Operators that the optimizer mistakenly deems cheap reserve large work areas, causing rapid growth of process resident-set size, frequent eviction of buffer pages, degraded cache hit ratios, increased I/O, CPU stalls due to paging, and even out-of-memory kills. Performance instability becomes pronounced: the same statement may be lightning-fast at one moment and then timeout or crash the instance minutes later. Monitoring dashboards reveal correlated spikes in hard-parse counts, plan cache entries, work-memory grants, and OS swap activity.\n\nCausal interaction: A sub-optimal plan often drives heavier operator memory grants (e.g., full hash aggregates instead of indexed lookups) which accelerates memory pressure; conversely, memory pressure can trigger plan cache evictions, forcing re-optimization that re-selects or pins the bad plan, perpetuating the cycle. Excessive parallelism chosen by the flawed plan multiplies per-worker buffers, exhausting memory faster and amplifying pressure. As the OS begins swapping, the already inefficient plan lengthens execution time, keeping its large allocations alive longer, further aggravating memory exhaustion. The intertwined feedback loop of poor plan selection and escalating memory allocation degrades overall throughput and can culminate in instance instability or crash.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.37509693794545323,
+            "bm25_score": 13.284304482412141,
+            "lexical_score": 0.1084313725490196,
+            "matched_terms": [
+                "activity",
+                "and",
+                "are",
+                "at",
+                "be",
+                "can",
+                "is",
+                "or",
+                "query",
+                "that",
+                "the",
+                "time",
+                "timeout",
+                "while"
+            ],
+            "match_count": 177,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Transaction Log Subsystem Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Excessive accumulation of obsolete row versions, undo/rollback records, and stale index entries outpaces background cleanup, inflating data structures and extending visibility-check work.\nTransaction Log Subsystem Anomaly : The write-ahead logging path—generation, flush, switch, or archival—becomes the primary bottleneck, stretching commit latency and stalling further DML until log space or I/O bandwidth is freed.\nNetwork and Connectivity Resource Anomaly : Client/server transport, listener, or socket resources saturate or flap, delaying connection establishment and slowing or interrupting result streaming.\n\nWhen all three root causes strike concurrently, the database exhibits a compound pathology: 1) commits and statement completions slow first at the server (log-flush and version-chain scanning waits) and then at the client (network send/receive stalls); 2) transaction throughput collapses while session counts, half-open sockets, version-store bytes, and unarchived log segments all climb in tandem; 3) planner estimates drift because of table bloat, causing long-running scans that emit large result sets which further congest the network, amplifying front-end timeouts and retry storms; 4) monitoring shows cleanup workers, log writer, and archiver pegged, yet disk devices may appear only moderately busy because pauses are dominated by dependency back-pressure rather than raw I/O saturation.\n\nCausally, heavy update/delete activity produces a flood of redo records that must be flushed, growing the transaction log. Log flush slowdowns delay commit completion, stretching transaction lifetimes and preventing MVCC cleanup from advancing its snapshot horizon; this in turn accelerates version bloat, generating still more redo and further enlarging the log. Meanwhile, the increasing payload of bloated table scans and prolonged transactions expand result sets and keep backend processes open longer, consuming connection slots and network buffers. Network congestion or socket exhaustion feeds back by raising commit acknowledgment and client-ack wait times, which lengthens transactions even more, giving rollback segments additional time to swell. The intertwined feedback loops among version buildup, log saturation, and network pressure cause a reinforcing spiral that degrades overall OLTP performance and complicates diagnosis because symptoms from one layer mask or exacerbate those in the others.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.38076897024756995,
+            "bm25_score": 17.825763231012896,
+            "lexical_score": 0.1714305158568123,
+            "matched_terms": [
+                "activity",
+                "and",
+                "are",
+                "by",
+                "check",
+                "client",
+                "connection",
+                "data",
+                "establishment",
+                "is",
+                "latency",
+                "long",
+                "longer",
+                "may",
+                "or",
+                "session",
+                "stale",
+                "than",
+                "the",
+                "this",
+                "time",
+                "when"
+            ],
+            "match_count": 223,
+            "entry": {
+                "timeout_id": "pg16_tcp_user_timeout",
+                "parameter_name": "tcp_user_timeout",
+                "timeout_category": "network_unacknowledged_data_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies how long transmitted data may remain unacknowledged before the TCP connection is forcibly closed.",
+                "trigger_condition": "TCP data sent by PostgreSQL remains unacknowledged longer than tcp_user_timeout on systems supporting TCP_USER_TIMEOUT.",
+                "workload_impact": "The TCP connection is forcibly closed.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + MVCC Version Maintenance Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level statement or transaction design forces the engine to touch far more data, rows, or time than business logic truly requires.\nMVCC Version Maintenance Anomaly : Obsolete row versions and rollback records pile up faster than background cleanup can reclaim them, inflating storage and visibility-check costs.\nData Block and Index Integrity Anomaly : On-disk pages or index structures become physically or logically corrupted, undermining confidence in access paths and data correctness.\n\nWhen all three root causes coexist, the system exhibits a tangled symptom set: long-tail statement latencies and frequent application timeouts intertwine with ever-growing table and index sizes, elevated I/O for version scans, and erratic query plans that suddenly devolve into full-table scans as the optimizer distrusts or disables damaged indexes. Cleanup workers struggle, cycling endlessly over bloated version stores that include corrupted or unreachable pages, while integrity checkers report escalating page-checksum and key-order errors. Lock-free but version-heavy scans inflate undo/redo volume, lengthen checkpoint times, and amplify storage pressure, leading to increased risk of further corruption during crash recovery. From the user’s perspective, intermittent data mismatches, missing rows, and duplicate results accompany severe performance variability, making diagnosis elusive.\n\nCausally, poorly written workload logic initiates excessive updates, deletes, and long-running transactions, accelerating MVCC version accumulation. The swollen version store expands on-disk structures, heightening I/O churn and prolonging maintenance windows. This persistent stress magnifies the chance of write-amplification, torn pages, or half-completed page splits, which in turn precipitate data block and index integrity faults. Once corruption forms, index probes may fail, forcing broader scans that read even more outdated versions, further slowing queries and delaying vacuum/clean-up progress. The corrupted structures also impede effective version pruning, trapping old versions and creating a feedback loop that compounds bloat, corruption exposure, and application-level inefficiencies. The interplay of excessive logical workload, runaway MVCC debris, and physical structure corruption thus degrades both performance and data reliability in transactional workloads.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.623242897916893,
+            "bm25_score": 28.120662934638894,
+            "lexical_score": 0.144131299734748,
+            "matched_terms": [
+                "and",
+                "cleanup",
+                "for",
+                "from",
+                "lock",
+                "long",
+                "of",
+                "or",
+                "query",
+                "statement",
+                "than",
+                "that",
+                "the",
+                "this",
+                "time",
+                "transaction",
+                "transactions",
+                "user",
+                "vacuum",
+                "when",
+                "while"
+            ],
+            "match_count": 250,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

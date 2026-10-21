@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Database Memory Allocation Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly: Obsolete row versions, rollback records, and dead index entries accumulate faster than background cleaners can purge them.\nDatabase Memory Allocation Anomaly: The database allocates buffer, work-area, and cache memory beyond the host’s physical or virtual limits, provoking paging or OOM events.\nOperating System Resource Limit Anomaly: Kernel-enforced ceilings on file handles, shared memory, threads, or address space are hit, blocking further allocations or process creation.\n\nWhen these three conditions coexist, the system exhibits an intertwined failure pattern. Version bloat inflates table and index sizes, expanding the buffer cache and working-set footprint, while long-running transactions and cleanup lag pin even more pages in memory. The swelling resident set collides with fixed OS memory, handle, and shared-memory quotas; the host begins paging, and kernel logs show ENOMEM, EMFILE, or EAGAIN errors as new connections, background workers, or I/O contexts fail to start. Autovacuum or purge workers, already overwhelmed by the volume of stale versions, are themselves throttled or denied resources, causing version-store growth to accelerate. Query plans degrade as the optimizer misjudges bloat, sequential scans lengthen, cache hit ratios oscillate due to aggressive page eviction, and users experience sporadic timeouts, failed statements, or partial node outages.\n\nCausally, heavy update/delete churn produces excessive MVCC debris that must be kept in memory and the buffer pool until cleaned. This amplifies overall memory consumption, driving the Database Memory Allocation Anomaly. Rising memory pressure leads the engine to request more shared buffers, work memory, or background processes, which in turn collide with operating-system limits on virtual memory, shared segments, or open files—triggering the Operating System Resource Limit Anomaly. Once the OS begins refusing allocations or swapping aggressively, cleanup workers slow further, allowing even more version accumulation and cache bloat in a positive feedback loop that can culminate in out-of-memory kills, inability to spawn essential workers, and a cascading service degradation or outage.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 769,
+            "score": 0.41754632220378457,
+            "bm25_score": 36.81613656633593,
+            "lexical_score": 0.12597087378640776,
+            "matched_terms": [
+                "an",
+                "and",
+                "be",
+                "failure",
+                "in",
+                "lag",
+                "node",
+                "or",
+                "stale",
+                "start",
+                "the",
+                "to",
+                "until",
+                "when",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "1795",
+                "error_name": "ER_MTA_CHANGE_SOURCE_CANT_RUN_WITH_GAPS",
+                "official_description": "CHANGE REPLICATION SOURCE cannot be executed when the replica was stopped with an error or killed in MTA mode. Consider using RESET REPLICA or START REPLICA UNTIL.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Transaction Lock Contention Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Schema and Index Design Anomaly : A static mismatch between table structure, partitioning, and indexing versus actual access patterns, forcing scans and non-covering lookups that bloat I/O and touch far more rows or pages than necessary.\nTransaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same resources, creating long blocking chains or deadlocks that throttle throughput and trigger rollbacks or timeouts.\nTransaction Log Subsystem Anomaly : The write-ahead log path—buffer, files, flushing, or archiving—cannot absorb the redo volume, so commits stall on log-write, switch, or archive waits.\n\nWhen these three root causes are present simultaneously, the database experiences a cascade of compounding symptoms: inefficient queries read or modify large row sets, acquiring wider or higher-level locks; those locks are held longer because each commit must wait for a slow log flush; prolonged lock holding inflates blocking queues, raises deadlock frequency, and pushes more sessions into retry loops. Meanwhile, the same lock contention and repeated rollbacks intensify redo generation, further saturating the log subsystem. Observable metrics therefore show a mixture of full-scan plans, skyrocketing buffer and physical reads, lock and deadlock wait events, steadily rising log-write and log-sync waits, checkpoint storms, and sudden collapses in transaction throughput that recover only after both indexing/design fixes and log-path relief are applied.\n\nCausally, missing or poorly chosen indexes inflate the data footprint of each statement, so even simple lookups convert to large scans or range updates that require broad row/page locks. The greater the locked footprint, the higher the probability that concurrent sessions collide, escalating to page or table locks. Each blocked or deadlocked transaction must later redo its work, doubling log traffic. Simultaneously, the oversized DML operations and additional rollbacks swell redo volume per transaction, quickly overrunning an already undersized or slow log subsystem. Log flush delays lengthen transaction lifetimes, keeping locks active and propagating contention to other sessions. The feedback loop—poor design → bigger locks → slower commits → longer lock retention → more contention and redo → worse log pressure—drives the system into a self-reinforcing performance spiral until both the schema/index issues and log throughput bottleneck are resolved.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.27188224694253954,
+            "bm25_score": 17.37937750955307,
+            "lexical_score": 0.10631016042780747,
+            "matched_terms": [
+                "after",
+                "and",
+                "are",
+                "between",
+                "holding",
+                "long",
+                "or",
+                "queries",
+                "sessions",
+                "sets",
+                "system",
+                "that",
+                "the",
+                "when"
+            ],
+            "match_count": 230,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

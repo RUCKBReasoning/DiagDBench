@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Storage Space Capacity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Critical engine-level settings (memory pools, checkpoint cadence, log sizing, worker counts, etc.) are mis-tuned for the hardware, workload, or version, creating artificial pressure on internal resources.\nStorage Space Capacity Anomaly : Physical or logical free space for data, logs, temp, or backup areas is exhausted, triggering allocation failures and blocking growth-related operations.\nOperating System Resource Limit Anomaly : Kernel-enforced ceilings on file handles, shared memory, semaphores, threads, or cgroup quotas are reached, preventing the database from creating or accessing required OS objects.\n\nWhen all three root causes strike simultaneously, the system exhibits compound symptoms: rapid log-file growth from aggressive checkpointing collides with insufficient disk space, producing log-write stalls, checkpoint storms, and frozen commit processing. Concurrently, the engine’s attempts to auto-extend files, spawn extra background or parallel workers, or allocate additional shared memory are denied by the OS, surfacing as \"cannot allocate file descriptor / shared memory / thread\" errors in both database and system logs. Sessions may hang in log-related waits while CPU usage oscillates between idle gaps (due to write throttling) and spin loops (from failed worker creation). Maintenance tasks meant to reclaim space or clean orphaned resources cannot launch, causing temp-space bloat and runaway diagnostic logs that further consume the dwindling disk. Overall, the workload experiences cascading slowdowns, sporadic transaction failures, and eventual instance-wide freeze or crash recovery cycles.\n\nCausally, mis-set configuration parameters often increase churn: undersized redo logs force frequent checkpoints; small work-memory settings inflate temp spill volume; overly high connection or parallelism caps multiply file and semaphore consumption. These behaviors accelerate space consumption and inflate the count of kernel objects, pushing the system toward its storage and OS-limit ceilings sooner than normal. Once disk fills, the database cannot archive or recycle logs, prolonging checkpoints and inflating the number of open file handles; simultaneous OS denials of new handles or shared memory prevent the engine from adapting (e.g., creating new log segments or spawning cleanup workers). Each anomaly thus amplifies the others: configuration mis-tuning drives resource churn, space exhaustion blocks I/O progress, and OS limit saturation starves the engine of critical handles and memory, jointly intensifying contention, stalling recovery mechanisms, and precipitating full service outages.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 106,
+            "score": 0.21230049046904895,
+            "bm25_score": 17.91916247787758,
+            "lexical_score": 0.14128239903556358,
+            "matched_terms": [
+                "and",
+                "by",
+                "configuration",
+                "engine",
+                "failed",
+                "in",
+                "is",
+                "its",
+                "level",
+                "or",
+                "pressure",
+                "resource",
+                "the",
+                "to",
+                "transaction",
+                "with",
+                "workload"
+            ],
+            "match_count": 14,
+            "entry": {
+                "error_code": "25P02",
+                "error_name": "in_failed_sql_transaction",
+                "official_description": "in failed sql transaction",
+                "error_class": "Class 25 - Invalid Transaction State",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

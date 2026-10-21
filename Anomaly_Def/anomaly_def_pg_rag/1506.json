@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Transaction Lock Contention Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Stale, absent, or inaccurate statistics mislead the cost-based optimizer, generating execution plans whose cardinality and cost estimates deviate sharply from reality. \nTransaction Lock Contention Anomaly : Concurrent sessions request incompatible locks on the same resources, creating long blocking chains or deadlocks that throttle throughput. \nStorage Space Capacity Anomaly : Data, log, or temporary storage nears or hits capacity limits, causing allocation failures and engine stalls. \n\nWhen these three root causes coexist, the database experiences a compound failure pattern: poorly estimated queries choose scan-heavy or overly granular access paths that touch far more rows or pages than necessary, inflating the lock footprint and duration of each statement. The enlarged lock scope multiplies blocking and deadlock frequency, while space exhaustion in data, log, or temp areas slows or aborts operations that need to extend objects, create workfiles, or flush transaction logs. Wait queues, deadlock victim rollbacks, repeated plan recompiles, and out-of-space errors appear interleaved in monitoring dashboards, obscuring which fault started the degradation.\n\nCausal interaction: 1) Bad statistics produce inefficient plans that run longer and hold locks longer, intensifying lock contention. 2) Blocked transactions keep undo and redo entries active and prevent log truncation, accelerating consumption of the very space that is already scarce. 3) Approaching space limits force auto-grow or allocation waits, further lengthening statement runtime and lock hold time; any rollback triggered by a deadlock or timeout must write additional log records, consuming yet more space. 4) Space-related aborts invalidate or flush plans, and on recompile the optimizer still relies on stale statistics, perpetuating the cycle. The feedback loop between misestimation, prolonged locking, and space exhaustion can quickly cascade into widespread timeouts, aborted transactions, and ultimately a full service outage if not broken by corrective action on all three fronts.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.26370650608514584,
+            "bm25_score": 11.73178197113048,
+            "lexical_score": 0.1349019607843137,
+            "matched_terms": [
+                "and",
+                "from",
+                "if",
+                "in",
+                "is",
+                "not",
+                "of",
+                "or",
+                "sessions",
+                "stale",
+                "the",
+                "time",
+                "timeout",
+                "to",
+                "triggered",
+                "when"
+            ],
+            "match_count": 96,
+            "entry": {
+                "timeout_id": "pg16_authentication_timeout",
+                "parameter_name": "authentication_timeout",
+                "timeout_category": "connection_authentication_timeout",
+                "scope": "server",
+                "official_definition": "Maximum amount of time allowed to complete client authentication; if not completed in time, the server closes the connection.",
+                "trigger_condition": "A would-be client does not complete the authentication protocol within authentication_timeout.",
+                "workload_impact": "The server closes the connection attempt, preventing hung clients from occupying a connection indefinitely.",
+                "default_behavior": "Default value is one minute.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

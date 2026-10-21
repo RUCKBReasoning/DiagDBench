@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Optimizer Statistics Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-layer statements or transaction boundaries are written in a way that forces the engine to process more data or hold resources longer than the business logic actually requires.\nOptimizer Statistics Anomaly : The optimizer relies on stale, incomplete, or misleading statistics, causing systematic misestimation of cardinalities and selection of sub-optimal execution plans.\nOperating System Resource Limit Anomaly : Kernel-level quotas on file handles, shared memory, threads, or similar objects are exhausted, preventing the database from allocating the OS resources it needs.\n\nWhen these three root causes occur together, the database exhibits amplified performance degradation and intermittent failures:  • Queries already bloated by poor workload design are further misplanned because of bad statistics, resulting in massive full scans, spill-to-disk sorts, and runaway parallelism.  • The excessive I/O, memory, and worker-thread demand drives the process toward OS-enforced ceilings; once limits are hit, new sessions, parallel workers, or I/O contexts fail to start, causing sudden spikes of errors, timeouts, and transaction rollbacks.  • Monitoring shows chronic long-tail latency, repeated slow-query entries, wide gaps between estimated and actual rows, frequent plan recompiles, and concurrent kernel messages about resource-allocation failures.  • Symptoms can be mistaken for pure workload, optimizer, or system issues in isolation, obscuring the intertwined nature of the problem.\n\nCausal chain: inefficient SQL logic inflates data volume and resource consumption, magnifying the impact of any cardinality misestimates produced by stale or inadequate statistics. The misestimates lead the optimizer to pick plans that consume even more CPU, memory, and I/O than the inflated workload already demands. This burst of resource pressure accelerates exhaustion of kernel-level quotas; once OS limits are reached, the database can no longer grow its worker or I/O pools, which in turn feeds back into longer queue times and more application retries, keeping transactions open even longer and compounding the statistics staleness. Thus each root cause reinforces the others, creating a self-amplifying loop that degrades performance and availability across both transactional and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 99,
+            "score": 0.35600631262739685,
+            "bm25_score": 25.107328528951367,
+            "lexical_score": 0.17243119266055046,
+            "matched_terms": [
+                "and",
+                "be",
+                "by",
+                "engine",
+                "execution",
+                "in",
+                "isolation",
+                "its",
+                "level",
+                "logic",
+                "or",
+                "pressure",
+                "problem",
+                "requires",
+                "resource",
+                "sql",
+                "the",
+                "to",
+                "together",
+                "transaction",
+                "workload"
+            ],
+            "match_count": 16,
+            "entry": {
+                "error_code": "25008",
+                "error_name": "held_cursor_requires_same_isolation_level",
+                "official_description": "held cursor requires same isolation level",
+                "error_class": "Class 25 - Invalid Transaction State",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

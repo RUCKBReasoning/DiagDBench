@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Transaction Log Subsystem Anomaly + Replication Synchronization Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level statements or transaction scopes are written in a way that forces the engine to process and persist more changes than business logic really requires.\nTransaction Log Subsystem Anomaly : The generation, buffering, flushing, or archival of write-ahead log records becomes the bottleneck on the primary node’s commit path.\nReplication Synchronization Anomaly : Downstream replicas or subscribers cannot receive or apply the primary’s log stream at the rate it is produced, causing growing replication lag.\n\nWhen all three conditions coexist, the database experiences a compounded failure mode in which chatty, long-running, or excessively bulk-modifying transactions inflate redo volume, saturating the primary’s log buffer, log device, and archiver. Commit latency spikes and back-pressure propagates to the application layer, while replicas fall progressively behind, evidenced by rapidly expanding log files, stalled log recycling, escalating log-flush and log-sync waits, widening replica replay lag, and a surge of application timeouts and retried statements. Monitoring views may simultaneously show the same heavyweight SQL statements in slow-query logs, high log write times on the primary, and growing apply delay on replicas, making it difficult to attribute blame to any single layer.\n\nCausally, inefficient workload semantics generate unnecessary DML volume and long transactions; this amplifies redo generation and forces the transaction-log subsystem to operate at or beyond its physical limits. As the log device and archiver struggle, commit stalls lengthen, further extending transaction lifetimes and exacerbating lock retention and row version buildup. The swollen and slower log stream must then be shipped to replicas, which, already constrained by network, I/O, or apply throughput, cannot keep pace. Their mounting lag prevents the primary from recycling old log segments, inflating on-disk log usage and adding even more pressure to the log subsystem. The feedback loop—heavy workload ➝ log saturation ➝ replication backlog ➝ log retention—creates a self-reinforcing performance degradation that can culminate in write stalls, replica desynchronization, and risk of availability loss.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.6279931150996952,
+            "bm25_score": 27.90724240788891,
+            "lexical_score": 0.15065770026603603,
+            "matched_terms": [
+                "and",
+                "be",
+                "cannot",
+                "delay",
+                "is",
+                "lock",
+                "network",
+                "of",
+                "or",
+                "than",
+                "the",
+                "this",
+                "to",
+                "transaction",
+                "waits",
+                "when",
+                "while",
+                "write",
+                "written"
+            ],
+            "match_count": 137,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

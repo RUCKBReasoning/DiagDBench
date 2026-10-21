@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Replication Synchronization Anomaly + Data Block and Index Integrity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Composite definition: The database simultaneously suffers from lagging or stalled replication streams, underlying physical corruption of data or index pages, and exhaustion of kernel-enforced resources (file descriptors, shared-memory segments, thread slots, etc.). The coincidence of these three root causes yields a compound failure state in which recovery, failover, and normal workload processing are all jeopardized.\n\nReplication Synchronization Anomaly: Standbys or downstream consumers cannot receive, persist, or apply WAL/redo as fast as the primary produces it.\nData Block and Index Integrity Anomaly: On-disk pages or index structures are physically or logically corrupted, making storage contents unreliable.\nOperating System Resource Limit Anomaly: The DBMS process hits kernel limits on critical resources such as open files, shared memory, semaphores, or threads, impeding normal engine operation.\n\nCombined observable phenomena: \n• Rapidly expanding WAL retention or relay logs on the primary due to replicas falling behind while also being unable to purge corrupted or locked segments.\n• Sudden replication apply errors triggered by corrupted pages reaching replicas, causing frequent replay crashes, cascading replica restarts, and further widening of replication lag metrics.\n• Engine and kernel logs interleaving page-checksum failures with \"too many open files\", \"cannot create thread\", or \"out of shared memory\" messages as background workers and recovery processes fail to allocate kernel objects needed for corruption handling or log shipping.\n• Stale or inconsistent read results from replicas, intermittent query failures, and unexpected full-table scans on the primary as indexes are marked unusable while repair utilities cannot run due to OS resource exhaustion.\n• Escalating storage consumption and degraded throughput on the primary because unrecycled WAL and blocked autovacuum or checkpoint workers contend for the same limited file handles and shared memory.\n\nCausal interaction: Physical corruption in data or index pages often surfaces first on replicas during redo, triggering replication halts that inflate apply lag. The stalled replication, in turn, forces the primary to retain ever-growing log segments, greatly increasing the number of files and shared memory descriptors the engine must keep open. This surge collides with tight operating-system limits, causing worker-spawn failures and further reducing the engine’s capacity to ship, apply, or repair WAL. Meanwhile, OS resource exhaustion can prevent integrity-check utilities, index rebuilds, or page-repair mechanisms from allocating the resources they need, allowing corruption to persist and repeatedly poison the replication stream. The feedback loop between corruption-induced apply failures, replication backlog, and kernel resource starvation amplifies both availability risk and data-consistency exposure, leading to a severe, multi-faceted outage scenario.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 193,
+            "score": 0.24968966028361564,
+            "bm25_score": 18.242117403692365,
+            "lexical_score": 0.127636923938927,
+            "matched_terms": [
+                "and",
+                "by",
+                "engine",
+                "failure",
+                "in",
+                "limit",
+                "many",
+                "must",
+                "or",
+                "resource",
+                "state",
+                "the",
+                "to",
+                "too",
+                "with",
+                "workload"
+            ],
+            "match_count": 10,
+            "entry": {
+                "error_code": "54011",
+                "error_name": "too_many_columns",
+                "official_description": "too many columns",
+                "error_class": "Class 54 - Program Limit Exceeded",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

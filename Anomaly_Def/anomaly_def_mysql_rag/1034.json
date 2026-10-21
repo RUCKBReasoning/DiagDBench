@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Replication Synchronization Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly : The primary instance’s local write-ahead logging path cannot generate, flush, switch, or archive log segments at the rate demanded by the workload.\nReplication Synchronization Anomaly : Downstream replicas or change-data consumers cannot receive, persist, or apply the primary’s log stream fast enough, causing growing replication lag and retention of old log segments.\n\nComposite definition: Both bottlenecks are present at the same time— the primary’s log subsystem is saturated while the replication pipeline is simultaneously stalled—creating a feedback loop in which neither side can progress at the required throughput.\n\nCombined observable phenomena: Commit latency, log-flush and log-sync waits rise sharply; checkpoints and log-file switches occur more frequently yet still leave log directories expanding. Replication monitoring shows widening send, receive, and replay lags; relay logs or retained primary segments mushroom, and replicas deliver increasingly stale reads or fall out of failover eligibility. The primary may throttle or stall new writes when log space cannot be recycled, while replicas may exhibit backpressure, single-threaded apply saturation, or network congestion. Because both paths are impaired, administrators see mixed symptoms—storage alerts on the primary, network or apply lag warnings on replicas, and cascading slowdowns of foreground user transactions.\n\nCausal interaction: A slow local log subsystem inflates commit durations and extends the time each transaction’s log records occupy active segments, reducing the headroom available for replication retention; concurrently, replication lag prevents those segments from being recycled, further lengthening the primary’s log queue and intensifying the local I/O hotspot. Conversely, replication backpressure keeps log segments pinned, forcing the primary to switch to new segments more rapidly and increasing the write-amplification on an already over-stressed log device. The two anomalies therefore reinforce each other—local log saturation starves the replication feed, and replication lag starves log-space reuse—leading to a vicious cycle that can culminate in full disks, suspended commits, and replica divergence.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.7477067669172932,
+            "bm25_score": 32.47501175838245,
+            "lexical_score": 0.15902255639097743,
+            "matched_terms": [
+                "and",
+                "apply",
+                "be",
+                "causing",
+                "data",
+                "downstream",
+                "is",
+                "lag",
+                "or",
+                "out",
+                "progress",
+                "replica",
+                "replication",
+                "stalled",
+                "the",
+                "to",
+                "waits",
+                "when"
+            ],
+            "match_count": 49,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

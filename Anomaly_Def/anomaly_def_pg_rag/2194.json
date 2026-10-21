@@ -1,0 +1,59 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Storage I/O Throughput Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer persistently selects sub-optimal execution plans even though statistics are adequate, leading to disproportionate resource consumption per statement.\nStorage I/O Throughput Anomaly: The physical storage layer cannot deliver the read/write throughput, IOPS, or latency required by the workload, producing device-level wait inflation.\nNetwork and Connectivity Resource Anomaly: Client–server transport or connection-handling capacity is exhausted, causing connection establishment delays, socket backlog growth, and stalled data transfer.\n\nWhen all three root causes coexist, the database exhibits compound symptoms: queries flip to full-table scans or poorly chosen join orders that inflate page reads; the surge in random and sequential I/O collides with an already saturated storage subsystem, driving disk queues and read/write latencies even higher. Prolonged statement runtimes hold server processes and sockets open, so listener backlogs, half-open TCP sessions, and client-side timeouts escalate. End-to-end response times swing wildly, and performance graphs show intertwined peaks of I/O waits, client-read/client-write waits, and hard-parse or plan-change events. Administrators may mis-attribute slowdowns to a single layer because each bottleneck masks and amplifies the others.\n\nCausally, a bad plan is the spark: it multiplies physical I/O demand, pushing the storage layer past its throughput ceiling. The resulting I/O stalls extend query execution and result-set streaming time, which ties up server worker threads and keeps network sockets active longer. As active connections swell and data trickles slowly over the congested network, handshake retries and backlog overflows appear, feeding further delays that lengthen query runtimes and increase optimizer re-parses, perpetuating the selection of the same poor plan. This feedback loop between plan inefficiency, storage saturation, and network congestion degrades overall capacity far more severely than any single anomaly acting alone.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.4617594932594249,
+            "bm25_score": 17.73218910153272,
+            "lexical_score": 0.16776572941621484,
+            "matched_terms": [
+                "an",
+                "and",
+                "are",
+                "by",
+                "client",
+                "connection",
+                "connections",
+                "establishment",
+                "handling",
+                "is",
+                "latency",
+                "of",
+                "or",
+                "sessions",
+                "socket",
+                "tcp",
+                "that",
+                "the",
+                "this",
+                "time",
+                "to",
+                "when",
+                "which"
+            ],
+            "match_count": 269,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_interval",
+                "parameter_name": "tcp_keepalives_interval",
+                "timeout_category": "network_keepalive_retry_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time after which a TCP keepalive message that has not been acknowledged by the client should be retransmitted.",
+                "trigger_condition": "A TCP keepalive probe is not acknowledged for tcp_keepalives_interval on systems supporting TCP_KEEPINTVL or an equivalent socket option.",
+                "workload_impact": "Controls retry timing for keepalive probes used to detect unresponsive client connections.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

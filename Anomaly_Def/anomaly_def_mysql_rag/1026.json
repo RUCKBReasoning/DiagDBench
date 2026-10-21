@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Transaction Log Subsystem Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Database Configuration Parameter Anomaly: Engine-level settings (memory, checkpoint cadence, log sizing, parallelism, etc.) are mis-tuned relative to hardware capacity, workload intensity, or version defaults.\nTransaction Log Subsystem Anomaly: The write-ahead logging pipeline—log buffer, files, flush/switch/archive processes—cannot keep pace with redo generation, stalling commits and checkpoints.\nOperating System Resource Limit Anomaly: Kernel-enforced ceilings on file handles, shared memory, threads, or I/O contexts throttle database processes independently of the engine’s internal resource governance.\n\nWhen these three issues strike concurrently, symptoms overlap and amplify: commit latency and log-flush waits spike even though storage and CPU appear under-utilized; checkpoints and log-file switches occur in erratic bursts, sometimes failing with \"unable to open file\" or shared-memory allocation errors; background writers, archivers, and replication senders fall behind, causing bloated log directories and prolonged recovery point objectives; new sessions or parallel workers intermittently fail to start, and the engine may enter a partial hang where active transactions linger in commit wait while resource-starved background tasks cannot progress. Performance counters show low device saturation but high wait times on log and kernel primitives, confusing first-level diagnostics.\n\nCausally, mis-sized configuration parameters (e.g., too small log buffer, aggressive checkpoint_timeout, excessive max_connections) inflate the churn on the transaction log. The surge in file creation, flush, and archive activity collides with operating-system limits on file descriptors, asynchronous I/O contexts, and shared memory, causing kernel denials that further slow or block log operations. Each blocked flush extends transaction hold times, boosting in-memory log pressure and triggering even more checkpoints, which in turn amplifies I/O and resource requests to the OS. This feedback loop escalates until both the logging subsystem and the kernel resource pools are saturated, yielding a compounded performance and availability degradation characteristic of this composite anomaly.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.7355795955729383,
+            "bm25_score": 25.444129492140753,
+            "lexical_score": 0.11859865190979446,
+            "matched_terms": [
+                "and",
+                "behind",
+                "blocked",
+                "engine",
+                "limit",
+                "operations",
+                "or",
+                "resource",
+                "the",
+                "this",
+                "too",
+                "when",
+                "with",
+                "workload"
+            ],
+            "match_count": 50,
+            "entry": {
+                "timeout_id": "mysql84_regular_expression_time_limit",
+                "parameter_name": "regexp_time_limit",
+                "timeout_category": "expression_evaluation_time_limit",
+                "scope": "global/session",
+                "official_definition": "The time limit for regular expression matching operations performed by the regular expression engine.",
+                "trigger_condition": "A regular expression match operation exceeds regexp_time_limit.",
+                "workload_impact": "The regular expression operation is constrained by the configured time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

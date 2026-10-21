@@ -1,0 +1,59 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Storage I/O Throughput Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Concurrent sessions serialize on hot buffer pages or latches, causing page-level stalls despite adequate overall memory size.\nStorage I/O Throughput Anomaly : Underlying disks or storage fabric reach their throughput/IOPS ceiling, stretching read- and write-service times well beyond the engine’s expectations.\nOperating System Resource Limit Anomaly : Kernel-enforced quotas on file descriptors, shared memory, async-I/O contexts, or threads are exhausted, blocking further resource acquisition by the database process.\n\nWhen all three conditions arise together, the wait profile is dominated by a chaotic mix of buffer-busy/latch waits, abnormally long I/O latencies, and intermittent \"cannot allocate <kernel object>\" errors. Checkpoint, buffer flush, and log-flush events stay in flight far longer than usual, keeping dirty pages pinned and intensifying latch contention. CPU usage oscillates between spin-waiting on latches and idle periods while sessions sleep on I/O or kernel resource waits. Connection spikes, bulk loads, or index maintenance can suddenly tip the system into a state where new back-end or parallel workers fail to start, even as existing sessions hang on buffer pins.\n\nCausal chain: Saturated storage slows every page read and dirty-page write, lengthening the window during which pages remain pinned and latches are held. Extended latch hold times magnify buffer-cache contention, increasing the number of concurrent sessions stalled in spin loops or waiting queues. To compensate, the engine issues more outstanding I/O and spawns additional background workers, pushing file handles, async-I/O rings, and thread counts toward their OS limits. Once those limits are hit, further I/O submission or worker creation is denied by the kernel, creating a feedback loop where buffers cannot be flushed or read, latches remain locked, and the transaction and query workload deteriorates rapidly.\n",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.7534334365325077,
+            "bm25_score": 30.3599533289969,
+            "lexical_score": 0.17811145510835913,
+            "matched_terms": [
+                "and",
+                "be",
+                "blocking",
+                "cannot",
+                "connection",
+                "is",
+                "longer",
+                "number",
+                "of",
+                "or",
+                "sessions",
+                "than",
+                "the",
+                "to",
+                "transaction",
+                "wait",
+                "waiting",
+                "waits",
+                "when",
+                "while",
+                "window",
+                "write"
+            ],
+            "match_count": 147,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

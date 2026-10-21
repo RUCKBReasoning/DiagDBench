@@ -1,0 +1,62 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Schema and Index Design Anomaly: Static mismatch between physical data model (tables, indexes, partitions, data types, constraints) and the workload’s access patterns, forcing the optimizer into inefficient scans, excessive look-ups, and costly maintenance work.\nOperating System Resource Limit Anomaly: Exhaustion of kernel-enforced resources (file descriptors, shared memory, semaphores, thread or process quotas, async-I/O contexts, cgroup limits) that prevents the database engine from creating or using required OS objects.\n\nWhen these two root causes exist simultaneously, the workload experiences compounded symptoms: queries already slowed by missing or poorly chosen indexes trigger many extra random I/O operations, file opens, and context switches, pushing the engine to allocate more file handles, buffer pages, and background workers. At the same time, restrictive OS limits throttle those very kernel objects, so the database starts emitting \"too many open files\", \"cannot allocate shared memory\", or \"failed to start worker\" errors in the middle of long-running scans. Execution plans show full-table scans combined with sudden plan fallbacks to serial execution because parallel workers cannot be spawned. End-users observe erratic latencies—some statements hang or error out while others complete slowly—and maintenance tasks such as index rebuilds or autovacuum may stall, causing further bloat and performance decay.\n\nCausally, poor schema and index design inflates the number and duration of low-level operations (file accesses, temporary spill files, sort runs, row fetches) that rely on OS resources. This raised demand accelerates the exhaustion of file descriptors, shared-memory segments, or thread quotas governed by the operating system. Conversely, once OS limits are hit, the optimizer’s ability to use whatever indexes do exist is undermined—parallel scans are disabled, temporary file creation fails, and statistics refresh jobs cannot complete—masking or exacerbating the original design flaw. The feedback loop between inefficient access paths (driving resource hunger) and OS-level throttling (starving the database of those resources) amplifies performance degradation, increases error rates, and makes root-cause isolation difficult because symptoms fluctuate between slow queries and outright resource allocation failures.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.756105926554357,
+            "bm25_score": 44.611191759994924,
+            "lexical_score": 0.18701975518119016,
+            "matched_terms": [
+                "access",
+                "and",
+                "be",
+                "because",
+                "context",
+                "error",
+                "execution",
+                "from",
+                "is",
+                "long",
+                "more",
+                "of",
+                "or",
+                "out",
+                "resource",
+                "running",
+                "runs",
+                "that",
+                "the",
+                "this",
+                "time",
+                "too",
+                "when",
+                "with",
+                "work",
+                "workload"
+            ],
+            "match_count": 275,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

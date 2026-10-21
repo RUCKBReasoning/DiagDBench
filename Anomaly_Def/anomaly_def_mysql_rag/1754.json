@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Transaction Log Subsystem Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly: Hot or rapidly recycled buffer pages, pins, or latches force sessions to serialize access to shared in-memory data structures, inflating buffer-busy, page-latch, and spin wait times.\nTransaction Log Subsystem Anomaly: Commit processing and log maintenance are throttled by insufficient log buffer, log file, or archiver bandwidth, driving up log-flush and log-write waits and stalling foreground writers.\nStorage I/O Throughput Anomaly: The underlying disks or storage fabric reach their IOPS / bandwidth limits, lengthening physical read-write service times for data, temp, and log files.\n\nWhen these three root causes strike concurrently, the database experiences a multi-layered stall: foreground transactions queue first on log-flush or commit waits, then hold buffer-cache latches longer than normal, while background check-point, buffer-flush, and archiver processes fight for the same saturated I/O channels. Observable symptoms include: 1) extreme variability in commit latency coupled with growing log file and archive backlogs; 2) explosive growth in buffer-busy/latch contention statistics as sessions spin on hot pages already pinned by log-waiting transactions; 3) device queues pinned at maximum depth, with both data-file and log-file latencies far exceeding their baselines; and 4) runaway CPU usage with little throughput gain, accompanied by periodic freezes when global cache or log buffers must be flushed.\n\nCausally, slow physical storage elongates every data-file and log-file I/O, directly triggering the Storage I/O Throughput Anomaly. Prolonged log writes propagate upstream, converting short commit paths into long log-flush waits; transactions already holding page latches remain in critical sections, thereby intensifying Buffer Cache and Latch Contention. The heightened contention forces additional retry loops and may inflate the buffer churn rate, which in turn issues more dirty-page flushes and advances checkpoints, further loading the already saturated storage subsystem and increasing redo generation. This positive feedback loop between I/O saturation, blocked log flushing, and latch hold-time amplification cascades into severe throughput collapse typical of write-heavy OLTP systems.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.7499549216671593,
+            "bm25_score": 25.44961328632271,
+            "lexical_score": 0.16651640555719777,
+            "matched_terms": [
+                "and",
+                "be",
+                "for",
+                "global",
+                "holding",
+                "longer",
+                "of",
+                "or",
+                "retry",
+                "sessions",
+                "than",
+                "the",
+                "this",
+                "to",
+                "transaction",
+                "wait",
+                "waiting",
+                "waits",
+                "when",
+                "while",
+                "write"
+            ],
+            "match_count": 84,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

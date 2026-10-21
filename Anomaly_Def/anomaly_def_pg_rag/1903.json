@@ -1,0 +1,61 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Storage I/O Throughput Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Optimizer Statistics Anomaly: Optimizer metadata (row counts, histograms, correlations) is stale or incomplete, causing systematic cardinality misestimation and poor plan selection.\nStorage I/O Throughput Anomaly: Under-provisioned or degraded storage devices saturate throughput, IOPS, or latency budgets, inflating physical read/write wait time.\nNetwork and Connectivity Resource Anomaly: Network transport or connection-handling resources are exhausted or unstable, delaying session establishment and result transfer.\n\nWhen all three root causes are present, the database may exhibit amplified and intertwined symptoms: execution plans chosen on bad statistics drive excessive random or large-volume I/O, which immediately collides with an already saturated storage layer, inflating physical I/O latency and enlarging buffer cache churn. At the same time, client sessions experience long connection handshakes and slow data streaming; result sets linger in network queues, holding server backends in client-wait states that obscure and interleave with storage waits. Overall response times fluctuate unpredictably, AWR/monitoring views show simultaneous spikes in optimizer re-parse/recompile counts, storage-level wait events, and client/network wait events, making it difficult to attribute the slowdown to a single subsystem.\n\nCausal interaction: stale or missing statistics can select plans that read far more pages than necessary or force non-selective full scans; this inflated I/O demand pushes the storage system beyond its throughput ceiling, further extending statement runtimes and keeping server processes busy. The prolonged runtimes in turn hold open network sockets for longer periods and generate larger in-flight result sets, increasing connection pool occupancy and consuming listener backlog slots, which aggravates the Network and Connectivity Resource Anomaly. Conversely, network stalls delay completion of queries and DML that would trigger automatic statistics refreshes, allowing statistics staleness to persist. The feedback loop between misestimated plans, storage saturation, and network congestion compounds resource contention across all three layers, severely degrading both transactional and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.6956519342919352,
+            "bm25_score": 24.407208994031976,
+            "lexical_score": 0.19323250627265126,
+            "matched_terms": [
+                "and",
+                "are",
+                "at",
+                "between",
+                "can",
+                "client",
+                "connection",
+                "establishment",
+                "handling",
+                "holding",
+                "is",
+                "latency",
+                "long",
+                "or",
+                "queries",
+                "session",
+                "sessions",
+                "sets",
+                "stale",
+                "system",
+                "that",
+                "the",
+                "this",
+                "time",
+                "when"
+            ],
+            "match_count": 256,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

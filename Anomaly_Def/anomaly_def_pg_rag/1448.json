@@ -1,0 +1,47 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Replication Synchronization Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly: Sessions serialize on hot buffer-cache pages or their protecting latches, causing stalls and CPU spin without overall memory exhaustion.\nReplication Synchronization Anomaly: Downstream replicas cannot receive, persist, or apply primary log records at source speed, leading to widening replay lag and retention of old log segments.\nOperating System Resource Limit Anomaly: The database process hits kernel-enforced limits for handles, shared memory, semaphores, threads, or similar objects, preventing it from allocating new kernel resources even though engine-level quotas appear free.\n\nWhen all three root causes manifest together, the system shows a blended symptom set: 1) intense page-latch and buffer-busy waits, high CPU spin, and throughput collapse on the primary; 2) replication lag that grows erratically, with relay or retained WAL files piling up, replicas reporting apply throttling, and fail-over readiness deteriorating; 3) intermittent OS-level allocation errors—failure to open additional file descriptors, spawn parallel or apply workers, or allocate shared memory—which surface both in database logs and kernel dmesg output. Because OS limits block the creation of extra background writers, flushers, or replication apply threads, latch pressure is not relieved and replication catch-up workers cannot scale, making the combined performance degradation appear as a single, opaque bottleneck rather than three distinct issues.\n\nCausal chain: heavy latch contention on a small set of hot pages inflates active session count and prolongs critical sections, rapidly consuming kernel objects such as threads, asynchronous-I/O contexts, and file handles. Hitting those OS limits prevents the primary from launching additional buffer-flush or checkpoint helpers, so dirty pages linger longer, keeping latches held and further aggravating buffer contention. Simultaneously, the same kernel caps restrict WAL sender/receiver and apply workers, throttling the replication pipeline. Replica lag rises, which in turn forces the primary to retain more log segments, growing disk usage and increasing buffer-pool turnover—all of which feed back into latch contention. Thus the three anomalies reinforce one another in a vicious loop that degrades throughput, inflates latency, and jeopardizes recovery objectives across both OLTP and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 54,
+            "score": 0.18912833188626546,
+            "bm25_score": 9.011605045245616,
+            "lexical_score": 0.11474199623352166,
+            "matched_terms": [
+                "and",
+                "engine",
+                "failure",
+                "in",
+                "is",
+                "level",
+                "limit",
+                "or",
+                "pressure",
+                "resource",
+                "the",
+                "to",
+                "together",
+                "with"
+            ],
+            "match_count": 11,
+            "entry": {
+                "error_code": "2200H",
+                "error_name": "sequence_generator_limit_exceeded",
+                "official_description": "sequence generator limit exceeded",
+                "error_class": "Class 22 - Data Exception",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

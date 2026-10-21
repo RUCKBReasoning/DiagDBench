@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Optimizer-input metadata (row counts, histograms, correlations) is stale or incomplete, systematically misguiding the cost model and causing persistent cardinality errors.\nStorage Space Capacity Anomaly : Physical or logical free space in data, log, or temporary areas is exhausted, hitting hard limits and causing allocation failures.\n\nComposite Definition:\nBoth anomalies manifest at the same time—query plans are produced from faulty statistics while the database is simultaneously running out of critical storage space. The engine therefore makes poor plan choices exactly when it has the least margin to absorb the resulting space demand.\n\nCombined Phenomena:\n• Severe plan regressions (e.g., table scans, over-sized hash joins, or massive sort/merge operations) immediately translate into runaway growth of temporary segments, undo, redo, and spill files, pushing remaining space to zero.\n• Auto-extend and auto-stats jobs fail in close succession; executions show wildly inaccurate row-count estimates alongside \"no space left\" or \"cannot allocate extent\" errors.\n• Rapid oscillation between plan recompiles and space errors: each recompile generates a new bad plan, repeated statement retries inflate log volume, and aborted DML/DDL leaves orphaned temporary or rollback segments that further deplete space.\n• Monitoring dashboards show both extreme cardinality-estimation deviation and precipitous free-space depletion, making it hard to attribute performance drops to a single root cause.\n\nCausal Chain Analysis:\n1. Stale/missing statistics drive the optimizer toward space-hungry strategies (full scans, large intermediate result sets, spill-prone joins), accelerating consumption of data, temp, and log space.\n2. As free space vanishes, background statistics-gathering, index-rebuild, and partition-maintenance jobs abort, preventing statistics refresh and keeping the optimizer in a permanently misinformed state.\n3. Space failures trigger rollbacks that generate additional undo/redo, amplifying both anomalies. The mutually reinforcing loop quickly degrades throughput, raises error rates, and can culminate in complete service outage unless both statistics and space issues are remediated together.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.44309272289570967,
+            "bm25_score": 13.991999309574107,
+            "lexical_score": 0.09808616088448341,
+            "matched_terms": [
+                "and",
+                "are",
+                "bad",
+                "complete",
+                "is",
+                "of",
+                "or",
+                "stale",
+                "that",
+                "the",
+                "time",
+                "when"
+            ],
+            "match_count": 114,
+            "entry": {
+                "timeout_id": "mysql84_connection_handshake_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "connection_handshake_timeout",
+                "scope": "global",
+                "official_definition": "The number of seconds that the mysqld server waits for a connect packet before responding with Bad handshake.",
+                "trigger_condition": "A client does not complete the initial connection packet exchange within connect_timeout.",
+                "workload_impact": "The connection attempt fails during handshake.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

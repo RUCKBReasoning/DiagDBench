@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Query Plan Selection Anomaly + Transaction Lock Contention Anomaly",
+            "Description": "Composite Definition: The database simultaneously suffers from a static mismatch between the physical data model and workload access patterns (Schema and Index Design Anomaly), the optimizer is selecting sub-optimal execution plans despite reasonable statistics (Query Plan Selection Anomaly), and the lock manager is experiencing intense blocking or deadlocks among concurrent transactions (Transaction Lock Contention Anomaly). Together, these three root causes form a reinforcing performance pathology that degrades OLTP throughput and increases response-time variance.\n\nCombined Observable Phenomena: • Queries that should be index-seek driven instead perform full scans, hold locks on large page or table ranges, and run much longer than expected. • The same statement text may alternate between inefficient scan-heavy plans and marginally better plans, creating unpredictable spikes in CPU, I/O, and lock-wait time. • Transaction throughput drops sharply; connection pools back up while lock-wait queues and deadlock reports grow. • Lock escalation from row to page/table level becomes frequent because long-running, scan-oriented plans read large portions of hot tables lacking proper indexing or partitioning. • Performance improves dramatically only when missing or better-aligned indexes are added AND plan stability mechanisms are introduced, confirming the multi-layer nature of the issue.\n\nCausal Chain and Interaction: Poor schema and index design expands the data footprint each statement must touch; the optimizer, already prone to misestimation or plan-reuse mistakes, often chooses or reuses plans that amplify the footprint even further (e.g., full table scans instead of selective seeks). These bloated plans acquire and hold many more locks for longer durations. The inflated lock scope raises the probability of conflicting requests from other concurrent transactions, triggering blocking chains, lock escalation, and deadlocks. Conversely, the elevated lock contention lengthens query runtimes, causing feedback loops in which the optimizer’s adaptive mechanisms capture skewed runtime statistics and cement the bad plans. The combined effect is a vicious cycle where design shortcomings and plan mis-selection magnify lock contention, and the resulting waits further degrade optimizer choices and throughput.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.2446535745893622,
+            "bm25_score": 15.205641920128356,
+            "lexical_score": 0.12210894704808278,
+            "matched_terms": [
+                "and",
+                "are",
+                "connection",
+                "data",
+                "is",
+                "long",
+                "longer",
+                "may",
+                "on",
+                "or",
+                "pools",
+                "than",
+                "the",
+                "time",
+                "when"
+            ],
+            "match_count": 263,
+            "entry": {
+                "timeout_id": "pg16_tcp_user_timeout",
+                "parameter_name": "tcp_user_timeout",
+                "timeout_category": "network_unacknowledged_data_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies how long transmitted data may remain unacknowledged before the TCP connection is forcibly closed.",
+                "trigger_condition": "TCP data sent by PostgreSQL remains unacknowledged longer than tcp_user_timeout on systems supporting TCP_USER_TIMEOUT.",
+                "workload_impact": "The TCP connection is forcibly closed.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

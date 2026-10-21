@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Database Configuration Parameter Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Schema and Index Design Anomaly : Physical data-model and indexing choices do not match workload access patterns, forcing inefficient access paths regardless of statistics or plan quality.\nDatabase Configuration Parameter Anomaly : Engine-level runtime settings for memory, parallelism, logging, and background workers are mis-tuned for hardware resources and workload characteristics, causing artificial contention or under-utilisation.\nOperating System Resource Limit Anomaly : Kernel-enforced caps on file descriptors, shared memory, semaphores, threads, or cgroup quotas prevent the database from allocating required OS resources, provoking errors and throttling.\n\nWhen these three root causes coincide, the workload experiences a multi-layer performance collapse: badly designed tables and missing or bloated indexes inflate I/O and CPU demand; mis-sized buffer pools, work-memory, and checkpoint / parallelism settings fail to absorb that excess demand, leading to erratic cache hit ratios, aggressive eviction, checkpoint storms, or runaway sort/spill activity; concurrently, low OS limits choke the additional file handles, shared memory, or worker threads that the engine now attempts to obtain, generating kernel allocation failures, session drops, stalled parallel workers, and sudden latency spikes. Symptoms may appear contradictory—high logical I/O but low physical I/O due to throttled handles, CPU threads spinning while actual CPU utilisation stays moderate because OS thread quotas block scheduling, or alternating bursts of full-table scans and idle periods as the engine repeatedly hits OS ceilings and retreats.\n\nCausally, the poor schema/index design raises the baseline resource footprint of each query, inflating memory, I/O, and parallel worker needs. Misconfigured database parameters then misallocate the already strained resources—either overcommitting memory so the engine requests segments larger than kernel limits allow, or under-allocating caches so every inefficient scan amplifies disk traffic. The inflated and misdirected demand accelerates exhaustion of OS-level objects (file descriptors, shared memory, threads), which in turn triggers allocation failures and forces the database to throttle or abort operations. The resulting stop-and-go execution further degrades cache effectiveness and intensifies checkpoint and recovery work, closing the vicious loop and magnifying performance instability, error rates, and risk of partial outages.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.36781011318051027,
+            "bm25_score": 18.404541500506802,
+            "lexical_score": 0.14550660792951542,
+            "matched_terms": [
+                "activity",
+                "additional",
+                "and",
+                "are",
+                "data",
+                "for",
+                "from",
+                "idle",
+                "latency",
+                "not",
+                "of",
+                "or",
+                "pools",
+                "session",
+                "than",
+                "the",
+                "to",
+                "when"
+            ],
+            "match_count": 65,
+            "entry": {
+                "timeout_id": "mysql84_network_read_timeout",
+                "parameter_name": "net_read_timeout",
+                "timeout_category": "network_read_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for more data from a connection before aborting the read.",
+                "trigger_condition": "The server waits for additional data from a connection longer than net_read_timeout.",
+                "workload_impact": "The network read is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

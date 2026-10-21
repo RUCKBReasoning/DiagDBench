@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Data Block and Index Integrity Anomaly + Operating System Resource Limit Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Data Block and Index Integrity Anomaly : Persistent on-disk table or index pages contain logical or physical corruption, breaking key order, page links, or heap–index correspondence.\nOperating System Resource Limit Anomaly : The database’s processes hit kernel-enforced ceilings for file descriptors, shared-memory segments, semaphores, threads, address space, or cgroup quotas, independent of database-level limits.\nNetwork and Connectivity Resource Anomaly : Server-side listener, socket, or transport resources are insufficient, or network path quality is poor, causing connection establishment failures, stalled sessions, or retransmissions.\n\nWhen all three root causes manifest concurrently, failure signals overlap and amplify: corrupted indexes force full table scans that open far more data files and consume extra buffer, handle, and I/O contexts, hastening exhaustion of per-process file-descriptor or asynchronous-I/O limits. Stalled or repeatedly failing queries remain active longer, holding backend processes and sockets; meanwhile new clients encounter connection-handshake timeouts, too-many-connections errors, or kernel-level \"cannot create socket / thread\" denials. Integrity check errors, page-checksum failures, or sudden plan fallbacks coincide with spikes in operating-system alerts about EMFILE, ENOMEM, or semaphore limits, plus rising counts of half-open TCP connections, retransmissions, and authentication drops. These interleaved symptoms complicate diagnosis because each layer reports distinct yet causally related errors.\n\nCausal chain: latent or newly introduced page/index corruption triggers heavier I/O and longer-running statements, inflating the number and lifetime of file handles, buffer pins, background workers, and client sockets. The inflated footprint collides with tight OS limits, producing resource allocation failures that block new sessions and recovery tasks, leaving corruption unrepaired and forcing additional client retries. Simultaneously, resource exhaustion in the kernel (e.g., depleted sockets, shared memory, or threads) degrades listener throughput and amplifies network wait times, causing application-side reconnection storms that further flood the already limited socket and process pools. The feedback loop between structural corruption–induced workload inflation, OS limit saturation, and deteriorating connectivity accelerates service degradation, risking partial or full outage and complicating both detection and remediation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 188,
+            "score": 0.7455716312056737,
+            "bm25_score": 47.95109122034821,
+            "lexical_score": 0.15190543735224585,
+            "matched_terms": [
+                "allocation",
+                "and",
+                "buffer",
+                "check",
+                "client",
+                "failure",
+                "insufficient",
+                "is",
+                "memory",
+                "of",
+                "or",
+                "per",
+                "resources",
+                "the",
+                "with",
+                "workload"
+            ],
+            "match_count": 14,
+            "entry": {
+                "error_code": "53200",
+                "error_name": "out_of_memory",
+                "official_description": "out of memory",
+                "error_class": "Class 53 - Insufficient Resources",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "memory_and_buffer",
+                "cause_analysis": "The failure is typically associated with insufficient memory headroom, buffer pressure, oversized intermediate state, or memory-allocation constraints inside the engine or client library.",
+                "solution_guidance": "Check memory availability, per-session memory settings, large sorts or hashes, and whether workload concurrency is amplifying memory consumption.",
+                "observable_symptoms": [
+                    "memory pressure",
+                    "allocation failure",
+                    "spill",
+                    "unstable latency"
+                ]
+            }
+        }
+    }
+]

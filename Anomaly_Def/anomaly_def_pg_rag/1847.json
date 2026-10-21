@@ -1,0 +1,61 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Storage I/O Throughput Anomaly + CPU Resource Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Storage I/O Throughput Anomaly : Physical read/write demand overwhelms the throughput, IOPS, or latency capacity of the underlying storage devices, making storage the immediate bottleneck.\nCPU Resource Anomaly : Database server CPUs run at or near saturation, limiting the cycles available for query execution and background tasks regardless of SQL-level causes.\nNetwork and Connectivity Resource Anomaly : Client-server transport, listener, or connection-handling resources are unable to keep pace with incoming requests, causing connection stalls, retransmits, or refusals.\n\nWhen these three root causes strike concurrently, the database exhibits a multilayer performance collapse: (1) soaring statement and batch latencies as sessions queue first for connection slots or socket bandwidth, then for CPU scheduling, and finally for completion of slow physical I/O; (2) rampant wait-event inflation spanning client read/write, run-queue, and I/O-related classes, making it difficult to attribute delay to any single layer; (3) exaggerated feedback loops where blocked sessions hold open connections and consume memory while retry storms and connection pool exhaustion multiply front-end network traffic; (4) system-wide throughput instability in which intermittent I/O pauses cause CPU utilisation to oscillate between thrashing saturation and idle, further disturbing TCP windowing and increasing packet loss.\n\nCausally, storage saturation elongates I/O service times, keeping server worker threads busy longer and driving up CPU time spent in spin-locks, context switches, and poll loops. Elevated CPU utilisation in turn slows listener and authentication processing, raising connection setup latency and pushing more clients into retry cycles that inflate network load. The expanding backlog of waiting or half-open sessions elevates transaction concurrency, amplifying buffer cache churn and prompting additional physical reads that further tax the constrained storage subsystem. Each layer’s bottleneck therefore reinforces the next: slow disks raise CPU pressure, busy CPUs throttle network acceptance, and network contention feeds back by spawning more concurrent retrying sessions—all combining to degrade both transactional and analytical workloads across the board.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.7197887905684527,
+            "bm25_score": 31.714450247721707,
+            "lexical_score": 0.17081236520488857,
+            "matched_terms": [
+                "and",
+                "any",
+                "client",
+                "context",
+                "delay",
+                "for",
+                "idle",
+                "locks",
+                "longer",
+                "of",
+                "open",
+                "or",
+                "query",
+                "retry",
+                "scheduling",
+                "sessions",
+                "statement",
+                "that",
+                "the",
+                "time",
+                "transaction",
+                "waiting",
+                "when",
+                "while"
+            ],
+            "match_count": 253,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Multiple concurrent transactions request incompatible locks on the same objects, creating blocking chains or deadlocks that force sessions to wait or be aborted.\nBuffer Cache and Latch Contention Anomaly : Sessions compete for access to hot buffer-pool pages, latches, or I/O slots, stalling while they spin or sleep for low-level synchronization resources.\n\nComposite anomaly definition: The database concurrently suffers from high-level transaction lock contention and low-level buffer/latch contention, so statements are serialized twice—first at the lock manager and again inside the buffer manager—causing severe throughput collapse and runaway latency.\n\nCombined observable phenomena: In addition to long lock-wait queues, deadlock victim errors, and rising application timeouts, the instance also exhibits surges in buffer-busy/page-latch wait events, elevated CPU spin time, and slow physical I/O completions. Wait graphs may show the same sessions alternating between \"lock\" and \"latch/buffer busy\" wait states; lock-wait durations appear longer because latch stalls delay lock acquisition and release, while latch contention metrics spike because blocked transactions hold buffer pins longer. Connection pools exhaust, checkpoint and autovacuum tasks fall behind, and overall throughput degrades non-linearly.\n\nCausal interaction: Hot rows or index keys draw many concurrent updates, creating lock hot spots. While blocked, holders keep buffer pages pinned, shrinking the effective buffer-pool supply and funnelling more threads toward the same hot pages, which in turn amplifies latch contention. Conversely, heavy latch or buffer-busy waits slow down the execution and commit phases of transactions, prolonging their lock tenure and enlarging blocker chains or deadlock windows. The two feedback loops reinforce each other: prolonged locks worsen buffer pressure; buffer/latch stalls lengthen lock lifetimes, producing a compounding congestion spiral that can culminate in systemic throughput collapse and widespread query timeouts.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.7479924749163879,
+            "bm25_score": 34.03847475960074,
+            "lexical_score": 0.15997491638795985,
+            "matched_terms": [
+                "aborted",
+                "acquisition",
+                "and",
+                "because",
+                "blocking",
+                "delay",
+                "for",
+                "in",
+                "incompatible",
+                "lock",
+                "locks",
+                "longer",
+                "or",
+                "sessions",
+                "the",
+                "to",
+                "transaction",
+                "waits",
+                "while"
+            ],
+            "match_count": 119,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + MVCC Version Maintenance Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently chooses sub-optimal execution plans despite having reasonably accurate statistics.\nMVCC Version Maintenance Anomaly : Obsolete row versions and rollback data accumulate faster than background cleanup can reclaim them, inflating storage and visibility-check overhead.\nNetwork and Connectivity Resource Anomaly : Network, listener, socket, or authentication resources become saturated, slowing or preventing client connections and data transfer.\n\nWhen these three root causes strike together, the database exhibits extreme and hard-to-pinpoint performance degradation. Poorly chosen plans trigger long-running scans or nested-loop explosions that touch far more rows than expected; the excess I/O and CPU prolong transaction lifetimes, causing snapshots to remain open and preventing version cleanup. The resulting table and index bloat further pollute statistics and widen the gap between estimated and actual costs, encouraging the optimizer to continue selecting bad plans. Meanwhile, the oversized result sets and elongated execution times keep back-end processes and sockets busy, filling connection pools, exhausting listener backlogs, and amplifying network queuing delays, retransmissions, and connection-establishment failures. Observability signals therefore include rapidly growing table sizes and version-store length, erratic plan changes with soaring execution costs, rising client-side timeouts, half-open connections, and a mix of in-database (buffer-read, MVCC visibility check) waits and network I/O waits.\n\nCausally, a feedback loop emerges: (1) Sub-optimal plans inflate row access counts and execution duration. (2) Prolonged transactions retain old snapshots, blocking vacuum/cleanup and accelerating MVCC version bloat. (3) The swollen heap and misestimated cardinalities drive the optimizer toward even worse plans, perpetuating step 1. (4) Larger result sets and longer server think-time keep connections occupied, pushing the network and listener layer to saturation, which in turn delays new sessions and retries, increasing concurrency spikes. (5) Connection stalls further lengthen transaction lifetimes, intensifying MVCC retention and plan misestimation. Together, these intertwined effects degrade throughput, inflate latency, and threaten availability in high-churn transactional environments.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.6696989578962456,
+            "bm25_score": 25.966085723911473,
+            "lexical_score": 0.14265077645359334,
+            "matched_terms": [
+                "and",
+                "blocking",
+                "cleanup",
+                "client",
+                "long",
+                "longer",
+                "of",
+                "open",
+                "or",
+                "preventing",
+                "query",
+                "sessions",
+                "than",
+                "that",
+                "the",
+                "time",
+                "transaction",
+                "transactions",
+                "vacuum",
+                "when"
+            ],
+            "match_count": 224,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

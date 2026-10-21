@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Data Block and Index Integrity Anomaly + CPU Resource Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Composite Definition: The system concurrently suffers from (1) Data Block and Index Integrity Anomaly—physical corruption or logical inconsistency inside on-disk data and index pages, (2) CPU Resource Anomaly—sustained saturation of host CPU by database processes, and (3) Operating System Resource Limit Anomaly—exhaustion of kernel-enforced objects such as file descriptors, shared-memory segments, or thread quotas. The coexistence of all three faults means storage structures are untrustworthy while the compute layer is overloaded and the operating system is actively denying additional resources.\n\nCombined observable phenomena: Queries may intermittently return wrong or duplicated rows, abruptly fall back from index scans to full table scans, or raise corruption errors. At the same time overall response times climb as CPU usage pins at or near 100 %, with long run-queues and pervasive scheduler/runnable wait events. Concurrently, new sessions, parallel workers, or file opens may fail, and engine or kernel logs will show \"too many open files\", ENOMEM, semaphore, or AIO context errors. Integrity-check or recovery tasks invoked to repair corruption intensify CPU demand, while their file and memory requests frequently hit OS limits, causing retries, hangs, or crashes. The overlapping symptoms blur boundaries—performance slow-downs, data errors, and resource-exhaustion messages appear interleaved, making root-cause identification difficult.\n\nCausal interaction: Corrupted pages often trigger repeated read-retry, checksum verification, and full-table rescans, markedly increasing CPU consumption; this extra load accelerates CPU saturation. To bypass corruption, the engine and clients may spawn additional worker processes, enlarge sort/hash areas, or open replacement files—quickly exhausting kernel object limits. Conversely, when OS limits on file handles, shared memory, or threads are reached, I/O or allocation failures during write-ahead logging, checkpointing, or index rebuilds can interrupt atomic operations and propagate new page or index corruptions. Persistent CPU saturation further prolongs critical sections and recovery windows, heightening the probability of torn pages during power events. Thus each anomaly intensifies the others, driving a feedback loop that degrades throughput, jeopardizes data integrity, and risks partial or total service outage.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.7151218853653705,
+            "bm25_score": 22.598042453304735,
+            "lexical_score": 0.1319254658385093,
+            "matched_terms": [
+                "and",
+                "context",
+                "database",
+                "index",
+                "is",
+                "object",
+                "of",
+                "or",
+                "retry",
+                "sessions",
+                "table",
+                "that",
+                "the",
+                "this",
+                "time",
+                "to",
+                "when",
+                "while"
+            ],
+            "match_count": 304,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

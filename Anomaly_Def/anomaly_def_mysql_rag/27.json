@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Transaction Lock Contention Anomaly + Database Memory Allocation Anomaly",
+            "Description": "Composite anomaly definition: The system concurrently suffers from (1) the optimizer choosing sub-optimal execution plans, (2) intense lock-manager contention that blocks or deadlocks transactions, and (3) runaway memory consumption that pushes the database process or host into sustained memory pressure. All three root causes are present at the same time and jointly degrade workload performance.\n\nCombined anomalous phenomena: Application sessions experience long and highly variable response times as poorly chosen plans amplify row visits and prolong critical sections, which in turn lengthen lock-hold durations and enlarge blocker–waiter chains. Concurrently, inflated work areas, plan-cache bloat, and growing buffer caches drive the process RSS beyond physical memory, triggering operating-system paging or OOM killer events. Monitoring shows oscillating or flip-flopping execution plans, escalating lock-wait counters, frequent deadlock victim messages, rapid growth of memory allocations and swap, drop-offs in cache hit ratios due to churn, CPU stalls caused by memory thrashing, and eventual connection timeouts or node restarts that further disturb plan stability and lock recovery.\n\nCausal chain and interaction: A bad plan (e.g., full table scan instead of index seek) inflates I/O and keeps row-level or page locks active far longer, increasing the probability and duration of blocking and deadlocks. The same inefficient plan may require oversized hash/sort buffers or spawn excessive parallel workers, accelerating memory consumption. Elevated memory pressure leads the engine or operating system to evict clean pages, flush caches, or invoke swapping, extending I/O times and further slowing statement completion—thereby lengthening lock hold times and widening contention. Repeated plan invalidations caused by memory pressure or crash recovery prompt the optimizer to regenerate and possibly pick different sub-optimal plans, creating performance whiplash. The feedback loop among bad plans, lock buildup, and memory exhaustion can cascade into severe throughput collapse and service instability, making isolated tuning of any single layer ineffective until all three contributing root causes are addressed together.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.5707948405488172,
+            "bm25_score": 22.193413341879594,
+            "lexical_score": 0.09322245322245323,
+            "matched_terms": [
+                "and",
+                "blocking",
+                "in",
+                "lock",
+                "locks",
+                "longer",
+                "or",
+                "sessions",
+                "statement",
+                "the",
+                "to",
+                "transaction"
+            ],
+            "match_count": 2,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

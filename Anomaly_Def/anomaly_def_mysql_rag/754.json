@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Storage I/O Throughput Anomaly + CPU Resource Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Storage I/O Throughput Anomaly : Physical read/write bandwidth or IOPS on the underlying storage devices is saturated, driving up I/O latency and queue depths independent of database engine settings.\nCPU Resource Anomaly : Host CPU cycles are exhausted, leaving insufficient compute capacity for database foreground and background tasks, which inflates run-queue waits and overall response time.\nOperating System Resource Limit Anomaly : Kernel-enforced ceilings on file handles, processes/threads, shared memory, AIO contexts, or other kernel objects are reached, preventing the database from allocating required OS resources.\n\nWhen these three root causes arise concurrently, the database exhibits a multi-layer resource crunch: 1) response times degrade as I/O queues lengthen and disk latencies spike, 2) CPU utilization plateaus at or near 100 %, with elevated context-switch and scheduler waits, while some processes spin or back-off waiting for I/O, and 3) new sessions, background workers, or asynchronous I/O requests intermittently fail with OS-level \"resource exhausted\" errors. Wait-event profiles simultaneously show heavy data-file/log-file I/O waits, CPU run-queue waits, and sudden surges in OS-error-related waits. Batch windows overrun, interactive transactions stall, and recovery or checkpoint operations lag, making it difficult to pinpoint a single bottleneck because symptoms oscillate between compute, I/O, and kernel allocation failures.\n\nCausally, the three anomalies can reinforce one another in a vicious cycle: storage saturation elongates I/O service times, causing worker threads to hold CPU longer or spin in kernel space, which raises overall CPU demand. Elevated CPU load inflates context switching and system-call overhead, consuming additional kernel objects (threads, AIO contexts) and pushing the process toward OS resource limits. Once those limits are reached, failed allocations further stall I/O submission and worker scheduling, deepening both the storage backlog and CPU queuing. Conversely, hitting OS limits (e.g., AIO context caps or file-descriptor ceilings) can throttle parallel I/O issuance, reducing effective throughput while worker threads busy-wait, inflating CPU usage. The intertwined feedback loops between saturated disks, maxed-out CPUs, and exhausted kernel limits rapidly deteriorate database throughput and availability unless all three layers are relieved together.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.7466666666666666,
+            "bm25_score": 27.288984693154987,
+            "lexical_score": 0.15555555555555556,
+            "matched_terms": [
+                "and",
+                "another",
+                "back",
+                "because",
+                "for",
+                "in",
+                "is",
+                "longer",
+                "of",
+                "or",
+                "required",
+                "scheduling",
+                "sessions",
+                "the",
+                "time",
+                "unless",
+                "up",
+                "wait",
+                "waiting",
+                "waits",
+                "when"
+            ],
+            "match_count": 36,
+            "entry": {
+                "timeout_id": "mysql84_innodb_row_lock_wait_timeout",
+                "parameter_name": "innodb_lock_wait_timeout",
+                "timeout_category": "innodb_row_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "The length of time in seconds an InnoDB transaction waits for a row lock before giving up.",
+                "trigger_condition": "An InnoDB transaction waits longer than innodb_lock_wait_timeout for a row lock.",
+                "workload_impact": "The lock wait gives up; by default only the current statement is rolled back unless innodb_rollback_on_timeout is enabled.",
+                "default_behavior": "Defined as an InnoDB system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Storage I/O Throughput Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Engine-level runtime parameters are mis-tuned relative to hardware capacity, workload mix, or version defaults, causing artificial bottlenecks that are not rooted in the true limits of the underlying resources.\nStorage I/O Throughput Anomaly : The physical storage subsystem cannot sustain the read/write rate demanded by the workload, leading to saturated IOPS / bandwidth, deep I/O queues, and growing latency.\nOperating System Resource Limit Anomaly : Kernel-enforced limits on file handles, shared memory, threads, or other process quotas are exhausted, preventing the database from allocating additional OS resources even though engine-level limits might appear sufficient.\n\nWhen all three anomalies are present simultaneously, symptoms overlap and amplify: checkpoint or log-flush storms triggered by bad configuration drive a surge of physical writes that immediately collide with an already bandwidth-bound storage layer, inflating write latency and pushing buffer-pool eviction and background flush waits sky-high. At the same time, the mounting backlog of I/O requests inflates kernel I/O contexts, file descriptors, and thread counts until OS quotas are hit, producing intermittent \"cannot allocate\" errors, failed worker spawns, or stalled client logins. Performance dashboards will show contradictory signals—CPU under-utilized, storage queues maxed out, and a rash of engine errors—making the root cause appear elusive. Batch windows stretch, OLTP transactions time out, and even read-only queries stall while waiting on dirty-page flushes that the storage device and OS can no longer service.\n\nCausally, mis-set configuration parameters (e.g., too small checkpoint intervals, undersized log files, or excessive per-session work memory) act as the trigger that inflates I/O pressure well beyond normal steady-state. This sustained pressure forces the storage layer into throughput saturation, prolonging every I/O and keeping queue depths persistently high. The prolonged queues, in turn, require more kernel objects—threads, async-I/O contexts, file descriptors—which quickly consume the OS resource quotas. Once these limits are breached, the database engine can neither launch relief workers nor open additional files, so the mis-configuration and storage congestion self-reinforce, driving the system into a cascading slowdown that is far more severe than any of the three anomalies would cause in isolation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.6903281492408755,
+            "bm25_score": 23.397277122215673,
+            "lexical_score": 0.14384615384615385,
+            "matched_terms": [
+                "and",
+                "by",
+                "in",
+                "is",
+                "limit",
+                "or",
+                "other",
+                "resource",
+                "session",
+                "the",
+                "this",
+                "time",
+                "too",
+                "triggered",
+                "when",
+                "with",
+                "work",
+                "workload"
+            ],
+            "match_count": 16,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

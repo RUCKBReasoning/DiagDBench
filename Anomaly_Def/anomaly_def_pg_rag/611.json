@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-layer statements or transaction patterns that request or manipulate more data, rows, or time than business logic actually requires, leading to excessive scans, joins, and long-running transactions.\nData Block and Index Integrity Anomaly : Physical corruption or logical inconsistency inside data pages or index structures that breaks key ordering, page links, or heap-to-index mappings, making persisted structures unreliable.\n\nWhen these two root causes coexist, the database simultaneously executes wasteful or poorly scoped SQL while relying on corrupted storage structures. The workload’s already inflated scans, Cartesian joins, or repeated single-row probes collide with missing or duplicated rows, checksum failures, and sudden plan shifts to full table scans. Symptoms include extreme and widely scattered statement latencies, frequent plan changes, dramatic variance between repeated executions, explosions in lock contention as long-running transactions touch damaged pages, surge in application timeouts and retries, and integrity-check or page-verification errors interleaved with slow-query log entries. Result sets may appear inconsistent across executions, and retries undertaken by the application can further stress corrupted pages, provoking additional engine error logs or crash recovery cycles.\n\nCausally, heavy and inefficient SQL patterns magnify the surface area and frequency of page and index access, increasing the probability of reading or writing corrupt structures. Conversely, corruption can invalidate indexes, forcing the optimizer to discard efficient plans, which in turn drives the engine toward broader scans and larger data movement—effects that mimic or exacerbate the original workload-logic inefficiencies. The combination forms a feedback loop: bloated queries amplify I/O against damaged objects, while structural corruption forces ever less efficient execution paths, collectively accelerating performance collapse, lock amplification, and potential availability incidents.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.6126456740332119,
+            "bm25_score": 29.662735876443996,
+            "lexical_score": 0.13419734904270986,
+            "matched_terms": [
+                "and",
+                "database",
+                "index",
+                "lock",
+                "of",
+                "or",
+                "row",
+                "statement",
+                "table",
+                "than",
+                "that",
+                "the",
+                "time",
+                "to",
+                "transaction",
+                "when",
+                "while"
+            ],
+            "match_count": 193,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

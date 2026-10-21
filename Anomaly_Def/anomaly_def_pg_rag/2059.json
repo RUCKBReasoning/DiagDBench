@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Replication Synchronization Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly: Page-level serialization inside the buffer manager where sessions spin or block on latches, pins, or page-content locks while trying to access a small set of hot buffers.\nReplication Synchronization Anomaly: Downstream replicas cannot receive or apply WAL/redo at the rate the primary generates it, producing widening log-position gaps and retaining log segments on the primary.\nNetwork and Connectivity Resource Anomaly: Transport-layer or listener resources between nodes and clients are saturated, lossy, or starved, leading to slow or failed connection establishment and high socket-level waits.\n\nWhen all three conditions occur together, the system exhibits a blended symptom set: 1) front-end clients see intermittent connection timeouts, elevated latency, and sporadic \"too many connections\" or authentication failures; 2) active back-end sessions show surging buffer-busy and page-latch waits, high CPU spin, and sharp response-time spikes on hot tables or index roots; 3) replication dashboards report rapidly growing send, write, and replay lags, expanding retained-WAL or relay-log storage, and replicas fall out of synchronous commit windows; 4) storage pressure from unrecycled WAL files triggers aggressive checkpoints that evict useful pages, amplifying buffer churn and extending latch hold times; 5) system-level network metrics reveal retransmissions and queue overflows exactly when database wait events and replication gaps worsen, making the root causes hard to distinguish in isolation.\n\nCausal chain: Network congestion or listener overload throttles the primary’s ability to stream WAL, immediately slowing replica catch-up. The primary therefore retains additional log segments, inflating disk usage and forcing more frequent checkpoints or background flushes. These writes compete for buffer-pool space, evicting pages that active OLTP sessions soon re-read, which elevates buffer cache churn and concentrates access on hot root or sequence pages—intensifying latch contention. Heightened latch waits elongate transaction execution times, keeping connections open longer and increasing the number of concurrent sockets the listener must juggle, which in turn aggravates network/connection saturation. The intertwined feedback loop between network backlog, replication stalling, retained-WAL pressure, and hot-page latch contention drives a severe, self-reinforcing degradation that is much harder to remediate than any of the individual anomalies alone.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.7421966647498562,
+            "bm25_score": 28.166274766103328,
+            "lexical_score": 0.14065554916618747,
+            "matched_terms": [
+                "access",
+                "and",
+                "any",
+                "contention",
+                "execution",
+                "from",
+                "is",
+                "longer",
+                "more",
+                "of",
+                "or",
+                "out",
+                "resource",
+                "than",
+                "that",
+                "the",
+                "time",
+                "together",
+                "too",
+                "when"
+            ],
+            "match_count": 263,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

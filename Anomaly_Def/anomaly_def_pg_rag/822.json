@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Buffer Cache and Latch Contention Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Schema and Index Design Anomaly : The physical data model (tables, indexes, partitions, datatypes, constraints) is mis-aligned with workload access patterns, forcing plans into full scans, non-covering lookups, and other inefficient paths.\nBuffer Cache and Latch Contention Anomaly : Concurrent sessions serialize on hot buffer pages, latches, or I/O slots, causing prolonged buffer-busy and page-latch waits and CPU spin without throughput gain.\nTransaction Log Subsystem Anomaly : Commit processing is throttled by log buffer, log file, or archiver saturation, elevating log-flush and log-sync waits and stalling write workloads.\n\nComposite anomaly definition: All three root causes are active at the same time in an OLTP system: sub-optimal schema/index design amplifies logical I/O and redo generation, the resulting surge of page accesses leads to acute buffer-cache and latch contention, and the elevated redo stream overwhelms the transaction-log subsystem, forming a multi-layer bottleneck that spans from SQL access path to memory management to durable logging.\n\nCombined observable phenomena: 1) Queries show full scans or non-covering index probes with many logical reads; 2) wait-event views report simultaneous spikes in buffer_busy/page_latch, log_flush/log_sync, and physical I/O; 3) CPU usage oscillates between spin loops and idle while commit latency climbs; 4) hotspot pages such as index roots, monotonically growing tables, or sequence blocks exhibit latch contention and rapid dirtying, while log files switch frequently and archivers fall behind; 5) adding extra buffer cache reduces but does not eliminate symptoms, and adding an index or enlarging log files alone yields only partial relief, signaling intertwined root causes.\n\nCausal chain and interaction: Poor schema and indexing force each transaction to touch more pages, inflate row versioning, and emit excessive redo. The enlarged working set churns through a limited buffer pool, so the same root or data pages become hot, intensifying latch competition. Dirty hot pages in turn prolong checkpoint and flush activity, keeping latches held longer and enlarging the log buffer. The heightened redo rate pushes the log writer to its throughput limits; when log flushes slow, transactions hold locks and keep pages pinned even longer, exacerbating buffer contention. Meanwhile, the latch stalls lengthen critical sections that hold the log mutex or generate redo records, further reducing log throughput. This positive feedback loop causes cascading slowdowns across the access path, buffer manager, and logging layers, leading to severe, workload-wide performance degradation that is difficult to attribute to any single layer in isolation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.4375709916964027,
+            "bm25_score": 16.41715227425204,
+            "lexical_score": 0.15961857379767827,
+            "matched_terms": [
+                "activity",
+                "an",
+                "and",
+                "any",
+                "are",
+                "but",
+                "does",
+                "idle",
+                "is",
+                "latency",
+                "longer",
+                "not",
+                "of",
+                "or",
+                "sessions",
+                "that",
+                "the",
+                "this",
+                "time",
+                "transaction",
+                "when",
+                "with"
+            ],
+            "match_count": 200,
+            "entry": {
+                "timeout_id": "pg16_idle_session_timeout",
+                "parameter_name": "idle_session_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle, but not within an open transaction, for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle and not inside an open transaction longer than the configured threshold.",
+                "workload_impact": "The session is terminated; the documentation warns about using this with connection pools or middleware.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Transaction Log Subsystem Anomaly + Replication Synchronization Anomaly",
+            "Description": "Schema and Index Design Anomaly : Physical data-model objects (tables, partitions, indexes, constraints, data types) are mis-aligned with workload access paths, forcing the optimizer into broad, row-hungry scans or excessive random probes even when statistics are fresh.\nTransaction Log Subsystem Anomaly : The write-ahead log buffer, files, or archival pipeline cannot sustain the redo generation rate, causing commits to stall on log flush, switch, or archive waits.\nReplication Synchronization Anomaly : Downstream replicas or subscribers cannot receive or apply the primary’s log stream fast enough, so retained log segments pile up and widen replica lag.\n\nWhen these three root causes coexist, the system exhibits a blended failure signature: 1) Queries and modifications run slowly because of poor indexing and partitioning, inflating the volume of physical changes and redo per transaction; 2) Commit latency spikes with frequent LOG_FLUSH, LOG_WRITE, and LOG_SWITCH waits, and alert logs show rapid log file cycling while archive or shipping queues back up; 3) Replication lag grows unpredictably, replicas fall behind or disconnect, and primary log directories bloat because segments cannot be recycled while replicas remain out of sync. Administrators may observe apparently unrelated symptoms—slow queries, stalled commits, and replica lag—making the true intertwined root cause harder to isolate.\n\nCausally, inefficient schema and index design lengthens query execution and multiplies row touches, increasing undo and redo volume per transaction. The surging redo rate overwhelms an already constrained transaction-log subsystem, leading to longer flush times and more frequent log switches. Elevated log pressure simultaneously feeds a heavier replication stream; replicas struggling to apply the bloated redo fall further behind, preventing log reclamation and forcing the primary to keep additional log files online. The retained logs, in turn, exacerbate disk-space pressure on the log device and prolong checkpoint times, intensifying the original log bottleneck. The resulting feedback loop—poor data access driving excess redo, saturating the log path, which then stalls both commits and replication—deteriorates overall OLTP performance and availability.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.497356816258768,
+            "bm25_score": 24.418894303727757,
+            "lexical_score": 0.11803921568627451,
+            "matched_terms": [
+                "access",
+                "and",
+                "be",
+                "because",
+                "behind",
+                "execution",
+                "in",
+                "or",
+                "path",
+                "query",
+                "the",
+                "when",
+                "with",
+                "workload"
+            ],
+            "match_count": 62,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

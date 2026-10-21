@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Replication Synchronization Anomaly + CPU Resource Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same objects, forming blocking chains or deadlocks that stall commit progress and inflate lock-wait time.\nReplication Synchronization Anomaly : Standbys or downstream replicas are unable to receive or apply log records as fast as the primary generates them, causing growing log-position lag and retention of old log segments.\nCPU Resource Anomaly : Database processes consume nearly all available CPU cycles, driving run-queue growth and broad latency spikes across the workload.\n\nWhen all three root causes arise together the database exhibits a blended failure pattern: application sessions pile up in lock-wait queues while overall query and transaction latency lengthens; at the same time replica apply and replay lag widens sharply, with relay logs or retained WAL segments ballooning on both primary and replicas. Monitoring views show surging lock-wait counters, escalating CPU utilization on primary and replica nodes, frequent deadlock victim errors, and replication delay alerts all at once. Because commit completion is blocked, primary log generation becomes bursty—alternating between idle periods and spikes—while replicas, already CPU-bound, struggle to catch up, leading to stale read-only traffic, compromised failover objectives, and disk pressure from unrecycled logs.\n\nCausally, intense lock contention forces transactions to hold locks and keep their redo in the primary’s log for longer, inflating the volume of WAL that must eventually stream to replicas in a short time window. These bursts drive higher CPU demand for log shipping, decompression, and apply logic on both sides of the replication channel. Simultaneously, the CPU Resource Anomaly slows lock-manager arbitration and deadlock detection on the primary, prolonging blocking chains and further delaying commits. On replicas, CPU saturation throttles redo apply rates, which increases replication lag and prevents the primary from discarding old log segments, amplifying storage pressure and background housekeeping work that itself consumes more CPU. The feedback loop between lock-induced commit stalls, replication backlog, and compute exhaustion deepens end-to-end latency and threatens both transactional throughput and high-availability objectives.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.38484058710995644,
+            "bm25_score": 16.971323327224876,
+            "lexical_score": 0.14942307692307694,
+            "matched_terms": [
+                "and",
+                "are",
+                "detection",
+                "for",
+                "idle",
+                "is",
+                "latency",
+                "longer",
+                "of",
+                "on",
+                "or",
+                "progress",
+                "sessions",
+                "stale",
+                "the",
+                "time",
+                "to",
+                "together",
+                "when",
+                "which",
+                "with"
+            ],
+            "match_count": 180,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_idle",
+                "parameter_name": "tcp_keepalives_idle",
+                "timeout_category": "network_idle_keepalive_probe_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time with no network activity after which the operating system should send a TCP keepalive message to the client.",
+                "trigger_condition": "A TCP client connection has no network activity longer than tcp_keepalives_idle on systems supporting TCP_KEEPIDLE or an equivalent socket option.",
+                "workload_impact": "Starts TCP keepalive probing for an otherwise idle client connection; together with interval and count settings this can lead to dead connection detection.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

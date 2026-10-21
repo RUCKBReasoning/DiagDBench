@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Optimizer Statistics Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Schema and Index Design Anomaly : Static mismatch between the physical data model (tables, partitions, indexes, data types, constraints) and the workload’s access patterns, forcing even well-written SQL into inefficient access paths.\nOptimizer Statistics Anomaly : Row-count and data-distribution metadata no longer represent reality, leading the optimizer to choose sub-optimal execution plans because of systematic cardinality errors.\nTransaction Log Subsystem Anomaly : The write-ahead log buffer, files, or archiving pipeline become the primary bottleneck, inflating commit latency and stalling write activity.\n\nWhen all three root causes strike at once, the database shows a wide mix of symptoms: queries that should be index-seek or range-scan operations devolve into full-table scans; the optimizer’s row-count guesses are wildly off, so it sometimes picks nested-loop plans that explode into millions of logical reads, or hash/merge joins that spill to disk. These bloated read workloads generate excessive undo/redo and trigger large batch updates or page splits because the underlying index design is non-covering or poorly aligned with predicates. The extra redo volume quickly saturates the log buffer and forces frequent log flushes, leading to LOG_BUFFER_WAIT, LOG_FILE_SYNC, or similar waits; foreground sessions experience both query CPU spikes and commit stalls. Checkpoint storms, long-running auto-stats jobs, and emergency index rebuilds further amplify log traffic, while stale statistics prevent the optimizer from recognizing the true cost of these maintenance tasks. As a result, performance degradations appear both in read and write paths, and the root causes are easily misattributed to generic I/O or concurrency issues.\n\nCausal chain: Poor schema and index design makes almost every CRUD statement touch more rows or columns than necessary. This inflates I/O and redo generation. Because statistics are stale or inaccurate, the optimizer cannot compensate—it often picks plans that further widen the access path or use memory-hungry operators, compounding data modification volume. The surge in redo overwhelms the transaction log subsystem, which responds with longer flush times and throttled commit throughput. Those commit delays in turn slow DML completion, extending lock lifetimes and causing even more contention and blocking, which invites emergency maintenance (manual stats updates, index rebuilds) that again produces heavy redo. Each anomaly therefore reinforces the others, creating a feedback loop that degrades overall database stability far beyond the impact of any single root cause.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.7402149799547453,
+            "bm25_score": 34.52930364850442,
+            "lexical_score": 0.1549019607843137,
+            "matched_terms": [
+                "access",
+                "and",
+                "be",
+                "because",
+                "contention",
+                "execution",
+                "in",
+                "is",
+                "long",
+                "or",
+                "path",
+                "query",
+                "running",
+                "should",
+                "statement",
+                "the",
+                "this",
+                "when",
+                "with",
+                "workload"
+            ],
+            "match_count": 83,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

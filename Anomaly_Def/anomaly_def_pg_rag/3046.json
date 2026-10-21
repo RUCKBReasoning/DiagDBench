@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + MVCC Version Maintenance Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-layer statements and transaction scopes are written so inefficiently that the database engine must scan or modify far more rows and keep transactions open far longer than the business task requires.\nMVCC Version Maintenance Anomaly : Obsolete row versions, undo segments, and dead index entries accumulate faster than background cleaners can reclaim them, inflating on-disk and in-memory storage and adding visibility-check overhead.\nNetwork and Connectivity Resource Anomaly : The transport, listener, authentication, or socket layer cannot provide enough bandwidth, round-trip performance, or connection slots to satisfy the client request rate, leading to connection stalls, retries, or drops.\n\nWhen these three root causes strike together, the workload exhibits an extreme long-tail of statement latencies, high counts of slow or timed-out transactions, ballooning table and index sizes, surging connection attempts, and back-end processes stuck in client-read/client-write or vacuum/clean-up states. Bulk or chatty queries created by sub-optimal SQL logic send oversized result sets over a saturated network, prolonging transaction lifetimes. The prolonged transactions, in turn, hold old MVCC snapshots that prevent version cleanup, so each retry or leaked connection leaves more dead tuples behind. As tables bloat, the optimizer underestimates row counts, causing even heavier scans and further swelling result sets, which exacerbates network congestion and connection pool exhaustion. Meanwhile, overworked vacuum or purge workers compete for I/O with the now larger user queries, deepening latency spikes and amplifying retry storms.\n\nCausal chain: Inefficient application SQL multiplies the amount of data touched and the duration of each transaction, creating large intermediate and final result sets. These long-lived, update-heavy transactions generate and retain many obsolete versions, pushing MVCC maintenance into perpetual backlog. The enlarged on-disk structures slow subsequent scans, inflating response times and producing even bigger network transfers. The heightened latency causes clients to hold or reopen more connections, which overloads listeners and exhausts socket and process pools, introducing additional waits and failures. Each layer’s slowdown feeds the others: network stalls prolong transactions, stalled transactions impede version cleanup, version bloat slows queries, and inefficient SQL sustains the pressure, leading to a self-reinforcing degradation spiral across application, storage, and connectivity tiers.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.3898152511898445,
+            "bm25_score": 18.13581321529191,
+            "lexical_score": 0.1629426091300818,
+            "matched_terms": [
+                "amount",
+                "an",
+                "and",
+                "are",
+                "authentication",
+                "check",
+                "client",
+                "connection",
+                "for",
+                "latency",
+                "longer",
+                "of",
+                "open",
+                "or",
+                "pools",
+                "than",
+                "that",
+                "the",
+                "transaction",
+                "user",
+                "when",
+                "with"
+            ],
+            "match_count": 310,
+            "entry": {
+                "timeout_id": "pg16_idle_session_timeout",
+                "parameter_name": "idle_session_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle, but not within an open transaction, for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle and not inside an open transaction longer than the configured threshold.",
+                "workload_impact": "The session is terminated; the documentation warns about using this with connection pools or middleware.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

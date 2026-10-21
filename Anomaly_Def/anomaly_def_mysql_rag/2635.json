@@ -1,0 +1,62 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Buffer Cache and Latch Contention Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Composite Definition: The database is concurrently suffering from sub-optimal application SQL logic, internal buffer-cache/latch hot-spotting, and saturation of the client-server network or connection layer. All three root causes are present at the same time, so the engine must execute needlessly heavy statements, arbitrate intense in-memory page access, and move large result sets across congested or resource-starved network paths.\n\nCombined Observable Phenomena: 1) Statement-statistics and slow-query logs show wide scans, huge row counts, and long-running transactions. 2) Wait-event views report spikes in buffer-busy, page-latch, and lightweight latch waits, with CPU spin yet little throughput gain; hotspot index root pages and sequence pages are frequently pinned. 3) Simultaneously, clients experience intermittent connection establishment failures, higher round-trip times, and long \"client read/client write\" waits; server-side listener backlogs, socket queues, or backend process pools approach their limits. The combination amplifies long-tail latencies: extended execution times hold latches longer, which in turn prolongs network hold-ups, causing more sessions to pile up and further overstress the buffer cache.\n\nCausal Chain and Reinforcement: Inefficient SQL logic multiplies the amount of data touched and returned, driving up buffer-pool pressure and repeatedly targeting the same root or leaf pages; this creates latch contention. The prolonged latch waits lengthen transaction and session lifetimes so that connections stay open while still occupying network sockets. Large and delayed result sets then congest the network layer, slowing packet delivery and further extending the time pages remain pinned or dirty. Network slowdowns feed back into the workload by holding workers in active yet stalled states, increasing concurrent demand on the same hot pages and deepening latch contention. The three layers therefore form a vicious loop—poor SQL inflates memory contention, memory contention elongates connection duration, and network bottlenecks prevent timely completion—driving overall throughput down and tail latency up across both OLTP and analytical queries.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.6005710732854616,
+            "bm25_score": 28.009120366629233,
+            "lexical_score": 0.2131050228310502,
+            "matched_terms": [
+                "and",
+                "are",
+                "client",
+                "connection",
+                "data",
+                "establishment",
+                "from",
+                "holding",
+                "is",
+                "latency",
+                "longer",
+                "more",
+                "network",
+                "of",
+                "or",
+                "pools",
+                "read",
+                "server",
+                "session",
+                "sessions",
+                "the",
+                "this",
+                "time",
+                "to",
+                "wait",
+                "waits"
+            ],
+            "match_count": 125,
+            "entry": {
+                "timeout_id": "mysql84_network_read_timeout",
+                "parameter_name": "net_read_timeout",
+                "timeout_category": "network_read_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for more data from a connection before aborting the read.",
+                "trigger_condition": "The server waits for additional data from a connection longer than net_read_timeout.",
+                "workload_impact": "The network read is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

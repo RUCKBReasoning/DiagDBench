@@ -1,0 +1,59 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Database Configuration Parameter Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Execution-plan cost inputs no longer match the true data distribution, causing systematic cardinality and cost misestimates that bias plan selection.\nDatabase Configuration Parameter Anomaly : Engine-wide settings for memory, parallelism, logging, and background workers are mis-tuned for the hardware or workload, so runtime behavior is limited or destabilised even when physical resources are sufficient.\nNetwork and Connectivity Resource Anomaly : The transport path or server-side connection handling cannot sustain the offered request or result-set volume, leading to connection stalls, retransmits, and socket exhaustion.\n\nWhen all three root causes are present, the database shows a multi-layer performance collapse: queries choose wildly sub-optimal plans (e.g., serial nested-loop joins on billions of rows or overly parallel hash joins that spill), backends over-allocate or under-allocate memory because of incorrect parameter values, and the resulting oversized or long-running result sets flood an already constrained network layer. Symptoms may include: extreme divergence between estimated and actual row counts, sudden spikes in buffer flushes, work-memory spill storms, CPU threads idling while sessions wait on client read/write or connection slots, erratic throughput with bursts of \"too many connections\" or authentication timeouts, and seemingly random latency outliers immediately after data loads or configuration changes. Monitoring may show low to moderate server CPU and I/O utilisation while application response times soar and network retransmission counters, socket backlog depth, and background-worker queues all climb together.\n\nCausal chain: stale or missing statistics drive execution plans that generate unexpected I/O and data transfer volumes; mis-sized memory, parallelism, and checkpoint parameters amplify these inefficiencies, causing larger intermediate results, aggressive workfile spills, or excessive concurrent backends. The inflated data flows and prolonged query runtimes then saturate connection slots and network bandwidth, increasing round-trip times and retransmissions. In turn, network slowdowns lengthen query execution even further, delaying feedback-based statistics refresh and prolonging locks and memory occupation, which deepens the impact of the configuration mis-tuning. The intertwined feedback loops between optimizer misestimation, resource-governing parameter errors, and constrained connectivity culminate in a self-reinforcing degradation that is difficult to diagnose when each layer is inspected in isolation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.6843056051824181,
+            "bm25_score": 28.836841438165294,
+            "lexical_score": 0.1677257322682159,
+            "matched_terms": [
+                "after",
+                "and",
+                "are",
+                "authentication",
+                "between",
+                "client",
+                "connection",
+                "handling",
+                "is",
+                "latency",
+                "long",
+                "or",
+                "queries",
+                "query",
+                "running",
+                "sessions",
+                "sets",
+                "socket",
+                "stale",
+                "that",
+                "the",
+                "when",
+                "while"
+            ],
+            "match_count": 264,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

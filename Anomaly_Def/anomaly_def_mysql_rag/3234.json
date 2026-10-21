@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Database Configuration Parameter Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Schema and Index Design Anomaly: The physical data model and indexing strategy do not match the workload's access patterns, forcing inefficient full-table scans, excessive row lookups, and write hot-spots.\nDatabase Configuration Parameter Anomaly: Engine-level memory, checkpoint, log, parallelism, or background-worker settings are mis-tuned for the hardware and workload, causing avoidable waits and resource churn.\nStorage Space Capacity Anomaly: Data files, logs, or temporary areas reach or approach hard space limits, leading to allocation failures and cascading stalls.\n\nComposite definition: The database is simultaneously hampered by a poor schema/index design, misaligned engine parameters, and shrinking free space. Each of the three root causes is independently sufficient to degrade performance, but their coexistence produces a more severe, multi-layer failure mode that blends logical inefficiency, runtime misallocation, and physical space exhaustion.\n\nCombined anomalous phenomena: • Queries that should be index-seek driven spill to large hash or sort operations because covering indexes are missing, filling up TEMP segments and triggering “no space left” errors. • Full-table scans driven by design flaws flood the buffer cache; at the same time an undersized buffer pool or overly aggressive work-memory setting forces frequent evictions, checkpoint storms, and log switches. • Checkpoints and log flushes stall because the log or archive destination is nearly full, yet CPU and I/O remain under-utilised due to throttling waits (e.g., LOG_FILE_SYNC, CHECKPOINT_QUEUE) caused by conservative parameter limits. • Administrators observe erratic latency spikes, mixed wait events (buffer-busy, temp-space, log-file-sync), and a rapid drop in free space that monitoring alarms cannot attribute to a single layer.\n\nCausal chain: Inefficient access paths from the schema/index design generate excess I/O, temporary spill files, and enlarged redo logs. Misconfigured memory, work-area, and checkpoint parameters amplify this footprint by pushing data to disk more often and limiting in-memory reuse. The inflated I/O and log volume consume storage faster, accelerating the approach to space boundaries. As free space declines, checkpoints slow and temp allocations fail, which in turn make optimizer feedback and maintenance (e.g., index creation to fix the original design issue) harder or impossible. The three anomalies therefore reinforce one another: design inefficiency → higher resource consumption; bad parameters → higher churn and lower tolerance; space exhaustion → new errors and blocked remediation, producing a vicious performance and stability spiral.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.7443852459016393,
+            "bm25_score": 32.05109990712025,
+            "lexical_score": 0.14795081967213114,
+            "matched_terms": [
+                "access",
+                "and",
+                "be",
+                "because",
+                "blocked",
+                "by",
+                "engine",
+                "for",
+                "is",
+                "match",
+                "operations",
+                "or",
+                "resource",
+                "should",
+                "the",
+                "this",
+                "time",
+                "work",
+                "workload"
+            ],
+            "match_count": 151,
+            "entry": {
+                "timeout_id": "mysql84_regular_expression_time_limit",
+                "parameter_name": "regexp_time_limit",
+                "timeout_category": "expression_evaluation_time_limit",
+                "scope": "global/session",
+                "official_definition": "The time limit for regular expression matching operations performed by the regular expression engine.",
+                "trigger_condition": "A regular expression match operation exceeds regexp_time_limit.",
+                "workload_impact": "The regular expression operation is constrained by the configured time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

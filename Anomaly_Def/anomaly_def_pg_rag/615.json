@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Transaction Log Subsystem Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Obsolete row versions, rollback records, and logically deleted index entries accumulate faster than background cleanup can reclaim them, inflating the version store and bloating on-disk structures.\nTransaction Log Subsystem Anomaly : The generation, flushing, switching, or archiving of write-ahead log records becomes the bottleneck on the commit path, inflating commit latency and log storage.\nStorage I/O Throughput Anomaly : The physical storage layer is saturated, so read/write latency, queue depths, and IOPS limits are exceeded across data, temp, and log volumes.\n\nWhen these three root causes occur together, the database exhibits a compound symptom pattern: 1) rapidly expanding tables, indexes, version store, and transaction-log directories; 2) soaring commit and checkpoint latency dominated by log-flush and device-I/O waits; 3) long-running queries and autovacuum/clean-up workers that never catch up; 4) device-level queues pegged, with wait profiles simultaneously showing MVCC visibility checks, log-related waits, and generic data-file I/O stalls; 5) escalating risk of transaction-ID or log-segment wraparound, emergency checkpoints, and sudden write stalls that block both OLTP traffic and background maintenance.\n\nCausally, high update/delete churn inflates the version store, which in turn increases redo generation because every version change must be logged; this heavier log stream stresses the transaction-log subsystem. Frequent log flushes and larger log archives multiply write pressure on the same storage back-end that is already servicing bloated data-file writes and long sequential scans caused by MVCC bloat. As the storage layer saturates, log flush latency rises, stretching transaction completion times and prolonging snapshot retention; the longer snapshots further delay version reclamation, feeding back into MVCC bloat. The intertwined feedback loops—more versions ⇒ more log writes ⇒ more physical I/O ⇒ slower cleanup ⇒ even more versions—can rapidly degrade throughput and threaten database availability.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.4334660007776798,
+            "bm25_score": 15.929693150125082,
+            "lexical_score": 0.1217535153019024,
+            "matched_terms": [
+                "and",
+                "because",
+                "change",
+                "cleanup",
+                "delay",
+                "is",
+                "long",
+                "longer",
+                "of",
+                "or",
+                "than",
+                "that",
+                "the",
+                "this",
+                "transaction",
+                "when"
+            ],
+            "match_count": 193,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

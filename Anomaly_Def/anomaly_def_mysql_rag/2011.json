@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Query Plan Selection Anomaly",
+            "Description": "Schema and Index Design Anomaly: The physical table, index, and partition design does not fit actual access patterns, forcing even well-written SQL to use inherently inefficient access paths.\nQuery Plan Selection Anomaly: The optimizer chooses a markedly sub-optimal execution plan despite having reasonably accurate statistics, often because of cost-model or plan-cache quirks.\n\nComposite definition: Both a static mismatch in the physical schema and a dynamic mis-selection of execution plans coexist. Poor or missing indexes, oversized or redundant structures, and ill-suited partitions leave only a small set of viable access paths, while the optimizer still fails to pick the best among those, compounding inefficiency.\n\nCombined anomalous phenomena: Workload exhibits frequent full table or non-covering index scans, but even when suitable indexes are present the same statements sometimes flip between different bad plans. You may observe extreme variance in response times, sudden CPU or I/O spikes, bloated buffer-pool churn, and lock contention as long-running scans block short OLTP lookups. Adding or modifying an index may help one statement yet unexpectedly slow another because the optimizer latches onto the new structure with an ill-costed plan. Performance improvements gained by manual hinting or index tuning are fragile, disappearing after plan cache invalidations, statistics refreshes, or version upgrades.\n\nCausal interaction: The deficient physical design narrows the pool of efficient plans, increasing the likelihood that any costing inaccuracy or plan-cache quirk will land on a pathological path. Conversely, when the optimizer does stumble upon a partly efficient plan, the absence of covering or selective indexes forces additional key lookups or broad range scans that negate the benefit. Repeated plan flips driven by parameter sensitivity or cache pollution obscure the root schema issue, while the schema flaw magnifies the cost gaps between good and bad plans, making performance instability more severe and harder to diagnose. Together, the two anomalies reinforce each other and degrade both transactional and analytical workloads far beyond the impact each would have in isolation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.45874008674055505,
+            "bm25_score": 25.29117861378404,
+            "lexical_score": 0.11390374331550801,
+            "matched_terms": [
+                "an",
+                "and",
+                "another",
+                "because",
+                "block",
+                "lock",
+                "of",
+                "or",
+                "schema",
+                "statement",
+                "the",
+                "to",
+                "when",
+                "while",
+                "written"
+            ],
+            "match_count": 95,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Database Configuration Parameter Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Composite Definition: The database concurrently suffers from runaway MVCC version-store bloat, mis-tuned engine parameters that distort internal housekeeping cadence, and hard ceilings imposed by operating-system resource limits. The result is a compound failure mode where version cleanup cannot catch up, engine subsystems are configured in ways that mask or worsen the backlog, and the kernel refuses additional resources just when the database tries to recover.\n\nCombined Observable Phenomena: Administrators observe steep growth of obsolete row versions and rollback records while autovacuum/cleanup workers stay permanently busy yet ineffective. Checkpoint, log-flush, or background-worker waits spike despite storage and CPU still showing spare capacity; at the same time, new parallel workers, back-end processes, or I/O contexts intermittently fail to start with kernel-level \"too many open files\", \"cannot allocate shared memory\", or \"resource temporarily unavailable\" errors. Page and index sizes expand quickly, sequential scans slow down, and the planner misestimates row counts, all while wait-event samples oscillate between engine-level maintenance waits and kernel-level allocation failures. After manual restarts or configuration tweaks, short periods of relief are followed by even faster deterioration because workers launched to catch up immediately collide with OS quotas.\n\nCausal Chain and Interaction: Heavy update/delete churn produces large numbers of dead versions (MVCC anomaly). Misaligned configuration parameters—such as an undersized buffer pool, too-low autovacuum cost limits, or overly aggressive parallel-worker settings—delay cleanup and inflate the number of background workers the engine tries to spawn (configuration anomaly). These extra workers demand more file descriptors, shared memory segments, and threads; when host-level limits are set conservatively or have been exhausted by lingering handles from earlier crashes, the kernel denies the requests (OS-limit anomaly). Each denial prevents cleanup or checkpoint activity from scaling, causing further version buildup, larger tables, longer checkpoints, and yet more worker spawn attempts, forming a positive feedback loop that rapidly degrades transactional throughput and risks complete stall.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.44220367314156883,
+            "bm25_score": 17.247295651237422,
+            "lexical_score": 0.12651515151515152,
+            "matched_terms": [
+                "activity",
+                "after",
+                "and",
+                "are",
+                "configured",
+                "dead",
+                "failure",
+                "is",
+                "number",
+                "of",
+                "or",
+                "system",
+                "that",
+                "the",
+                "time",
+                "to",
+                "when"
+            ],
+            "match_count": 166,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_count",
+                "parameter_name": "tcp_keepalives_count",
+                "timeout_category": "network_keepalive_failure_threshold",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the number of TCP keepalive messages that can be lost before the server connection to the client is considered dead.",
+                "trigger_condition": "The number of lost TCP keepalive probes reaches tcp_keepalives_count on systems supporting TCP_KEEPCNT.",
+                "workload_impact": "The server can consider the client connection dead after the configured keepalive failure threshold.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Excess accumulation of obsolete row versions and index entries overwhelms background cleanup, inflating the version store and visibility-check costs.\nBuffer Cache and Latch Contention Anomaly : Hot pages and limited buffer-manager synchronization resources force sessions to serialize on latches or spin on buffer pins.\n\nWhen both root causes strike together, the system exhibits a mixture of version-store bloat symptoms and severe buffer-level waits. Dirty, bloated data pages churn through a constrained buffer pool, so every logical read or cleanup pass contends for already-hot pages and their latches. Wait-event dashboards show a blend of long MVCC visibility checks, buffer-busy waits, and latch spin time; checkpoint and auto-vacuum workers stay active yet fall behind, while foreground transactions report rising latency, especially on UPDATE/DELETE-heavy tables whose root index pages are constantly reloaded or latched. Disk usage and I/O grow rapidly, yet CPU idle time shrinks because sessions alternate between spinning on latches and scanning oversized heaps.\n\nCausally, unchecked MVCC bloat multiplies the number of pages that must reside in or cycle through the buffer cache, inflating pressure on limited buffer frames and the latches that guard them. Each cleanup, scan, or index probe must touch more pages, increasing the frequency with which many sessions converge on the same hot root or visibility map page, intensifying latch contention. In turn, heavy latch waits delay autovacuum or cleaning workers, allowing even more obsolete versions to accumulate and perpetuating the vicious cycle. The two anomalies therefore reinforce each other: version bloat amplifies buffer contention, and buffer contention slows the very tasks needed to remove the bloat, driving the database into progressive performance degradation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.38460194609844667,
+            "bm25_score": 13.84801859498683,
+            "lexical_score": 0.1425436632333184,
+            "matched_terms": [
+                "and",
+                "are",
+                "check",
+                "for",
+                "idle",
+                "latency",
+                "of",
+                "on",
+                "or",
+                "probe",
+                "sessions",
+                "system",
+                "that",
+                "the",
+                "time",
+                "to",
+                "when",
+                "which"
+            ],
+            "match_count": 173,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_interval",
+                "parameter_name": "tcp_keepalives_interval",
+                "timeout_category": "network_keepalive_retry_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time after which a TCP keepalive message that has not been acknowledged by the client should be retransmitted.",
+                "trigger_condition": "A TCP keepalive probe is not acknowledged for tcp_keepalives_interval on systems supporting TCP_KEEPINTVL or an equivalent socket option.",
+                "workload_impact": "Controls retry timing for keepalive probes used to detect unresponsive client connections.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

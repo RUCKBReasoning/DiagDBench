@@ -1,0 +1,44 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Optimizer Statistics Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Composite definition: The database is simultaneously affected by (1) application-layer SQL that processes more data or holds transactions longer than business logic requires, (2) stale or insufficient optimizer statistics that cause systematic cardinality misestimation and sub-optimal plan choices, and (3) a write-ahead log subsystem whose generation, flushing, or archival capacity is saturated. All three root causes coexist and interact during the same workload execution.\n\nCombined observable phenomena: Queries show extreme and erratic latency, with execution plans exhibiting large mismatches between estimated and actual row counts, wide scans, or inappropriate join orders. Transactions remain open far longer than normal, consume excessive locks, and generate unusually large volumes of redo. Commit, checkpoint, and log-flush waits spike, archive or replica-shipping queues back up, and application sessions face timeouts or cascading retries. Performance degradations may appear suddenly after data loads or schema changes, yet persist because inefficient SQL continues to execute against misinformed plans while the log subsystem throttles all write traffic, making the individual symptoms difficult to isolate.\n\nCausal chain and interaction: Inefficient SQL logic expands data touched per statement; when paired with inaccurate statistics, the optimizer selects plans that further magnify row processing, I/O, and sort or hash spill volumes. The bloated work units inflate redo generation and prolong transaction duration, driving a surge of log records that must be flushed and archived. The overwhelmed log subsystem lengthens commit latency, which in turn holds locks and latches for longer periods, inflating concurrency conflicts and extending transaction lifespans. These longer transactions keep snapshot versions and index pages \"in flight,\" preventing automatic statistics refresh from triggering and thereby keeping statistics stale. The feedback loop—poor SQL logic → bad cardinality → excess redo → log bottleneck → longer transactions → delayed stats upkeep—amplifies systemic slowdown until all three layers are addressed together.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 100,
+            "score": 0.34763492076439617,
+            "bm25_score": 17.067259367878897,
+            "lexical_score": 0.09102564102564102,
+            "matched_terms": [
+                "and",
+                "execution",
+                "for",
+                "inappropriate",
+                "is",
+                "or",
+                "statement",
+                "the",
+                "transaction",
+                "with"
+            ],
+            "match_count": 14,
+            "entry": {
+                "error_code": "25003",
+                "error_name": "inappropriate_access_mode_for_branch_transaction",
+                "official_description": "inappropriate access mode for branch transaction",
+                "error_class": "Class 25 - Invalid Transaction State",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "authentication_and_authorization",
+                "cause_analysis": "The failure is typically associated with user identity, privilege scope, object access checks, or credential validation at session establishment or statement execution time.",
+                "solution_guidance": "Verify account credentials, privilege grants, object ownership, role settings, and whether the execution context has sufficient access rights.",
+                "observable_symptoms": [
+                    "access denied",
+                    "authentication failure",
+                    "permission error"
+                ]
+            }
+        }
+    }
+]

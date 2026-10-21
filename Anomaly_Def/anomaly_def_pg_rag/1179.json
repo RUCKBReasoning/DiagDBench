@@ -1,0 +1,59 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Transaction Lock Contention Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer repeatedly chooses a sub-optimal execution plan even though statistics are adequate, leading to excessive I/O, CPU, or memory use per statement.\nTransaction Lock Contention Anomaly: Concurrent transactions acquire incompatible locks on the same resources, causing long blocking chains or deadlocks that stall throughput.\nData Block and Index Integrity Anomaly: Corruption or logical inconsistency inside data pages or index structures makes the physical representation of rows or keys unreliable.\n\nComposite anomaly definition: The database simultaneously suffers from sub-optimal plan choices, heavy lock contention, and underlying data/index corruption. Each of the three root causes is active at the same time, so queries may execute with inefficient plans, fight over locks, and occasionally hit corrupt pages or broken index structures—all within the same workload execution window.\n\nCombined anomalous phenomena: (1) Query texts randomly alternate between fast and extremely slow runtimes as the optimizer selects poor plans, sometimes forced into full table scans when damaged indexes are skipped. (2) Large scans and mis-estimated cardinalities inflate lock footprints, leading to long blocking queues, frequent deadlocks, and application timeouts. (3) Corrupted pages or malformed index links surface as sudden I/O errors or silent row omissions; when detected, the engine may escalate to table locks for recovery or consistency checks, further amplifying contention. Monitoring will show erratic query plans, surging lock-wait and deadlock statistics, escalating I/O retries, and integrity checker or error-log reports—all interleaved without a single dominant symptom.\n\nCausal chain and interaction: Index or data corruption can distort statistics and force the optimizer to abandon otherwise selective access paths, pushing it toward full scans or unhelpful join orders—triggering the Query Plan Selection Anomaly. These inflated scans touch far more rows and pages, acquiring many more row or page locks, which lengthens critical sections and intensifies Transaction Lock Contention. In turn, prolonged blocking keeps versions or pages pinned, hampering background scrub or repair processes and increasing the window during which corruption affects additional queries. The resulting deadlocks cause transaction rollbacks that force the optimizer to re-evaluate statements, potentially caching yet more unstable plans. Together, the three issues form a reinforcing loop that degrades performance, jeopardizes data integrity, and complicates root-cause isolation in high-concurrency OLTP environments.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.7478619854721549,
+            "bm25_score": 39.19173080031359,
+            "lexical_score": 0.15953995157384987,
+            "matched_terms": [
+                "acquire",
+                "and",
+                "blocking",
+                "database",
+                "for",
+                "incompatible",
+                "index",
+                "is",
+                "lock",
+                "of",
+                "or",
+                "row",
+                "statement",
+                "table",
+                "that",
+                "the",
+                "time",
+                "to",
+                "transaction",
+                "when",
+                "window",
+                "within"
+            ],
+            "match_count": 220,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

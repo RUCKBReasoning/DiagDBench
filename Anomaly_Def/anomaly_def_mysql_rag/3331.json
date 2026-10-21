@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer chooses a markedly sub-optimal execution plan despite usable statistics, often because of flawed cost comparisons, plan reuse pathologies, or version/configuration changes.\nOperating System Resource Limit Anomaly : The database hits kernel-enforced ceilings on objects such as file descriptors, shared-memory segments, threads, or async-I/O contexts, causing failures outside the engine’s own resource governance.\n\nWhen both root causes are present, workloads exhibit erratic and hard-to-explain behaviour: the same statement may alternate between fast and extremely slow executions; some runs error out with OS-level \"cannot create thread/file/shm\" messages, while others limp through with degraded performance. Parallel queries may start but stall after only a subset of workers appear, leading to skewed execution, temp-spill explosions, or repeated plan abort/retry cycles. System-wide, operators observe sudden surges in CPU and I/O from full scans or massive hash builds selected by the optimizer, coinciding with spikes in kernel resource-exhaustion logs. Session creation, background autovacuum or checkpoint processes, and I/O completion threads intermittently fail, producing partial outages that disappear once load subsides.\n\nCausal chain: a poor plan often allocates far more resources than a well-tuned one—opening many table/index files, spawning numerous workers, or spilling to large temporary files. This accelerates consumption of kernel-limited objects, pushing the system over OS quotas. Once limits are reached, the database cannot create additional workers, files, or I/O contexts, causing in-flight queries to abort or replan. The optimizer, unaware of the external constraint, may repeatedly choose the same high-resource plan, triggering a feedback loop of retries, plan cache pollution, and further resource churn. Conversely, OS denials can invalidate or refuse parallel plans, forcing the optimizer to fall back to less efficient serial scans, which lengthen execution time and keep resources busy even longer. The mutual reinforcement of bad plan choices and kernel resource exhaustion amplifies latency variance, throughput collapse, and operational instability across both transactional and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.44470134909519105,
+            "bm25_score": 17.92400384105872,
+            "lexical_score": 0.1150822976150487,
+            "matched_terms": [
+                "and",
+                "because",
+                "cannot",
+                "in",
+                "longer",
+                "or",
+                "retry",
+                "session",
+                "statement",
+                "than",
+                "the",
+                "this",
+                "to",
+                "when",
+                "while"
+            ],
+            "match_count": 156,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

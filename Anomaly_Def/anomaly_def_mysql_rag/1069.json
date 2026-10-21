@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Database Memory Allocation Anomaly : Excessive growth of engine buffer caches, work areas, and ancillary heaps drives the database process beyond the safe physical-memory or swap envelope of the host.\nOperating System Resource Limit Anomaly : Database processes hit kernel-enforced ceilings for objects such as file descriptors, shared-memory segments, semaphores, threads, or cgroup quotas, independent of database-level quotas.\n\nWhen both conditions surface concurrently, the system exhibits a blended failure pattern: resident-set size balloons until the kernel begins paging, while at the same time new threads, shared-memory extents, or file handles cannot be granted. Administrators observe escalating swap usage, cache-hit degradation, and memory-pressure-induced CPU stalls alongside erratic \"cannot allocate memory / resource temporarily unavailable\" errors, inability to spawn parallel workers, and partial service where existing sessions limp on but new logins, sorts, or I/O requests fail. Restart storms may occur because an out-of-memory killer terminates the process just as unreleased kernel objects accumulate, causing the next startup to inherit or exceed tight resource caps.\n\nCausally, aggressive memory allocation magnifies the likelihood of breaching kernel limits: each session or parallel worker spawned to service the enlarged workload reserves its own stack, file handles, and asynchronous I/O contexts, accelerating exhaustion of per-process quotas. In turn, once the kernel refuses additional handles or threads, the database engine cannot offload or flush memory through background tasks, so buffers remain pinned and continue to grow, intensifying host memory pressure. This feedback loop turns two individually manageable issues into a compound outage where memory bloat feeds kernel-resource starvation and vice versa, rapidly degrading overall database stability.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 1260,
+            "score": 0.5140518791947913,
+            "bm25_score": 44.69111123959278,
+            "lexical_score": 0.15081521739130435,
+            "matched_terms": [
+                "allocation",
+                "and",
+                "buffer",
+                "engine",
+                "failure",
+                "in",
+                "memory",
+                "or",
+                "per",
+                "pressure",
+                "session",
+                "sorts",
+                "stack",
+                "the",
+                "workload"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "3697",
+                "error_name": "ER_REGEXP_STACK_OVERFLOW",
+                "official_description": "Overflow in the regular expression backtrack stack.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "memory_and_buffer",
+                "cause_analysis": "The failure is typically associated with insufficient memory headroom, buffer pressure, oversized intermediate state, or memory-allocation constraints inside the engine or client library.",
+                "solution_guidance": "Check memory availability, per-session memory settings, large sorts or hashes, and whether workload concurrency is amplifying memory consumption.",
+                "observable_symptoms": [
+                    "memory pressure",
+                    "allocation failure",
+                    "spill",
+                    "unstable latency"
+                ]
+            }
+        }
+    }
+]

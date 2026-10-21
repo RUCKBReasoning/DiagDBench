@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Transaction Log Subsystem Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently chooses substantially sub-optimal execution plans even though statistics are reasonably accurate.\nTransaction Log Subsystem Anomaly : Commit processing is throttled because generation, flushing, or archival of write-ahead log records is the primary bottleneck.\nData Block and Index Integrity Anomaly : On-disk data or index pages are physically or logically corrupted, invalidating key order, page links, or checksums.\n\nWhen these three root causes coincide, the system exhibits erratic plan flips, long-running queries that suddenly devolve into full table scans, surging redo generation from excessive row touches or emergency index rebuilds, and sharply rising log-flush and commit latencies. End-user symptoms include intermittent time-outs, dead-session pile-ups, and inconsistent query results (missing or duplicated rows). Engine alerts may simultaneously report page-checksum failures, log-write or log-sync wait events, repeated log-file switches, and frequent plan-cache invalidations. Because corruption forces the optimizer to avoid or mistrust indexes, even read-heavy statements inflate redo traffic through unnecessary row versioning or sort-based spill writes, further stressing the already saturated log subsystem. The overlapping noise of plan churn, integrity errors, and log stalls makes it difficult to attribute slowdowns to any single layer.\n\nCausally, latent page or index corruption degrades the optimizer’s visibility of accurate access paths, leading it to select expansive scans or Cartesian joins (Query Plan Selection Anomaly). These inflated operations dramatically increase row modifications to worktables, temp segments, or repair attempts, thereby driving up redo volume. The heightened write-ahead log rate overruns an undersized or slow log subsystem (Transaction Log Subsystem Anomaly), escalating commit delays and extending lock-hold times. Prolonged transactions hinder timely page clean-up and checkpointing, allowing additional corrupted pages to propagate and causing more plan invalidations, which in turn perpetuate poor plan selection. The feedback loop among misguided plans, log saturation, and structural corruption amplifies performance instability and data-quality risks, pushing the database toward acute availability incidents if not promptly remediated.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.5500907621866756,
+            "bm25_score": 21.386197939713732,
+            "lexical_score": 0.1314102564102564,
+            "matched_terms": [
+                "an",
+                "and",
+                "any",
+                "because",
+                "from",
+                "is",
+                "lock",
+                "long",
+                "of",
+                "or",
+                "query",
+                "session",
+                "that",
+                "the",
+                "time",
+                "transaction",
+                "transactions",
+                "user",
+                "when"
+            ],
+            "match_count": 173,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + MVCC Version Maintenance Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently chooses a sub-optimal execution plan despite reasonably accurate statistics, leading to inefficient access paths, wrong join methods, or unstable plan switches.\nMVCC Version Maintenance Anomaly : Obsolete row versions and rollback records accumulate faster than background cleaners can reclaim them, enlarging the physical tables and indexes and inflating visibility-check overhead.\n\nWhen both conditions coexist, the database exhibits hybrid symptoms: queries intermittently flip to full-table scans or poorly parameterized nested-loop joins that must wade through bloated heaps and indexes packed with dead tuples. Execution times surge non-linearly, buffer-cache churn intensifies, and I/O rises as enlarged objects no longer fit in memory. Autovacuum or cleanup workers run constantly yet fail to catch up, while the optimizer’s mischosen plans multiply the number of pages touched, further extending snapshot-scanning time. Administrators observe wildly varying runtimes for the same statement, rising latency for hot OLTP paths, escalating memory and I/O utilization, and misleading planner cost estimates due to distorted table statistics.\n\nCausally, excessive dead tuples from the MVCC Version Maintenance Anomaly distort table and index statistics, widening the gap between estimated and actual cardinalities just enough to tip the optimizer into Query Plan Selection Anomalies. Once a poor plan (e.g., sequential scans or Cartesian joins) is selected and possibly cached, it exacerbates the bloat problem by reading and rewriting more pages, producing yet more version churn and delaying cleanup progress. The two anomalies therefore form a feedback loop: version bloat misguides the optimizer, and the optimizer’s sub-optimal plans accelerate bloat growth and resource consumption, degrading overall transactional performance until both issues are addressed together.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.38244135586606426,
+            "bm25_score": 14.19643464423539,
+            "lexical_score": 0.12892156862745097,
+            "matched_terms": [
+                "and",
+                "are",
+                "can",
+                "check",
+                "dead",
+                "is",
+                "latency",
+                "number",
+                "of",
+                "or",
+                "progress",
+                "that",
+                "the",
+                "time",
+                "to",
+                "when"
+            ],
+            "match_count": 324,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_count",
+                "parameter_name": "tcp_keepalives_count",
+                "timeout_category": "network_keepalive_failure_threshold",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the number of TCP keepalive messages that can be lost before the server connection to the client is considered dead.",
+                "trigger_condition": "The number of lost TCP keepalive probes reaches tcp_keepalives_count on systems supporting TCP_KEEPCNT.",
+                "workload_impact": "The server can consider the client connection dead after the configured keepalive failure threshold.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

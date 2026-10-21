@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Database Memory Allocation Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly: Excessive accumulation of obsolete row versions and rollback data because background cleanup cannot keep pace with update-/delete-churn, inflating storage footprints and visibility-check cost.\nDatabase Memory Allocation Anomaly: Unbounded growth of buffer, work, and auxiliary memory areas that pushes the host into heavy paging, OOM kills, or node eviction.\nData Block and Index Integrity Anomaly: Physical pages or index structures become internally inconsistent, causing logical/physical corruption and unreliable access paths.\n\nWhen all three anomalies coexist, the database exhibits a compound failure mode: version bloat swells table and index sizes, driving up buffer-cache demand and temporary-work memory; the overstressed memory subsystem begins paging, which slows background vacuum/cleaner threads, further accelerating version accumulation. Simultaneously, memory pressure and incessant dirty-page churn shorten write-back intervals and increase I/O bursts, heightening the risk of torn pages or incomplete writes that manifest as page-checksum errors, mismatched heap-to-index entries, and sudden \"could not read block\" or \"index corrupted\" errors. Symptomatically, administrators observe: rapidly growing disk usage, declining live-row density, long-running snapshot queries, vacuum workers perpetually lagging, escalating RSS and swap use, intermittent OOM terminations of worker or autovacuum processes, sporadic integrity-check failures, index scans returning inconsistent row counts, and emergency restarts that only partially resolve corruption reports.\n\nCausally, heavy update/delete churn initiates sustained version buildup. The bloated heap and indexes enlarge the buffer pool footprint and lengthen cleaner cycles, forcing the engine to allocate ever-more memory for caching and for the large intermediate sort/hash operations now needed to handle expanded data ranges. Once physical memory is exhausted, the operating system pages or kills processes, interrupting vacuum or checkpoint activity mid-operation. These aborted maintenance actions, together with write storms from swap-in/swap-out and aggressive check-pointing, create windows where critical pages are only partially written, amplifying susceptibility to block corruption. Corruption, in turn, invalidates indexes and requires full-table scans, which touch even more bloated pages, feeding back into memory pressure and leaving cleaners powerless to advance the version horizon. The intertwined feedback loops among version bloat, memory exhaustion, and structural corruption rapidly degrade both performance and data reliability in transactional workloads.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 16,
+            "score": 0.4101793253706651,
+            "bm25_score": 14.051832490350945,
+            "lexical_score": 0.11719696969696969,
+            "matched_terms": [
+                "and",
+                "are",
+                "data",
+                "for",
+                "is",
+                "not",
+                "operation",
+                "or",
+                "out",
+                "read",
+                "the",
+                "when",
+                "write",
+                "written"
+            ],
+            "match_count": 86,
+            "entry": {
+                "timeout_id": "mysql84_xplugin_write_timeout",
+                "parameter_name": "mysqlx_write_timeout",
+                "timeout_category": "x_protocol_network_write_timeout",
+                "scope": "global/session/X Plugin",
+                "official_definition": "Write timeout for X Plugin network communication.",
+                "trigger_condition": "A MySQL X Protocol write operation exceeds mysqlx_write_timeout.",
+                "workload_impact": "The X Protocol network write operation times out.",
+                "default_behavior": "Defined as a MySQL X Plugin system variable.",
+                "system_domain": "network_transport",
+                "cause_analysis": "This timeout is usually triggered when network data is not acknowledged, received, or written within the configured transport-level waiting window.",
+                "solution_guidance": "Inspect packet loss, transport latency, client responsiveness, proxy behavior, and whether slow consumers or unstable links are delaying network progress.",
+                "observable_symptoms": [
+                    "network timeout",
+                    "disconnect",
+                    "read/write interruption"
+                ]
+            }
+        }
+    }
+]

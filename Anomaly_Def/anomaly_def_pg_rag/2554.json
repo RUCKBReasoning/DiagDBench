@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Transaction Log Subsystem Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Database Memory Allocation Anomaly : Excessive or uncontrolled growth of engine memory regions (buffer cache, work areas, plan cache, session heaps, etc.) pushes the database process beyond the safe memory envelope of the host, causing paging, OOM kills, and cache-churn stalls.\nTransaction Log Subsystem Anomaly : The write-ahead logging pipeline (log buffer, log file, archiver, replication retention) cannot flush or recycle redo fast enough, inflating commit latency and stalling writers.\nNetwork and Connectivity Resource Anomaly : The path between clients and the database (listener, authentication, socket I/O, physical network) cannot sustain connection or data-transfer demand, leading to refusals, retransmissions, and idle backends waiting on client reads or writes.\n\nWhen all three anomalies co-exist, symptoms overlap and amplify: commit operations stretch far beyond SLA because they wait first on log flushes and then on congested network handshakes or result delivery; backend processes pile up, each holding large private working sets, inflating overall memory consumption and pushing the host into swap, which in turn elongates log-writer and network-I/O scheduling. Engine wait events show a mixture of LOG_FLUSH, CLIENT_WRITE, and memory-stall states, while OS metrics report paging spikes, elevated disk writes on swap, saturated log devices, rising TCP retransmissions, and a flood of connection-pool retries. Alert logs may alternate between \"log switch incomplete\", \"cannot spawn backend\", and \"out of memory\" messages, making the dominant bottleneck hard to pin down.\n\nCausal chain: slow or blocked log flushes lengthen transaction duration, increasing the number of simultaneously active sessions. Each session retains its work and buffer allocations, driving memory pressure. Memory pressure causes kernel paging that further slows the log writer, worsening commit queues. Prolonged commits leave client threads blocked, which, together with retry logic, inflates connection counts and saturates listener and socket queues. Network congestion or handshake delays then hold backend processes in CLIENT_WRITE waits, keeping their memory allocations live even longer and allowing plan and buffer caches to grow unchecked. The mutually reinforcing feedback loop among memory exhaustion, log-flush delay, and network back-pressure can push the database into a cascading failure where it can no longer accept new connections, flush logs, or reclaim memory without intervention.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.54361352198716,
+            "bm25_score": 22.42713724010025,
+            "lexical_score": 0.15628342245989305,
+            "matched_terms": [
+                "and",
+                "authentication",
+                "can",
+                "client",
+                "connection",
+                "failure",
+                "holding",
+                "idle",
+                "latency",
+                "messages",
+                "number",
+                "of",
+                "on",
+                "or",
+                "session",
+                "sessions",
+                "tcp",
+                "that",
+                "the",
+                "to",
+                "when"
+            ],
+            "match_count": 286,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_count",
+                "parameter_name": "tcp_keepalives_count",
+                "timeout_category": "network_keepalive_failure_threshold",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the number of TCP keepalive messages that can be lost before the server connection to the client is considered dead.",
+                "trigger_condition": "The number of lost TCP keepalive probes reaches tcp_keepalives_count on systems supporting TCP_KEEPCNT.",
+                "workload_impact": "The server can consider the client connection dead after the configured keepalive failure threshold.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

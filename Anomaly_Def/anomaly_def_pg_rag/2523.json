@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Database Configuration Parameter Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Obsolete row versions, rollback records, and dead index entries accumulate faster than background cleanup can reclaim them, inflating storage and visibility-check overhead.\nDatabase Configuration Parameter Anomaly : Engine parameters governing memory, workers, checkpointing, and parallelism are mis-tuned for the hardware and workload, introducing artificial bottlenecks and untimely background activity.\nData Block and Index Integrity Anomaly : On-disk pages and index structures contain physical or logical corruption that breaks key order, page links, or checksum verification, making access paths unreliable.\n\nCombined phenomena: When all three root causes are active, the system shows explosive table and index growth, chronic autovacuum or purge backlogs, and erratic query plans that oscillate between bloated index scans and full table scans because of missing or duplicated rows. Checkpoints and log flushes may surge immediately after parameter changes, yet the storage subsystem remains under-utilised. Background cleaners report \"skipped corrupted page\" or stall on invalid page links, leaving ever more dead tuples behind. Integrity-check utilities and engine logs intermittently emit checksum, page-level, or index-order errors, while wait-event charts are dominated by version visibility checks, corruption-related retries, and idle CPU gaps that do not match the apparent workload pressure. Application sessions may experience sudden serialization failures, duplicate-key errors on inserts, or silent data loss when queries miss rows that are present in the heap but absent from a damaged index.\n\nCausal chain: Mis-tuned parameters (e.g., undersized cleanup workers, disabled page checksums, aggressive checkpoint throttling, or oversized work_mem that bloats per-session memory) throttle version reclamation and extend transaction ID horizons, allowing MVCC debris to pile up. The enlarged heap and index footprint forces more page IO and longer maintenance windows, increasing the chance of power events, firmware bugs, or out-of-memory conditions that precipitate physical corruption. Once corruption appears, cleanup workers may skip or loop on damaged pages, further slowing or halting version reclamation. The lingering MVCC bloat in turn amplifies the stress on misconfigured memory and checkpoint parameters, causing additional checkpoint storms and weakened durability settings that make future corruption more likely. The three anomalies therefore reinforce each other in a feedback loop that degrades performance, jeopardises data integrity, and complicates root-cause diagnosis.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.6100960885980877,
+            "bm25_score": 23.980906092452642,
+            "lexical_score": 0.1347743165924984,
+            "matched_terms": [
+                "active",
+                "and",
+                "because",
+                "cleanup",
+                "for",
+                "from",
+                "idle",
+                "longer",
+                "of",
+                "or",
+                "query",
+                "remains",
+                "session",
+                "sessions",
+                "than",
+                "that",
+                "the",
+                "transaction",
+                "when",
+                "while"
+            ],
+            "match_count": 286,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

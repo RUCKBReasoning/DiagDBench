@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Database Memory Allocation Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Engine-level parameters are mis-tuned relative to hardware capacity, workload intensity, or version defaults, creating artificial bottlenecks that do not reflect true resource exhaustion.\nDatabase Memory Allocation Anomaly : Database memory structures (buffer cache, work areas, plan cache, background heaps, etc.) grow beyond the safe physical or virtual memory envelope, leading to OS pressure, paging, or OOM events.\nTransaction Log Subsystem Anomaly : The write-ahead logging pipeline (log buffer, log files, archiver, replication retention) becomes the throughput or latency bottleneck on the write path, stalling commits and checkpoints.\n\nWhen these three root causes co-exist, the system exhibits a blended symptom pattern that is louder and harder to attribute:  • Commit latency and log-flush waits rise while CPUs and disks oscillate between idle and 100 % utilization;  • Memory pressure causes buffer eviction and plan-cache churn, inflating redo generation and checkpoint frequency, which in turn amplifies log-write peaks;  • Sudden log-file switches, archive backlogs, or replication gaps coincide with kernel swap bursts, background autovacuum/cleaner backlog, and sharp drops in cache hit ratio;  • Instance restarts or node evictions may occur when OOM killers intervene during a prolonged log-flush stall;  • Wait-event histograms show an unusual mix of memory-allocation stalls, log-sync waits, and configuration-driven spin loops, masking the primary culprit.\n\nCausal chain: Mis-set parameters (e.g., oversized per-session work memory, undersized log buffer, aggressive checkpoint timeout) trigger excessive allocation that pushes the host into swap. Memory pressure elongates dirty-buffer flush times and forces more frequent checkpoints, driving up redo volume. The swollen redo stream overwhelms the already under-provisioned log subsystem, further delaying commits and causing the checkpointer to fall behind. Each delay prolongs the lifetime of in-memory modified pages and private work areas, escalating memory consumption even more. The vicious cycle—mis-tuned settings → runaway memory usage → heavier log workload → log subsystem saturation → further memory retention—results in a self-reinforcing feedback loop that degrades OLTP throughput and stability far beyond what any single anomaly would produce alone.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 195,
+            "score": 0.14519381505735116,
+            "bm25_score": 8.515093448535362,
+            "lexical_score": 0.1268173198482933,
+            "matched_terms": [
+                "and",
+                "configuration",
+                "engine",
+                "in",
+                "is",
+                "level",
+                "not",
+                "or",
+                "pressure",
+                "resource",
+                "the",
+                "to",
+                "trigger",
+                "with",
+                "workload"
+            ],
+            "match_count": 9,
+            "entry": {
+                "error_code": "55000",
+                "error_name": "object_not_in_prerequisite_state",
+                "official_description": "object not in prerequisite state",
+                "error_class": "Class 55 - Object Not In Prerequisite State",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

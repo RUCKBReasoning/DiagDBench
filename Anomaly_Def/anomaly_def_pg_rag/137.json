@@ -1,0 +1,44 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Sessions serialize on hot buffer-cache pages, latches, or page-pin structures, causing CPU spin and stalled logical I/O rather than exhausting memory capacity.\nTransaction Log Subsystem Anomaly : The write-ahead log generation, flushing, or archiving path becomes the bottleneck, inflating commit latency and stalling write traffic.\n\nWhen both root causes strike concurrently, the database exhibits a mixed symptom set: 1) surging buffer-busy, page-latch, log-flush, and log-sync waits appearing together in wait-event views; 2) commits that intermittently freeze while foreground processes simultaneously spin on latches; 3) sharp throughput drops with CPU usage oscillating between idle (waiting for log flush) and 100 % spin (contending for latches); 4) checkpoint and archive storms that evict hot pages, forcing even more latch acquisitions; and 5) dramatic latency spikes concentrated on hot index roots or monotonically growing tables whose insert activity pours redo into an already saturated log.\n\nCausal chain: intense latch contention on hot pages heightens the volume and burstiness of redo records (each latched modification adds log entries), which in turn overloads the log subsystem; delayed log flushes prolong transaction commit times, keeping row-level and page-level latches held longer than usual and feeding back into buffer-cache contention. Frequent checkpoints triggered by log-file pressure churn the buffer pool, creating new hot pages and further latch clashes. Conversely, slow log archiving can extend checkpoints, keeping dirty pages pinned and limiting buffer recycling, thereby concentrating access on a shrinking set of resident pages. The two bottlenecks therefore reinforce each other in a positive feedback loop that magnifies latency, reduces concurrency, and risks complete write-path stalls.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 228,
+            "score": 0.6001118824575804,
+            "bm25_score": 26.945889839890867,
+            "lexical_score": 0.08539325842696628,
+            "matched_terms": [
+                "and",
+                "buffer",
+                "concurrency",
+                "latency",
+                "memory",
+                "or",
+                "pressure",
+                "the",
+                "with"
+            ],
+            "match_count": 9,
+            "entry": {
+                "error_code": "HV090",
+                "error_name": "fdw_invalid_string_length_or_buffer_length",
+                "official_description": "fdw invalid string length or buffer length",
+                "error_class": "Class HV - Foreign Data Wrapper Error (SQL/MED)",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "memory_and_buffer",
+                "cause_analysis": "The failure is typically associated with insufficient memory headroom, buffer pressure, oversized intermediate state, or memory-allocation constraints inside the engine or client library.",
+                "solution_guidance": "Check memory availability, per-session memory settings, large sorts or hashes, and whether workload concurrency is amplifying memory consumption.",
+                "observable_symptoms": [
+                    "memory pressure",
+                    "allocation failure",
+                    "spill",
+                    "unstable latency"
+                ]
+            }
+        }
+    }
+]

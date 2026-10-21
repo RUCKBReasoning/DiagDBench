@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Data Block and Index Integrity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly : Saturation or stalling of the write-ahead logging pipeline (log buffer, log files, flush/sync, archival or replication) that delays commit processing and other write activity.\nData Block and Index Integrity Anomaly : Physical or logical corruption of on-disk data pages or index structures that causes inconsistencies between stored bytes and the logical contents expected by the database engine.\nOperating System Resource Limit Anomaly : Exhaustion of kernel-managed resources (file descriptors, shared-memory segments, semaphores, threads, AIO contexts, cgroup quotas, etc.) that prevents the database from performing normal I/O and process management.\n\nWhen these three root causes strike simultaneously, the database exhibits a compounded failure pattern: commit latency and log-flush waits rise sharply while the engine intermittently fails to open or extend log and data files due to depleted file handles or address space. Archive or redo-shipping workers throttle or abort, causing log directories to balloon and checkpoints to storm. Concurrently, corrupted pages or indexes surface as checksum errors, duplicate or missing rows, and emergency plan fall-backs to full scans; recovery attempts may repeatedly fail or loop because required log segments cannot be written, read, or archived. Administrators observe a mixture of engine corruption panics, \"unable to allocate shared memory / file handle\" errors from the kernel, and prolonged application write stalls, making root-cause isolation difficult.\n\nCausally, tight OS resource limits can starve the log subsystem of file descriptors, AIO slots, or thread quotas, slowing or blocking log writes and archives; prolonged stalls increase the window during which partially flushed or torn pages may be exposed, heightening the risk of data and index corruption if a crash or timeout forces an abort. Conversely, existing page or index corruption triggers extra recovery, verification, and redo activity, inflating log generation and magnifying pressure on the already constrained log pipeline and OS resources. The mutual reinforcement between log congestion, kernel-level resource starvation, and structural corruption can drive the database into cascading failures, escalating from performance degradation to systemic outage and data-loss risk.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5911,
+            "score": 0.5486676766121183,
+            "bm25_score": 61.09114897666243,
+            "lexical_score": 0.13384615384615384,
+            "matched_terms": [
+                "an",
+                "and",
+                "between",
+                "existing",
+                "expected",
+                "failure",
+                "log",
+                "normal",
+                "or",
+                "replication",
+                "shipping",
+                "the",
+                "thread",
+                "to",
+                "which",
+                "while"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-014075",
+                "error_name": "OBSOLETE_ER_RPL_KILL_OLD_DUMP_THREAD_ENCOUNTERED",
+                "official_description": "Upon reconnection with the replica, while initializing the dump thread for %s <%s>, an existing dump thread with the same %s was detected. The source is terminating the previous dump thread (%u), which is normal and expected.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

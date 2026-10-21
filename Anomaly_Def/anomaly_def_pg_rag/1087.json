@@ -1,0 +1,60 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Database Memory Allocation Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same objects, forming blocking chains or deadlocks that stall progress until a victim is chosen or the blocking clears.\nDatabase Memory Allocation Anomaly : Database processes collectively consume more RAM than the host can safely supply, provoking paging, OOM terminations, or cache churn that slows every operation.\nStorage Space Capacity Anomaly : Growth of data, log, temp, or backup areas exhausts allotted disk space, leading to allocation failures, halted checkpoints, or inability to persist new data.\n\nWhen all three root causes strike together, the system exhibits a layered failure pattern: long-running lock waits accumulate sessions that continue to hold memory grants; the pinned buffers, work areas, and unreleased cursor state inflate physical memory usage, pushing the host into swap. As memory pressure rises, sort and hash operations spill to TEMP, and frozen transactions prevent log truncation, rapidly consuming remaining disk space. The resulting space exhaustion then blocks further writes and checkpoints, which in turn prolongs lock retention and forces even more sessions into wait queues. Observable symptoms include explosive growth of lock-wait time, escalating resident-set size, heavy paging, TEMP and log files auto-extending until full, aborted transactions due to deadlock, OOM, or \"no space left\" errors, and cluster failover or crash-recovery storms that make diagnosis difficult.\n\nCausally, initial lock contention lengthens transaction lifetimes, keeping their memory allocations and unflushed log segments open. This sustained resource hold amplifies memory pressure and temp-space use. As RAM becomes scarce, the engine spills work to disk, accelerating space consumption; once disk fills, checkpoints and log archiving stall, so lock-holding transactions cannot commit or roll back, deepening the contention. Each anomaly therefore feeds the others in a reinforcing loop that can drive the database into a cascading outage if not interrupted.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.7271479593195368,
+            "bm25_score": 28.70383147022634,
+            "lexical_score": 0.16816450875856817,
+            "matched_terms": [
+                "aborted",
+                "and",
+                "blocking",
+                "cannot",
+                "holding",
+                "incompatible",
+                "is",
+                "lock",
+                "locks",
+                "long",
+                "of",
+                "open",
+                "operation",
+                "or",
+                "sessions",
+                "than",
+                "that",
+                "the",
+                "this",
+                "time",
+                "transaction",
+                "transactions",
+                "when"
+            ],
+            "match_count": 215,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

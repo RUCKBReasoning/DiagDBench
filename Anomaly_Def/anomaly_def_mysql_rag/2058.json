@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Replication Synchronization Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly: Page-level serialization inside the buffer manager where sessions spin or block on latches, pins, or page-content locks while trying to access a small set of hot buffers.\nReplication Synchronization Anomaly: Downstream replicas cannot receive or apply WAL/redo at the rate the primary generates it, producing widening log-position gaps and retaining log segments on the primary.\nNetwork and Connectivity Resource Anomaly: Transport-layer or listener resources between nodes and clients are saturated, lossy, or starved, leading to slow or failed connection establishment and high socket-level waits.\n\nWhen all three conditions occur together, the system exhibits a blended symptom set: 1) front-end clients see intermittent connection timeouts, elevated latency, and sporadic \"too many connections\" or authentication failures; 2) active back-end sessions show surging buffer-busy and page-latch waits, high CPU spin, and sharp response-time spikes on hot tables or index roots; 3) replication dashboards report rapidly growing send, write, and replay lags, expanding retained-WAL or relay-log storage, and replicas fall out of synchronous commit windows; 4) storage pressure from unrecycled WAL files triggers aggressive checkpoints that evict useful pages, amplifying buffer churn and extending latch hold times; 5) system-level network metrics reveal retransmissions and queue overflows exactly when database wait events and replication gaps worsen, making the root causes hard to distinguish in isolation.\n\nCausal chain: Network congestion or listener overload throttles the primary’s ability to stream WAL, immediately slowing replica catch-up. The primary therefore retains additional log segments, inflating disk usage and forcing more frequent checkpoints or background flushes. These writes compete for buffer-pool space, evicting pages that active OLTP sessions soon re-read, which elevates buffer cache churn and concentrates access on hot root or sequence pages—intensifying latch contention. Heightened latch waits elongate transaction execution times, keeping connections open longer and increasing the number of concurrent sockets the listener must juggle, which in turn aggravates network/connection saturation. The intertwined feedback loop between network backlog, replication stalling, retained-WAL pressure, and hot-page latch contention drives a severe, self-reinforcing degradation that is much harder to remediate than any of the individual anomalies alone.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 15,
+            "score": 0.4921897634968657,
+            "bm25_score": 20.97162503428487,
+            "lexical_score": 0.13493230174081236,
+            "matched_terms": [
+                "and",
+                "are",
+                "for",
+                "is",
+                "latency",
+                "level",
+                "network",
+                "or",
+                "out",
+                "read",
+                "slow",
+                "the",
+                "times",
+                "transport",
+                "when",
+                "write"
+            ],
+            "match_count": 50,
+            "entry": {
+                "timeout_id": "mysql84_xplugin_read_timeout",
+                "parameter_name": "mysqlx_read_timeout",
+                "timeout_category": "x_protocol_network_read_timeout",
+                "scope": "global/session/X Plugin",
+                "official_definition": "Read timeout for X Plugin network communication.",
+                "trigger_condition": "A MySQL X Protocol read operation exceeds mysqlx_read_timeout.",
+                "workload_impact": "The X Protocol network read operation times out.",
+                "default_behavior": "Defined as a MySQL X Plugin system variable.",
+                "system_domain": "network_transport",
+                "cause_analysis": "This timeout is usually triggered when network data is not acknowledged, received, or written within the configured transport-level waiting window.",
+                "solution_guidance": "Inspect packet loss, transport latency, client responsiveness, proxy behavior, and whether slow consumers or unstable links are delaying network progress.",
+                "observable_symptoms": [
+                    "network timeout",
+                    "disconnect",
+                    "read/write interruption"
+                ]
+            }
+        }
+    }
+]

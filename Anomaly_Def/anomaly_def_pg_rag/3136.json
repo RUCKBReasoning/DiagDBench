@@ -1,0 +1,46 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Transaction Log Subsystem Anomaly + CPU Resource Anomaly",
+            "Description": "Composite definition: The database instance is simultaneously mis-configured at the parameter level, constrained by an overstressed transaction-log subsystem, and suffering from host CPU saturation. The three root causes coexist and interact, so the platform is neither tuned for the hardware nor able to absorb the log-write volume it produces, while CPU time is exhausted trying to keep up with both normal workload processing and log-related background activity.\n\nCombined observable phenomena: 1) Commit latency and log-flush waits rise sharply even when underlying storage metrics show spare IOPS; 2) Checkpoint storms, frequent log-file switches, and growing archive backlogs coincide with OS run-queue spikes and near-100 % CPU utilization; 3) Wait-event views show an interleaving of log-write, CPU scheduler, and configuration-driven background worker waits; 4) After a parameter change or version upgrade, throughput falls off cliff-like, with application threads alternately spinning on CPU and blocking on log-sync, while monitoring tools report buffer pools or per-session work memory either overcommitted or too small; 5) Secondary symptoms such as replication lag, autovacuum/cleanup backlog, and plan-cache thrashing become harder to attribute to a single layer because every mitigation attempt (e.g., raising parallelism or lowering checkpoint frequency) quickly pushes the system into a different but equally constrained state.\n\nCausal chain and interaction: Poorly chosen configuration parameters (e.g., undersized log buffer, aggressive synchronous-commit, or checkpoint-completion target set too low) increase the frequency and immediacy of log flushes. This drives the transaction-log subsystem toward its throughput limit; once the log path slows, foreground sessions hold latches longer and CPU spin-time rises, inflating overall CPU utilization. The elevated CPU demand further delays log-writer and archiver threads, deepening log congestion. Meanwhile, CPU saturation prevents background processes from performing adaptive tuning or deferred I/O, so configuration mis-matches (such as small buffer pools or excessive parallel workers) cannot self-correct and instead generate even more redo. The feedback loop—mis-configuration → log pressure → CPU thrashing → slower log processing—amplifies each individual anomaly, producing a compounded failure mode that is more severe and harder to diagnose than any of the three issues in isolation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 174,
+            "score": 0.3776288768358044,
+            "bm25_score": 17.15895797452341,
+            "lexical_score": 0.1126870990734141,
+            "matched_terms": [
+                "and",
+                "as",
+                "cannot",
+                "failure",
+                "is",
+                "or",
+                "parameter",
+                "target",
+                "that",
+                "the",
+                "version",
+                "with"
+            ],
+            "match_count": 15,
+            "entry": {
+                "error_code": "42P08",
+                "error_name": "ambiguous_parameter",
+                "official_description": "ambiguous parameter",
+                "error_class": "Class 42 - Syntax Error or Access Rule Violation",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "sql_and_parser",
+                "cause_analysis": "The failure is typically associated with unsupported syntax, invalid statement structure, or feature usage that the target engine version cannot execute as written.",
+                "solution_guidance": "Validate SQL syntax, target-engine compatibility, statement shape, and whether the feature is supported under the current engine version or execution context.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "syntax error",
+                    "feature rejection"
+                ]
+            }
+        }
+    }
+]

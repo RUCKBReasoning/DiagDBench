@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Transaction Lock Contention Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer chooses a markedly sub-optimal execution plan even though statistics are adequate, leading to inefficient access paths, excessive I/O, or wrong join methods.\nTransaction Lock Contention Anomaly: Concurrent transactions request incompatible locks on the same resources, creating long blocker–waiter chains or deadlocks that stall throughput.\n\nWhen both root causes strike together, an ill-chosen plan dramatically enlarges the lock footprint and execution time of critical statements while the lock manager simultaneously becomes saturated with incompatible requests. Observable symptoms include: sudden shifts from index seeks to full table scans that acquire thousands of row, page, or even table locks; explosive growth of lock queues, deadlock frequency, and victim rollbacks; erratic query runtimes where identical statements alternate between fast, parallel index access and slow, blocking scans; rising CPU and I/O due to the bad plan coupled with application-level timeouts as sessions wait on locks; and volatile throughput with alternating bursts of progress and stalls.\n\nCausally, the optimizer’s poor plan increases both the number and duration of locks it holds—e.g., a hash join that spills or a nested-loop on the wrong join order—thereby lengthening critical-section time and magnifying the probability of conflicts. Conversely, the resulting lock waits and deadlocks prolong transaction lifetimes and inflate table cardinalities seen by later optimizer invocations, which can bias plan selection further toward full scans or conservative join orders. This feedback loop between sub-optimal plan reuse and escalating lock contention amplifies performance degradation, making it difficult to attribute slowness to either component in isolation and potentially driving the database into sustained throughput collapse under transactional workloads.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.3886439775103926,
+            "bm25_score": 15.522938178040455,
+            "lexical_score": 0.13242970968037365,
+            "matched_terms": [
+                "and",
+                "are",
+                "bad",
+                "number",
+                "of",
+                "or",
+                "progress",
+                "sessions",
+                "that",
+                "the",
+                "this",
+                "time",
+                "waits",
+                "when",
+                "with"
+            ],
+            "match_count": 9,
+            "entry": {
+                "timeout_id": "mysql84_connection_handshake_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "connection_handshake_timeout",
+                "scope": "global",
+                "official_definition": "The number of seconds that the mysqld server waits for a connect packet before responding with Bad handshake.",
+                "trigger_condition": "A client does not complete the initial connection packet exchange within connect_timeout.",
+                "workload_impact": "The connection attempt fails during handshake.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

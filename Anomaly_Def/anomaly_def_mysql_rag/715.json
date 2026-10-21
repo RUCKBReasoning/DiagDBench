@@ -1,0 +1,61 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + CPU Resource Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Mis-tuned engine parameters cause internal components such as memory pools, checkpoint frequency, logging, parallelism, or worker counts to operate out of alignment with hardware capacity and workload characteristics.\nCPU Resource Anomaly : Database processes saturate host CPU cycles, driving run-queue depth and scheduler waits regardless of the SQL-layer reason for the demand.\nNetwork and Connectivity Resource Anomaly : The network path, listener, authentication, or session-slot layer cannot keep pace with attempted client traffic, leading to backlog, retransmissions, or connection exhaustion.\n\nWhen these three root causes strike concurrently, the system exhibits intertwined symptoms: 1) end-users observe sporadic slow logins, connection time-outs, and sudden query latency spikes; 2) server-side metrics show near-continuous CPU saturation even while some cores idle waiting on client I/O or log flushes; 3) wait-event profiles oscillate between client read/write, socket backlog, spin waits, and log/checkpoint stalls; 4) operating-system socket tables fill and clear in bursts, coinciding with periods of runaway context switches and load-average peaks; 5) post-upgrade or recent parameter changes precipitate flurries of checkpoints and background-writer activity that steal CPU from already strained listener and worker threads, amplifying queueing on both the network and execution layers.\n\nCausal interaction: An ill-chosen configuration (e.g., overly aggressive parallelism, undersized work-memory, tight checkpoint intervals, low connection limits) inflates CPU demand and background activity, pushing the host toward compute saturation. As CPU headroom disappears, listener and authentication threads slow down, prolonging connection setup and increasing socket backlog, which in turn causes clients to retry, compounding network traffic. The surge of half-open sessions and retransmissions further taxes kernel networking stacks and database process scheduling, while misaligned memory and logging parameters trigger additional flushes and context switches that keep CPUs busy but unproductive. The reinforcing loop—misconfiguration driving CPU pressure, which hampers network handling, which then provokes more retries and engine overhead—creates a systemic bottleneck that disrupts both transactional and analytical workloads until configuration is corrected, capacity is added, or traffic is throttled.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.6258150994836919,
+            "bm25_score": 24.92879889953632,
+            "lexical_score": 0.197522955370489,
+            "matched_terms": [
+                "activity",
+                "and",
+                "authentication",
+                "client",
+                "connection",
+                "for",
+                "from",
+                "handling",
+                "idle",
+                "is",
+                "latency",
+                "more",
+                "network",
+                "of",
+                "or",
+                "pools",
+                "read",
+                "session",
+                "sessions",
+                "the",
+                "time",
+                "to",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 34,
+            "entry": {
+                "timeout_id": "mysql84_replica_network_timeout",
+                "parameter_name": "replica_net_timeout",
+                "timeout_category": "replication_network_timeout",
+                "scope": "global/replication",
+                "official_definition": "The number of seconds to wait for more data from a source/replica connection before aborting the read.",
+                "trigger_condition": "A replica waits longer than replica_net_timeout for more data from the source connection.",
+                "workload_impact": "The replication network read is aborted and the replica considers the connection interrupted.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

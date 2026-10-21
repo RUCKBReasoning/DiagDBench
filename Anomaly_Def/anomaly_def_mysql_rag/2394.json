@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Database Configuration Parameter Anomaly",
+            "Description": "Schema and Index Design Anomaly: A static mismatch between the physical data model (tables, partitions, indexes, datatypes, constraints) and the workload’s access patterns, forcing the optimizer to pick inherently inefficient access paths regardless of statistics freshness.\nDatabase Configuration Parameter Anomaly: Mis-tuned engine parameters governing memory, logging, checkpoint cadence, parallelism, and background workers, causing performance to diverge from the hardware’s real capability even when resources appear available.\n\nComposite definition: This anomaly occurs when an ill-suited schema/index design and misaligned database configuration parameters coexist, so that SQL statements already disadvantaged by poor physical design must also contend with sub-optimal engine settings, compounding latency, resource waste, and unpredictability.\n\nCombined observable phenomena: \n• Queries show excessive full-table/​full-index scans, non-covering index lookups, or partition mispruning, while at the same time wait-event histograms reveal unusual imbalances such as inflated buffer-busy, page flush, or log write waits despite moderate CPU and I/O utilization. \n• Execution plans fluctuate after minor data changes or checkpoint activity; some runs are gated by I/O bandwidth, others by memory spills or throttled parallelism, making bottlenecks hard to isolate. \n• Checkpoint storms or aggressive background cleaners evict hot pages built from inefficient scans, forcing repetitive disk reads. \n• Ad-hoc index creation or hinting may give only short-lived relief because undersized buffer pools, mis-set work memory, or overly frequent checkpoints negate the gains. \n• Performance improves dramatically when either better indexes are introduced or parameters are right-sized, but remains unstable until both are addressed.\n\nCausal interaction: Poor schema and indexing inflate I/O volume, memory demand, and log generation. If configuration parameters (buffer pool size, work-memory, checkpoint frequency, parallelism) are simultaneously mis-tuned, the engine cannot absorb the extra load, leading to more frequent cache evictions, log flushes, and plan re-optimizations. Conversely, too small memory or overly aggressive checkpointing amplifies the penalties of non-selective scans and non-covering indexes by limiting caching and forcing repeated physical reads. The two root causes thus reinforce each other: deficient design creates avoidable work, while bad configuration deprives the system of the resources or scheduling needed to mask that work, resulting in cascading slowdowns and erratic performance across both transactional and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.7446538461538461,
+            "bm25_score": 33.79176663370866,
+            "lexical_score": 0.14884615384615385,
+            "matched_terms": [
+                "access",
+                "and",
+                "because",
+                "by",
+                "execution",
+                "in",
+                "or",
+                "other",
+                "resource",
+                "runs",
+                "statements",
+                "the",
+                "this",
+                "time",
+                "too",
+                "when",
+                "with",
+                "work",
+                "workload"
+            ],
+            "match_count": 113,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

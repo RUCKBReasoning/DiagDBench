@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Schema and Index Design Anomaly + Database Memory Allocation Anomaly",
+            "Description": "SQL Workload Logic Anomaly: Application-level statements and transaction boundaries are written in a way that touches far more rows, columns, or time than the business logic really requires.\nSchema and Index Design Anomaly: The physical table, partition, and index layout is mis-aligned with the workload’s access patterns, forcing even well-written queries into inefficient scans and lookups.\nDatabase Memory Allocation Anomaly: The database engine allocates or leaks more memory than the host can safely supply, creating sustained OS pressure, paging, or OOM terminations.\n\nWhen these three root causes strike together, the database experiences a multi-layer performance collapse. Poorly scoped SQL drives large scans; the absence of adequate indexes prevents selective access; and the excessive data volume inflates sort, hash, buffer-cache, and work-area allocations until the memory subsystem is saturated. Observable symptoms include: extremely long and highly variable statement latency, waves of slow-query log entries paired with full-table or non-covering index scans, temporary-segment or spill activity escalating to disk, rapid growth and churn of buffer-pool pages, shrinking cache hit ratios, spike-and-stall CPU patterns caused by memory contention, lock and latch waits that snowball as transactions stay open longer, and eventually paging storms or OOM crashes that take down nodes or entire clusters. Because each layer masks or amplifies the others, plan-level diagnostics alone may not reveal the full problem, and fixes applied at a single layer often show only transient relief.\n\nCausally, inefficient SQL logic initiates oversized data access. The deficient schema and index design removes any opportunity for the optimizer to prune this workload, so the engine must physically process the bloated result set. The resulting scans, joins, and sorts demand large work areas and flood the buffer cache. As memory consumption climbs, the allocator competes for scarce RAM, triggering eviction of useful pages, spilling of intermediate results to temporary space, and OS-level paging. Elevated latency keeps transactions open longer, further enlarging memory footprints for session state and undo/redo, which feeds back into even higher memory pressure—a positive feedback loop that magnifies both performance degradation and stability risks.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.7525762711864407,
+            "bm25_score": 33.46726890492532,
+            "lexical_score": 0.17525423728813558,
+            "matched_terms": [
+                "access",
+                "and",
+                "because",
+                "by",
+                "contention",
+                "for",
+                "in",
+                "is",
+                "long",
+                "or",
+                "query",
+                "session",
+                "statement",
+                "statements",
+                "the",
+                "this",
+                "time",
+                "together",
+                "when",
+                "with",
+                "work",
+                "workload"
+            ],
+            "match_count": 3,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

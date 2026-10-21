@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Database Configuration Parameter Anomaly + CPU Resource Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly: Obsolete row versions and index entries pile up faster than background cleanup can reclaim them, inflating the version store and slowing visibility checks.\nDatabase Configuration Parameter Anomaly: Critical engine settings (memory, checkpointing, parallelism, worker limits, etc.) are poorly tuned for the hardware and workload, causing secondary resource-management pathologies.\nCPU Resource Anomaly: Database processes saturate CPU cores, producing run-queue buildup, context-switch pressure, and widespread latency once compute headroom is exhausted.\n\nWhen these three root causes coincide, the system exhibits a compounded failure pattern: version stores and table sizes balloon while CPU usage remains pegged near 100 %, yet I/O or memory may appear under-utilised. Queries that touch bloated tables show steeply rising latency; planner estimates diverge from reality, leading to sub-optimal parallel or serial plans. Autovacuum/cleaner workers run constantly but make little headway, and their activity further taxes already saturated CPUs. Checkpoint or flush storms may appear irregularly as mis-set thresholds collide with the surging volume of dirty pages produced by long-running clean-up and re-scans. Wait-event views show a mix of CPU-spin and background-writer/vacuum delays, and administrators observe rapid growth in transaction-ID or undo/rollback segments alongside an overloaded scheduler.\n\nCausally, poorly chosen configuration parameters (e.g., undersized maintenance work memory, conservative autovacuum cost limits, excessive parallel-worker counts, or aggressive checkpoint intervals) slow version garbage collection and simultaneously drive up CPU demand. As MVCC debris accumulates, each query’s visibility checks and table/index scans become more CPU-intensive, pushing the system toward compute saturation. The resulting CPU Resource Anomaly starves background workers of CPU slices, which impedes cleanup further, letting bloat expand unchecked. This feedback loop amplifies both the MVCC maintenance backlog and the CPU bottleneck, while the misconfiguration remains the root enabler that prevents the system from rebalancing resources, yielding a severe, self-reinforcing degradation of OLTP performance.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.7428265269674961,
+            "bm25_score": 28.667532211888133,
+            "lexical_score": 0.14275508989165378,
+            "matched_terms": [
+                "and",
+                "context",
+                "from",
+                "is",
+                "long",
+                "more",
+                "of",
+                "or",
+                "pattern",
+                "query",
+                "resource",
+                "running",
+                "than",
+                "that",
+                "the",
+                "this",
+                "when",
+                "with",
+                "work",
+                "workload"
+            ],
+            "match_count": 301,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

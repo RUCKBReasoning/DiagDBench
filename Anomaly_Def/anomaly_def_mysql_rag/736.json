@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Buffer Cache and Latch Contention Anomaly + Replication Synchronization Anomaly",
+            "Description": "Database Memory Allocation Anomaly : Excessive or uncontrolled growth of database memory regions (buffer/plan caches, work areas, etc.) that pushes the host into severe memory pressure, paging, or OOM conditions.\nBuffer Cache and Latch Contention Anomaly : Hot-page or latch serialization inside the buffer manager that forces sessions to spin or wait when pinning, accessing, or flushing shared pages.\nReplication Synchronization Anomaly : Downstream replicas cannot receive, persist, or apply WAL/redo at the rate the primary generates it, leading to widening log‐position and replay lag.\n\nWhen all three root causes are active, the database shows an intertwined failure pattern: memory pressure inflates buffer-replacement churn while hot pages and latch waits spike, driving CPU spin and elongated service times on the primary. The same saturation reduces headroom for the replication sender process, and the stalled page flushes needed to recycle dirty buffers restrain checkpoint progress, so retained log segments and relay logs balloon. On replicas, backlog growth forces larger memory footprints for relay/applier buffers, possibly inducing their own memory exhaustion and further slowing apply. Observability surfaces reveal simultaneous high memory utilization, escalating page-latch or buffer-busy waits, replication apply/flush lag, and log recycling frozen by both memory and latch bottlenecks; symptoms blur together, making single-cause diagnosis difficult.\n\nCausally, uncontrolled memory allocation amplifies buffer pool turnover; as pages are evicted prematurely, they become hot and are immediately re-read, intensifying latch contention. The extra CPU and I/O consumed by this churn slows checkpoint and log flush threads, throttling the replication sender’s ability to stream redo. Replication lag then prevents log truncation, extending the primary’s active log set and enlarging memory-resident replication queues, which feed back into overall memory pressure. On replicas, delayed apply keeps buffer pages dirty longer, prolonging their latch holding time and echoing contention downstream. This positive feedback loop between memory exhaustion, latch serialization, and replication backlog escalates latency, risks OOM or node eviction, and undermines HA objectives.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2442,
+            "score": 0.5480490955536134,
+            "bm25_score": 64.52003585780173,
+            "lexical_score": 0.17820884699057288,
+            "matched_terms": [
+                "and",
+                "apply",
+                "between",
+                "cannot",
+                "downstream",
+                "failure",
+                "it",
+                "lag",
+                "larger",
+                "log",
+                "needed",
+                "node",
+                "of",
+                "or",
+                "replication",
+                "sender",
+                "so",
+                "the",
+                "this",
+                "to"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010555",
+                "error_name": "ER_RPL_REPLICA_REPORT_PASSWORD_TOO_LONG",
+                "official_description": "The length of report_password is %zu. It is larger than the max length(%d), so this replica cannot be registered to the source%s.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

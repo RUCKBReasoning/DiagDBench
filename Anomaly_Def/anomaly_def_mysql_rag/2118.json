@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Storage I/O Throughput Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Composite definition: The database is simultaneously constrained by (1) the internal transaction-log subsystem, (2) the physical I/O bandwidth of the storage stack, and (3) exhaustion of available storage space. All three bottlenecks are active at the same time, so any write-ahead logging, data-file activity, or archive operation is slowed or blocked both by log-layer limits, by device-level throughput saturation, and by the lack of free capacity. \n\nTransaction Log Subsystem Anomaly: The log buffer, log files, or archive/replication pipeline cannot accept or flush redo fast enough, inflating commit-path waits and stalling writers.\nStorage I/O Throughput Anomaly: The underlying volumes hit their IOPS/MB-per-sec ceiling, causing long I/O service times for data, temp, and log requests even when CPU is idle.\nStorage Space Capacity Anomaly: Free space on data, temp, log, or archive destinations falls to zero, triggering allocation failures, auto-extension aborts, and blocked background writers.\n\nCombined phenomena:  • Exponential growth in commit latency as log flushes queue behind saturated devices whose queues are already deep.  • Bursts of log-file switches, checkpoints, and archiver warnings, quickly followed by \"out of space\" or \"cannot extend\" errors when remaining capacity is consumed.  • Mixed wait-event profiles showing both log-related waits (log file sync, log buffer space) and generic storage waits (db file sequential/scattered read, write complete), often accompanied by repeated retry loops from background processes trying to allocate or archive space they cannot get.  • Throughput collapses for both transactional and maintenance workloads; batch windows elongate while foreground OLTP sessions experience timeouts or deadlocks due to stalled commits.  • Monitoring may show paradoxical metrics: high I/O queue depth with near-zero write progress and a flat-lining archive-log position.\n\nCausal chain and interaction: The undersized or slow log subsystem forces frequent flushes and switches, which in turn drive additional write traffic to the already saturated storage, deepening I/O queues and increasing latency. As throughput drops, the log archives and datafile checkpoints slow, preventing timely reuse of log segments and accelerating space consumption. When remaining capacity is exhausted, new log segments and auto-extending datafiles can no longer be allocated, freezing further writes. Conversely, space exhaustion can push the engine into aggressive checkpointing and log switching, amplifying log-subsystem pressure. The intertwined feedback loops among log pressure, bandwidth saturation, and capacity depletion produce a self-reinforcing stall that is far more severe than any single anomaly alone.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.7513810352327098,
+            "bm25_score": 31.537739402583032,
+            "lexical_score": 0.17127011744236625,
+            "matched_terms": [
+                "and",
+                "be",
+                "causing",
+                "data",
+                "is",
+                "long",
+                "longer",
+                "operation",
+                "or",
+                "out",
+                "preventing",
+                "progress",
+                "replication",
+                "stalled",
+                "than",
+                "the",
+                "timely",
+                "times",
+                "to",
+                "waits",
+                "when"
+            ],
+            "match_count": 97,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + MVCC Version Maintenance Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Optimizer Statistics Anomaly: Stale, incomplete, or low-quality statistics cause the optimizer to misestimate cardinalities and choose inefficient execution plans.\nMVCC Version Maintenance Anomaly: Dead rows and old row versions accumulate because background cleaners cannot keep pace, inflating table and index size and adding visibility-check work.\nStorage Space Capacity Anomaly: Data, log, or temporary areas run short of free space, leading to allocation failures, auto-extend stalls, or write errors.\n\nWhen all three root causes appear together, the system exhibits a blend of misestimated plans, rapidly growing on-disk structures, and mounting space-exhaustion warnings. Execution plans may swing from index probes to full scans against bloated tables, spilling large hash or sort operations into already constrained temp space. Vacuum/cleanup workers run continuously yet fall further behind, and their own I/O or temp needs trigger \"no space left\" errors that abort or defer maintenance. Catalog views show diverging row-count estimates from reality, while tablespaces, WAL/archive areas, and temp segments fill at an accelerating rate. Clients experience erratic response times, sudden query cancellations, and eventually write-path outages when log or data files cannot extend.\n\nCausally, MVCC bloat is the first amplifier: as dead tuples pile up, both the physical footprint and the statistical distortion of the tables increase. The larger footprint hastens storage saturation, while the distorted statistics misguide the optimizer into scan-heavy or spill-prone plans that generate even more temp files and WAL, further consuming space. Once free space dwindles, ANALYZE jobs and autovacuum struggle to allocate the scratch or WAL space they need, so statistics grow even staler and bloat removal slows further. This positive feedback loop—stale stats → bad plans → more I/O and bloat → less free space → hindered cleanup/analysis—swiftly degrades performance and pushes the database toward a full-stop space exhaustion event.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.3475130345685593,
+            "bm25_score": 12.005043149986069,
+            "lexical_score": 0.09924098671726755,
+            "matched_terms": [
+                "and",
+                "check",
+                "data",
+                "is",
+                "may",
+                "on",
+                "or",
+                "stale",
+                "system",
+                "the",
+                "this",
+                "when"
+            ],
+            "match_count": 183,
+            "entry": {
+                "timeout_id": "pg16_tcp_user_timeout",
+                "parameter_name": "tcp_user_timeout",
+                "timeout_category": "network_unacknowledged_data_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies how long transmitted data may remain unacknowledged before the TCP connection is forcibly closed.",
+                "trigger_condition": "TCP data sent by PostgreSQL remains unacknowledged longer than tcp_user_timeout on systems supporting TCP_USER_TIMEOUT.",
+                "workload_impact": "The TCP connection is forcibly closed.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

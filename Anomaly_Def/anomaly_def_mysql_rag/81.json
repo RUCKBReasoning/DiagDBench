@@ -1,0 +1,59 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Storage Space Capacity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same rows, pages, or metadata, forcing them to queue or deadlock in the lock-manager layer.\nStorage Space Capacity Anomaly : Physical or logical free space for data, log, temp, or backup areas is exhausted, causing allocation failures and engine stalls unrelated to I/O bandwidth.\nOperating System Resource Limit Anomaly : The database process hits kernel-enforced limits such as file descriptors, shared memory, or thread quotas, preventing creation or expansion of required OS objects.\n\nWhen all three root causes strike simultaneously, the database experiences compound symptoms: lock-wait and deadlock statistics surge while space-allocation and OS-resource errors appear in engine and system logs; DML or DDL commands freeze holding locks, blocking whole lock chains; new sessions, parallel workers, or log-writer threads fail to start because the OS will not grant additional file handles or memory; data-file or log-segment auto-extend requests hang or abort due to full devices, leaving transactions open and their locks retained; application time-outs, retry storms, and partial node outages become frequent and hard to attribute to a single layer.\n\nCausally, each anomaly amplifies the others. Space exhaustion or OS handle limits can interrupt a transaction while it is still holding locks, stretching lock durations and propagating blocking to unrelated sessions. Prolonged lock waits inflate the inflight transaction count, consuming more process slots, memory, and kernel objects, which accelerates hitting OS resource ceilings. At the same time, high concurrent activity and stalled commits drive log and temp growth, hastening space depletion. The feedback loop among extended lock holding, failed space extensions, and denied kernel allocations degrades throughput far faster than any single anomaly would, potentially cascading into a full outage that spans storage, OS, and concurrency control layers.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5559,
+            "score": 0.7549274862194018,
+            "bm25_score": 112.49029282067494,
+            "lexical_score": 0.1875622968580715,
+            "matched_terms": [
+                "and",
+                "backup",
+                "blocking",
+                "chains",
+                "concurrent",
+                "database",
+                "engine",
+                "for",
+                "incompatible",
+                "is",
+                "it",
+                "lock",
+                "locks",
+                "logical",
+                "or",
+                "preventing",
+                "retry",
+                "same",
+                "stalled",
+                "still",
+                "the",
+                "transaction",
+                "transactions",
+                "which"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013700",
+                "error_name": "ER_GRP_RPL_APPLIER_CHANNEL_STILL_RUNNING",
+                "official_description": "The group_replication_applier channel is still running, most likely it is waiting for a database/table lock, which is preventing the channel from stopping. Please check database/table locks, including the ones created by backup tools.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "concurrency_and_transaction",
+                "cause_analysis": "The failure is typically associated with concurrent transactions contending for the same logical resources, incompatible lock acquisition order, or transaction-state conflicts surfaced by the engine.",
+                "solution_guidance": "Inspect blocking chains, reduce conflicting write overlap, shorten transaction lifetime, review lock acquisition order, and verify whether transaction scheduling or retry logic needs adjustment.",
+                "observable_symptoms": [
+                    "blocking",
+                    "rollback",
+                    "retry",
+                    "stalled transaction"
+                ]
+            }
+        }
+    }
+]

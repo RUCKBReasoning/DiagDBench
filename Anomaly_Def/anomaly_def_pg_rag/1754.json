@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Transaction Log Subsystem Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly: Hot or rapidly recycled buffer pages, pins, or latches force sessions to serialize access to shared in-memory data structures, inflating buffer-busy, page-latch, and spin wait times.\nTransaction Log Subsystem Anomaly: Commit processing and log maintenance are throttled by insufficient log buffer, log file, or archiver bandwidth, driving up log-flush and log-write waits and stalling foreground writers.\nStorage I/O Throughput Anomaly: The underlying disks or storage fabric reach their IOPS / bandwidth limits, lengthening physical read-write service times for data, temp, and log files.\n\nWhen these three root causes strike concurrently, the database experiences a multi-layered stall: foreground transactions queue first on log-flush or commit waits, then hold buffer-cache latches longer than normal, while background check-point, buffer-flush, and archiver processes fight for the same saturated I/O channels. Observable symptoms include: 1) extreme variability in commit latency coupled with growing log file and archive backlogs; 2) explosive growth in buffer-busy/latch contention statistics as sessions spin on hot pages already pinned by log-waiting transactions; 3) device queues pinned at maximum depth, with both data-file and log-file latencies far exceeding their baselines; and 4) runaway CPU usage with little throughput gain, accompanied by periodic freezes when global cache or log buffers must be flushed.\n\nCausally, slow physical storage elongates every data-file and log-file I/O, directly triggering the Storage I/O Throughput Anomaly. Prolonged log writes propagate upstream, converting short commit paths into long log-flush waits; transactions already holding page latches remain in critical sections, thereby intensifying Buffer Cache and Latch Contention. The heightened contention forces additional retry loops and may inflate the buffer churn rate, which in turn issues more dirty-page flushes and advances checkpoints, further loading the already saturated storage subsystem and increasing redo generation. This positive feedback loop between I/O saturation, blocked log flushing, and latch hold-time amplification cascades into severe throughput collapse typical of write-heavy OLTP systems.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.5109424767686641,
+            "bm25_score": 15.643492542001216,
+            "lexical_score": 0.14927267918540066,
+            "matched_terms": [
+                "and",
+                "are",
+                "check",
+                "for",
+                "holding",
+                "in",
+                "latency",
+                "maximum",
+                "of",
+                "or",
+                "sessions",
+                "the",
+                "this",
+                "time",
+                "wait",
+                "waiting",
+                "when"
+            ],
+            "match_count": 168,
+            "entry": {
+                "timeout_id": "pg16_libpq_connection_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "client_connection_establishment_timeout",
+                "scope": "libpq/client connection parameter",
+                "official_definition": "Maximum wait for connection, in seconds; zero or not specified means wait indefinitely.",
+                "trigger_condition": "A libpq client connection attempt exceeds connect_timeout seconds.",
+                "workload_impact": "The client connection attempt fails instead of waiting indefinitely.",
+                "default_behavior": "Zero or absent value means wait indefinitely.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

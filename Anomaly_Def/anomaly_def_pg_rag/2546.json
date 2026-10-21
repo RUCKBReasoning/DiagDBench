@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Composite definition: The database simultaneously suffers from a static physical-design mismatch (tables, indexes, partitions, data types, constraints that do not fit the workload) and a saturated transaction-log subsystem (log buffer, log files, archiving, or replication pipeline unable to keep up with redo generation). Both root causes are active at the same time, so even correctly written applications experience inefficient access paths while every data change competes for limited log-write bandwidth.\n\nCombined observable phenomena: 1) Queries that should be index-seek driven devolve into full scans or non-covering index lookups, inflating I/O and CPU. 2) DML and commit operations show pronounced LOG FLUSH, LOG WRITE, and LOG SYNC waits, with frequent log-file switches, growing archive backlogs, and checkpoint storms. 3) Because poorly chosen or missing indexes force extra row lookups and maintain redundant or bloated index structures, redo volume spikes; this aggravates log-file growth, causes longer checkpoint and replication lag, and lengthens transaction response times. 4) End users observe erratic latency patterns: reads slow due to scan overhead, writes stall during log flush pressure, and mixed workloads exhibit lock contention and time-outs as transactions stay open longer. Performance improves only after both design and log bottlenecks are addressed.\n\nCausal interaction: The design anomaly inflates the amount and frequency of data modifications (extra index entries, wider rows, unnecessary full-row updates), directly increasing redo generation per transaction. The swollen redo stream overwhelms an already constrained transaction-log subsystem, extending commit times and prolonging lock hold durations. Prolonged transactions, in turn, intensify contention on the poorly designed tables and indexes, causing even more row versioning, index splits, and undo/redo traffic. This feedback loop magnifies I/O pressure on both data and log devices, masks the root causes behind multiple overlapping wait events, and can ultimately bring an OLTP system to throughput collapse until both the schema/index layout and the log subsystem capacity are corrected together.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.3395708122749787,
+            "bm25_score": 15.186856376875369,
+            "lexical_score": 0.13676182308257778,
+            "matched_terms": [
+                "after",
+                "amount",
+                "an",
+                "and",
+                "are",
+                "be",
+                "for",
+                "latency",
+                "not",
+                "of",
+                "on",
+                "or",
+                "should",
+                "system",
+                "that",
+                "the",
+                "this",
+                "time",
+                "to"
+            ],
+            "match_count": 285,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_interval",
+                "parameter_name": "tcp_keepalives_interval",
+                "timeout_category": "network_keepalive_retry_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time after which a TCP keepalive message that has not been acknowledged by the client should be retransmitted.",
+                "trigger_condition": "A TCP keepalive probe is not acknowledged for tcp_keepalives_interval on systems supporting TCP_KEEPINTVL or an equivalent socket option.",
+                "workload_impact": "Controls retry timing for keepalive probes used to detect unresponsive client connections.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

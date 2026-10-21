@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Replication Synchronization Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Critical runtime settings (memory, checkpointing, parallelism, etc.) are mis-tuned relative to hardware capacity, workload profile, or software version, so the engine’s internal behavior itself becomes the bottleneck.\nReplication Synchronization Anomaly : Stand-by or subscriber nodes cannot receive, persist, or apply WAL/redo traffic as fast as the primary produces it, causing widening log-position gaps and retention of log segments.\nNetwork and Connectivity Resource Anomaly : Network paths, listener sockets, or connection-handling resources are saturated or unstable, impeding data flow or session establishment between hosts and clients (including replicas).\n\nWhen these three conditions overlap, the database exhibits a multi-layer degradation pattern: replication lag surges while primary-side WAL files pile up and cannot be recycled; replicas report both I/O or apply backlogs and frequent disconnect/reconnect churn; monitoring shows bursts of write-intensive waits on the primary even though storage and CPU are under-utilised, alongside steep increases in network retransmissions, half-open sockets, and authentication queueing. End-user sessions experience sporadic timeouts, stale reads from lagging replicas, and sudden latency spikes after each forced checkpoint or replica catch-up. Operations such as failover, switchover, or scaling out read traffic become risky because replicas are simultaneously behind and unstable.\n\nCausally, an unfitting configuration (e.g., aggressive checkpoint_interval, undersized wal_sender timeout, or excessive max_connections) drives high redo generation and spawns more background and connection processes than the host or network can handle. The inflated WAL rate stresses the replication pipeline; meanwhile, network congestion or socket exhaustion slows delivery to replicas, amplifying apply lag. The primary, seeing replication slots behind, is forced to retain additional log segments, inflating disk pressure and triggering even more frequent checkpoints—feedback that intensifies the original configuration problem. Replicas, burdened by delayed apply and intermittent network drops, further throttle back acknowledgement, convincing the primary to hold more WAL and fueling a vicious cycle that degrades both local performance and cross-node consistency.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.46420015114450464,
+            "bm25_score": 18.584486644447626,
+            "lexical_score": 0.1845394736842105,
+            "matched_terms": [
+                "an",
+                "and",
+                "are",
+                "authentication",
+                "connection",
+                "disconnect",
+                "establishment",
+                "handling",
+                "is",
+                "it",
+                "latency",
+                "of",
+                "on",
+                "or",
+                "session",
+                "sessions",
+                "stale",
+                "than",
+                "the",
+                "timeout",
+                "waits",
+                "when"
+            ],
+            "match_count": 11,
+            "entry": {
+                "timeout_id": "mysql84_idle_interactive_session_timeout",
+                "parameter_name": "interactive_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds the server waits for activity on an interactive connection before closing it.",
+                "trigger_condition": "An interactive session remains idle longer than interactive_timeout.",
+                "workload_impact": "The server closes the idle interactive connection.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

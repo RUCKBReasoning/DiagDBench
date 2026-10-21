@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + MVCC Version Maintenance Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Composite Definition: The database simultaneously suffers from sub-optimal physical schema/index design, uncontrolled accumulation of obsolete MVCC row versions, and impending or actual exhaustion of available storage space. Each individual defect is problematic on its own, but their coexistence creates a feedback loop that severely degrades performance, threatens data availability, and complicates recovery or maintenance operations.\n\nCombined Observable Phenomena: Queries that should be index-efficient devolve into full-table or full-index scans across massively bloated heaps and indexes. Execution plans show both missing/ineffective indexes and misestimates caused by inflated table statistics. DML workloads experience escalating latency due to heavier page splits, visibility checks, and cache churn. Background cleanup workers (vacuum, purge, garbage collection) run nearly continuously yet fail to reclaim space fast enough; they also contend with poorly designed indexes that prolong every page visit. Meanwhile, data files, index segments, undo/rollback areas, and archive or log destinations grow rapidly, pushing the system toward auto-extend limits, out-of-space errors, or emergency read-only mode. Administrators may observe cyclic spikes of I/O, checkpoint stalls, and failed maintenance tasks that themselves need additional temporary space.\n\nCausal Interaction: Poor schema and indexing force queries—especially UPDATE and DELETE statements common in OLTP—to touch far more rows and pages than necessary, inflating the number and size of versioned tuples produced by MVCC. The surge in obsolete versions overwhelms cleanup workers; because indexes are non-covering or redundant, those workers must scan and rewrite extra pages, consuming CPU, I/O, and generating further versions. The resulting table and index bloat accelerates storage consumption, edging the system toward capacity limits. As free space dwindles, auto-extension failures and log-recycling stalls slow or block both application traffic and background maintenance, allowing even more version debris to accumulate. Conversely, space exhaustion prevents full vacuuming or index rebuilds that could mitigate bloat, locking the system into a vicious spiral of growing size, falling performance, and increasing risk of downtime.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.5402806389492494,
+            "bm25_score": 15.480875015319974,
+            "lexical_score": 0.0942714126807564,
+            "matched_terms": [
+                "and",
+                "are",
+                "by",
+                "data",
+                "is",
+                "latency",
+                "may",
+                "on",
+                "or",
+                "system",
+                "than",
+                "the"
+            ],
+            "match_count": 275,
+            "entry": {
+                "timeout_id": "pg16_tcp_user_timeout",
+                "parameter_name": "tcp_user_timeout",
+                "timeout_category": "network_unacknowledged_data_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies how long transmitted data may remain unacknowledged before the TCP connection is forcibly closed.",
+                "trigger_condition": "TCP data sent by PostgreSQL remains unacknowledged longer than tcp_user_timeout on systems supporting TCP_USER_TIMEOUT.",
+                "workload_impact": "The TCP connection is forcibly closed.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

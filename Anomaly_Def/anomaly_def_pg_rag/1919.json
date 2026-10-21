@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Buffer Cache and Latch Contention Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Obsolete row versions and dead index entries accumulate faster than background cleanup can reclaim them, inflating table and index size and lengthening visibility checks.\nBuffer Cache and Latch Contention Anomaly : Concurrent sessions fight for access to hot buffer-cache pages and their associated latches, causing spin-waiting, prolonged page pins, and I/O slot starvation.\nOperating System Resource Limit Anomaly : Database back-end or auxiliary processes exhaust kernel-enforced quotas on file descriptors, shared memory, semaphores, threads, or AIO contexts, leading to failed allocations and worker start-ups.\n\nCombined phenomena: A system suffering all three anomalies simultaneously shows explosive growth of the version store and on-disk relation size, steadily rising buffer-busy/latch wait times, and sporadic but escalating OS-level \"too many open files\", \"cannot allocate shared memory\", or \"failed to create thread\" errors. Autovacuum, purge, or undo-cleanup workers run continuously yet make little progress, while their attempts to fork new workers or open additional segments are rejected by the kernel. Checkpoints slow down, dirty pages linger, and hot root or freelist pages become choke points, pushing CPU usage into spin loops. Application sessions pile up behind both MVCC visibility checks and latch waits; some fail to connect at all once OS limits are hit, producing partial outages and time-outs that are hard to attribute to a single subsystem.\n\nCausal chain: Heavy OLTP update/delete churn inflates the MVCC version store, enlarging heaps and indexes so that more pages must reside in the buffer cache. The expanded working set and incessant background cleanup amplify buffer churn and concentrate access on hot meta-pages, triggering latch contention. As latch waits lengthen, session counts rise and the engine spawns additional cleanup, checkpoint, and I/O helper processes; the surge in file handles, shared memory, and threads pushes the host kernel over its configured limits. Once the kernel starts denying resources, cleanup workers terminate or fail to start, allowing even more version bloat, while existing sessions hold latches longer, further intensifying contention. Thus each anomaly feeds the next in a reinforcing loop that degrades throughput, inflates latency, and risks complete service saturation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.46983802217783827,
+            "bm25_score": 20.235714960107455,
+            "lexical_score": 0.11293353439276185,
+            "matched_terms": [
+                "access",
+                "and",
+                "behind",
+                "configured",
+                "contention",
+                "longer",
+                "more",
+                "of",
+                "or",
+                "resource",
+                "session",
+                "than",
+                "that",
+                "the",
+                "time",
+                "too"
+            ],
+            "match_count": 257,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Transaction Lock Contention Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Stale, missing, or insufficient optimizer statistics cause systematic cardinality misestimation and mis-costed execution plans.\nTransaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same resources, forming long blocking chains or deadlocks that stall progress.\nBuffer Cache and Latch Contention Anomaly : Sessions vie for hot buffer pages, latches, or I/O slots, forcing serialization and CPU spin even when logical memory is sufficient.\n\nWhen these three root causes coincide, the database exhibits compounded instability: poorly costed plans may favor full-table scans, unordered index usage, or lock-escalating access paths that touch far more rows and pages than necessary. The inflated footprint magnifies both row/table lock conflicts and the number of buffer pages and latches each transaction must pin. As blocking lengthens, pages stay latched and dirty longer, amplifying buffer-busy, page-latch, and lock-wait events, while deadlock detectors and application timeouts trigger frequent rollbacks and retries. Execution plans show severe row-count misestimates alongside bloated lock and latch wait statistics, checkpoint stalls, and oscillating CPU utilization.\n\nCausally, inaccurate statistics misguide the optimizer into choosing plans that create wide lock scopes (e.g., table scans, range locks) and concentrate traffic on a few hot pages. The resulting lock contention prolongs transaction lifetimes, causing threads to hold latches and buffer pins for extended periods. Extended latch holds throttle page circulation, forcing more sessions to spin or sleep on latch acquisition, which in turn slows data access and keeps locks active even longer. The protracted blocking suppresses or delays statistics refresh operations, allowing data drift to grow and further degrading plan quality—forming a reinforcing loop that steadily degrades throughput and inflates latency in write-heavy transactional workloads.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.3480551960635358,
+            "bm25_score": 15.015227763898407,
+            "lexical_score": 0.13027295285359802,
+            "matched_terms": [
+                "and",
+                "data",
+                "is",
+                "latency",
+                "long",
+                "longer",
+                "may",
+                "on",
+                "or",
+                "progress",
+                "sessions",
+                "stale",
+                "than",
+                "the",
+                "when"
+            ],
+            "match_count": 258,
+            "entry": {
+                "timeout_id": "pg16_tcp_user_timeout",
+                "parameter_name": "tcp_user_timeout",
+                "timeout_category": "network_unacknowledged_data_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies how long transmitted data may remain unacknowledged before the TCP connection is forcibly closed.",
+                "trigger_condition": "TCP data sent by PostgreSQL remains unacknowledged longer than tcp_user_timeout on systems supporting TCP_USER_TIMEOUT.",
+                "workload_impact": "The TCP connection is forcibly closed.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

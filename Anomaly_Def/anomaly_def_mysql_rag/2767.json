@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Buffer Cache and Latch Contention Anomaly + Replication Synchronization Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly: Obsolete row versions and logically deleted index entries pile up faster than background cleanup can reclaim them, inflating the version store and bloating table and index pages.\nBuffer Cache and Latch Contention Anomaly: Concurrent sessions fight for access to hot buffer-cache pages and their associated latches, causing buffer-busy waits, CPU spin, and stalled I/O.\nReplication Synchronization Anomaly: Downstream replicas cannot receive or apply the primary’s redo stream at the rate it is produced, resulting in widening log gaps and retention of old log segments on the primary.\n\nWhen all three root causes strike together, the database shows a compound failure signature: 1) rapidly expanding on-disk heaps and indexes, 2) soaring buffer-busy and page-latch wait times concentrated on hot, bloated pages, 3) continuously rising replication receive/write/replay lag, 4) primary-side WAL segments and replica relay logs accumulating well beyond normal retention windows, and 5) cleanup and checkpoint workers running constantly yet failing to shrink either the version store or the WAL backlog. End users observe erratic response times, pronounced latency spikes, and increasingly stale reads on replicas, while administrators see warnings about transaction-ID or log-cycle exhaustion alongside replication-lag alarms.\n\nCausal chain: Heavy OLTP update/delete traffic first inflates the MVCC version store. The extra dead tuples enlarge every data block, so more pages must be fetched and dirtied, intensifying buffer-pool turnover and putting hot root and free-space-map pages under severe latch pressure. Prolonged latch waits slow foreground commit throughput but still generate WAL at a steady pace; the larger, more fragmented pages also produce more WAL per transaction. Replicas already running near capacity fall further behind, and their delayed replay keeps old snapshot horizons open, preventing the primary’s vacuum from reclaiming obsolete versions. This feedback loop—version bloat → latch contention → replication lag → vacuum inhibition—locks the system into a self-reinforcing degradation spiral that exhausts I/O, memory, and disk space while eroding both primary and replica performance.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.4854553264955883,
+            "bm25_score": 22.29781388574096,
+            "lexical_score": 0.12443693693693693,
+            "matched_terms": [
+                "and",
+                "cannot",
+                "for",
+                "in",
+                "is",
+                "of",
+                "or",
+                "row",
+                "sessions",
+                "than",
+                "the",
+                "this",
+                "transaction",
+                "up",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 131,
+            "entry": {
+                "timeout_id": "mysql84_innodb_row_lock_wait_timeout",
+                "parameter_name": "innodb_lock_wait_timeout",
+                "timeout_category": "innodb_row_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "The length of time in seconds an InnoDB transaction waits for a row lock before giving up.",
+                "trigger_condition": "An InnoDB transaction waits longer than innodb_lock_wait_timeout for a row lock.",
+                "workload_impact": "The lock wait gives up; by default only the current statement is rolled back unless innodb_rollback_on_timeout is enabled.",
+                "default_behavior": "Defined as an InnoDB system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

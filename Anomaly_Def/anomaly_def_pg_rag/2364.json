@@ -1,0 +1,46 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Database Memory Allocation Anomaly + CPU Resource Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Obsolete row versions and rollback records accumulate faster than background cleaners can reclaim them, causing table bloat and visibility-check overhead.\nDatabase Memory Allocation Anomaly : Database memory regions (buffers, work areas, caches, temporary segments) grow past safe host limits, triggering OS-level pressure, paging, or OOM events.\nCPU Resource Anomaly : Database processes consume an abnormally high and sustained share of CPU, saturating cores and lengthening run-queue waits.\n\nWhen these three root causes strike concurrently, the system exhibits a compound failure pattern: bloated heaps and indexes inflate the buffer-cache footprint, which in turn competes with per-query work areas and background workers for RAM. Memory pressure forces the operating system to page, and every faulted-in page or reclaimed version must still be visibility-checked, driving up CPU cycles per row. The escalating CPU demand keeps all cores near saturation, prolongs cleaner and checkpointer cycles, and further delays version reclamation. Observable symptoms therefore include explosive growth of on-disk table size, runaway resident-set size, swap activity, soaring CPU utilisation, high scheduler/run-queue waits, persistent autovacuum or purge workers unable to keep up, mis-estimated plans due to bloated statistics, cache-hit ratio collapse, and widespread query latency spikes that blur the boundary between I/O, memory, and CPU bottlenecks.\n\nCausally, heavy update/delete churn produces excessive dead versions; the enlarged version store inflates buffer-pool usage and forces more aggressive caching, pushing overall memory consumption past safe thresholds. Paging and memory throttling slow cleaner threads, letting even more dead tuples accumulate. Each subsequent access must traverse larger page chains and perform more visibility checks, amplifying CPU usage. Near-saturated CPUs delay both user queries and background maintenance, so version cleanup and memory reclamation fall further behind, creating a feedback loop where MVCC bloat drives memory exhaustion, memory pressure amplifies CPU demand, and CPU saturation prevents recovery—ultimately degrading throughput and threatening system stability.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 34,
+            "score": 0.14159796683725925,
+            "bm25_score": 7.89759438266595,
+            "lexical_score": 0.10693548387096774,
+            "matched_terms": [
+                "and",
+                "be",
+                "failure",
+                "for",
+                "in",
+                "level",
+                "must",
+                "or",
+                "pressure",
+                "resource",
+                "the",
+                "to",
+                "with"
+            ],
+            "match_count": 13,
+            "entry": {
+                "error_code": "22018",
+                "error_name": "invalid_character_value_for_cast",
+                "official_description": "invalid character value for cast",
+                "error_class": "Class 22 - Data Exception",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

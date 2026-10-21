@@ -1,0 +1,60 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + MVCC Version Maintenance Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same objects, producing long waiter chains or deadlocks that stall statement execution.\nMVCC Version Maintenance Anomaly : Obsolete row versions and undo records accumulate faster than background cleaners can reclaim them, inflating storage, scan cost, and snapshot–visibility work.\nTransaction Log Subsystem Anomaly : Generation, flush, or archival of write-ahead log records becomes a bottleneck, stretching commit latency and stalling writers.\n\nWhen these three root causes co-exist, the database exhibits a compound slowdown: transactions block each other at the lock manager, pile up in connection pools, and hold snapshots that prevent vacuum/garbage-collection from advancing. The unreclaimed version bloat enlarges tables and indexes, lengthening lock hold times for range or page locks and further stressing the lock manager. Meanwhile every stalled or rolled-back transaction generates additional redo; the growing version store and frequent deadlock retries inflate log volume, overwhelming the already saturated log buffer, checkpoint, and archiver paths. Observable symptoms include soaring lock-wait and deadlock counts, rapidly expanding table and index sizes, constantly active yet ineffective cleanup workers, exploding write-ahead log directories, prolonged commit and rollback times, and eventually global throughput collapse accompanied by application-level timeouts and storage-space alerts.\n\nCausally, intense lock contention causes sessions to stay open longer, freezing their MVCC snapshots and stopping version pruning; this fuels version-store growth. The bloated heap increases I/O per statement, extending transaction durations and the lifespan of locks, which in turn deepens contention. Both phenomena raise redo generation (due to repeated updates, rollbacks, and cleanup activity) just as prolonged commit waits tie up locks even longer, forming a feedback loop that strains the transaction-log subsystem. A saturated log path then delays commit acknowledgement and rollback processing, prolonging lock holds and snapshot lifetimes, amplifying version bloat, and perpetuating the cycle—ultimately producing a severe, intertwined availability and performance crisis.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.7511111111111111,
+            "bm25_score": 36.67919682746048,
+            "lexical_score": 0.17037037037037034,
+            "matched_terms": [
+                "and",
+                "back",
+                "by",
+                "for",
+                "global",
+                "in",
+                "incompatible",
+                "lock",
+                "longer",
+                "of",
+                "or",
+                "rolled",
+                "row",
+                "sessions",
+                "statement",
+                "than",
+                "the",
+                "this",
+                "transaction",
+                "up",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 26,
+            "entry": {
+                "timeout_id": "mysql84_innodb_row_lock_wait_timeout",
+                "parameter_name": "innodb_lock_wait_timeout",
+                "timeout_category": "innodb_row_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "The length of time in seconds an InnoDB transaction waits for a row lock before giving up.",
+                "trigger_condition": "An InnoDB transaction waits longer than innodb_lock_wait_timeout for a row lock.",
+                "workload_impact": "The lock wait gives up; by default only the current statement is rolled back unless innodb_rollback_on_timeout is enabled.",
+                "default_behavior": "Defined as an InnoDB system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

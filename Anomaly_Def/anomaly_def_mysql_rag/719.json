@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Transaction Lock Contention Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer chooses a markedly inefficient execution plan even though statistics are adequate.\nTransaction Lock Contention Anomaly: Concurrent transactions request conflicting locks, leading to prolonged blocking or deadlocks.\nBuffer Cache and Latch Contention Anomaly: Sessions compete for hot buffer-cache pages and latches, stalling on low-level synchronization primitives.\n\nWhen all three conditions co-exist, the database exhibits a compound failure pattern: an ill-chosen execution plan triggers large scans or explosive join fan-outs that touch many more rows and pages than necessary; these bloated data accesses demand numerous locks and repeated buffer pin/latch operations. As a result, lock-wait queues grow, deadlock reports surge, CPU time is consumed by latch spin/sleep cycles, and overall response times and throughput degrade erratically. Performance counters may simultaneously show optimizer plan churn, escalating lock-wait and deadlock statistics, plus spikes in buffer busy or page-latch waits, making single-root-cause isolation difficult.\n\nCausally, the sub-optimal plan is the spark: by scanning or joining far more rows, it expands the lock footprint and lengthens transaction duration, increasing the window for conflicting lock requests. These prolonged holds, in turn, keep buffer pages pinned and their associated latches occupied, propagating latch contention to other sessions that need the same pages. The resulting latch stalls slow query execution even further, extending lock lifetimes and intensifying lock contention—a feedback loop that can culminate in systemic throughput collapse, widespread deadlocks, and severe latency spikes for transactional workloads.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.6182156328487884,
+            "bm25_score": 20.82878398598617,
+            "lexical_score": 0.12718579234972677,
+            "matched_terms": [
+                "and",
+                "by",
+                "contention",
+                "execution",
+                "for",
+                "is",
+                "operations",
+                "or",
+                "other",
+                "pattern",
+                "query",
+                "the",
+                "time",
+                "when"
+            ],
+            "match_count": 34,
+            "entry": {
+                "timeout_id": "mysql84_regular_expression_time_limit",
+                "parameter_name": "regexp_time_limit",
+                "timeout_category": "expression_evaluation_time_limit",
+                "scope": "global/session",
+                "official_definition": "The time limit for regular expression matching operations performed by the regular expression engine.",
+                "trigger_condition": "A regular expression match operation exceeds regexp_time_limit.",
+                "workload_impact": "The regular expression operation is constrained by the configured time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

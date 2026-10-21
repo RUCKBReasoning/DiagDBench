@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Database Configuration Parameter Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persists in choosing or re-using a substantially sub-optimal execution plan even though statistics are adequate.\nDatabase Configuration Parameter Anomaly : Engine-level settings for memory, logging, parallelism, and background workers are mis-aligned with the hardware and workload characteristics.\nStorage Space Capacity Anomaly : Physical or logical free space for data, logs, or temporary areas is exhausted or about to reach a hard limit.\n\nWhen these three root causes co-exist, the workload experiences compounding symptoms: 1) plan flips toward full scans or hash builds that spill to disk, 2) those spills contend for a temp area that is already close to full, 3) background checkpoints or log writers configured with aggressive cadence flood the I/O layer, yet fail to reclaim space because log archives cannot be flushed, 4) wait-event patterns oscillate between CPU-light optimizer phases, severe I/O waits on temp or log files, and sudden session aborts with \"out of space\" or \"cannot allocate workfile\" errors. Performance becomes erratic; some executions hang in long nested-loop chains, others die immediately once a datafile auto-extend attempt hits the size ceiling. Monitoring dashboards show moderate CPU utilization but rapidly shrinking free space and spikes of internal retries or plan cache invalidations.\n\nCausal chain: a mis-tuned configuration (too small buffer pool, undersized temp and log segments, or over-aggressive parallelism) increases physical I/O pressure and makes the consequences of any sub-optimal plan far more expensive. The optimizer, lacking stability controls, may pick a plan that favors scans and large intermediate results; these results overflow the constrained temp space, accelerating space consumption. As temp or log files near capacity, auto-extend operations or recycling stalls further slow I/O, inflating observed execution costs and provoking the optimizer to switch plans again. Each plan change can introduce new space-hungry operators, which, in turn, push the storage layer past its limits, culminating in space exhaustion, aborted transactions, and pervasive performance collapse.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.34602591788094644,
+            "bm25_score": 16.385914992864326,
+            "lexical_score": 0.11016417189763399,
+            "matched_terms": [
+                "and",
+                "be",
+                "configured",
+                "controls",
+                "data",
+                "is",
+                "long",
+                "or",
+                "out",
+                "the",
+                "to",
+                "waits",
+                "when"
+            ],
+            "match_count": 13,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

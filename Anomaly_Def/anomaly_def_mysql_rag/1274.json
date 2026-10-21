@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + MVCC Version Maintenance Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently chooses sub-optimal execution plans despite having reasonably accurate statistics.\nMVCC Version Maintenance Anomaly : Obsolete row versions and rollback data accumulate faster than background cleanup can reclaim them, inflating storage and visibility-check overhead.\nNetwork and Connectivity Resource Anomaly : Network, listener, socket, or authentication resources become saturated, slowing or preventing client connections and data transfer.\n\nWhen these three root causes strike together, the database exhibits extreme and hard-to-pinpoint performance degradation. Poorly chosen plans trigger long-running scans or nested-loop explosions that touch far more rows than expected; the excess I/O and CPU prolong transaction lifetimes, causing snapshots to remain open and preventing version cleanup. The resulting table and index bloat further pollute statistics and widen the gap between estimated and actual costs, encouraging the optimizer to continue selecting bad plans. Meanwhile, the oversized result sets and elongated execution times keep back-end processes and sockets busy, filling connection pools, exhausting listener backlogs, and amplifying network queuing delays, retransmissions, and connection-establishment failures. Observability signals therefore include rapidly growing table sizes and version-store length, erratic plan changes with soaring execution costs, rising client-side timeouts, half-open connections, and a mix of in-database (buffer-read, MVCC visibility check) waits and network I/O waits.\n\nCausally, a feedback loop emerges: (1) Sub-optimal plans inflate row access counts and execution duration. (2) Prolonged transactions retain old snapshots, blocking vacuum/cleanup and accelerating MVCC version bloat. (3) The swollen heap and misestimated cardinalities drive the optimizer toward even worse plans, perpetuating step 1. (4) Larger result sets and longer server think-time keep connections occupied, pushing the network and listener layer to saturation, which in turn delays new sessions and retries, increasing concurrency spikes. (5) Connection stalls further lengthen transaction lifetimes, intensifying MVCC retention and plan misestimation. Together, these intertwined effects degrade throughput, inflate latency, and threaten availability in high-churn transactional environments.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.6107637706585062,
+            "bm25_score": 20.328188664165452,
+            "lexical_score": 0.15588393750481028,
+            "matched_terms": [
+                "and",
+                "authentication",
+                "bad",
+                "check",
+                "client",
+                "connection",
+                "establishment",
+                "latency",
+                "of",
+                "or",
+                "pools",
+                "server",
+                "sessions",
+                "that",
+                "the",
+                "time",
+                "waits",
+                "when",
+                "with"
+            ],
+            "match_count": 58,
+            "entry": {
+                "timeout_id": "mysql84_connection_handshake_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "connection_handshake_timeout",
+                "scope": "global",
+                "official_definition": "The number of seconds that the mysqld server waits for a connect packet before responding with Bad handshake.",
+                "trigger_condition": "A client does not complete the initial connection packet exchange within connect_timeout.",
+                "workload_impact": "The connection attempt fails during handshake.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

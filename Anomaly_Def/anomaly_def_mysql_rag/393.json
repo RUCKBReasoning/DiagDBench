@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Schema and Index Design Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Composite Definition: The database simultaneously suffers from poorly written or chatty SQL workload logic, a physical schema and indexing layout that does not match access patterns, and operating-system level resource ceilings that throttle the database process. The three layers—application logic, physical data model, and kernel resource governance—create a stack of mutually reinforcing inefficiencies and hard limits.\n\nSQL Workload Logic Anomaly: Application-issued statements and transaction boundaries force the engine to process more data, rows, or time than the true business requirement demands.\nSchema and Index Design Anomaly: Tables, partitions, and indexes are laid out in ways that prevent the optimizer from choosing selective, low-cost access paths even for otherwise well-formulated queries.\nOperating System Resource Limit Anomaly: Kernel-enforced ceilings on file descriptors, shared memory, threads, or other OS objects cap the database’s ability to allocate the resources it needs for query execution and background work.\n\nCombined Phenomena: Long-running queries dominate statement statistics and repeatedly hit slow-query logs, but their execution plans also show full scans, excessive random I/O, or many extra lookups because of missing or non-covering indexes. Concurrently, the database starts emitting intermittent errors such as \"too many open files\", \"cannot allocate shared memory\", or \"failed to create worker thread\", causing some sessions to abort or retry. Connection pools see timeouts; parallel workers fail to start, leading to serial execution and even longer runtimes. Check-pointing, vacuum, or redo flushing is delayed because background processes cannot obtain OS resources, amplifying lock hold times of the already slow transactions. Monitoring shows both high logical I/O and CPU from inefficient query patterns and sudden hard caps on throughput or worker counts unrelated to internal configuration.\n\nCausal Chain: Inefficient SQL statements inflate row counts and I/O volume, which are further exacerbated by sub-optimal schema and index design that forces wide scans and extra lookups. The bloated execution demand multiplies the number of file handles, buffer pins, temporary files, sort runs, and worker threads required. This surge drives the database engine closer to the host’s per-process limits; once those OS ceilings are reached, allocation failures begin to surface. Each allocation failure in turn prevents the optimizer from using parallelism, increases queuing, and lengthens transaction lifetimes, which keeps locks, temp files, and memory segments alive even longer. The feedback loop—heavy workload logic, schema inefficiency, and OS resource exhaustion—creates a compounded performance cliff and sporadic outages that are far more severe than any single anomaly would have produced in isolation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2690,
+            "score": 0.5061869118001792,
+            "bm25_score": 70.31187165684608,
+            "lexical_score": 0.15997304582210242,
+            "matched_terms": [
+                "and",
+                "by",
+                "engine",
+                "failure",
+                "for",
+                "from",
+                "is",
+                "lock",
+                "logic",
+                "logical",
+                "needs",
+                "obtain",
+                "or",
+                "resources",
+                "retry",
+                "schema",
+                "the",
+                "to",
+                "transaction",
+                "transactions"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010805",
+                "error_name": "ER_EVENT_CANT_GET_LOCK_FOR_DROPPING_EVENT",
+                "official_description": "Unable to obtain lock for dropping event %s from schema %s",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "concurrency_and_transaction",
+                "cause_analysis": "The failure is typically associated with concurrent transactions contending for the same logical resources, incompatible lock acquisition order, or transaction-state conflicts surfaced by the engine.",
+                "solution_guidance": "Inspect blocking chains, reduce conflicting write overlap, shorten transaction lifetime, review lock acquisition order, and verify whether transaction scheduling or retry logic needs adjustment.",
+                "observable_symptoms": [
+                    "blocking",
+                    "rollback",
+                    "retry",
+                    "stalled transaction"
+                ]
+            }
+        }
+    }
+]

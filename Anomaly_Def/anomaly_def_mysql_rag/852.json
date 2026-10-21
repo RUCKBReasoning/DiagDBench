@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Database Memory Allocation Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer chooses a markedly sub-optimal execution plan even though statistics are adequate.\nDatabase Memory Allocation Anomaly: Overall engine memory consumption grows beyond the safe capacity of the host, triggering OS or engine-level memory pressure.\nBuffer Cache and Latch Contention Anomaly: Sessions serialize on hot buffer pages and their associated latches, stalling on low-level synchronization primitives.\n\nWhen all three anomalies surface together, operators observe a volatile mix of plan instability, memory stress, and internal buffer contention. A single statement may oscillate between index probes and full scans; after each plan flip, rows flood the buffer cache, inflating working-set size, evicting other pages, and expanding per-query work areas. Resident-set bloat pushes the host into paging or swap storms, while the shrinking effective cache intensifies latch waits on the remaining hot pages. Execution latency becomes highly jittery: some executions terminate quickly, others stall on page-latch or memory-pressure waits, and overall throughput collapses with CPUs either spin-locking or blocked by the OS memory manager.\n\nCausal chain: poor plan selection can inflate I/O and memory demand (e.g., hash joins that spill or table scans that load large objects), accelerating buffer-pool turnover and forcing the engine to allocate additional work memory. The enlarged footprint worsens host memory pressure, provoking aggressive page evictions and dirty-page flush cycles. These churns create a handful of survivor pages that every session must repeatedly acquire, amplifying latch competition. Conversely, severe latch contention extends query runtimes, keeping sub-optimal plans resident longer and holding work areas open, which further inflates memory usage. The feedback loop between plan mis-choice, memory exhaustion, and hot-page serialization drives the database into a degraded state that is deeper than any of the single anomalies would have caused on their own.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 1008,
+            "score": 0.5626081386824511,
+            "bm25_score": 57.990540951143366,
+            "lexical_score": 0.20702319587628865,
+            "matched_terms": [
+                "allocation",
+                "amplifying",
+                "and",
+                "associated",
+                "buffer",
+                "capacity",
+                "consumption",
+                "engine",
+                "is",
+                "large",
+                "latency",
+                "memory",
+                "of",
+                "or",
+                "per",
+                "pressure",
+                "session",
+                "spill",
+                "state",
+                "the",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "3170",
+                "error_name": "ER_CAPACITY_EXCEEDED",
+                "official_description": "Memory capacity of %llu bytes for '%s' exceeded. %s",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "memory_and_buffer",
+                "cause_analysis": "The failure is typically associated with insufficient memory headroom, buffer pressure, oversized intermediate state, or memory-allocation constraints inside the engine or client library.",
+                "solution_guidance": "Check memory availability, per-session memory settings, large sorts or hashes, and whether workload concurrency is amplifying memory consumption.",
+                "observable_symptoms": [
+                    "memory pressure",
+                    "allocation failure",
+                    "spill",
+                    "unstable latency"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Database Configuration Parameter Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Optimizer Statistics Anomaly: Stale, missing, or insufficiently detailed optimizer statistics misrepresent actual data distribution, causing systematic cardinality errors and mis-costed plan choices.\nDatabase Configuration Parameter Anomaly: Engine-level parameters (memory pools, checkpoint cadence, parallelism, etc.) are mis-tuned for the hardware or workload, distorting internal behaviors without any true resource exhaustion.\nBuffer Cache and Latch Contention Anomaly: Sessions contend for shared buffer pages, latches, or I/O slots inside the buffer manager, leading to wait-state storms and CPU spin that serialize access at the page level.\n\nWhen all three root causes coexist, the symptoms overlap and intensify: queries chosen by a misinformed optimizer funnel excessive traffic onto a small set of index or heap pages, while an undersized or aggressively flushed buffer pool (the result of bad configuration parameters) keeps those pages hot, repeatedly evicting and reloading them. The amplified page churn widens the gap between estimated and actual row counts, triggers frequent plan recompilations, and pushes latch and buffer-busy waits to the top of the wait-event profile. Observables include wildly inaccurate cardinality estimates in plans, sudden spikes in page-latch and buffer-busy waits despite low overall CPU or I/O utilization, checkpoint or flush storms immediately after DML bursts, and erratic throughput that worsens after configuration or data-loading events.\n\nCausally, stale or incomplete statistics misdirect the optimizer toward plan shapes (e.g., nested loops or single-threaded index probes) that hammer a narrow set of pages. Misconfigured parameters—such as an undersized buffer cache, overly frequent checkpoints, or excessive per-session work memory—reduce the cache residency of those hot pages and increase dirty-page pressure, provoking more latch acquisitions and longer retention times. The resulting latch contention inflates query runtimes, holding locks and pins longer, which in turn delays background processes that would otherwise refresh statistics or advance checkpoints. This feedback loop deepens cardinality inaccuracy, aggravates configuration stress points, and drives the system into a persistent high-latency, low-throughput state.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.7371311475409835,
+            "bm25_score": 21.84940645323568,
+            "lexical_score": 0.12377049180327868,
+            "matched_terms": [
+                "access",
+                "and",
+                "by",
+                "contention",
+                "engine",
+                "for",
+                "or",
+                "query",
+                "resource",
+                "session",
+                "the",
+                "this",
+                "when",
+                "work",
+                "workload"
+            ],
+            "match_count": 90,
+            "entry": {
+                "timeout_id": "mysql84_regular_expression_time_limit",
+                "parameter_name": "regexp_time_limit",
+                "timeout_category": "expression_evaluation_time_limit",
+                "scope": "global/session",
+                "official_definition": "The time limit for regular expression matching operations performed by the regular expression engine.",
+                "trigger_condition": "A regular expression match operation exceeds regexp_time_limit.",
+                "workload_impact": "The regular expression operation is constrained by the configured time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

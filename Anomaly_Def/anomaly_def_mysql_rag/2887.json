@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Database Configuration Parameter Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer persistently chooses a sub-optimal execution plan despite reasonably accurate statistics, often because of flawed cost estimation, unstable plan reuse, or version/option changes.\nDatabase Configuration Parameter Anomaly: Engine-level settings for memory, parallelism, logging, and background tasks are mis-tuned, so runtime behavior no longer matches hardware capacity or workload needs.\nData Block and Index Integrity Anomaly: On-disk pages or index structures are physically or logically corrupted, leading to unreliable access paths and incorrect row visibility.\n\nWhen all three problems coexist, the database exhibits a volatile and hard-to-triage performance and correctness pattern: identical queries oscillate among radically different plans; some executions fall back to full table scans because damaged indexes fail validation, while others keep inefficient index-based nested loops due to sticky bad plans in the cache. Mis-sized memory or parallelism parameters aggravate the situation—small work or buffer pools force excessive I/O for the accidental full scans, whereas over-allocated settings trigger OOM kills or throttling waits without the CPUs or disks actually being saturated. Concurrently, corruption-induced checksum errors, page-verification failures, or silent row omissions surface intermittently, sometimes only after a checkpoint or log flush storm initiated by the same misconfiguration. The mixed symptom set—plan churn, unexplained wait spikes, sporadic error logs, and mismatched result counts—creates a noisy diagnostic picture in which any single anomaly can masquerade as the primary culprit.\n\nCausally, mis-tuned configuration parameters distort both the optimizer’s cost model (e.g., reduced effective cache size, altered parallelism thresholds) and the runtime resource envelopes, increasing the likelihood that it picks or reuses fragile plans. Those fragile plans amplify the impact of latent page or index corruption by exercising edge code paths (e.g., random I/O probes, backward scans) that hit bad pages earlier and more often. In parallel, overly aggressive checkpoint or log settings—another facet of the configuration anomaly—can precipitate or expose corruption by forcing rapid page recycling or recovering from frequent crashes. Once corruption invalidates indexes or forces the engine to disable them, the optimizer’s already misguided plan repertoire grows even worse, and the subsequent performance degradation feeds back into more emergency configuration tweaks, perpetuating the vicious cycle. Together, the three anomalies reinforce one another, leading to compounded performance regression, unpredictable query results, and elevated risk of data-loss events.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.5495693192605416,
+            "bm25_score": 23.065440783028055,
+            "lexical_score": 0.10909090909090909,
+            "matched_terms": [
+                "and",
+                "another",
+                "back",
+                "because",
+                "by",
+                "for",
+                "in",
+                "longer",
+                "of",
+                "only",
+                "or",
+                "row",
+                "the",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 137,
+            "entry": {
+                "timeout_id": "mysql84_innodb_row_lock_wait_timeout",
+                "parameter_name": "innodb_lock_wait_timeout",
+                "timeout_category": "innodb_row_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "The length of time in seconds an InnoDB transaction waits for a row lock before giving up.",
+                "trigger_condition": "An InnoDB transaction waits longer than innodb_lock_wait_timeout for a row lock.",
+                "workload_impact": "The lock wait gives up; by default only the current statement is rolled back unless innodb_rollback_on_timeout is enabled.",
+                "default_behavior": "Defined as an InnoDB system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

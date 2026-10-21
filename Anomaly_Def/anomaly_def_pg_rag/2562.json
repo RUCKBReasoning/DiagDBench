@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Transaction Lock Contention Anomaly + Database Configuration Parameter Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Costing metadata (row counts, histograms, correlation statistics) is stale, missing, or incomplete, causing systematic misestimation of cardinalities and sub-optimal plan choices.\nTransaction Lock Contention Anomaly : Concurrent sessions request incompatible locks on the same resource, creating long blocking chains or deadlocks that throttle throughput and trigger rollbacks.\nDatabase Configuration Parameter Anomaly : Engine-level settings for memory, background workers, checkpoint cadence, or parallelism are mis-tuned for the hardware or workload, so internal subsystems either starve or over-allocate resources.\n\nWhen all three root causes coexist, the workload is exposed to a compound failure mode: the optimizer repeatedly selects inefficient, lock-prone plans; those plans inflate the number and duration of row or page locks, while mis-sized memory, log, and parallelism parameters lengthen critical sections and slow the resolution of blocking. Observable effects include extreme divergence between estimated and actual row counts, sudden drops in TPS accompanied by surging lock-wait and deadlock events, erratic CPU and memory utilization (some cores idle while others spin), checkpoint or log-flush bursts that coincide with lock spikes, frequent automatic plan recompiles that still fail to relieve blocking, and application timeouts that persist even though hardware is under-utilised.\n\nCausal chain: stale or missing statistics lead the optimizer to choose plans that scan or update far more rows than necessary, expanding the lock footprint. Because configuration parameters are sub-optimal—e.g., work memory too small, max parallelism too high for the buffer pool, or checkpoint intervals too short—each bloated plan holds locks longer, competes for limited memory, and may force excessive log flushes. The prolonged execution time of these poor plans increases the window in which other transactions request conflicting locks, magnifying blocking chains and raising the probability of deadlocks. In turn, the resulting wait storms and victim rollbacks trigger additional auto-stats invalidations and plan recompiles, perpetuating the feedback loop and pushing overall transactional throughput into collapse.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.28854303905334816,
+            "bm25_score": 13.351611329355507,
+            "lexical_score": 0.130752688172043,
+            "matched_terms": [
+                "and",
+                "are",
+                "by",
+                "idle",
+                "is",
+                "long",
+                "longer",
+                "may",
+                "on",
+                "or",
+                "sessions",
+                "stale",
+                "than",
+                "the",
+                "time",
+                "when"
+            ],
+            "match_count": 287,
+            "entry": {
+                "timeout_id": "pg16_tcp_user_timeout",
+                "parameter_name": "tcp_user_timeout",
+                "timeout_category": "network_unacknowledged_data_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies how long transmitted data may remain unacknowledged before the TCP connection is forcibly closed.",
+                "trigger_condition": "TCP data sent by PostgreSQL remains unacknowledged longer than tcp_user_timeout on systems supporting TCP_USER_TIMEOUT.",
+                "workload_impact": "The TCP connection is forcibly closed.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

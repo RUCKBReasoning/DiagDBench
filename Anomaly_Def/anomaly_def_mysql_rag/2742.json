@@ -1,0 +1,62 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Storage Space Capacity Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Critical runtime parameters (memory, checkpoint cadence, log sizing, parallelism, connection limits, etc.) are mis-tuned relative to hardware capacity, workload profile, or version defaults.\nStorage Space Capacity Anomaly : Physical or logical free space for data, logs, archives, temp areas, or backups is exhausted or approaching hard limits.\nNetwork and Connectivity Resource Anomaly : Network bandwidth, latency, socket/connection slots, or listener resources are insufficient to handle the connection rate and data flow between clients and the database.\n\nWhen all three root causes manifest together, the database exhibits an intertwined failure pattern: 1) Sudden or cascading \"out of space\" errors, aborted checkpoints, and stalled DML as log or data files cannot extend; 2) Spike in application timeouts, refused or half-open connections, and client-read/write waits even though in-engine CPU and I/O counters appear low; 3) Dramatic skew in wait-event distribution—sessions pile up on log-write, client-read, buffer-pin, and space-allocation waits concurrently; 4) Long-running transactions and idle-in-transaction sessions accumulate, consuming per-session memory far beyond what the mis-configured work-mem and connection limits can sustain; 5) Background workers (vacuum, cleanup, archiver) fall behind because checkpoints thrash and network copies of archives or backups cannot complete, further accelerating space depletion and widening performance variance.\n\nCausal interaction: Mis-sized parameters (e.g., too small log files, overly aggressive checkpoint targets, oversized per-session work memory, or an inflated max-connections setting) generate excess redo, temp data, and long-lived backends, driving faster space consumption. As free space dwindles, checkpoints and archive processes run more frequently and for longer, inflating I/O bursts and producing additional log segments that must be shipped or copied. Simultaneously, a saturated or flaky network slows archive shipping, backup streaming, and client traffic, preventing timely space reclamation and causing connection retries that further overload listener and backend slots already mis-tuned. Each layer feeds the next: bad parameters accelerate space growth, space exhaustion prolongs I/O stalls that keep transactions and sockets open, and network bottlenecks block the very maintenance operations meant to relieve space and memory pressure—creating a reinforcing loop that can culminate in complete service outage or forced instance shutdown.\n",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.6734381536669811,
+            "bm25_score": 31.15007868067881,
+            "lexical_score": 0.1847622027534418,
+            "matched_terms": [
+                "aborted",
+                "an",
+                "and",
+                "be",
+                "because",
+                "block",
+                "cannot",
+                "client",
+                "configured",
+                "connection",
+                "for",
+                "is",
+                "longer",
+                "network",
+                "of",
+                "or",
+                "session",
+                "sessions",
+                "the",
+                "to",
+                "transaction",
+                "wait",
+                "waits",
+                "when",
+                "write"
+            ],
+            "match_count": 130,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

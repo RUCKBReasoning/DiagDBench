@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Buffer Cache and Latch Contention Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Obsolete row versions and dead index entries accumulate faster than background cleanup can reclaim them, inflating table and index size and lengthening visibility checks.\nBuffer Cache and Latch Contention Anomaly : Concurrent sessions fight for access to hot buffer-cache pages and their associated latches, causing spin-waiting, prolonged page pins, and I/O slot starvation.\nOperating System Resource Limit Anomaly : Database back-end or auxiliary processes exhaust kernel-enforced quotas on file descriptors, shared memory, semaphores, threads, or AIO contexts, leading to failed allocations and worker start-ups.\n\nCombined phenomena: A system suffering all three anomalies simultaneously shows explosive growth of the version store and on-disk relation size, steadily rising buffer-busy/latch wait times, and sporadic but escalating OS-level \"too many open files\", \"cannot allocate shared memory\", or \"failed to create thread\" errors. Autovacuum, purge, or undo-cleanup workers run continuously yet make little progress, while their attempts to fork new workers or open additional segments are rejected by the kernel. Checkpoints slow down, dirty pages linger, and hot root or freelist pages become choke points, pushing CPU usage into spin loops. Application sessions pile up behind both MVCC visibility checks and latch waits; some fail to connect at all once OS limits are hit, producing partial outages and time-outs that are hard to attribute to a single subsystem.\n\nCausal chain: Heavy OLTP update/delete churn inflates the MVCC version store, enlarging heaps and indexes so that more pages must reside in the buffer cache. The expanded working set and incessant background cleanup amplify buffer churn and concentrate access on hot meta-pages, triggering latch contention. As latch waits lengthen, session counts rise and the engine spawns additional cleanup, checkpoint, and I/O helper processes; the surge in file handles, shared memory, and threads pushes the host kernel over its configured limits. Once the kernel starts denying resources, cleanup workers terminate or fail to start, allowing even more version bloat, while existing sessions hold latches longer, further intensifying contention. Thus each anomaly feeds the next in a reinforcing loop that degrades throughput, inflates latency, and risks complete service saturation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5628,
+            "score": 0.38719998295680985,
+            "bm25_score": 42.87052580524333,
+            "lexical_score": 0.1490170289353454,
+            "matched_terms": [
+                "and",
+                "associated",
+                "back",
+                "but",
+                "by",
+                "create",
+                "engine",
+                "failed",
+                "in",
+                "index",
+                "its",
+                "level",
+                "must",
+                "or",
+                "resource",
+                "single",
+                "the",
+                "thread",
+                "to"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013777",
+                "error_name": "ER_DDL_MSG_1",
+                "official_description": "DDL failed to create a thread to load an index, fall back to single thread",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

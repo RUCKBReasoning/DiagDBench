@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Replication Synchronization Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Schema and Index Design Anomaly: Physical data-model and indexing choices do not match workload access patterns, forcing the optimizer into full scans, non-covering lookups, and excessive maintenance overhead that inflate I/O and log volume.\nReplication Synchronization Anomaly: Standby or subscriber systems cannot ingest or apply the primary’s change stream fast enough, producing growing log-position gaps, replay lag, and retention of un-archived log segments on the primary.\nStorage Space Capacity Anomaly: Allocated data, temp, or log areas approach exhaustion, leading to allocation failures, halted extensions, and stalled recycling of log/temporary space.\n\nWhen all three root causes co-exist, the database experiences cascading symptoms: 1) poorly indexed queries generate large scans, temp spills, and bloated undo/redo, elongating transactions; 2) the surge in log volume overwhelms replication apply threads, widening replication lag and forcing the primary to retain ever-growing log segments; 3) retained logs, enlarged indexes, and temporary spill files rapidly consume remaining disk space, triggering auto-extend failures, halted DML, aborted queries, and replica disconnections. Monitoring shows simultaneous spikes in query latency, checkpoint age, replica delay, and space usage, making it difficult to attribute blame to any single subsystem.\n\nCausally, inefficient schema and index design is the first amplifier: every read and write becomes heavier, generating more undo/redo and larger index updates. The inflated log stream must be shipped and replayed downstream; limited apply throughput on replicas turns this into chronic replication backlog. Because the primary cannot recycle log segments that replicas have not replayed, space consumption on both primary and replica storage rises sharply. As free space shrinks, auto-extension or archive operations fail, which in turn stalls new writes and further delays replication, establishing a feedback loop that degrades performance and can culminate in an outage. The intertwined nature of design inefficiencies, replication lag, and space exhaustion complicates diagnosis, as each anomaly masks and intensifies the others.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.6086804717538545,
+            "bm25_score": 20.678577530369907,
+            "lexical_score": 0.1308246225319396,
+            "matched_terms": [
+                "aborted",
+                "and",
+                "data",
+                "is",
+                "latency",
+                "more",
+                "not",
+                "of",
+                "or",
+                "read",
+                "replica",
+                "replication",
+                "the",
+                "this",
+                "to",
+                "when"
+            ],
+            "match_count": 92,
+            "entry": {
+                "timeout_id": "mysql84_replica_network_timeout",
+                "parameter_name": "replica_net_timeout",
+                "timeout_category": "replication_network_timeout",
+                "scope": "global/replication",
+                "official_definition": "The number of seconds to wait for more data from a source/replica connection before aborting the read.",
+                "trigger_condition": "A replica waits longer than replica_net_timeout for more data from the source connection.",
+                "workload_impact": "The replication network read is aborted and the replica considers the connection interrupted.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

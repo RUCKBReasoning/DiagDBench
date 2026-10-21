@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Query Plan Selection Anomaly + CPU Resource Anomaly",
+            "Description": "Schema and Index Design Anomaly: Physical table, index, or partition design mismatches the workload, forcing inefficient access paths even with correct statistics.\nQuery Plan Selection Anomaly: Optimizer chooses or reuses a sub-optimal plan despite acceptable statistics, often due to flawed cost model or plan-cache behavior.\nCPU Resource Anomaly: Database processes consume sustained, abnormal CPU, saturating host cores and degrading overall workload performance.\n\nWhen all three root causes manifest together, the system exhibits severe and wide-spread latency spikes, throughput collapse during peak traffic, and erratic plan flips that coincide with CPU saturation. Typical observations include:  \n• Queries oscillate between full table scans (from missing/inefficient indexes) and occasionally cached but poor plans, inflating logical I/O and CPU time.  \n• Run-queue lengths and context-switch rates climb, while wait-event views show a mix of CPU queue waits and I/O reads from unselective scans.  \n• Minor data-skew or parameter changes trigger drastic performance variability because every new plan choice must fight for already scarce CPU resources.  \n• Maintenance DML or batch jobs magnify the problem by hammering oversized index structures, further crowding cores and displacing execution plans in the cache.  \n• Tuning actions that address only one layer (e.g., forcing a plan or adding CPU) yield limited benefit because the intertwined flaws at all three layers remain.\n\nCausal chain: Poor schema and index design forces the optimizer to consider expensive access paths. Even when statistics are adequate, the cost model may still misjudge alternatives, yielding sub-optimal plans. These heavyweight plans drive excessive CPU consumption; the resulting saturation feeds back into the optimizer’s runtime feedback and plan caching, promoting additional plan instability. High CPU pressure further degrades plan quality through reduced search effort or forced parallelism and delays background statistics refreshes, which in turn perpetuate reliance on bad schema structures. The intertwined feedback loop thus amplifies latency and resource contention far beyond what any single anomaly would cause in isolation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.7435903793701959,
+            "bm25_score": 29.389054326132133,
+            "lexical_score": 0.14530126456731962,
+            "matched_terms": [
+                "access",
+                "and",
+                "any",
+                "because",
+                "contention",
+                "context",
+                "execution",
+                "from",
+                "of",
+                "or",
+                "quality",
+                "query",
+                "resource",
+                "that",
+                "the",
+                "time",
+                "together",
+                "when",
+                "with",
+                "workload"
+            ],
+            "match_count": 308,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

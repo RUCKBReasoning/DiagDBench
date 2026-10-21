@@ -1,0 +1,60 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Storage I/O Throughput Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions hold or request mutually incompatible locks on the same rows, pages, or metadata, causing long blocker-waiter chains or deadlocks that throttle throughput.\nStorage I/O Throughput Anomaly : The physical volumes that host data, temp, or log files are saturated for bandwidth, IOPS, or latency, forcing the engine to stall on reads, writes, and durability flushes.\nOperating System Resource Limit Anomaly : The database process reaches kernel-enforced ceilings for file descriptors, async-I/O contexts, threads, or shared-memory objects, preventing timely creation or completion of new I/O and background tasks.\n\nWhen all three conditions arise together, transactions simultaneously wait on locks, on slow or stalled physical I/O, and on the operating system’s refusal to grant additional kernel resources. Observable symptoms merge and intensify: lock-wait and deadlock reports spike while overall I/O wait time soars; buffer cache miss penalties grow because reads linger in the OS and storage queues; log flushes back up, lengthening commit latency; background workers, parallel query threads, or asynchronous I/O slots fail to start, producing OS-level \"too many open files\" or \"cannot allocate resources\" errors. Application sessions accumulate in connection pools, some timing out due to lock waits, others during disk stalls, and new connections may be rejected outright as process or handle limits are hit. Monitoring dashboards show high lock-wait percent, elevated I/O latency and queue depths, moderate CPU utilization, and surges in kernel error counters.\n\nCausally, storage saturation elongates every physical read and write, forcing transactions to hold row and metadata locks far longer; the resulting backlog increases the number of concurrent sessions and lock requests, amplifying contention and raising the likelihood of deadlocks. Prolonged waits and growing session counts exhaust kernel objects such as file handles, AIO contexts, and threads, triggering OS resource denials that further constrain the engine’s ability to dispatch I/O or spawn lock-manager workers. Each root cause thus feeds the others—slow I/O inflates lock duration, lock pile-ups increase session and handle usage, and OS limits throttle the very mechanisms (I/O threads, background flushers, deadlock detectors) needed to relieve pressure—culminating in a feedback loop that degrades OLTP performance and may escalate into partial or complete service outages.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.7505714285714286,
+            "bm25_score": 34.85640730230886,
+            "lexical_score": 0.16857142857142857,
+            "matched_terms": [
+                "and",
+                "because",
+                "cannot",
+                "database",
+                "for",
+                "incompatible",
+                "lock",
+                "longer",
+                "metadata",
+                "of",
+                "or",
+                "row",
+                "session",
+                "sessions",
+                "that",
+                "the",
+                "time",
+                "timing",
+                "to",
+                "transaction",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 271,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

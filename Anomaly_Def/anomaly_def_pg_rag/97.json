@@ -1,0 +1,46 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Storage I/O Throughput Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly: Hot or rapidly churning pages force sessions to serialize on buffer-cache latches or pins, inflating latch wait time and CPU spin without delivering useful work.\nStorage I/O Throughput Anomaly: Physical devices or virtualization layers reach their IOPS / bandwidth limits, causing read- and write-latencies to climb and driving database I/O waits while CPU is under-utilized.\nStorage Space Capacity Anomaly: Allocated disk or file-system space for data, temp, or log areas is exhausted, halting extensions, allocations, or log archiving and provoking \"no space\" errors.\n\nWhen these three root causes strike together, the database exhibits an interlocking failure pattern: 1) foreground sessions queue on hot buffer pages and latches, 2) their eventual I/O requests pile up behind saturated storage controllers, and 3) once space ceilings are hit, new page allocations, log writes, and checkpoints stall completely. Observable symptoms include extreme and oscillating wait profiles that alternate between buffer-busy/latch waits, storage read/write/io_wait events, and space-allocation or log-switch pauses; runaway CPU spin and yet low useful throughput; sudden spikes in response time for both random OLTP queries and large batch jobs; and a flood of error messages about failed extensions, full log/archive destinations, and timeouts on page reads or dirty-page flushes.\n\nCausal chain: Hotspot pages generate high churn in the buffer pool, which drives more physical I/O as pages are repeatedly read and flushed. This heightened I/O demand collides with an already saturated storage subsystem, lengthening flush cycles and prolonging buffer pin holding times, thereby intensifying latch contention. Simultaneously, sustained write pressure and prolonged checkpoints accelerate space consumption; once free space is depleted, data-file growth, temp usage, or log archiving fail, freezing further writes and forcing even more sessions to spin on latches waiting for buffers that can never be written out. The shortage of throughput prevents timely space-reclamation tasks (e.g., log archiver, cleaner, or auto-vacuum) from completing, while the space exhaustion prevents buffer eviction and I/O queues from draining, creating a feedback loop that degrades the database to near standstill.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 108,
+            "score": 0.1533020736825279,
+            "bm25_score": 9.691113928434472,
+            "lexical_score": 0.12478405315614616,
+            "matched_terms": [
+                "and",
+                "as",
+                "error",
+                "failure",
+                "is",
+                "or",
+                "that",
+                "the",
+                "under",
+                "usage",
+                "with",
+                "written"
+            ],
+            "match_count": 8,
+            "entry": {
+                "error_code": "26000",
+                "error_name": "invalid_sql_statement_name",
+                "official_description": "invalid sql statement name",
+                "error_class": "Class 26 - Invalid SQL Statement Name",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "sql_and_parser",
+                "cause_analysis": "The failure is typically associated with unsupported syntax, invalid statement structure, or feature usage that the target engine version cannot execute as written.",
+                "solution_guidance": "Validate SQL syntax, target-engine compatibility, statement shape, and whether the feature is supported under the current engine version or execution context.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "syntax error",
+                    "feature rejection"
+                ]
+            }
+        }
+    }
+]

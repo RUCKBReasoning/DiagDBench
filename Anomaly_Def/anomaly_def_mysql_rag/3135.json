@@ -1,0 +1,60 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same rows, ranges, pages, or metadata, causing blocking chains or deadlocks managed by the lock manager.\nStorage I/O Throughput Anomaly : Physical read- or write-request volume saturates the bandwidth, IOPS, or latency budget of the underlying storage devices that hold data, log, or temp files.\n\nWhen both anomalies strike together, sessions pile up behind conflicting locks while the storage layer is simultaneously unable to service the flood of buffer-pool misses, log flushes, and page writes quickly enough. Observable effects include lock-wait and I/O-wait events interleaved in wait-profiling views, runaway transaction response times, elevated deadlock frequency, growing lock queues whose wait durations rise in step with disk latency spikes, stalled checkpoint or redo flush activity prolonging lock holds, and an overall collapse in throughput even though CPU may appear only moderately loaded.\n\nCausally, heavy lock contention prolongs transaction lifetimes, which in turn extends the window during which each transaction issues reads, dirty-page writes, and mandatory log flushes—pushing the storage subsystem toward saturation. Conversely, storage saturation slows every page fetch, undo read, and commit flush, keeping locks held far longer than normal and creating longer blocking chains and more opportunities for deadlocks. The two resource bottlenecks therefore form a positive feedback loop: slow I/O extends lock duration, extended locks increase concurrency pressure and I/O volume, and the compound effect degrades the database far more severely than either anomaly in isolation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.7573298816568047,
+            "bm25_score": 35.22640789462323,
+            "lexical_score": 0.19109960552268243,
+            "matched_terms": [
+                "an",
+                "and",
+                "blocking",
+                "by",
+                "conflicting",
+                "for",
+                "in",
+                "incompatible",
+                "is",
+                "lock",
+                "longer",
+                "metadata",
+                "of",
+                "only",
+                "or",
+                "sessions",
+                "than",
+                "the",
+                "transaction",
+                "up",
+                "wait",
+                "when",
+                "window"
+            ],
+            "match_count": 147,
+            "entry": {
+                "timeout_id": "mysql84_innodb_row_lock_wait_timeout",
+                "parameter_name": "innodb_lock_wait_timeout",
+                "timeout_category": "innodb_row_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "The length of time in seconds an InnoDB transaction waits for a row lock before giving up.",
+                "trigger_condition": "An InnoDB transaction waits longer than innodb_lock_wait_timeout for a row lock.",
+                "workload_impact": "The lock wait gives up; by default only the current statement is rolled back unless innodb_rollback_on_timeout is enabled.",
+                "default_behavior": "Defined as an InnoDB system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,46 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly: Excessive accumulation of obsolete row versions and index entries outpaces background cleanup, inflating the version store and bloating on-disk structures.\nTransaction Log Subsystem Anomaly: The generation, flushing, or archival of write-ahead log (WAL) records becomes the bottleneck, stretching commit latency and stalling write throughput.\n\nComposite definition: Both version-store bloat and log-subsystem saturation are active at the same time, so every modifying transaction must cope with heavier MVCC bookkeeping while also waiting longer for its corresponding log records to be flushed and archived.\n\nCombined anomalous phenomena: 1) Commit times rise unpredictably because transactions spend extra CPU cycles scanning swollen version chains and then block on congested log-flush waits. 2) Table and index files grow rapidly alongside the WAL directory, causing storage exhaustion warnings for both data and log areas. 3) Autovacuum or purge workers run continuously yet fall further behind, while checkpoint and log-archive processes report backlog; checkpoint storms triggered by the log side amplify IO pressure on already bloated heaps. 4) Planners misestimate row counts due to table bloat, producing scan plans that magnify the I/O amplified by frequent checkpoints, making it difficult to attribute latency spikes to one layer alone.\n\nCausal chain and reinforcement: High update/delete churn first inflates the version store; the extra redo produced by deleting and relinking MVCC versions accelerates WAL generation. The swollen WAL in turn forces more frequent checkpoints and log-file switches, throttling background cleaners that need IO bandwidth to prune dead tuples, so MVCC bloat accumulates even faster. If archive or replication lag prevents log recycling, disk space pressure can suspend new transactions; long-running snapshots retained by slow replicas also keep old versions alive, preventing cleanup. Thus each anomaly feeds the other, creating a positive feedback loop that degrades throughput, inflates storage, and risks full-stop outages.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 123,
+            "score": 0.20644377575410275,
+            "bm25_score": 12.344667748178443,
+            "lexical_score": 0.10854066985645933,
+            "matched_terms": [
+                "and",
+                "be",
+                "by",
+                "data",
+                "in",
+                "its",
+                "modifying",
+                "must",
+                "or",
+                "pressure",
+                "the",
+                "to",
+                "with"
+            ],
+            "match_count": 15,
+            "entry": {
+                "error_code": "38002",
+                "error_name": "modifying_sql_data_not_permitted",
+                "official_description": "modifying sql data not permitted",
+                "error_class": "Class 38 - External Routine Exception",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

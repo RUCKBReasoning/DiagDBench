@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Replication Synchronization Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Excessive accumulation of obsolete row versions and index entries outpaces background cleanup, inflating storage and visibility-check overhead.\nReplication Synchronization Anomaly : Standbys and downstream consumers fall behind because they cannot receive or apply WAL/redo traffic as fast as the primary generates it.\nNetwork and Connectivity Resource Anomaly : Network paths, listeners, or session slots saturate or flap, delaying or aborting client and replica connections as well as log streaming.\n\nWhen all three anomalies coexist, the database exhibits a multi-layered slowdown: tables and indexes bloat, full-table scans and index probes lengthen, and primary commit latency rises as replication send queues back up. Replication lag metrics climb while replica read staleness grows; simultaneously, clients and replication workers suffer connection timeouts, increased round-trip times, and frequent reconnect storms that exhaust server connection slots. Log-segment retention balloons because lagging replicas and disconnected receivers prevent recycling, which in turn increases disk-space pressure and prolongs crash-recovery and backup windows. Planner misestimates due to MVCC bloat further amplify load on the primary, and the resulting higher write throughput aggravates both network saturation and replica replay deficits.\n\nCausally, heavy update/delete churn creates rapid version buildup, enlarging the write-ahead log volume that must be shipped over the network. The swollen WAL stream competes with application traffic on constrained or unstable network links, elevating packet loss and retransmissions and causing receiver backends to stall or drop. Each disconnect forces replication to restart log streaming, multiplying network handshakes and further delaying apply. The sustained replica lag holds old transaction snapshots open, slowing vacuum/cleaner progress and locking in even more dead rows on the primary, which inflates table size and write rates—a feedback loop that perpetuates version bloat, network congestion, and replication backlog until storage or connection capacity is exhausted.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2454,
+            "score": 0.534876043344997,
+            "bm25_score": 64.60714901702552,
+            "lexical_score": 0.18183962264150944,
+            "matched_terms": [
+                "and",
+                "apply",
+                "disconnect",
+                "downstream",
+                "higher",
+                "is",
+                "lag",
+                "log",
+                "network",
+                "of",
+                "on",
+                "or",
+                "receiver",
+                "replica",
+                "replication",
+                "restart",
+                "retention",
+                "server",
+                "the",
+                "to",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010567",
+                "error_name": "ER_RPL_LOG_ENTRY_EXCEEDS_REPLICA_MAX_ALLOWED_PACKET",
+                "official_description": "Log entry on source is longer than replica_max_allowed_packet (%lu) on replica. If the entry is correct, restart the server with a higher value of replica_max_allowed_packet",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

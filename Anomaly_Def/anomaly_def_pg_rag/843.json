@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Database Configuration Parameter Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Transaction Lock Contention Anomaly: Concurrent transactions request incompatible locks on the same data or metadata objects, causing prolonged blocking chains or deadlocks that the lock manager must resolve.\nDatabase Configuration Parameter Anomaly: Critical engine parameters (memory sizes, checkpoint cadence, parallelism, etc.) are mis-tuned relative to hardware and workload, so bottlenecks arise even when physical resources are not yet exhausted.\nOperating System Resource Limit Anomaly: The database process hits kernel-enforced ceilings for files, memory segments, threads, or other OS objects, preventing new allocations and stalling activity.\n\nWhen all three root causes manifest together, the system exhibits compounded symptoms: lock-wait and deadlock frequency soar while overall throughput and connection availability plummet; sessions pile up waiting not only on locks but also on artificially throttled I/O, CPU, or background workers; deadlock detectors or autovacuum/cleanup tasks fail to start because the process has exhausted file descriptors or thread quotas; error logs show a mix of lock-timeout/victim-abort messages, parameter-driven warnings about buffer, log, or worker shortages, and kernel errors for resource denial. Recovery spikes (checkpoints, flush storms) can coincide with massive blocking, making performance swings sudden and severe and obscuring which layer is primary.\n\nCausally, mis-tuned database parameters can lengthen transaction lifetimes (e.g., small work_mem causing extra sorts, aggressive checkpoints inducing I/O stalls), so locks are held longer and contention intensifies. The attempt to compensate—by opening more connections or parallel workers—consumes additional file handles, threads, and shared memory, pushing the process toward OS limits. Once those limits are breached, new backend or auxiliary processes cannot start, deadlock detectors or background writers stall, and waiting transactions remain blocked indefinitely, further deepening lock queues. Conversely, OS denials of resources can thwart parameter settings (e.g., requested shared_buffers exceeds kernel SHMMAX), forcing the engine into degraded fall-back configurations that amplify the original mis-tuning. The interlocking feedback among lock contention, poor configuration, and OS resource exhaustion creates a vicious cycle that severely degrades OLTP responsiveness and can culminate in partial or full outage.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.3953654348703974,
+            "bm25_score": 18.334023490694452,
+            "lexical_score": 0.15766621438263229,
+            "matched_terms": [
+                "about",
+                "activity",
+                "and",
+                "are",
+                "but",
+                "connection",
+                "for",
+                "has",
+                "is",
+                "longer",
+                "not",
+                "of",
+                "or",
+                "responsiveness",
+                "sessions",
+                "that",
+                "the",
+                "timeout",
+                "transaction",
+                "when",
+                "with"
+            ],
+            "match_count": 201,
+            "entry": {
+                "timeout_id": "pg16_idle_session_timeout",
+                "parameter_name": "idle_session_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle, but not within an open transaction, for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle and not inside an open transaction longer than the configured threshold.",
+                "workload_impact": "The session is terminated; the documentation warns about using this with connection pools or middleware.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

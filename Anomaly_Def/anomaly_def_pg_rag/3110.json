@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Database Memory Allocation Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level SQL or transaction design forces the engine to read, join, or lock far more data and for longer durations than business requirements dictate.\nDatabase Memory Allocation Anomaly : Engine and session memory structures grow beyond safe host limits, leading to pressure, paging, and cache churn that slow execution and risk OOM failures.\nTransaction Log Subsystem Anomaly : The write-ahead logging layer cannot absorb or persist redo fast enough, causing commit stalls, backlog in log archival/replication, and write-path throttling.\n\nWhen all three root causes coexist, the database exhibits a blend of severe and mutually amplifying symptoms: end-user statements run with extreme and highly variable latency; commits pause on log-flush waits that lengthen as memory pressure forces dirty buffers to be flushed and log buffers to shrink; slow queries and prolonged transactions monopolize buffer pages and work memory, driving resident-set growth, OS paging, and plan-cache bloat; concurrent long-running writes generate surges of redo that outpace log device throughput and fill log segments, triggering checkpoint storms and cascading stalls. Administrators may observe simultaneous slow-query spikes, escalating memory usage or OOM events, and commit latency alerts, making it difficult to attribute performance collapse to a single layer.\n\nCausally, inefficient SQL inflates row scans, sorts, and joins, expanding per-query work areas and dirty-page generation. This heightened memory demand collides with already stressed buffer, sort, and cache regions, accelerating memory pressure and evictions. As memory tightens, the engine may shrink log buffers or stall background flushers, further slowing commit throughput. Meanwhile, the bloated and long-running transactions from the workload anomaly emit excessive redo, saturating the undersized or contended transaction-log subsystem. Log flush delays prolong transaction lifetimes, which in turn hold memory and locks even longer, feeding back into memory exhaustion and elevated concurrency waits. The intertwined effects of heavy logical workload, memory overcommit, and log bottlenecks thus create a reinforcing loop that degrades both throughput and stability in write-intensive OLTP environments.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.31492323706612035,
+            "bm25_score": 14.269481404924347,
+            "lexical_score": 0.10522880720180045,
+            "matched_terms": [
+                "and",
+                "data",
+                "latency",
+                "long",
+                "longer",
+                "may",
+                "on",
+                "or",
+                "session",
+                "than",
+                "the",
+                "this",
+                "when"
+            ],
+            "match_count": 314,
+            "entry": {
+                "timeout_id": "pg16_tcp_user_timeout",
+                "parameter_name": "tcp_user_timeout",
+                "timeout_category": "network_unacknowledged_data_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies how long transmitted data may remain unacknowledged before the TCP connection is forcibly closed.",
+                "trigger_condition": "TCP data sent by PostgreSQL remains unacknowledged longer than tcp_user_timeout on systems supporting TCP_USER_TIMEOUT.",
+                "workload_impact": "The TCP connection is forcibly closed.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

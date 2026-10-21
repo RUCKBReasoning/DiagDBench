@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Storage Space Capacity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Critical engine-level settings (memory pools, checkpoint cadence, log sizing, worker counts, etc.) are mis-tuned for the hardware, workload, or version, creating artificial pressure on internal resources.\nStorage Space Capacity Anomaly : Physical or logical free space for data, logs, temp, or backup areas is exhausted, triggering allocation failures and blocking growth-related operations.\nOperating System Resource Limit Anomaly : Kernel-enforced ceilings on file handles, shared memory, semaphores, threads, or cgroup quotas are reached, preventing the database from creating or accessing required OS objects.\n\nWhen all three root causes strike simultaneously, the system exhibits compound symptoms: rapid log-file growth from aggressive checkpointing collides with insufficient disk space, producing log-write stalls, checkpoint storms, and frozen commit processing. Concurrently, the engine’s attempts to auto-extend files, spawn extra background or parallel workers, or allocate additional shared memory are denied by the OS, surfacing as \"cannot allocate file descriptor / shared memory / thread\" errors in both database and system logs. Sessions may hang in log-related waits while CPU usage oscillates between idle gaps (due to write throttling) and spin loops (from failed worker creation). Maintenance tasks meant to reclaim space or clean orphaned resources cannot launch, causing temp-space bloat and runaway diagnostic logs that further consume the dwindling disk. Overall, the workload experiences cascading slowdowns, sporadic transaction failures, and eventual instance-wide freeze or crash recovery cycles.\n\nCausally, mis-set configuration parameters often increase churn: undersized redo logs force frequent checkpoints; small work-memory settings inflate temp spill volume; overly high connection or parallelism caps multiply file and semaphore consumption. These behaviors accelerate space consumption and inflate the count of kernel objects, pushing the system toward its storage and OS-limit ceilings sooner than normal. Once disk fills, the database cannot archive or recycle logs, prolonging checkpoints and inflating the number of open file handles; simultaneous OS denials of new handles or shared memory prevent the engine from adapting (e.g., creating new log segments or spawning cleanup workers). Each anomaly thus amplifies the others: configuration mis-tuning drives resource churn, space exhaustion blocks I/O progress, and OS limit saturation starves the engine of critical handles and memory, jointly intensifying contention, stalling recovery mechanisms, and precipitating full service outages.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.6950166203886171,
+            "bm25_score": 24.148592034859877,
+            "lexical_score": 0.12867250892567347,
+            "matched_terms": [
+                "and",
+                "attempts",
+                "blocking",
+                "cannot",
+                "for",
+                "in",
+                "is",
+                "or",
+                "required",
+                "sessions",
+                "than",
+                "the",
+                "to",
+                "transaction",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 114,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

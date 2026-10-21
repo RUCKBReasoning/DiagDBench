@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Transaction Lock Contention Anomaly",
+            "Description": "Optimizer Statistics Anomaly : The optimizer bases its cost estimates on stale, incomplete, or missing statistics, systematically misestimating cardinalities and choosing inefficient execution plans.\nTransaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same data items, creating long blocking chains or deadlocks that throttle throughput and trigger roll-backs.\n\nWhen both root causes strike at once, the database experiences a compound failure mode in which poor plan choices amplify locking pressure and the resulting blocks further hinder statistics maintenance. Observable symptoms include: 1) huge gaps between estimated and actual row counts, 2) plans that scan or sort far more rows than expected, 3) sudden lock-wait time spikes, deadlock reports, and lock-escalation events, 4) throughput collapse accompanied by CPU and I/O under-utilization while sessions wait on locks, 5) repeated plan recompiles that fail to stabilize, and 6) deferred or aborted automatic statistics updates because the objects they target are locked for long periods.\n\nCausal chain: stale or missing statistics mislead the optimizer into selecting plans that touch many unnecessary rows or use sub-optimal join orders, expanding lock footprints from key to page or table scope and lengthening transaction duration. The enlarged concurrency window increases the likelihood of lock collisions, intensifying blocking chains and deadlocks. In turn, the prolonged locks prevent the statistics engine from acquiring the short-term metadata locks it needs to refresh statistics, allowing statistics staleness to persist or worsen. This feedback loop progressively degrades plan quality and concurrency, leading to severe and self-reinforcing performance deterioration.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.7515559440559441,
+            "bm25_score": 32.325253558310784,
+            "lexical_score": 0.17185314685314684,
+            "matched_terms": [
+                "aborted",
+                "and",
+                "because",
+                "blocking",
+                "for",
+                "in",
+                "incompatible",
+                "lock",
+                "locks",
+                "metadata",
+                "or",
+                "sessions",
+                "than",
+                "the",
+                "this",
+                "to",
+                "transaction",
+                "when",
+                "while",
+                "window"
+            ],
+            "match_count": 54,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

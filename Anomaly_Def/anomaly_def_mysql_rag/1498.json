@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Replication Synchronization Anomaly + CPU Resource Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly : The log-writing, flushing, switching, or archiving path on the primary instance becomes the bottleneck, throttling commit progress and preventing timely log recycling.\nReplication Synchronization Anomaly : Downstream replicas or subscribers cannot receive, persist, or apply the primary’s log stream fast enough, causing widening apply and retention lags.\nCPU Resource Anomaly : Database-related processes collectively oversubscribe host CPU cycles, driving sustained saturation and scheduler contention.\n\nWhen all three root causes strike together the system exhibits compound symptoms: commit latency and log-flush wait times rise sharply; log file switches and checkpoints pile up but archive and replication queues keep growing because replicas fall further behind; monitoring shows ballooning retained WAL/redo segments on the primary, swollen relay logs on replicas, and replication apply delay measured in minutes or hours. Meanwhile, hosts on both primary and replicas run at or near 100 % CPU, with long run queues and frequent context switches. Application threads stall behind log-sync and scheduler wait events, while read-only replicas deliver increasingly stale data and may become unavailable for failover due to excessive replay lag.\n\nCausally, a saturated CPU starves critical background threads—log flusher, archiver, and replication sender/receiver—reducing their throughput and amplifying the inherent bottleneck in the transaction-log subsystem. Slower log writes lengthen commit paths and defer log file recycling, which in turn forces the primary to retain more segments for lagging replicas. The replication backlog grows because replicas, themselves CPU-constrained, cannot parse and apply incoming redo quickly enough, further delaying acknowledgment to the primary. This feedback loop increases disk pressure in the log area, heightens checkpoint frequency, and propagates latency spikes across all transactional workloads, ultimately risking forced shutdowns or failovers when log space is exhausted.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.3750679726429639,
+            "bm25_score": 17.150648153433174,
+            "lexical_score": 0.11619433198380566,
+            "matched_terms": [
+                "and",
+                "because",
+                "cannot",
+                "delay",
+                "for",
+                "in",
+                "is",
+                "or",
+                "the",
+                "this",
+                "to",
+                "transaction",
+                "when",
+                "while"
+            ],
+            "match_count": 71,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

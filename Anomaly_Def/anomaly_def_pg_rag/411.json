@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + MVCC Version Maintenance Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Composite Definition:\nThe database simultaneously suffers from sub-optimal execution-plan choices, unchecked accumulation of obsolete MVCC row versions, and saturation of the underlying storage throughput budget. The three conditions reinforce each other, producing symptoms that are broader and more severe than any single anomaly alone.\n\nCombined Observable Phenomena:\n• Identical statements oscillate between different or obviously poor plans while response times keep rising.\n• Sequential scans, hash builds, or nested-loop outer scans read far more pages than expected because tables and indexes are bloated with dead tuples.\n• Device-level metrics show queue depths pegged, read and write latency multiples higher than normal, and log-flush or buffer-I/O waits dominating the wait profile even when CPU is idle.\n• Autovacuum/cleanup workers run constantly yet fail to shrink the version store; catalog views report high dead-tuples-to-live-tuples ratios and growing on-disk size.\n• Planner misestimates become more frequent as statistics lag behind the rapidly changing and bloated heap, leading to further plan instability.\n• Business transactions time out, batch windows stretch, and analytic queries executed on the same system observe inconsistent runtimes depending on whether they hit a cached or newly compiled plan.\n\nCausal Chain and Interaction:\n1. MVCC bloat inflates table and index size, distorting cardinality statistics and making cost estimates less reliable.\n2. The optimizer, already prone to plan-selection mistakes, is now working with misleading size estimates, increasing the probability of choosing plans that trigger large table scans, spill to temp, or lose beneficial parallelism.\n3. These poorly chosen plans generate excess physical I/O; the swollen objects mean each scan or index probe touches more pages, quickly saturating the storage subsystem.\n4. Once storage throughput is maxed out, I/O latency rises. Long-running queries hold snapshots open longer, which prevents cleanup workers from advancing the MVCC horizon, so dead versions accumulate even faster.\n5. The growing version store further enlarges the data footprint, feeding back into even worse cost estimates and heavier I/O, creating a self-reinforcing degradation loop that is difficult to attribute to any single layer without holistic analysis.\n",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.5762368320644544,
+            "bm25_score": 25.221298683086516,
+            "lexical_score": 0.14151303242212332,
+            "matched_terms": [
+                "and",
+                "any",
+                "because",
+                "cleanup",
+                "from",
+                "idle",
+                "is",
+                "long",
+                "longer",
+                "of",
+                "open",
+                "or",
+                "prevents",
+                "query",
+                "than",
+                "that",
+                "the",
+                "time",
+                "transactions",
+                "when",
+                "while"
+            ],
+            "match_count": 183,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

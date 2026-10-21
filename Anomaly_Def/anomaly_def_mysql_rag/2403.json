@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + MVCC Version Maintenance Anomaly + Storage Space Capacity Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level SQL or transaction design forces the engine to touch or retain far more data and keep transactions open longer than business logic really requires.\nMVCC Version Maintenance Anomaly : Background version-cleanup cannot keep pace with update/delete churn, so obsolete row versions and rollback records accumulate and bloat the heap and indexes.\nStorage Space Capacity Anomaly : The database’s allocated data, log, or temporary space approaches physical or logical limits, producing allocation failures and stalled operations.\n\nWhen these three root causes co-exist, the database experiences a reinforcing spiral of stress. Inefficient, over-broad SQL generates excessive row updates, deletes, and rewrites, creating large numbers of MVCC versions that linger because cleanup workers are already overburdened. The cascading version bloat inflates table and index size, driving rapid consumption of data-file, log, and temporary space. As free space dwindles, auto-extension failures, out-of-space errors, prolonged checkpoints, and throttled background cleaners appear alongside the original symptoms of long-tail query latency, oversized result sets, and prolonged transaction lifetimes.\n\nCausally, sub-optimal workload logic is the initiator: wide scans, bulk modifications, and transactions left open across application logic generate high churn and hold snapshots, directly increasing version creation and preventing timely reclamation. The swollen version store expands physical storage footprint, while the shrinking free space further slows or halts vacuum/garbage-collection processes, allowing even more dead versions to persist. This positive feedback loop accelerates storage exhaustion, degrades cache efficiency, inflates I/O, and ultimately pushes the system into critical space shortages and service interruptions, a failure mode typical of write-intensive OLTP environments.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.6377120280452602,
+            "bm25_score": 17.671472281841886,
+            "lexical_score": 0.12202753441802253,
+            "matched_terms": [
+                "and",
+                "because",
+                "cannot",
+                "is",
+                "longer",
+                "of",
+                "or",
+                "than",
+                "the",
+                "this",
+                "to",
+                "transaction",
+                "when",
+                "while",
+                "write"
+            ],
+            "match_count": 113,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

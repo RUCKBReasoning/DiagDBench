@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Database Memory Allocation Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Obsolete row versions and rollback data accumulate faster than background cleanup can reclaim them, inflating the version store and enlarging on-disk structures.\nDatabase Memory Allocation Anomaly : Total in-process memory for caches, work areas, and background structures outgrows physical limits, provoking OS-level pressure, paging, and OOM terminations.\nTransaction Log Subsystem Anomaly : Log generation and flushing lag behind workload demand or archiving throughput, driving up commit latency and stalling writes.\n\nWhen these three root causes strike together, the database simultaneously shows runaway memory usage, ballooning version stores and tables, and a saturated redo/commit path. Symptoms include: rapidly expanding data and log files, escalating checkpoint and log-flush waits, degraded cache hit ratios from eviction or swap, long-running VACUUM/cleanup workers perpetually behind, soaring commit times that induce application timeouts, and periodic instance restarts when memory or log space is exhausted. Performance diagnostics may reveal intertwined waits—sessions stuck on log syncs while also incurring excessive memory and I/O to scan bloated heaps—making isolation of any single culprit difficult.\n\nCausally, high update/delete churn inflates both the MVCC version store and the volume of redo records, driving up memory demand and log throughput concurrently. Memory overcommitment reduces effective buffer cache and can force dirty pages to be flushed more aggressively, increasing log write frequency. Log back-pressure slows commit completion, leaving transactions open longer; these lingering snapshots prevent garbage collection, which in turn enlarges the version store, further consuming memory and I/O. The expanding memory footprint competes with log buffers and background workers for resources, slowing log archiving and cleanup tasks, creating a self-reinforcing loop that degrades throughput and risks crash or data-loss scenarios if not addressed promptly.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.5237876843346251,
+            "bm25_score": 16.756330334184412,
+            "lexical_score": 0.12317916002126528,
+            "matched_terms": [
+                "and",
+                "be",
+                "data",
+                "is",
+                "lag",
+                "long",
+                "longer",
+                "or",
+                "than",
+                "the",
+                "times",
+                "to",
+                "waits",
+                "when"
+            ],
+            "match_count": 108,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

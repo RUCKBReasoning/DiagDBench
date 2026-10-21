@@ -1,0 +1,47 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Replication Synchronization Anomaly + CPU Resource Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer persistently chooses sub-optimal execution plans even though statistics are valid, leading to excessive resource demand per statement.\nReplication Synchronization Anomaly: Standby or downstream replicas fall behind because they cannot receive, write, or apply WAL/redo as fast as the primary generates it.\nCPU Resource Anomaly: Database processes saturate host CPU, starving other activities and lengthening scheduling latency.\n\nWhen these three root causes coincide, the sub-optimal plans inflate CPU consumption on the primary and, once shipped, on every replica that must re-execute the same inefficient SQL during logical or physical apply. The resulting CPU saturation slows local query execution, background housekeeping, and the replica apply threads simultaneously. In parallel, the replication channel begins to lag; monitoring views show rapidly widening LSN/SCN gaps, growing retained logs, and increasing replica staleness. On both primary and replicas, users observe longer query latencies, stalled failover readiness, and escalating disk usage as log recycling is blocked by outstanding replication positions.\n\nCausally, poor plan selection is the ignition point: inflated row loops, missing pruning, or mis-estimated joins drive CPU and generate larger transaction logs. The surge in CPU demand pushes the host to saturation, lengthening process run-queue times and slowing the single-threaded or lightly parallelized apply workers on replicas. As apply throughput falls behind the primary’s heightened log generation rate, replication lag compounds, which in turn prevents log truncation and keeps more redo on disk, increasing I/O pressure. The feedback loop—sub-optimal plans → CPU exhaustion → slower apply → larger backlogs—propagates across all nodes, making each individual anomaly harder to diagnose in isolation and severely degrading overall database performance and resilience.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.2548882475916797,
+            "bm25_score": 9.436404818339332,
+            "lexical_score": 0.10273273273273273,
+            "matched_terms": [
+                "and",
+                "are",
+                "is",
+                "latency",
+                "longer",
+                "or",
+                "replication",
+                "that",
+                "the",
+                "wal",
+                "when"
+            ],
+            "match_count": 19,
+            "entry": {
+                "timeout_id": "pg16_wal_sender_timeout",
+                "parameter_name": "wal_sender_timeout",
+                "timeout_category": "replication_sender_timeout",
+                "scope": "server/replication",
+                "official_definition": "Terminates replication connections that are inactive longer than the specified amount of time.",
+                "trigger_condition": "A WAL sender replication connection is inactive longer than wal_sender_timeout.",
+                "workload_impact": "The replication connection is terminated.",
+                "default_behavior": "PostgreSQL documentation defines the parameter under replication sending server settings.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

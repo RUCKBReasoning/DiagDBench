@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Data Block and Index Integrity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Composite definition: The database concurrently suffers from on-disk data/index corruption and from host-level resource exhaustion, so that logical storage structures are damaged while the engine is also prevented from obtaining the kernel objects (file descriptors, shared-memory segments, threads, etc.) it needs to detect, isolate, or repair the corruption.\n\nData Block and Index Integrity Anomaly: Physical pages or index structures have become internally inconsistent, breaking key order, page links, checksums, or heap–index mappings and causing wrong, lost, or duplicated rows.\nOperating System Resource Limit Anomaly: Kernel-enforced ceilings on file handles, shared memory, semaphores, threads, or related objects are hit, denying the database process further allocations and impairing normal operation.\n\nCombined observable phenomena:  • Queries intermittently fail or return wrong result counts due to corrupted indexes, while other sessions receive \"unable to open file\", \"cannot allocate shared memory\", or \"failed to start worker\" errors.  • Integrity-checking or backup utilities may abort early because they cannot acquire additional descriptors, leaving corruption only partially reported.  • Recovery or checkpoint operations may stall: the engine detects damaged pages yet also cannot allocate the I/O contexts or background workers required for recovery, causing prolonged startup times, replication lag, or sudden crash-looping.  • Monitoring shows rising I/O errors, checksum failures, and a plateau of kernel resource counters (open files, semaphores) at their limits.  • Performance degrades unpredictably as the optimizer switches from corrupted indexes to full scans, which in turn spawn additional temporary files whose creation fails due to file-handle exhaustion.\n\nCausal interaction: Resource limits can precipitate or exacerbate physical corruption—for example, a shortage of file descriptors or asynchronous I/O slots can interrupt checkpoint flushing, leaving pages only partially written and vulnerable to torn-page corruption. Conversely, once corruption exists, the database engine may attempt aggressive background validation, index rebuilds, or repeated retries, each consuming extra threads, memory arenas, or kernel objects and thereby accelerating exhaustion of the already tight OS limits. This feedback loop masks the true origin of errors, producing overlapping symptoms that complicate diagnosis and prolong outage duration.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5114,
+            "score": 0.527541460138667,
+            "bm25_score": 55.74498108290193,
+            "lexical_score": 0.17118945868945867,
+            "matched_terms": [
+                "allocate",
+                "and",
+                "are",
+                "creation",
+                "data",
+                "disk",
+                "engine",
+                "failures",
+                "file",
+                "for",
+                "is",
+                "operation",
+                "or",
+                "storage",
+                "temporary",
+                "the",
+                "this",
+                "to",
+                "unable"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013231",
+                "error_name": "OBSOLETE_ER_NO_SESSION_TEMP",
+                "official_description": "Unable to allocate temporary tablespace for this session",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Buffer Cache and Latch Contention Anomaly + Replication Synchronization Anomaly",
+            "Description": "Optimizer Statistics Anomaly: Inaccurate, stale, or incomplete optimizer statistics cause systematic cardinality misestimates that mis-guide plan selection and operator choices.\nBuffer Cache and Latch Contention Anomaly: Excessive competition for hot buffer pages, latches, and I/O slots forces sessions to spin or wait, throttling throughput even when adequate memory exists overall.\nReplication Synchronization Anomaly: Downstream replicas cannot receive, write, or apply WAL/redo changes as fast as the primary generates them, producing widening log-position lag and blocking log recycling.\n\nWhen all three conditions occur together, the database exhibits a compound performance crisis: the primary produces sub-optimal, latch-heavy execution plans that hammer a small set of pages; these hot-page storms inflate buffer latch waits and CPU spin on the primary while simultaneously generating large, bursty transaction logs. The bloated and write-amplified redo stream overwhelms network or replica apply capacity, causing replication lag and retention of unsent or unapplied log segments. End-users observe erratic query latencies, periodic throughput collapses, and stale or unavailable read replicas; administrators see ballooning primary log storage, chronic buffer_busy/latch contention, and extreme estimated-vs-actual row count divergence in plan diagnostics.\n\nCausally, stale or missing statistics mislead the optimizer into choosing access paths—such as nested loops into hot index root pages or overly selective filters—that concentrate traffic on very few buffers. This localized I/O and latch pressure increases CPU spin and stretches commit times, enlarging individual transactions and the volume of redo emitted. The intensified log generation then widens replication lag; replicas that already struggle to replay suffer further because inefficient plans are re-executed during apply, compounding their CPU and I/O deficit. Conversely, replication delay prevents log recycling, lengthening checkpoint cycles and keeping more dirty pages in memory, which raises buffer flush pressure and prolongs latch hold times on the primary, completing a reinforcing negative feedback loop that degrades both primary and replica performance.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.5447632896594083,
+            "bm25_score": 24.24735160529621,
+            "lexical_score": 0.12951785057048215,
+            "matched_terms": [
+                "and",
+                "because",
+                "blocking",
+                "cannot",
+                "delay",
+                "for",
+                "of",
+                "or",
+                "prevents",
+                "query",
+                "sessions",
+                "that",
+                "the",
+                "this",
+                "transaction",
+                "transactions",
+                "when",
+                "while"
+            ],
+            "match_count": 234,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

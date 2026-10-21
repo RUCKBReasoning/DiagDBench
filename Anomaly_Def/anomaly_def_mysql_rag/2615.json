@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + MVCC Version Maintenance Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently chooses a sub-optimal execution plan despite having reasonably accurate statistics, leading to inefficient access paths, poor parallelism choices, or pathological join orders.\nMVCC Version Maintenance Anomaly : Obsolete row versions and rollback records accumulate faster than background cleaners can reclaim them, inflating table and index size and lengthening visibility checks.\nBuffer Cache and Latch Contention Anomaly : Concurrent sessions compete for hot buffer pages and their latches, causing wait events, spinning, and throughput collapse.\n\nWhen all three faults coexist, the workload exhibits cascading performance degradation: execution plans flip between selective index probes and full scans over bloated base tables; scans and joins touch far more pages because of MVCC bloat, which in turn overpopulates the buffer cache and keeps hot root and visibility-map pages under heavy latch pressure. Operators that the optimizer mistakenly favored (e.g., nested loops on underestimated row counts) encounter massive I/O and latch waits, producing sharp latency spikes, CPU spin, and stall chains that are hard to attribute to any single layer. Autovacuum or cleanup workers may run continuously yet fail to catch up, while query plans churn in the cache as statistics drift due to the bloated heap, further destabilizing performance.\n\nThe causal loop is self-reinforcing: sub-optimal plans increase I/O volume and prolong statement execution, which delays transaction completion and lengthens the lifespan of old snapshots, thereby slowing MVCC cleanup and enlarging the version store. The growing heap and index bloat enlarge the working-set footprint, forcing more pages through a limited buffer pool and creating hot-page hotspots where many sessions contend for latches. Elevated latch waits extend query runtimes, giving the optimizer more chances to mis-select plans based on stale or skewed runtime feedback, and stretching transactions even further. This spiraling interaction among poor plan choice, MVCC bloat, and buffer contention can push an OLTP system into a persistent low-throughput, high-latency state until all three issues are addressed in concert.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.475627754553076,
+            "bm25_score": 19.025679688266898,
+            "lexical_score": 0.13255244755244755,
+            "matched_terms": [
+                "an",
+                "and",
+                "because",
+                "for",
+                "in",
+                "is",
+                "or",
+                "sessions",
+                "statement",
+                "than",
+                "the",
+                "this",
+                "to",
+                "transaction",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 124,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

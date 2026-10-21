@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Buffer Cache and Latch Contention Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Schema and Index Design Anomaly: Static mismatch between physical data model (tables, indexes, partitions, datatypes, constraints) and workload access patterns, forcing inefficient access paths.\nBuffer Cache and Latch Contention Anomaly: Excessive competition for buffer pages, latches, and page-level locks causes waits, CPU spin, and stalled I/O beneath the lock manager.\nStorage Space Capacity Anomaly: Free space in data, log, temp, or backup areas approaches exhaustion, producing allocation failures, forced checkpoints, or background cleanup stalls.\n\nWhen these three root causes strike simultaneously, the system exhibits a layered pathology: poorly designed tables and non-optimal indexes push queries toward full scans and large, non-covering lookups that flood the buffer cache with extra pages. The resulting hot pages and elevated dirty-page generation amplify latch and buffer-busy waits, while the inflated I/O footprint rapidly consumes remaining disk and temp space. Near-full datafiles and log destinations trigger auto-extend attempts, emergency checkpoints, or log switches that further increase latch contention and stall sessions. Administrators observe a mix of symptoms—massive logical I/O, soaring page-latch waits, checkpoint and log-archive pauses, sudden \"out of space\" errors, and erratic latency spikes—making it difficult to attribute performance degradation to a single tier.\n\nCausally, an inadequate schema and index design forces the engine to touch far more pages than necessary. This surge in page demand churns a limited buffer pool, driving up latch contention and increasing the volume of dirty pages that must be flushed. Persistent flush activity collides with shrinking free space; once space nears exhaustion, background writers and checkpoint processes throttle foreground workloads while contending for the same latches already stressed by hot pages. Conversely, space pressure can disable optimal index creation or trigger auto-growth stalls, feeding back into the design inefficiency. The intertwined effects create a feedback loop where design inefficiency inflates page traffic, page traffic magnifies latch contention, and both accelerate space consumption, ultimately degrading throughput and threatening availability.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.7406198012513802,
+            "bm25_score": 24.90658333010445,
+            "lexical_score": 0.13539933750460065,
+            "matched_terms": [
+                "an",
+                "and",
+                "attempts",
+                "for",
+                "in",
+                "lock",
+                "locks",
+                "or",
+                "schema",
+                "sessions",
+                "than",
+                "the",
+                "this",
+                "to",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 112,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

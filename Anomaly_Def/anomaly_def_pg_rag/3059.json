@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Data Block and Index Integrity Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Systematic cardinality misestimation caused by stale, incomplete, or missing optimizer statistics.\nData Block and Index Integrity Anomaly : Physical corruption or logical inconsistency inside on-disk data and index pages, causing unreliable access paths and incorrect result sets.\nStorage Space Capacity Anomaly : Exhaustion of allocated space for data files, logs, or temporary areas, leading to allocation failures and stalled background maintenance.\n\nComposite definition — The database simultaneously suffers from inaccurate optimizer statistics, latent corruption inside data/index pages, and critical depletion of free storage. Together, these root causes distort cost estimation, break logical consistency, and impede the engine’s ability to allocate space for corrective actions, forming a compound failure mode that degrades both query correctness and availability.\n\nCombined observable phenomena — Queries show extreme and erratic plan choices with grossly wrong cardinality estimates; some executions unexpectedly return missing or duplicate rows or switch to full table scans when indexes are flagged as suspect. Integrity-check utilities and engine logs intermittently report checksum or key-order errors but are unable to repair because REBUILD or DBCC commands abort on \"out of space\" conditions. Simultaneously, statistics-auto-update and index-rebuild tasks are skipped or cancelled due to space exhaustion, causing estimates to diverge further. End-user sessions experience a mix of slow response times, wrong results, and allocation-failed errors, while background processes flood the log with both corruption and no-space diagnostics, making the symptoms appear unrelated and hard to triage.\n\nCausal interaction — Corrupted pages or orphaned index entries can inflate apparent table size and fragment free space, accelerating storage consumption and triggering capacity exhaustion. Once space is scarce, automatic statistics collection, online index rebuilds, and corruption-repair utilities cannot acquire work space, so neither data integrity nor statistics accuracy can be restored. In turn, stale or inaccurate statistics mislead the optimizer into choosing index paths that touch corrupted structures more frequently or into preferring full scans that exacerbate I/O and space pressure via large spool or temp segments. The three anomalies therefore reinforce one another: corruption increases space use, space shortage blocks repair and stats refresh, and bad statistics drive workloads toward the very structures that are damaged, spiraling the system into deeper performance and reliability degradation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.7194427576120327,
+            "bm25_score": 27.364598495517303,
+            "lexical_score": 0.13386463386463385,
+            "matched_terms": [
+                "access",
+                "and",
+                "be",
+                "because",
+                "cancelled",
+                "from",
+                "is",
+                "more",
+                "of",
+                "or",
+                "out",
+                "query",
+                "that",
+                "the",
+                "together",
+                "user",
+                "when",
+                "with",
+                "work"
+            ],
+            "match_count": 312,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

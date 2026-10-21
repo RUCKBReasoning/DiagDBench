@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Database Memory Allocation Anomaly + Storage Space Capacity Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level statements or transaction design force the engine to scan, join, or return far more data than business logic requires.\nDatabase Memory Allocation Anomaly : The database process allocates buffer cache, work memory, plan cache, and other heaps beyond the safe physical memory envelope, provoking OS-level pressure.\nStorage Space Capacity Anomaly : Physical or logical free space in data files, logs, or temporary areas drops to a hard boundary, risking allocation failures and stalled writes.\n\nWhen all three root causes manifest together, the database experiences a compound failure mode: chatty or over-broad SQL rapidly fills buffer caches and per-query work areas, driving resident-set size to the limit. As memory pressure mounts, the engine begins spilling sort, hash, and intermediate result sets to temporary segments, which in turn accelerates consumption of data-file, temp, and log space. The already space-starved storage layer struggles to extend or recycle files, causing write stalls, \"out of space\" errors, aborted transactions, and repeated retries from the application layer. Performance telemetry shows a mix of long-tail statement latency, swapping or OOM events, and sudden allocation failures in temporary or archive areas—symptoms that, when observed in isolation, are difficult to attribute to any single layer.\n\nCausal chain: overly expensive SQL (1) inflates memory demand, inflating caches and per-operation work buffers; (2) this pushes the instance into heavy paging or triggers aggressive spill-to-disk behavior; (3) the resulting temporary and log growth rapidly depletes remaining storage capacity; (4) once space is exhausted, memory-relief spills fail, forcing even more memory retention and amplifying OOM risk. Each anomaly therefore feeds the next: inefficient workload begets memory saturation, memory saturation begets disk spills, and disk spills exhaust space, which in turn prevents the memory layer from offloading work, creating a feedback loop that can cascade into node eviction, service outage, or data-load failure.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.1949564365934918,
+            "bm25_score": 8.751607364916286,
+            "lexical_score": 0.10401960784313724,
+            "matched_terms": [
+                "and",
+                "are",
+                "can",
+                "failure",
+                "is",
+                "latency",
+                "of",
+                "or",
+                "that",
+                "the",
+                "this",
+                "to",
+                "when"
+            ],
+            "match_count": 306,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_count",
+                "parameter_name": "tcp_keepalives_count",
+                "timeout_category": "network_keepalive_failure_threshold",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the number of TCP keepalive messages that can be lost before the server connection to the client is considered dead.",
+                "trigger_condition": "The number of lost TCP keepalive probes reaches tcp_keepalives_count on systems supporting TCP_KEEPCNT.",
+                "workload_impact": "The server can consider the client connection dead after the configured keepalive failure threshold.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

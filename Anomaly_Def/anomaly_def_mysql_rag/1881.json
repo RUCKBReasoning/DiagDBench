@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Transaction Log Subsystem Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Schema and Index Design Anomaly : The physical table, index, and partition design does not match workload access patterns, forcing inefficient full scans, non-covering index probes, and excessive row/memory churn.\nTransaction Log Subsystem Anomaly : The write-ahead log buffer, file groups, or archiver cannot absorb or flush redo fast enough, so commits wait on log-write, log-flush, and log-sync events.\nOperating System Resource Limit Anomaly : Kernel-enforced caps on file handles, shared memory, semaphores, I/O contexts, or process/thread counts are reached, preventing the database from allocating required OS resources.\n\nWhen these three root causes coexist, the workload experiences an explosive mix of symptoms: poorly indexed DML and wide range scans generate abnormally large redo streams that quickly fill the log buffer and force frantic log-file switches. Commit latency, \"log file sync/write\" and \"log buffer space\" waits surge, while background archiver or replication workers fall behind, swelling archive directories. As sessions queue behind stalled commits, the database tries to open more files, allocate additional shared memory, start extra log writer or archiver threads, and spawn parallel workers—actions that collide with tight OS limits. Soon the error logs show alternating database wait events and kernel denials (EMFILE, ENOMEM, ENOSPC, semaphore limits), new sessions or workers fail to start, and parts of the system enter a semi-hung state where reads limp along but writes time out or abort.\n\nCausally, the inefficient schema/index design inflates the volume and frequency of data modifications and undo/redo generation. This elevated redo rate saturates an already undersized or mis-placed transaction-log subsystem, prolonging commit paths and increasing the lifetime and number of active log files. The resulting backlog drives the engine to open more descriptors, maintain more control files, grow log buffers, and spawn additional background tasks, all of which consume kernel objects. If OS limits are conservative or have been depleted by earlier failures, these requests begin to fail, which in turn prevents log switches, flushes, or worker creation, aggravating log congestion and magnifying the performance collapse. Thus, each root cause amplifies the others, producing a severe, intertwined bottleneck that is far more debilitating than any single anomaly alone.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1903,
+            "score": 0.4964917454951031,
+            "bm25_score": 53.044324855380964,
+            "lexical_score": 0.1863499245852187,
+            "matched_terms": [
+                "access",
+                "and",
+                "are",
+                "creation",
+                "data",
+                "does",
+                "engine",
+                "error",
+                "failures",
+                "file",
+                "is",
+                "latency",
+                "log",
+                "not",
+                "or",
+                "paths",
+                "schema",
+                "system",
+                "the",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010016",
+                "error_name": "ER_SYSTEM_SCHEMA_NOT_FOUND",
+                "official_description": "System schema directory does not exist.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

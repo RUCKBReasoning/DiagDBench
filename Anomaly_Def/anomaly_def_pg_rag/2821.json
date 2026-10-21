@@ -1,0 +1,46 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Database Configuration Parameter Anomaly + Database Memory Allocation Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Optimizer input metadata (row counts, histograms, correlations) is stale or incomplete, provoking systematic cardinality misestimation.\nDatabase Configuration Parameter Anomaly : Engine-level runtime settings for memory, parallelism, checkpointing, and other behaviors are mis-tuned for the actual hardware, workload, or version, causing non-resource constrained stalls and regressions.\nDatabase Memory Allocation Anomaly : Aggregate memory consumed by caches, work areas, and background components exceeds safe physical limits, triggering OS pressure, paging, or OOM events.\n\nWhen these three root causes coexist, the system exhibits erratic and mutually reinforcing symptoms: query plans fluctuate between under- and over-allocation of memory; inaccurately costed plans may request excessive hash/sort buffers that the mis-configured memory ceilings still allow, leading to sudden resident-set growth, swap storms, and plan evictions. Checkpoint storms or aggressive background workers spawned by poor configuration contend with bloated caches for RAM, while misestimated row counts cause the optimizer to either underutilize or over-utilize parallel workers, amplifying CPU spin waits and buffer thrashing. Operators chosen on bad statistics (e.g., multi-way hash joins, large sorts) aggravate memory pressure; once paging begins, previously minor log-write or I/O waits balloon, and feedback loops of plan recompilation and memory churn create workload instability. Symptoms therefore span: wildly diverging execution times, chronic memory pressure alarms, CPU under- or over-utilization unrelated to actual data volume, frequent plan cache flushes, and post-upgrade regressions that defy single-cause attribution.\n\nCausally, stale or missing statistics misguide the optimizer into selecting memory-intensive or improperly parallelized plans. Mis-set configuration parameters (e.g., inflated work_mem, oversized buffer pool, aggressive parallelism, or lax memory overcommit) permit those plans to reserve more memory than the host can sustain. The resulting memory over-allocation pushes the database process into OS paging or OOM territory, triggering automatic memory eviction, plan recompilations, and emergency checkpoints, all of which further distort statistics and raise background-worker activity. Each anomaly therefore feeds the others: bad statistics provoke wasteful memory usage, misconfiguration fails to constrain it, and memory exhaustion in turn disrupts statistics collection and background maintenance, creating a vicious cycle that severely degrades both OLTP and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 179,
+            "score": 0.24357991582424843,
+            "bm25_score": 15.613817253898752,
+            "lexical_score": 0.11400555041628121,
+            "matched_terms": [
+                "and",
+                "database",
+                "engine",
+                "execution",
+                "is",
+                "or",
+                "that",
+                "the",
+                "under",
+                "usage",
+                "version",
+                "with"
+            ],
+            "match_count": 15,
+            "entry": {
+                "error_code": "42P12",
+                "error_name": "invalid_database_definition",
+                "official_description": "invalid database definition",
+                "error_class": "Class 42 - Syntax Error or Access Rule Violation",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "sql_and_parser",
+                "cause_analysis": "The failure is typically associated with unsupported syntax, invalid statement structure, or feature usage that the target engine version cannot execute as written.",
+                "solution_guidance": "Validate SQL syntax, target-engine compatibility, statement shape, and whether the feature is supported under the current engine version or execution context.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "syntax error",
+                    "feature rejection"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Database Memory Allocation Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer chooses a substantially sub-optimal execution plan even though statistics are sound, yielding overly expensive operators or inappropriate join methods.\nDatabase Memory Allocation Anomaly: Database components (buffer cache, work areas, plan cache, etc.) collectively consume more physical memory than the host can sustain, driving paging, OOM events, and cache churn.\nStorage Space Capacity Anomaly: Data files, temp areas, or log/backup destinations run out of free space, leading to allocation failures and stalled workload progress.\n\nWhen these three root causes strike together, the workload may oscillate between memory and storage crises: bad plans inflate work-area demand and fragment the buffer-pool, which in turn forces large sorts, hashes, or spill files into already constrained temporary or log spaces. Operators may start in memory, then spill to disk, rapidly depleting free space; once space is exhausted, the same statements abort with \"out of space\" or \"cannot allocate” errors, while concurrent sessions experience severe latency from swapping, frequent plan cache evictions, and erratic plan flips. Background processes struggle to extend datafiles or recycle logs, leading to checkpoint stalls, replication lag, and even instance terminations.\n\nCausally, a sub-optimal plan (1) amplifies memory consumption (e.g., choosing hash joins over indexed lookups, or requesting large sort buffers). The inflated work areas push the engine beyond physical RAM, activating the Database Memory Allocation Anomaly; paging and memory pressure then force operators to dump intermediate results to temporary storage. Those spills, plus bloated logs from long-running, poorly planned queries, quickly exhaust tablespace, temp, and archive destinations, triggering the Storage Space Capacity Anomaly. Conversely, once space fills, the optimizer may reject optimal index or parallel plans that require additional scratch or log space, defaulting to even heavier full scans or serial plans, further prolonging memory residency and perpetuating the vicious cycle. The intertwined feedback loops between bad plans, runaway memory growth, and space exhaustion dramatically degrade both transactional and analytical workloads and can culminate in service outages.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.7421990171990172,
+            "bm25_score": 31.246781983276367,
+            "lexical_score": 0.14066339066339065,
+            "matched_terms": [
+                "and",
+                "execution",
+                "from",
+                "is",
+                "long",
+                "more",
+                "of",
+                "or",
+                "out",
+                "query",
+                "running",
+                "than",
+                "that",
+                "the",
+                "together",
+                "when",
+                "with",
+                "work",
+                "workload"
+            ],
+            "match_count": 214,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

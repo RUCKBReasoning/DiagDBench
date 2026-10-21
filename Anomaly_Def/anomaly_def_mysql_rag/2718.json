@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer repeatedly chooses a sub-optimal execution plan despite accurate statistics, yielding excessive logical work, wrong join methods, or missing index usage.\nTransaction Log Subsystem Anomaly: The write-ahead logging path—generation, buffering, flushing, or archiving—becomes the primary bottleneck, inflating commit latency and stalling writers even though general storage I/O may appear adequate.\n\nWhen both root causes manifest concurrently, statements may oscillate between poor plans that create unusually large modification workloads and a log layer unable to absorb the resulting redo volume. Symptoms include: 1) sharp, unpredictable spikes in transaction latency where CPU time, logical I/O, and log-flush waits all surge in the same timeframe; 2) frequent plan changes from efficient index probes to wide table or hash scans that multiply row touches and redo generation, exhausting log buffer space; 3) bursts of log-related wait events (LOG_FLUSH, LOG_WRITE, commit waits) coinciding with dramatic increases in physical I/O and buffer churn driven by the bad plans; 4) checkpoint storms, rapid log-file switches, and archiver backlog triggered immediately after plan regressions; 5) erratic throughput where some executions sail through on good plans while others stall behind saturated log flushes, complicating performance diagnosis.\n\nCausally, a sub-optimal plan that amplifies row updates or causes large sort/insert loops escalates redo generation, directly stressing an already constrained log subsystem. The swollen write volume fills the log buffer faster than it can be flushed or archived, extending commit latency and forcing user sessions to wait. The prolonged transaction durations increase row and log contention, which in turn can influence the optimizer’s adaptive decisions, fostering further plan instability—a feedback loop that compounds both anomalies. Conversely, elevated commit latency from log saturation can delay statistics updates and cause plan cache invalidations, provoking additional plan recompilations and increasing the likelihood of selecting poor plans. The intertwined effects magnify resource contention, leading to severe and erratic slowdowns in high-write OLTP workloads.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.3391223251513765,
+            "bm25_score": 13.649990736257969,
+            "lexical_score": 0.10665743092434388,
+            "matched_terms": [
+                "and",
+                "bad",
+                "latency",
+                "of",
+                "or",
+                "sessions",
+                "that",
+                "the",
+                "time",
+                "triggered",
+                "waits",
+                "when",
+                "with"
+            ],
+            "match_count": 108,
+            "entry": {
+                "timeout_id": "mysql84_connection_handshake_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "connection_handshake_timeout",
+                "scope": "global",
+                "official_definition": "The number of seconds that the mysqld server waits for a connect packet before responding with Bad handshake.",
+                "trigger_condition": "A client does not complete the initial connection packet exchange within connect_timeout.",
+                "workload_impact": "The connection attempt fails during handshake.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

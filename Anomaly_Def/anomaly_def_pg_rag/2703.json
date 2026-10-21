@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Data Block and Index Integrity Anomaly + CPU Resource Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Mis-tuned engine parameters (memory pools, checkpoint cadence, parallelism limits, etc.) create artificial pressure or idle gaps that do not reflect the true hardware capacity.\nData Block and Index Integrity Anomaly : Physical pages or index structures on disk become internally inconsistent or corrupted, making stored data and access paths unreliable.\nCPU Resource Anomaly : Database processes consume an abnormally large share of CPU cycles, driving the host to sustained compute saturation.\n\nCombined phenomena: The instance shows near-100 % CPU utilisation, long run-queues, and pervasive scheduler waits while I/O devices oscillate between bursts and idle periods. Queries that once used indexes fall back to full scans or repeatedly re-read pages after failed checksum validations, inflating CPU usage and causing erratic latency spikes. Frequent checkpoints or aggressive background verification jobs—triggered by tight configuration thresholds—collide with corruption-induced page rereads, producing log-flush storms and lock contention. Monitoring highlights mismatches between hardware utilisation (CPU pegged, disks underused) and wait-event mixes that include CPU spin waits, page verification failures, and redo-flush pressure. Application symptoms range from sporadic “page corruption” or “could not read block” errors to global slow-downs as the engine burns CPU retrying failed I/O and running mis-sized maintenance tasks.\n\nCausal chain: 1) Misconfigured memory and checkpoint parameters shrink buffer pools or force excessively frequent flushes, magnifying I/O churn and the probability that latent page or index corruption is touched. 2) Encountering corrupted structures causes the optimizer to abandon indexes or to invoke page-verification and error-recovery code paths that are markedly CPU-intensive. 3) The unexpected CPU demand pushes the host into saturation; with parallelism caps set too high, additional worker threads compete for already scarce cycles, further amplifying CPU waits. 4) High CPU load slows checkpoint completion and recovery threads, extending the window in which partially flushed or torn pages can propagate, potentially worsening corruption. Thus, mis-tuned configuration, latent storage corruption, and compute exhaustion create a self-reinforcing loop that degrades performance, increases error rates, and jeopardizes data integrity across both transactional and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.7363335704125178,
+            "bm25_score": 26.075143111397534,
+            "lexical_score": 0.12111190137505927,
+            "matched_terms": [
+                "access",
+                "and",
+                "completion",
+                "contention",
+                "error",
+                "from",
+                "is",
+                "long",
+                "of",
+                "or",
+                "resource",
+                "running",
+                "that",
+                "the",
+                "too",
+                "triggered",
+                "with"
+            ],
+            "match_count": 295,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

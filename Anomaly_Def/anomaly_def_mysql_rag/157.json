@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Transaction Log Subsystem Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently selects sub-optimal execution plans even though statistics are adequate, leading to inefficient operator choices, wrong join orders, or loss of parallelism.\nTransaction Log Subsystem Anomaly : The write-ahead log path (buffer, file group, archiver, or replica shipping) becomes the primary bottleneck, inflating commit latency and stalling write activity.\nNetwork and Connectivity Resource Anomaly : Network transport, listener, socket, or authentication resources are saturated or unstable, limiting connection throughput and inflating client-side latency.\n\nWhen all three root causes strike together, the database experiences a multilayer performance collapse: 1) poorly chosen plans amplify the volume and burstiness of redo generation; 2) the overloaded log subsystem lengthens commit and flush times, causing sessions to queue on log-related waits; 3) prolonged execution and commit phases keep server processes busy and network sockets open, driving up concurrent connection counts, which in turn suffer from network backlog, retransmissions, and timeout storms. Observable symptoms blend: sudden plan flips to full scans coincide with surging redo size per transaction; commit duration, \"log write\" and \"log sync\" waits skyrocket; at the same time, clients report connection timeouts, authentication stalls, or sluggish result streaming. Monitoring may show high CPU from sub-optimal plans, disk I/O saturation isolated to log devices, growing archive or replica lag, plus an explosion of ESTABLISHED and TIME_WAIT sockets and listener backlog overflows.\n\nCausally, sub-optimal plans inflate I/O and row-level change volume, directly increasing redo generation and frequency of log flushes. The stressed log path elongates transaction completion, holding locks and backend processes longer, which multiplies concurrent session counts and socket occupancy. Network saturation further delays acknowledgement of commit replies and result sets, causing application retries that re-enter the optimizer, generating yet more inefficient plans and additional redo. This feedback loop causes each anomaly to reinforce the others, degrading throughput, inflating latency across tiers, and making isolated diagnosis difficult because symptoms of one layer (e.g., network timeouts) are in fact rooted in the compounded failures of all three subsystems.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1635,
+            "score": 0.5909485401666634,
+            "bm25_score": 59.99691270966452,
+            "lexical_score": 0.1304865938430983,
+            "matched_terms": [
+                "all",
+                "an",
+                "and",
+                "execution",
+                "generating",
+                "in",
+                "on",
+                "or",
+                "primary",
+                "replica",
+                "row",
+                "same",
+                "that",
+                "the",
+                "this",
+                "to",
+                "when",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "4109",
+                "error_name": "ER_CREATE_SELECT_WITH_GIPK_DISALLOWED_IN_SBR",
+                "official_description": "Generating an invisible primary key for a table created using CREATE TABLE ... SELECT ... is disallowed when binlog_format=STATEMENT. It cannot be guaranteed that the SELECT retrieves rows in the same order on source and replica. Therefore, it cannot be guaranteed that the value generated for the generated implicit primary key column will be the same on source and replica for all rows. Use binlog_format=ROW or MIXED to execute this statement.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "sql_and_parser",
+                "cause_analysis": "The failure is typically associated with unsupported syntax, invalid statement structure, or feature usage that the target engine version cannot execute as written.",
+                "solution_guidance": "Validate SQL syntax, target-engine compatibility, statement shape, and whether the feature is supported under the current engine version or execution context.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "syntax error",
+                    "feature rejection"
+                ]
+            }
+        }
+    }
+]

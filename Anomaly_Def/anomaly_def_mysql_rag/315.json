@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Data Block and Index Integrity Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Database Memory Allocation Anomaly : Excessive or uncontrolled growth of buffer caches, plan caches, work areas, and other in-engine memory regions exhausts physical RAM or swap on the host, causing paging, OOM terminations, or node eviction.\nData Block and Index Integrity Anomaly : On-disk data pages or index structures become logically or physically corrupt, leading to missing/duplicated rows, checksum failures, and forced scan or recovery behavior.\nNetwork and Connectivity Resource Anomaly : Insufficient or unstable network, listener, or socket resources prevent timely establishment or servicing of client connections, producing timeouts, retries, and connection-slot exhaustion.\n\nWhen these three root causes manifest concurrently, the database displays a compounded failure pattern: memory pressure triggers frequent process restarts that interrupt active sessions, while latent or ongoing page/index corruptions cause queries to fall back to full table scans that inflate buffer allocations and prolong response times. The resulting sluggishness drives clients to exceed retry thresholds, flooding the listener with new connection attempts just as server memory is constrained, exhausting socket queues and backend slots. Administrators observe oscillating RSS growth, OOM kills, repeated crash-recovery cycles reporting page-checksum or index-link errors, surges in network retransmissions, and a rapid rise in refused or half-open connections. Diagnostic utilities show diverging row counts between scans, while monitoring stacks report simultaneous spikes in memory faults and network wait events, making it difficult to attribute slowdowns to any single layer.\n\nCausally, corrupted data structures can inflate memory demand by forcing table scans and generating large work areas, pushing the engine toward the memory-allocation cliff. Memory exhaustion, in turn, precipitates abrupt backend terminations or instance restarts that may interrupt in-flight writes, amplifying the risk of additional on-disk corruption. Each restart or stall disrupts active sessions, prompting application drivers to issue aggressive reconnect loops that saturate listener backlogs and network stacks. The clogged connection layer further delays transactional retries, lengthening query lifetimes and keeping oversized result sets and work buffers resident in memory. This feedback loop—corruption-induced memory bloat, memory-pressure crashes aggravating corruption, and connection storms intensifying memory and I/O churn—drives the database into an unstable state where availability, correctness, and performance are simultaneously degraded.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.7097693953585498,
+            "bm25_score": 22.712438592022508,
+            "lexical_score": 0.13169392238223088,
+            "matched_terms": [
+                "an",
+                "and",
+                "block",
+                "client",
+                "connection",
+                "is",
+                "network",
+                "of",
+                "or",
+                "retry",
+                "server",
+                "sessions",
+                "the",
+                "this",
+                "to",
+                "wait",
+                "when",
+                "while"
+            ],
+            "match_count": 16,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

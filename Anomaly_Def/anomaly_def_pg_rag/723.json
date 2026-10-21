@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + MVCC Version Maintenance Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Schema and Index Design Anomaly : Static mismatch between the physical data model (tables, indexes, partitions, data types, constraints) and the workload’s access patterns, forcing inefficient access paths regardless of statistics or plan-choice quality.\nMVCC Version Maintenance Anomaly : Accumulation of obsolete row versions and rollback records that outpaces background cleanup, inflating storage and adding visibility-check overhead in high-churn transactional systems.\nData Block and Index Integrity Anomaly : Physical corruption or logical inconsistency inside heap or index pages that breaks key ordering, page links, or heap-to-index mappings, making stored structures unreliable.\n\nWhen these three root causes coexist, the database exhibits a blended failure signature: queries that are already forced into full scans by poor indexing now traverse massively bloated bitemporal heaps and indexes, causing steep latency spikes and memory pressure; bloated or corrupted index pages yield divergent row counts, duplicate or missing rows, and sudden plan flips to table scans. Autovacuum/cleanup workers run constantly yet fail to reclaim space because corruption aborts passes or because schema design (e.g., missing partitioning) forces them to process huge ranges. Checksum or page-verification errors appear intermittently, sometimes only during long-running maintenance, making it hard to discern whether slowness stems from design, version bloat, or structural damage. Statistics drift rapidly due to both bloat and silent row loss, so the optimizer oscillates between bad plans, further masking the underlying integrity faults.\n\nCausally, the absence of appropriate indexes or partitioning drives the engine to perform large update/delete operations via full scans, generating a flood of row versions that stress the MVCC cleanup subsystem. As version store and table size swell, I/O pressure rises and page churn increases, elevating the likelihood of torn pages, incomplete writes, or failed online index rebuilds that introduce physical corruption. Conversely, corrupted pages or broken index links can cause cleanup workers to loop, abort, or skip ranges, allowing even more dead versions to accumulate. The growing heap and corrupted index entries in turn invalidate remaining noncovering indexes, magnifying the original design flaw. This feedback loop rapidly degrades both read and write performance, compromises data correctness, and complicates recovery efforts, producing a severe, self-reinforcing composite anomaly.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.3798767707968354,
+            "bm25_score": 12.351689641278814,
+            "lexical_score": 0.10146254784034991,
+            "matched_terms": [
+                "and",
+                "are",
+                "by",
+                "check",
+                "data",
+                "latency",
+                "long",
+                "or",
+                "systems",
+                "the",
+                "this",
+                "when",
+                "whether"
+            ],
+            "match_count": 198,
+            "entry": {
+                "timeout_id": "pg16_tcp_user_timeout",
+                "parameter_name": "tcp_user_timeout",
+                "timeout_category": "network_unacknowledged_data_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies how long transmitted data may remain unacknowledged before the TCP connection is forcibly closed.",
+                "trigger_condition": "TCP data sent by PostgreSQL remains unacknowledged longer than tcp_user_timeout on systems supporting TCP_USER_TIMEOUT.",
+                "workload_impact": "The TCP connection is forcibly closed.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

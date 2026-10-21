@@ -1,0 +1,45 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Transaction Log Subsystem Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Schema and Index Design Anomaly : Tables, partitions, and indexes are not aligned with access patterns, forcing the optimizer into inefficient full scans, non-covering look-ups, and excessive maintenance work.\nTransaction Log Subsystem Anomaly : Generation, flushing, or archiving of write-ahead logs cannot keep up with the commit rate, causing commit stalls and log-related wait events.\nNetwork and Connectivity Resource Anomaly : Transport paths, listeners, or connection slots are saturated or unreliable, delaying session establishment and result transmission.\n\nWhen all three root causes strike together, the database exhibits a mixed pattern of symptoms: 1) queries perform unnecessary full scans that inflate I/O and redo volume, 2) the oversized redo stream accumulates in the log buffer and waits for slow log flushes, lengthening commit latency, and 3) clients waiting on congested network channels or exhausted back-end slots experience timeouts and retry storms. End-to-end response times fluctuate wildly; small write transactions intermittently block behind log-sync waits, while read requests pile up inside the engine because client sockets cannot drain result sets quickly enough. Monitoring shows simultaneous spikes in logical and physical I/O, LOG_WRITE or LOG_FLUSH waits, and CLIENT_READ/CLIENT_WRITE waits, making it hard to attribute delays to a single layer.\n\nCausally, the poor schema and index design amplifies redo production and buffer-cache churn, putting sustained pressure on the transaction log subsystem. The log subsystem, already tuned too tightly for peak throughput, elongates commit cycles; longer commits hold latches and row locks for extra time, which in turn stretches the duration that back-end processes occupy network sockets. As network resources saturate, new sessions and retries further raise concurrency, driving even more ad-hoc queries through sub-optimal access paths and accelerating redo generation. This positive feedback loop—inefficient data access → excess redo → log-flush bottleneck → prolonged transactions → connection pile-ups → higher concurrency → more inefficient work—creates a cascading performance collapse that is far more severe than any individual anomaly would cause.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 168,
+            "score": 0.2675979196350593,
+            "bm25_score": 14.258453496502293,
+            "lexical_score": 0.10689894778638079,
+            "matched_terms": [
+                "access",
+                "and",
+                "as",
+                "cannot",
+                "engine",
+                "is",
+                "or",
+                "schema",
+                "that",
+                "the",
+                "with"
+            ],
+            "match_count": 15,
+            "entry": {
+                "error_code": "42P06",
+                "error_name": "duplicate_schema",
+                "official_description": "duplicate schema",
+                "error_class": "Class 42 - Syntax Error or Access Rule Violation",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "sql_and_parser",
+                "cause_analysis": "The failure is typically associated with unsupported syntax, invalid statement structure, or feature usage that the target engine version cannot execute as written.",
+                "solution_guidance": "Validate SQL syntax, target-engine compatibility, statement shape, and whether the feature is supported under the current engine version or execution context.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "syntax error",
+                    "feature rejection"
+                ]
+            }
+        }
+    }
+]

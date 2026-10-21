@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Replication Synchronization Anomaly + Storage Space Capacity Anomaly",
+            "Description": "SQL Workload Logic Anomaly: Application-level statement or transaction design forces the engine to process or retain far more data and rows than business logic requires.\nReplication Synchronization Anomaly: Downstream replicas or subscribers fall behind because they cannot receive or apply primary-generated log records at the production rate.\nStorage Space Capacity Anomaly: Allocated physical or logical storage for data, logs, or temporary areas reaches exhaustion, impeding normal allocation and recycling.\n\nWhen all three exist concurrently, the system exhibits extreme and widening replica lag, growing on-disk log backlogs, and escalating disk-space consumption on both primary and replicas. Long-running or chatty transactions produced by inefficient SQL inflate the volume of redo, generate oversized result sets that spill to temp space, and keep locks open longer. Replicas struggling to apply these bloated change batches accumulate ever larger relay or archive logs; the primary cannot purge its own logs, and free space plummets. Users observe increasing statement latency, frequent timeouts, stalled or cancelled writes when log destinations fill, stale read-only traffic on replicas, and emergency auto-extend or out-of-space errors in data, temp, or log areas.\n\nCausally, sub-optimal workload logic produces excessive data modifications and prolonged transactions, which directly amplifies the replication stream. The overwhelmed replication path slows, causing unapplied logs to pile up. Because those retained logs occupy the same filesystems or object stores as data, they accelerate space consumption and can eventually exhaust capacity. Imminent space exhaustion further degrades replica apply throughput (due to I/O contention and pause-on-error behavior) and can halt primary DML when log writes or temp allocations fail. Thus, each anomaly reinforces the others in a feedback loop: inefficient SQL inflates log volume, replication delay prevents log recycling, accumulated logs and temporary spill exceed storage limits, and storage pressure in turn magnifies both latency and replication backlog, culminating in a compound performance and availability crisis.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.6856827210129793,
+            "bm25_score": 30.736568962733827,
+            "lexical_score": 0.14479899497487436,
+            "matched_terms": [
+                "and",
+                "because",
+                "behind",
+                "by",
+                "cancelled",
+                "contention",
+                "error",
+                "for",
+                "in",
+                "long",
+                "or",
+                "path",
+                "running",
+                "statement",
+                "the",
+                "when",
+                "workload"
+            ],
+            "match_count": 4,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

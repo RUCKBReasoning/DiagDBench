@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Replication Synchronization Anomaly + CPU Resource Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Replication Synchronization Anomaly : Standbys or downstream consumers cannot ingest and apply primary WAL at the rate it is produced, widening log-position gaps and preventing log recycling.\nCPU Resource Anomaly : Database processes saturate host CPU, driving load-average and run-queue pressure and slowing every code path that requires compute time.\nOperating System Resource Limit Anomaly : The database hits kernel-enforced ceilings on handles, processes/threads, shared memory, or similar objects, blocking new work even though engine-level slots still exist.\n\nWhen all three root causes strike together the system exhibits a compound failure signature: replica lag explodes while both primary and replica show near-100 % CPU, yet error logs also record ‘cannot allocate shared memory / open file / create thread’ messages. DML and queries on the primary slow because WAL flushes are throttled by back-pressure from stalled replicas, autovacuum or parallel workers fail to start due to kernel limits, and monitoring shows both high scheduler wait events and replication wait events. Replica apply workers repeatedly fall behind or crash-restart when they cannot obtain file handles or shared-memory segments, further inflating CPU as they respawn, while primary-side WAL segments accumulate, threatening disk exhaustion and jeopardizing failover readiness.\n\nCausal interaction: CPU saturation lengthens every system call, causing replication sender and receiver processes to miss network deadlines and aggravate apply lag. Growing apply lag forces more WAL traffic and larger relay logs, which in turn require additional CPU to process, forming a positive feedback loop. Simultaneously, the elevated process and thread count spawned by retrying replication and maintenance tasks drives the system past kernel resource ceilings; each allocation failure triggers more retries and logging, consuming yet more CPU. Hitting OS limits also prevents the database from spawning extra apply or parallel workers that might have alleviated lag or distributed CPU load, thereby entrenching both replication backlog and CPU starvation. The three anomalies thus reinforce one another, producing a blended symptom set that is broader, more severe, and harder to attribute to a single layer.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2449,
+            "score": 0.5078427764993948,
+            "bm25_score": 53.54211145086127,
+            "lexical_score": 0.17790060468631896,
+            "matched_terms": [
+                "and",
+                "apply",
+                "at",
+                "downstream",
+                "failure",
+                "in",
+                "is",
+                "lag",
+                "log",
+                "network",
+                "or",
+                "position",
+                "receiver",
+                "replica",
+                "replication",
+                "sender",
+                "the",
+                "thread",
+                "to"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010562",
+                "error_name": "OBSOLETE_ER_RPL_REPLICA_CONNECTED_TO_SOURCE_REPLICATION_STARTED",
+                "official_description": "Replica I/O thread%s: connected to source '%s@%s:%d',replication started in log '%s' at position %s",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

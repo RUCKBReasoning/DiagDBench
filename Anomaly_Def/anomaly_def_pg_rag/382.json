@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "SQL Workload Logic Anomaly: Excessive or poorly-formed statements and transaction scopes at the application layer force the engine to process more rows, pages, or time than the true business need demands.\nBuffer Cache and Latch Contention Anomaly: Hot buffer-pool pages and their protective latches become serialization points, making sessions wait or spin while competing for access to the same memory frames.\n\nWhen these two root causes coincide, the database executes bloated, scan-heavy, long-running statements that touch large swaths of data while simultaneously funneling many concurrent sessions through a small set of buffer pages (e.g., index roots, sequence blocks, hotspot tables). Observable symptoms include:  \n• A surge of slow-query log entries for the ill-written statements.  \n• Dramatic rises in buffer busy, page-latch, and latch-free wait events, often accompanied by CPU spin and elevated system load.  \n• Prolonged transaction lifetimes that keep locks and latches held, magnifying queueing delays for otherwise short operations.  \n• Fluctuating buffer hit ratios and rapid page churn, with checkpoint or background writer spikes as the engine struggles to maintain dirty-page targets.  \n• Application-level timeouts, retry storms, and cascading latency across seemingly unrelated requests due to depleted worker threads stuck on latches.\n\nCausally, inefficient SQL amplifies buffer traffic: wide scans, Cartesian joins, and over-fetched result sets read or dirty far more pages than necessary, injecting them into an already constrained buffer pool. The resulting churn and concentration on a subset of frequently referenced pages (e.g., root or allocation pages) escalates latch pressure. Each latch wait prolongs statement execution, keeping transactions open longer, which in turn sustains their grip on the same hot pages and perpetuates contention. The feedback loop between bloated workload logic (demand side) and buffer/latch serialization (supply side) drives systemic throughput collapse and tail-latency spikes across both transactional and analytical activities.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.35921650938429533,
+            "bm25_score": 15.461425583077453,
+            "lexical_score": 0.12372168893908023,
+            "matched_terms": [
+                "an",
+                "and",
+                "by",
+                "for",
+                "latency",
+                "of",
+                "on",
+                "or",
+                "retry",
+                "sessions",
+                "system",
+                "that",
+                "the",
+                "time",
+                "to",
+                "when",
+                "which"
+            ],
+            "match_count": 180,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_interval",
+                "parameter_name": "tcp_keepalives_interval",
+                "timeout_category": "network_keepalive_retry_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time after which a TCP keepalive message that has not been acknowledged by the client should be retransmitted.",
+                "trigger_condition": "A TCP keepalive probe is not acknowledged for tcp_keepalives_interval on systems supporting TCP_KEEPINTVL or an equivalent socket option.",
+                "workload_impact": "Controls retry timing for keepalive probes used to detect unresponsive client connections.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

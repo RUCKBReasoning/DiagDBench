@@ -1,0 +1,45 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Buffer Cache and Latch Contention Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Database Memory Allocation Anomaly : The engine allocates more process memory than the host can safely provide, leading to paging, swap storms, or OOM terminations.\nBuffer Cache and Latch Contention Anomaly : Threads stall on hot buffer pages, latches, or I/O-slot primitives because many sessions compete for the same cache frames or page states.\nTransaction Log Subsystem Anomaly : Commit processing is throttled by slow log buffering, flushing, or archiving, making the log device or pipeline the primary write-path bottleneck.\n\nWhen these three root causes co-exist, the database exhibits a compound failure pattern: commit latency and page-access latency rise together, CPU usage oscillates between spin-loops on latches and kernel time servicing memory pressure, and throughput collapses unpredictably. Wait-event views show a mix of MEMORY_PRESSURE, PAGE_LATCH_*, LOG_FLUSH, and IO_SCHEDULER waits. Buffer-pool hit ratios fluctuate as pages are evicted by memory pressure while the same hot pages are immediately re-read, amplifying latch waits. Concurrently, log flushes slow down because the kernel is paging and the log device queues are saturated, causing transactions to queue behind both latch acquisition and commit synchronization. Administrators may mis-attribute the slowdown to any single subsystem because symptoms overlap and mask each other.\n\nCausal interaction: oversized work areas and plan/cache bloat inflate the resident-set size, forcing the OS to reclaim pages and lengthening dirty-page flush cycles. Prolonged flush cycles keep buffer frames pinned, intensifying latch contention on the hot pages that remain. At the same time, the memory-starved kernel delays log-buffer flushes, so transactions that finally obtain buffer latches still block on LOG_SYNC before completing. The stalled commits, in turn, hold locks and retain buffer pins longer, feeding back into latch pressure and extending the lifetime of in-memory structures, which further swells memory consumption. The three subsystems therefore reinforce one another in a vicious circle that degrades both read-modify-write and pure write workloads and can culminate in cluster node eviction or forced instance restart.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 84,
+            "score": 0.14804844661573632,
+            "bm25_score": 8.362085134928707,
+            "lexical_score": 0.09981042654028435,
+            "matched_terms": [
+                "and",
+                "by",
+                "engine",
+                "failure",
+                "in",
+                "is",
+                "many",
+                "or",
+                "pressure",
+                "the",
+                "to",
+                "together"
+            ],
+            "match_count": 14,
+            "entry": {
+                "error_code": "2203D",
+                "error_name": "too_many_json_array_elements",
+                "official_description": "too many json array elements",
+                "error_class": "Class 22 - Data Exception",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

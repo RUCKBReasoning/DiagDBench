@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Database Configuration Parameter Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Row-count, histogram, and correlation metadata are stale, missing, or inaccurate, causing systematic cardinality misestimates that mislead the optimizer during plan generation.\nDatabase Configuration Parameter Anomaly : Engine-level runtime parameters (memory, parallelism, checkpoint, etc.) are mis-tuned for the hardware and workload, so performance limits are hit even when physical resources are not fully utilized.\n\nWhen both conditions exist simultaneously, the workload exhibits plan choices that are not only sub-optimal but also collide with ill-sized memory pools, worker limits, and I/O cadences. Symptoms include: execution plans that swing between inefficient serial scans and over-parallelized joins; sudden spool, sort, or hash spills despite apparently ample server memory; erratic CPU and I/O utilization where some resources idle while sessions wait on memory, workfile, or replan events; frequent recompilations after data changes followed by checkpoint or flush storms triggered by mis-set checkpoint parameters; and highly variable response times where identical statements alternately run fast and then stall on waits that do not match observed hardware saturation.\n\nCausally, incorrect statistics drive the optimizer to favor plans whose resource demands—join order, parallel degree, memory grants, spill behavior—are based on wrong cardinality assumptions. Misaligned configuration parameters then fail to supply, or grossly oversupply, the required resources, turning what might have been a modest inefficiency into severe contention or wasted capacity. Conversely, undersized work memory or buffer pools force more frequent I/O, which can invalidate sampling assumptions and accelerate data churn, making statistics stale even faster. The two root causes therefore reinforce each other: bad statistics choose bad plans; bad configuration magnifies their cost, leading to oscillating performance, noisy wait patterns, and an opaque diagnostic picture that masks the true dual origin of the problem.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.6556900223077212,
+            "bm25_score": 24.202088813574335,
+            "lexical_score": 0.12597087378640776,
+            "matched_terms": [
+                "and",
+                "by",
+                "contention",
+                "execution",
+                "for",
+                "or",
+                "other",
+                "resource",
+                "statements",
+                "the",
+                "triggered",
+                "when",
+                "with",
+                "work",
+                "workload"
+            ],
+            "match_count": 118,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

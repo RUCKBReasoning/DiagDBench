@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Transaction Log Subsystem Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Schema and Index Design Anomaly : Tables, partitions, and indexes are not aligned with access patterns, forcing the optimizer into inefficient full scans, non-covering look-ups, and excessive maintenance work.\nTransaction Log Subsystem Anomaly : Generation, flushing, or archiving of write-ahead logs cannot keep up with the commit rate, causing commit stalls and log-related wait events.\nNetwork and Connectivity Resource Anomaly : Transport paths, listeners, or connection slots are saturated or unreliable, delaying session establishment and result transmission.\n\nWhen all three root causes strike together, the database exhibits a mixed pattern of symptoms: 1) queries perform unnecessary full scans that inflate I/O and redo volume, 2) the oversized redo stream accumulates in the log buffer and waits for slow log flushes, lengthening commit latency, and 3) clients waiting on congested network channels or exhausted back-end slots experience timeouts and retry storms. End-to-end response times fluctuate wildly; small write transactions intermittently block behind log-sync waits, while read requests pile up inside the engine because client sockets cannot drain result sets quickly enough. Monitoring shows simultaneous spikes in logical and physical I/O, LOG_WRITE or LOG_FLUSH waits, and CLIENT_READ/CLIENT_WRITE waits, making it hard to attribute delays to a single layer.\n\nCausally, the poor schema and index design amplifies redo production and buffer-cache churn, putting sustained pressure on the transaction log subsystem. The log subsystem, already tuned too tightly for peak throughput, elongates commit cycles; longer commits hold latches and row locks for extra time, which in turn stretches the duration that back-end processes occupy network sockets. As network resources saturate, new sessions and retries further raise concurrency, driving even more ad-hoc queries through sub-optimal access paths and accelerating redo generation. This positive feedback loop—inefficient data access → excess redo → log-flush bottleneck → prolonged transactions → connection pile-ups → higher concurrency → more inefficient work—creates a cascading performance collapse that is far more severe than any individual anomaly would cause.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1352,
+            "score": 0.36963508708086357,
+            "bm25_score": 36.787752324599616,
+            "lexical_score": 0.139337899543379,
+            "matched_terms": [
+                "and",
+                "commit",
+                "engine",
+                "for",
+                "in",
+                "is",
+                "on",
+                "or",
+                "pressure",
+                "resource",
+                "the",
+                "to",
+                "together",
+                "transactions",
+                "waiting",
+                "while",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "3796",
+                "error_name": "ER_GRP_TRX_CONSISTENCY_BEFORE",
+                "official_description": "Error while waiting for group transactions commit on group_replication_consistency= 'BEFORE'.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,46 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Replication Synchronization Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Database Memory Allocation Anomaly: Excessive growth of buffer caches, work areas, or background heaps drives the database process beyond the safe physical-memory envelope of the host.\nReplication Synchronization Anomaly: The replication pipeline cannot receive, persist, or apply transaction-log records at the pace the primary produces them, causing widening log-position gaps and retained log segments.\nOperating System Resource Limit Anomaly: The database or its auxiliary processes exhaust kernel-enforced quotas such as file handles, shared-memory segments, semaphores, or thread counts, leading to allocation denials and partial outages.\n\nWhen all three root causes surface together, the system exhibits an interwoven symptom set: sustained host memory pressure and paging; abrupt failures to spawn new sessions, background, or replication apply workers due to kernel quota exhaustion; accelerating replication lag accompanied by ballooning retained WAL/relay logs; growing resident-set sizes on both primary and replicas; intermittent \"cannot allocate shared memory/file descriptor\" errors in engine and system logs; and, in clustered deployments, heightened risk of node eviction or unviable failover targets because replicas fall ever further behind.\n\nCausal interaction: Runaway in-memory structures on the primary inflate its RSS, pushing the process toward kernel limits (e.g., shmmax, memlock, thread count). Allocation denials stall or kill parallel and replication sender processes, immediately throttling the log-shipping rate. The resulting backlog forces the primary to retain additional log segments, which in turn grow memory and file-descriptor usage, amplifying both the memory bloat and OS-limit pressure. On replicas, the same retention enlarges apply queues; added work must be handled by workers that may already be starved for shared memory or threads, deepening lag. The feedback loop—memory over-consumption → OS limit breaches → replication slowdown → further memory and handle accumulation—quickly degrades overall throughput and jeopardizes data-protection objectives.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.4592249353698488,
+            "bm25_score": 11.667120299003344,
+            "lexical_score": 0.09259259259259259,
+            "matched_terms": [
+                "and",
+                "of",
+                "or",
+                "replication",
+                "sender",
+                "sessions",
+                "that",
+                "the",
+                "wal",
+                "when"
+            ],
+            "match_count": 23,
+            "entry": {
+                "timeout_id": "pg16_wal_sender_timeout",
+                "parameter_name": "wal_sender_timeout",
+                "timeout_category": "replication_sender_timeout",
+                "scope": "server/replication",
+                "official_definition": "Terminates replication connections that are inactive longer than the specified amount of time.",
+                "trigger_condition": "A WAL sender replication connection is inactive longer than wal_sender_timeout.",
+                "workload_impact": "The replication connection is terminated.",
+                "default_behavior": "PostgreSQL documentation defines the parameter under replication sending server settings.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

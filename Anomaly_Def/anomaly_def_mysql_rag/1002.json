@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Buffer Cache and Latch Contention Anomaly + Replication Synchronization Anomaly",
+            "Description": "Schema and Index Design Anomaly : The physical data model does not align with workload access patterns, forcing queries into inefficient full-scan or non-covering-index paths and creating write hot-spots.\nBuffer Cache and Latch Contention Anomaly : Concurrent sessions serialize on hot buffer pages, latches, or I/O slots, causing CPU spin and wait spikes even when total memory is sufficient.\nReplication Synchronization Anomaly : Downstream replicas cannot ingest or apply primary-side log traffic fast enough, leading to widening log-position gaps and retention of un-recycled log segments.\n\nWhen these three root causes strike simultaneously, the system exhibits compounded symptoms: 1) queries and DML repeatedly hammer a small set of ill-designed tables or index root pages, inflating buffer-busy and page-latch waits; 2) the resulting stall and retry behaviour increases transaction duration and the volume of generated redo, so the primary’s log grows faster while flush cycles are lengthened by buffer contention; 3) replicas fall further behind because they must replay the same inefficient access patterns and also compete for their own buffer latches, showing escalating replay lag and ballooning relay-log or retained WAL storage. End-user latency oscillates with both local latch storms and downstream back-pressure, and administrative alarms may simultaneously report buffer-cache hotspots, high WAL retention, and replication lag, making the root cause hard to pinpoint.\n\nCausally, the sub-optimal schema design creates concentrated page accesses that become latch hot-spots; this latch contention slows foreground DML and prolongs checkpoints, generating bursts of dirty pages and large transaction logs. The enlarged and sustained log volume overloads the replication pipeline, whose own apply threads are further hampered by the same poor index layout, re-creating latch contention on the replica side and reducing catch-up throughput. As replicas lag, the primary is forced to retain additional log segments, keeping more pages dirty and resident, which intensifies buffer churn and latch pressure—forming a reinforcing loop that degrades both primary performance and replica freshness.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.7416534017971759,
+            "bm25_score": 30.11848544780624,
+            "lexical_score": 0.1388446726572529,
+            "matched_terms": [
+                "administrative",
+                "and",
+                "apply",
+                "causing",
+                "data",
+                "downstream",
+                "is",
+                "lag",
+                "or",
+                "replica",
+                "replication",
+                "the",
+                "this",
+                "to",
+                "waits",
+                "when"
+            ],
+            "match_count": 48,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

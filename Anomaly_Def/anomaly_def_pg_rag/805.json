@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + MVCC Version Maintenance Anomaly + Replication Synchronization Anomaly",
+            "Description": "SQL Workload Logic Anomaly: Application-level statements or transaction patterns that retrieve, scan, or update far more data than business logic requires, prolonging statement and transaction execution times.\nMVCC Version Maintenance Anomaly: Accumulation of obsolete row versions and rollback records because background cleaners cannot reclaim space as fast as new versions are created, inflating table/index size and visibility-check cost.\nReplication Synchronization Anomaly: Downstream replicas or subscribers fall behind because they cannot receive, write, or apply primary-generated log records at production speed, causing log-position gaps and retention of old segments.\n\nWhen all three root causes coexist, the database exhibits an amplified mix of symptoms:  \n• Individual queries and batches run long, appear repeatedly in slow-query logs, and generate outsized undo/redo volume.  \n• Heap and index bloat rise rapidly, dragging down cache efficiency and lengthening sequential scans and visibility checks; autovacuum or purge workers stay saturated yet never catch up.  \n• Primary-side transaction logs grow quickly while replica replay lag widens; checkpoints stall waiting for log recycling, and disk-space alarms fire on both primary and standby.  \n• Replica read consistency degrades because larger version stores must be traversed during snapshot creation; long-running replica queries further delay vacuum on the primary, increasing bloat.  \n• End-users see highly variable latency, timeouts, and stale read results, and failover readiness deteriorates as replicas fall ever further behind.\n\nCausally, chatty or poorly filtered application workloads (SQL Workload Logic Anomaly) drive excessive updates, deletes, and wide scans, inflating the volume of row versions produced per transaction. This surge overwhelms MVCC cleanup processes, leading to persistent version bloat that slows both foreground queries and background maintenance. The same write amplification balloons the transaction log, which must be shipped and replayed on replicas; their apply threads struggle with the heavier redo stream and the expanded tables they must update, creating Replication Synchronization Anomaly. Replica lag prevents the primary from recycling log segments, prolongs the global transaction-id horizon, and holds back vacuum from pruning old versions—thereby worsening MVCC bloat. In turn, the bloated storage multiplies the cost of the already inefficient application queries, further escalating change volume and log generation. The feedback loop among chatty workload, version accumulation, and replication lag compounds resource exhaustion and performance instability in OLTP environments.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 237,
+            "score": 0.2597067448919254,
+            "bm25_score": 12.627962182817456,
+            "lexical_score": 0.14080674784028296,
+            "matched_terms": [
+                "and",
+                "be",
+                "data",
+                "execution",
+                "in",
+                "instability",
+                "level",
+                "logic",
+                "must",
+                "or",
+                "resource",
+                "sql",
+                "statement",
+                "table",
+                "the",
+                "to",
+                "with",
+                "workload"
+            ],
+            "match_count": 10,
+            "entry": {
+                "error_code": "HV00R",
+                "error_name": "fdw_table_not_found",
+                "official_description": "fdw table not found",
+                "error_class": "Class HV - Foreign Data Wrapper Error (SQL/MED)",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

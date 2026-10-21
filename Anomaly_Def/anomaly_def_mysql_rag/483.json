@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Database Configuration Parameter Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Optimizer Statistics Anomaly : The optimizer relies on stale, incomplete, or inaccurate statistics, producing systematic cardinality misestimates that drive poor plan choices.\nDatabase Configuration Parameter Anomaly : Engine-level memory, I/O, parallelism, and background-worker parameters are mis-tuned relative to hardware and workload, introducing artificial resource pressure or throttling that is unrelated to true capacity limits.\nData Block and Index Integrity Anomaly : Physical table or index pages contain corruption or logical inconsistencies, making access paths unreliable and causing incorrect or missing data to surface at execution time.\n\nWhen these three root causes coexist, symptoms multiply and blur: queries may oscillate between unexpectedly slow full scans (from misestimation) and erroneous, partial, or duplicated result sets (from corrupted indexes or pages). Repeated plan changes, sudden plan regressions after data loads, and frequent statement or transaction aborts appear alongside unusual wait-event patterns—e.g., excessive buffer-busy or log-write waits—even when CPU and I/O utilization remain low due to mis-set memory pools, checkpoint intervals, or parallelism caps. Integrity checkers may intermittently report page or key-order errors, yet operators may misinterpret them as fallout from the performance issues, delaying corrective action. Overall, troubleshooting becomes difficult because each symptom (poor plans, resource imbalance, data errors) can masquerade as the sole culprit while actually stemming from their interaction.\n\nCausally, stale or missing statistics push the optimizer toward plans (such as narrow-range index probes or large hash joins) whose effectiveness depends on healthy index structures and adequate memory. If indexes are internally corrupt, these plans return wrong results or trigger run-time error handling that forces full scans, amplifying the cost of the original misestimation. Simultaneously, misconfigured memory or checkpoint parameters can starve the buffer cache, inflate I/O latency, and induce frequent background flushes, magnifying the performance penalty of the unexpected scans and heightening the likelihood of torn pages or incomplete writes that deepen existing corruption. Conversely, corruption-induced retries and long-running error-handling paths inflate workload variability, thwarting auto-tuning heuristics and preventing statistics refresh jobs or autovacuum-style maintenance from completing. The feedback loop between bad statistics, harmful configuration, and structural corruption accelerates degradation of both performance and data correctness, threatening overall system stability.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.6566161893967741,
+            "bm25_score": 24.379847786908527,
+            "lexical_score": 0.10974493531852575,
+            "matched_terms": [
+                "and",
+                "because",
+                "block",
+                "is",
+                "of",
+                "or",
+                "statement",
+                "the",
+                "to",
+                "transaction",
+                "wait",
+                "waits",
+                "when",
+                "while",
+                "write"
+            ],
+            "match_count": 24,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

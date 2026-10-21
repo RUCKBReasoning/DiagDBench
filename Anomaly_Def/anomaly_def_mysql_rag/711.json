@@ -1,0 +1,59 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Replication Synchronization Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions block or deadlock each other because they hold mutually incompatible locks on the same rows, pages, or metadata objects.\nReplication Synchronization Anomaly : Stand-by or downstream replicas fall behind because they cannot receive, write, or apply primary-generated log records at the required rate.\nStorage I/O Throughput Anomaly : The underlying storage subsystem is saturated, driving read-, write-, and flush-latencies far above the engine’s tolerance.\n\nWhen these three root causes strike at once, the database exhibits a compound failure signature: primary sessions stall behind long lock-wait queues, while the same blocked or long-running transactions produce bulky log segments that the storage layer flushes ever more slowly. The storage backlog inflates commit latency at the primary and, in turn, widens the LSN gap on replicas; monitoring shows simultaneous spikes in lock-wait time, redo send and replay lag, and device queue depth. End-user requests time out, failovers are unsafe because replicas are minutes or hours behind, and disk-space alarms fire as unrecycled WAL or archive files accumulate.\n\nCausal interaction: lock contention lengthens transaction lifetimes, which multiplies the volume and size of log flushes required at commit; the stressed storage subsystem cannot sustain this flush rate, so commit latency grows further and keeps locks held even longer, intensifying blocking chains. The same storage bottleneck throttles the replica’s apply thread, forcing it to lag and hold additional retainable log segments on the primary. The widening replication lag prevents log recycling, driving yet more I/O and space pressure on the saturated storage layer. Each anomaly therefore amplifies the other two in a vicious loop that degrades both primary throughput and replication freshness.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.7559781121751026,
+            "bm25_score": 35.46257296475407,
+            "lexical_score": 0.186593707250342,
+            "matched_terms": [
+                "and",
+                "because",
+                "block",
+                "blocking",
+                "cannot",
+                "incompatible",
+                "is",
+                "lock",
+                "longer",
+                "metadata",
+                "of",
+                "or",
+                "required",
+                "sessions",
+                "the",
+                "this",
+                "to",
+                "transaction",
+                "wait",
+                "when",
+                "while",
+                "write"
+            ],
+            "match_count": 34,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

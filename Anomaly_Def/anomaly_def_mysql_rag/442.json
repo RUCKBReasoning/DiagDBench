@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Replication Synchronization Anomaly + CPU Resource Anomaly",
+            "Description": "Database Configuration Parameter Anomaly: Critical runtime settings (memory, checkpoint, parallelism, etc.) are mis-tuned relative to hardware capacity and workload, resulting in systemic inefficiencies that are not rooted in true resource exhaustion.\nReplication Synchronization Anomaly: Standby or subscriber nodes fail to receive, write, or apply WAL/redo fast enough, producing widening log-position gaps, retained segments, and stale replicas.\nCPU Resource Anomaly: Database processes consume or contend for nearly all available CPU cycles, driving run-queue pressure and global latency spikes.\n\nWhen these three root causes strike simultaneously, the system enters a feedback loop in which mis-configured parameters inflate CPU demand (e.g., overly aggressive parallel workers, undersized buffers forcing extra processing), the saturated CPUs starve both foreground queries and replication apply threads, and the throttled replicas in turn prevent WAL recycling, provoking more frequent checkpoints and log flush storms dictated by poorly chosen checkpoint and log-size settings. Operators observe conflicting signals: near-100 % CPU utilization alongside idle I/O devices, rapidly growing primary log storage, replication lag that oscillates or monotonically increases, sudden latency spikes at checkpoint boundaries, and runaway background-worker queues.\n\nCausally, bad configuration is the initiating factor—small checkpoint_segments or low shared_buffers force the engine to flush and generate WAL at a rate disproportionate to actual transactional throughput. The inflated redo stream drives higher CPU usage on the primary and demands faster apply on replicas. Because parallelism, work_mem, or autovacuum settings were also mis-tuned, CPU use on both primary and replicas climbs, lengthening replication apply times. The accumulating lag keeps log segments pinned, which the primary tries to purge via even more checkpoint activity, further stressing CPU loops. Thus, configuration errors ignite a chain reaction that both causes and magnifies CPU saturation, while the impaired CPU capacity directly degrades replication throughput, resulting in a self-reinforcing composite failure mode that is difficult to attribute to a single layer.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.7311212814645308,
+            "bm25_score": 15.457038891461123,
+            "lexical_score": 0.10373760488176963,
+            "matched_terms": [
+                "and",
+                "apply",
+                "configured",
+                "global",
+                "is",
+                "lag",
+                "or",
+                "replication",
+                "the",
+                "times",
+                "to",
+                "when"
+            ],
+            "match_count": 21,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

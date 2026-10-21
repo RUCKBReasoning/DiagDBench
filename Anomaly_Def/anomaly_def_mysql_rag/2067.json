@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Storage Space Capacity Anomaly + CPU Resource Anomaly",
+            "Description": "Schema and Index Design Anomaly: Physical data-model or index structures do not match workload access patterns, forcing inefficient full scans, row look-ups, or unbalanced partitions regardless of optimizer statistics.\nStorage Space Capacity Anomaly: Allocated data, log, or temporary space approaches or reaches exhaustion, triggering allocation failures, auto-extend stops, or log archival back-pressure.\nCPU Resource Anomaly: Database processes continuously saturate host CPU cores, driving high run-queue depth and broad latency increases across statements.\n\nWhen all three root causes manifest together, the database exhibits a compound failure pattern: workloads fall back to full-table scans and non-covering index probes that read and write far more blocks than necessary, rapidly inflating table, index, and temp objects until datafiles, logs, or temp areas hit hard space limits. Simultaneously, the scan-heavy plans and frantic space-management tasks (auto-extend attempts, freelist searches, segment splits, log switches, retry storms) consume large amounts of CPU. End-users observe steep, system-wide latency spikes, intermittent \"out of space\" or \"cannot allocate extent\" errors, statement cancellations during sorts or index builds, and CPU clock-time waits mixed with space-related engine wait events. Diagnostic views show both rising CPU usage and dwindling free space, while execution plans remain dominated by non-selective scans.\n\nCausal interaction: poor schema and indexing forces larger physical I/O footprints and temp usage per query. The inflated data movement accelerates growth of tables, indexes, and logs, pushing the storage subsystem toward capacity limits. As free space diminishes, the engine performs more frequent space checks, extent allocations, and garbage-collection sweeps, each adding CPU overhead. Space exhaustion then causes DML retries, failed sorts, and stalled checkpoint or archive operations, which in turn keep sessions active longer and elevate CPU load even further. The mutually reinforcing loop—inefficient access → higher CPU and data growth → space pressure → additional CPU-intensive space-management work—rapidly degrades throughput and can culminate in a complete halt of write activity and pervasive timeout failures across the workload.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.38635678257748574,
+            "bm25_score": 18.997152853273533,
+            "lexical_score": 0.14906649884623452,
+            "matched_terms": [
+                "activity",
+                "and",
+                "data",
+                "latency",
+                "longer",
+                "more",
+                "not",
+                "of",
+                "or",
+                "read",
+                "sessions",
+                "than",
+                "the",
+                "time",
+                "timeout",
+                "to",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 97,
+            "entry": {
+                "timeout_id": "mysql84_replica_network_timeout",
+                "parameter_name": "replica_net_timeout",
+                "timeout_category": "replication_network_timeout",
+                "scope": "global/replication",
+                "official_definition": "The number of seconds to wait for more data from a source/replica connection before aborting the read.",
+                "trigger_condition": "A replica waits longer than replica_net_timeout for more data from the source connection.",
+                "workload_impact": "The replication network read is aborted and the replica considers the connection interrupted.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

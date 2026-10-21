@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Database Memory Allocation Anomaly + CPU Resource Anomaly",
+            "Description": "Composite Definition: This anomaly occurs when the optimizer persistently selects sub-optimal execution plans (Query Plan Selection Anomaly) while the engine simultaneously over-allocates and exhausts host memory (Database Memory Allocation Anomaly) and the database processes drive the CPUs into sustained saturation (CPU Resource Anomaly). All three root causes are active at the same time, creating a multi-layer failure that degrades throughput and predictability across the entire workload.\n\nCombined Observable Phenomena: • Statements flip between radically different plans, some exploding into full table scans or multi-way nested loops. • Memory usage of buffer cache, work areas, and plan cache grows without bound, pushing the operating system into paging or OOM kills; after each memory reclaim, new plans are recompiled, further inflating the plan cache. • CPU utilization remains near 100 %, run-queue length spikes, and wait events shift from I/O or lock waits to scheduler waits and spin-locks inside memory allocators. • Latency outliers become extreme; short OLTP requests time out while long analytical queries stall in memory pressure throttling. • Node failures or automatic failovers may be triggered by combined memory and CPU stress, masking the underlying plan instability.\n\nCausal Interaction: Sub-optimal plans often require larger hash/sort areas or read far more pages, inflating both per-query work memory and buffer-cache churn. The bloated memory footprint accelerates overall memory exhaustion; when the engine or OS begins paging, CPU cycles are wasted on page-fault handling and plan recompilations, further heating CPU. In turn, CPU saturation slows the optimizer and memory managers, lengthening critical sections and increasing contention on shared allocation latches, which feeds back into even poorer plan choices (e.g., time-outs in adaptive optimization) and larger memory grants issued as guard bands. The positive feedback loop between bad plans, runaway memory growth, and CPU starvation rapidly amplifies resource pressure, causing a system-wide degradation that is much worse than any single anomaly would produce in isolation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.3939040060815125,
+            "bm25_score": 16.220503986030874,
+            "lexical_score": 0.1454301075268817,
+            "matched_terms": [
+                "and",
+                "are",
+                "by",
+                "handling",
+                "is",
+                "latency",
+                "long",
+                "may",
+                "on",
+                "or",
+                "remains",
+                "system",
+                "than",
+                "the",
+                "this",
+                "time",
+                "triggered",
+                "when"
+            ],
+            "match_count": 196,
+            "entry": {
+                "timeout_id": "pg16_tcp_user_timeout",
+                "parameter_name": "tcp_user_timeout",
+                "timeout_category": "network_unacknowledged_data_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies how long transmitted data may remain unacknowledged before the TCP connection is forcibly closed.",
+                "trigger_condition": "TCP data sent by PostgreSQL remains unacknowledged longer than tcp_user_timeout on systems supporting TCP_USER_TIMEOUT.",
+                "workload_impact": "The TCP connection is forcibly closed.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

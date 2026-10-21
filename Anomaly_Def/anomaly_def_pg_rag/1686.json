@@ -1,0 +1,63 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Operating System Resource Limit Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level statement or transaction design forces the database to scan, lock, or return more data than business logic requires, inflating execution time, resource demand, and result-set size.\nOperating System Resource Limit Anomaly : Database processes hit kernel-enforced ceilings for file handles, shared memory, threads, or other per-process / cgroup quotas, leading to failures in allocating required operating-system resources.\nNetwork and Connectivity Resource Anomaly : Transport paths, listener sockets, authentication handshakes, or connection slots become saturated or throttled, causing delays, refusals, and dropped or stalled client connections.\n\nWhen all three anomalies are present, the system exhibits an intertwined failure pattern: long-running or chatty SQL inflates the number and lifetime of sessions, each retaining open files, sockets, and memory segments until OS limits are exhausted. As limits are reached, the database intermittently fails to create back-end threads, accept new connections, or perform I/O, producing kernel “too many open files,” “cannot allocate memory,” or “cannot create thread” errors while simultaneous client-side timeouts, handshake failures, and rising retransmissions appear. Slow, data-heavy queries hold network sockets open for extended periods, clogging listener backlogs and leading to a surge of half-open or idle sockets. Application retries, triggered by connection failures, further lengthen transaction queues and exacerbate slow-query tails, making symptoms difficult to attribute to any single layer.\n\nCausally, inefficient SQL amplifies resource consumption per session—larger scans demand more file descriptors and shared memory, while bulky result sets and extended transaction windows monopolize sockets and keep network buffers full. This elevated baseline drives the system toward kernel limits; once those limits are crossed, the OS blocks new threads or I/O, which in turn forces the database to reject or stall additional work. Rejected or slow connections provoke client-side retry storms that inflate connection counts, magnify socket and authentication pressure, and deepen OS resource exhaustion. The feedback loop of heavy SQL, kernel-level denials, and network congestion accelerates degradation, potentially progressing from sporadic slowdowns to partial outages and, ultimately, complete service unavailability.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.7590878378378378,
+            "bm25_score": 46.65312225579284,
+            "lexical_score": 0.19695945945945945,
+            "matched_terms": [
+                "and",
+                "any",
+                "execution",
+                "from",
+                "long",
+                "more",
+                "of",
+                "or",
+                "other",
+                "pattern",
+                "query",
+                "resource",
+                "running",
+                "session",
+                "sql",
+                "statement",
+                "than",
+                "that",
+                "the",
+                "this",
+                "time",
+                "too",
+                "triggered",
+                "until",
+                "when",
+                "work",
+                "workload"
+            ],
+            "match_count": 245,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

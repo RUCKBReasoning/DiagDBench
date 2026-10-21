@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Transaction Lock Contention Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Row-count and data-distribution statistics are stale, missing, or inaccurate, driving systematic cardinality misestimates and sub-optimal execution-plan choices.\nTransaction Lock Contention Anomaly : Concurrent sessions acquire incompatible locks on the same resources, causing blocking chains or deadlocks that stall or abort transactions.\nStorage I/O Throughput Anomaly : Physical read/write demand exceeds the bandwidth or IOPS that the underlying storage can deliver, inflating I/O latency and queue depth.\n\nWhen all three root causes arise together, the database exhibits a compound failure pattern: bad statistics make the optimizer favor full scans, hash joins, or broad index ranges that inflate the physical I/O footprint. The resulting surge of page reads and log writes pushes the storage subsystem beyond its throughput limits, lengthening every I/O. Statements and transactions therefore hold row, page, and metadata locks far longer than usual, causing long blocker-waiter chains, frequent deadlocks, and application timeouts. Meanwhile, auto-update statistics jobs and user-initiated ANALYZE commands are themselves delayed by lock waits and slow I/O, so the statistics remain stale, plans stay poor, and the cycle perpetuates. Symptom telemetry shows extreme divergence between estimated and actual rows, soaring PAGEIOLATCH/WRITELOG or comparable wait classes, lock and deadlock graphs growing in width and depth, and CPU trending moderate because execution is throttled by I/O and lock waits rather than computation.\n\nCausally, inaccurate statistics start the chain by producing plans that overrun the storage system; saturated I/O then stretches lock hold times, directly amplifying contention in a transactional workload. In turn, heavy blocking prevents timely statistics collection and keeps I/O-intensive maintenance or checkpoint activities queued, which sustains the storage bottleneck. Each anomaly thus reinforces the others, driving a feedback loop that degrades throughput and undermines both concurrency control and optimizer accuracy.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.36888248310620564,
+            "bm25_score": 14.792363901033157,
+            "lexical_score": 0.11414969584765934,
+            "matched_terms": [
+                "and",
+                "causing",
+                "data",
+                "is",
+                "long",
+                "longer",
+                "or",
+                "than",
+                "the",
+                "timely",
+                "times",
+                "waits",
+                "when"
+            ],
+            "match_count": 6,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

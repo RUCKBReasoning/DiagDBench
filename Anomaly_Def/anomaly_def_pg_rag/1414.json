@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Database Configuration Parameter Anomaly + Replication Synchronization Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Costing inputs (row counts, histograms, correlations) are stale or incomplete, causing systematic cardinality misestimation and sub-optimal plans.\nDatabase Configuration Parameter Anomaly : Engine-level memory, I/O, parallelism, and checkpoint/redo settings are mis-tuned for the actual hardware and workload, distorting runtime behavior regardless of physical capacity.\nReplication Synchronization Anomaly : Standby or downstream replicas cannot receive or apply WAL/redo as fast as the primary generates it, leading to growing replication lag and log-retention pressure.\n\nComposite definition: The database concurrently suffers from inaccurate optimizer statistics, ill-calibrated configuration parameters, and impaired replication throughput. Together they create a multi-layer performance and availability degradation in which poor plan quality, resource misallocation, and backlog in the replication pipeline reinforce one another.\n\nCombined anomalous phenomena: 1) Queries on the primary intermittently swing between very fast and severely slow executions, with explain plans showing grossly off row-count estimates, high memory spills, or runaway parallelism. 2) Mis-sized buffers, work-mem, or checkpoint intervals inflate redo generation and increase flush storms, amplifying log-write waits even while CPU or storage remain under-utilised. 3) Replication monitor views show widening receive/replay lag, growing retained log segments, and replicas serving progressively staler data; failovers become risky as retained logs approach disk limits. 4) After bulk loads or schema changes, statistics staleness triggers massive sequential scans whose bloated I/O, memory, and redo output collide with poorly tuned background writer and WAL parameters, further starving replication workers and extending apply latency. Symptoms cross domains, obscuring root causes: log bloat may be misattributed to storage when it is jointly driven by bad plans and sub-optimal checkpoint sizing.\n\nCausal interaction: Stale or missing statistics generate inefficient plans (e.g., full-table scans, oversized hash aggregates) that explode I/O and redo volume. Because configuration parameters (buffer pool, work_mem, checkpoint_timeout, wal_buffers, parallelism limits) are mis-set, the engine cannot absorb the extra load, leading to more frequent checkpoints, longer log flush times, and head-of-line blocking. The surge in WAL traffic overwhelms replication channels already operating near capacity; as replicas fall behind, the primary must retain additional log segments, increasing disk pressure and further lengthening checkpoints. Elevated write and memory contention from mis-configured resources slows statistics auto-collection, perpetuating staleness and creating a reinforcing loop where each anomaly exacerbates the others, culminating in severe performance volatility, storage exhaustion risk, and degraded high-availability posture.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.41596623462854704,
+            "bm25_score": 18.667982659507146,
+            "lexical_score": 0.10486314760508308,
+            "matched_terms": [
+                "and",
+                "are",
+                "by",
+                "data",
+                "is",
+                "latency",
+                "longer",
+                "may",
+                "on",
+                "or",
+                "remain",
+                "stale",
+                "the",
+                "when"
+            ],
+            "match_count": 231,
+            "entry": {
+                "timeout_id": "pg16_tcp_user_timeout",
+                "parameter_name": "tcp_user_timeout",
+                "timeout_category": "network_unacknowledged_data_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies how long transmitted data may remain unacknowledged before the TCP connection is forcibly closed.",
+                "trigger_condition": "TCP data sent by PostgreSQL remains unacknowledged longer than tcp_user_timeout on systems supporting TCP_USER_TIMEOUT.",
+                "workload_impact": "The TCP connection is forcibly closed.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

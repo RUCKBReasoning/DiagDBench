@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Storage I/O Throughput Anomaly + CPU Resource Anomaly",
+            "Description": "Database Memory Allocation Anomaly : Excessive buffer, work-area, and background allocations push total database memory beyond the host’s safe physical or swap limits, provoking paging, cache churn, or out-of-memory events.\nStorage I/O Throughput Anomaly : Sustained read/write demand saturates the throughput, IOPS, or latency envelope of the underlying volumes that hold data, temp, and log files, making the storage layer the bottleneck.\nCPU Resource Anomaly : Database processes monopolize CPU cores for a prolonged period, driving host utilization toward saturation and creating long run-queue delays.\n\nWhen all three conditions emerge together, the database exhibits a multi-faceted resource crisis: frequent page faults and swap storms inflate device-level queue depths; disk latencies escalate while CPU is simultaneously pegged, so sessions oscillate between runnable and uninterruptible I/O states; buffer-cache hit ratios fall as hot pages are evicted, prompting more physical reads that the overtaxed storage cannot satisfy; write-ahead logging and checkpoint flushes stall, extending commit latency; background processes contend for CPU to reclaim memory or complete I/O, leading to global slowdowns, connection floods, and possible instance eviction or OS-level OOM kills.\n\nCausally, aggressive memory allocation can precipitate swap activity and large on-disk spills of hash and sort operations, instantly amplifying storage traffic. The swollen I/O queues prolong every access, causing worker threads to stay runnable longer and spin or context-switch, which inflates CPU usage. As CPU headroom disappears, memory management threads and I/O completion handlers run less frequently, delaying buffer recycling and further increasing live memory. The impaired storage throughput in turn prevents quick eviction of dirty pages, so memory remains pinned, while high CPU prevents efficient I/O scheduling—a reinforcing loop that degrades all three resources and drives the database into a deteriorating, self-sustaining bottleneck state.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.42378865007252503,
+            "bm25_score": 13.221707678928023,
+            "lexical_score": 0.11920677361853832,
+            "matched_terms": [
+                "activity",
+                "and",
+                "are",
+                "between",
+                "can",
+                "connection",
+                "is",
+                "latency",
+                "long",
+                "or",
+                "sessions",
+                "that",
+                "the",
+                "when",
+                "while"
+            ],
+            "match_count": 303,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

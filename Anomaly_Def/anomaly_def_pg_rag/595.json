@@ -1,0 +1,60 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Transaction Log Subsystem Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Sessions serialize on hot or frequently churned buffer-cache pages and their associated latches, causing CPU spin, buffer-busy waits, and page-level access stalls.\nTransaction Log Subsystem Anomaly : Commit processing and redo persistence are throttled by saturated log buffers, files, or archiver components, inflating log-write and log-sync latencies and delaying transactional progress.\nNetwork and Connectivity Resource Anomaly : Client/server communication or connection-handling resources are exhausted or unstable, inflating connection setup time, socket waits, and data-transfer latencies.\n\nWhen these three root causes co-exist, end-to-end response times deteriorate sharply and symptoms overlap:  \n• Application threads pile up in buffer-busy, page-latch, log-flush, and client-write waits simultaneously; CPU usage oscillates between spin-loops on latches and idle periods forced by log-sync or socket back-pressure.  \n• Commit latency becomes highly variable; some transactions hang in prepare/commit while others stall earlier on page access, making it hard to isolate a single choke point.  \n• Connection pools see rising time-to-connect and intermittent \"too many clients\" or timeout errors, while established sessions intermittently report network write waits due to slower commit acknowledgements and prolonged page-latch holding.  \n• Monitoring shows runaway log growth, elevated checkpoint frequency, and surging network retransmissions; yet storage I/O and CPU may appear under-utilized because concurrency collapses behind the compounded bottlenecks.\n\nCausal interaction: Heavy concurrent writes concentrate on a few index or hot-row pages, elevating latch contention and delaying buffer eviction. These stalls stretch transaction lifetimes, inflating in-memory redo that must be flushed at commit time. The already strained transaction-log subsystem now encounters larger, burstier flush requests, exacerbating log-write congestion and prolonging commit latency. Extended commit cycles in turn keep latches held longer and increase the number of active back-end processes waiting for log sync, swelling the pool of connected sessions. As requests queue up, client drivers retry or open new connections, saturating listener backlogs and socket descriptors, which inject additional network waits into the critical path. The network slowdown further delays commit acknowledgements, feeding back into longer latch hold times and higher redo accumulation. The reinforcing loop among hot-page contention, log bottlenecks, and network saturation drives a systemic throughput collapse characteristic of this composite anomaly.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.5364632925817333,
+            "bm25_score": 20.62521130292175,
+            "lexical_score": 0.17737171464330412,
+            "matched_terms": [
+                "and",
+                "are",
+                "at",
+                "be",
+                "between",
+                "client",
+                "connected",
+                "connection",
+                "handling",
+                "holding",
+                "idle",
+                "latency",
+                "or",
+                "pools",
+                "progress",
+                "sessions",
+                "socket",
+                "that",
+                "the",
+                "this",
+                "time",
+                "timeout",
+                "when",
+                "while"
+            ],
+            "match_count": 192,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

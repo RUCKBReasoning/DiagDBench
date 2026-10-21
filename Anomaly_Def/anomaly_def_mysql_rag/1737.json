@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Database Memory Allocation Anomaly + Replication Synchronization Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions acquire mutually incompatible locks on the same resources, causing blocking chains or deadlocks that stall or abort work. \nDatabase Memory Allocation Anomaly : The engine’s memory consumers collectively exceed safe physical limits, triggering paging, allocation throttling, or OOM terminations. \nReplication Synchronization Anomaly : Stand-by or downstream replicas fall behind because they cannot receive, persist, or apply log records at the rate produced by the primary. \n\nWhen all three conditions co-exist, the system exhibits severe and interleaved symptoms: lock wait queues lengthen while primary and replica memory footprints grow uncontrollably; backend processes stall on both lock acquisition and memory allocation, driving CPU idle time interspersed with kernel paging spikes. Replication lag balloons as apply workers blocked on locks or starved for memory defer redo, causing log files to accumulate and consume additional memory for in-flight buffers. Application sessions experience timeouts, intermittent deadlock errors, and sudden disconnects when OOM killers or crash-recovery events fire; monitoring shows rising lock-wait and memory-pressure counters alongside widening replica delay, making it hard to discern the dominant bottleneck.\n\nCausally, heavy lock contention elongates transaction lifetimes, inflating in-memory lock tables, undo/redo buffers, and per-session work areas, which accelerates memory exhaustion. Memory pressure in turn slows buffer-cache lookups and forces paging, lengthening critical sections and increasing the window during which locks are held, thereby aggravating contention. Both factors throttle the primary’s commit rate, yet the generated WAL still outpaces replicas whose apply threads now compete for scarce memory and encounter the same lock conflicts when replaying changes, deepening replication lag. The expanding replica delay prevents log truncation, causing additional memory and storage usage for retained log segments, which feeds back into the overall memory-allocation crisis and further stresses lock management, creating a vicious amplification loop that can culminate in cluster instability or forced failover.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3464,
+            "score": 0.378123049087486,
+            "bm25_score": 50.78977204289316,
+            "lexical_score": 0.14048076923076921,
+            "matched_terms": [
+                "and",
+                "apply",
+                "at",
+                "creating",
+                "downstream",
+                "lag",
+                "log",
+                "or",
+                "recovery",
+                "replica",
+                "replication",
+                "the",
+                "to",
+                "while",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-011580",
+                "error_name": "ER_GRP_RPL_CREATE_GRP_RPL_REC_CHANNEL",
+                "official_description": "Error while creating the group replication recovery channel with donor %s at %s port: %d.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

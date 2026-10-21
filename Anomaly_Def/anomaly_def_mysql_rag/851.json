@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Data Block and Index Integrity Anomaly + Storage Space Capacity Anomaly + CPU Resource Anomaly",
+            "Description": "Data Block and Index Integrity Anomaly: On-disk data or index pages have become physically or logically corrupt, making structural metadata and row contents unreliable.\nStorage Space Capacity Anomaly: The database, log, temp, or backup areas have run out of free bytes, causing allocation failures and write stalls.\nCPU Resource Anomaly: Database processes saturate host CPU, leaving too few compute cycles for normal query execution and background tasks.\n\nWhen all three root causes are active, symptoms overlap and intensify: corruption-induced full-table scans or rebuild attempts run while CPUs are already pegged, making every statement—whether touching damaged pages or not—incur high run-queue delays. Space exhaustion prevents the engine from creating new index leaves, spill files, or corruption-repair copies, so error logging shows alternating \"page checksum failure,\" \"cannot extend segment,\" and \"CPU scheduler wait\" events. Autovacuum, consistency-check, or backup jobs start but hang halfway because they hit both space and CPU limits, producing a rising backlog of un-checkpointed dirty pages. Clients observe erratic latency spikes, time-outs, and result set mismatches as some queries fail with corruption errors, others with \"no space left on device,\" and the rest slow under CPU starvation, making troubleshooting ambiguous.\n\nCausal chain: damaged blocks often trigger emergency index rebuilds, full scans, or forced consistency checks that demand extra CPU and temporary space; if the underlying storage is already near capacity, these repair operations quickly exhaust the remaining bytes, turning intermittent corruption into hard allocation failures. Conversely, space exhaustion can interrupt write-ahead logging or unfinished index rebuilds, leaving pages partially written and thereby introducing new corrupt blocks. Both conditions escalate CPU consumption as the engine retries failed writes, spins on corruption handling routines, or falls back to compute-heavy table scans. The feedback loop—corruption causes heavier CPU and space use, space failures introduce further corruption, and CPU saturation slows recovery—locks the system into a progressively worsening state until one or more resources are freed or the instance is taken offline for repair.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.7342410256038147,
+            "bm25_score": 28.014367602756927,
+            "lexical_score": 0.13491837263539777,
+            "matched_terms": [
+                "and",
+                "because",
+                "block",
+                "cannot",
+                "for",
+                "is",
+                "metadata",
+                "of",
+                "or",
+                "overlap",
+                "statement",
+                "the",
+                "to",
+                "wait",
+                "when",
+                "while",
+                "write",
+                "written"
+            ],
+            "match_count": 41,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "CPU Resource Anomaly + Operating System Resource Limit Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "CPU Resource Anomaly : Host-level compute cores are saturated by database processes, driving load averages and run-queue waits to the point where even lightweight tasks compete for CPU time.\nOperating System Resource Limit Anomaly : The database engine and its worker processes hit kernel-enforced ceilings such as file-handle, thread, shared-memory, or cgroup quotas, preventing new resources from being allocated even though the engine itself is willing.\nNetwork and Connectivity Resource Anomaly : The network or listener layer cannot accept or service the rate of incoming connections or data transfer, causing socket backlog growth, refused sessions, retransmits, and client-side timeouts.\n\nWhen these three root causes appear simultaneously, symptoms overlap and amplify: CPU saturation stretches every code path, including process creation, authentication, encryption, and packet handling, so connection handshakes linger and pile up in the listener backlog. The backlog itself grows until kernel socket or file-descriptor limits are reached, at which point new sockets are refused. Meanwhile, the engine cannot spin up additional back-end threads or parallel workers because both CPU cycles and per-process thread quotas are exhausted, producing a mixture of \"cannot create process/thread\", \"too many connections\", and client timeout errors. Existing sessions exhibit inflated statement latency from CPU queuing, periodic stalls while waiting on kernel objects, and prolonged client-read/client-write waits as network buffers drain slowly under high CPU contention. Monitoring views may concurrently report elevated run-queue depth, rising OS error counters for resource exhaustion, and spiking network retransmissions, making it hard to attribute the primary bottleneck.\n\nCausally, heavy CPU demand—often from inefficient queries or runaway parallelism—drives up context switches and kernel calls, accelerating consumption of file descriptors, threads, and async I/O contexts. As OS limits are hit, the engine’s ability to accept or spawn connection handlers degrades, forcing clients to back off and retry, which in turn inflates connection churn and socket creation rates, feeding further into descriptor exhaustion. Simultaneously, degraded CPU availability slows TLS handshakes and packet processing, elevating network latency and retransmissions; the longer sockets stay open, the more descriptors are occupied, deepening the OS-level shortage. The intertwined feedback loops between compute starvation, kernel resource depletion, and network saturation produce a cascading failure mode where relieving only one layer is insufficient—the anomalies reinforce each other to magnify overall performance collapse and partial service outages.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 614,
+            "score": 0.48425252004337466,
+            "bm25_score": 47.213564580831175,
+            "lexical_score": 0.1534136546184739,
+            "matched_terms": [
+                "and",
+                "by",
+                "context",
+                "engine",
+                "error",
+                "failure",
+                "hit",
+                "in",
+                "is",
+                "its",
+                "level",
+                "limit",
+                "or",
+                "point",
+                "reached",
+                "resource",
+                "statement",
+                "the",
+                "to"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "1635",
+                "error_name": "ER_DEBUG_SYNC_HIT_LIMIT",
+                "official_description": "debug sync point hit limit reached",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

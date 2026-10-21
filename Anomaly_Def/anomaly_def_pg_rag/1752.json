@@ -1,0 +1,41 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Transaction Log Subsystem Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly: Hot or rapidly recycled buffer pages, pins, or latches force sessions to serialize access to shared in-memory data structures, inflating buffer-busy, page-latch, and spin wait times.\nTransaction Log Subsystem Anomaly: Commit processing and log maintenance are throttled by insufficient log buffer, log file, or archiver bandwidth, driving up log-flush and log-write waits and stalling foreground writers.\nStorage I/O Throughput Anomaly: The underlying disks or storage fabric reach their IOPS / bandwidth limits, lengthening physical read-write service times for data, temp, and log files.\n\nWhen these three root causes strike concurrently, the database experiences a multi-layered stall: foreground transactions queue first on log-flush or commit waits, then hold buffer-cache latches longer than normal, while background check-point, buffer-flush, and archiver processes fight for the same saturated I/O channels. Observable symptoms include: 1) extreme variability in commit latency coupled with growing log file and archive backlogs; 2) explosive growth in buffer-busy/latch contention statistics as sessions spin on hot pages already pinned by log-waiting transactions; 3) device queues pinned at maximum depth, with both data-file and log-file latencies far exceeding their baselines; and 4) runaway CPU usage with little throughput gain, accompanied by periodic freezes when global cache or log buffers must be flushed.\n\nCausally, slow physical storage elongates every data-file and log-file I/O, directly triggering the Storage I/O Throughput Anomaly. Prolonged log writes propagate upstream, converting short commit paths into long log-flush waits; transactions already holding page latches remain in critical sections, thereby intensifying Buffer Cache and Latch Contention. The heightened contention forces additional retry loops and may inflate the buffer churn rate, which in turn issues more dirty-page flushes and advances checkpoints, further loading the already saturated storage subsystem and increasing redo generation. This positive feedback loop between I/O saturation, blocked log flushing, and latch hold-time amplification cascades into severe throughput collapse typical of write-heavy OLTP systems.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 14,
+            "score": 0.1880048175553875,
+            "bm25_score": 12.053945520456825,
+            "lexical_score": 0.0674802584350323,
+            "matched_terms": [
+                "access",
+                "and",
+                "at",
+                "or",
+                "the",
+                "time",
+                "with"
+            ],
+            "match_count": 12,
+            "entry": {
+                "error_code": "0LP01",
+                "error_name": "invalid_grant_operation",
+                "official_description": "invalid grant operation",
+                "error_class": "Class 0L - Invalid Grantor",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "authentication_and_authorization",
+                "cause_analysis": "The failure is typically associated with user identity, privilege scope, object access checks, or credential validation at session establishment or statement execution time.",
+                "solution_guidance": "Verify account credentials, privilege grants, object ownership, role settings, and whether the execution context has sufficient access rights.",
+                "observable_symptoms": [
+                    "access denied",
+                    "authentication failure",
+                    "permission error"
+                ]
+            }
+        }
+    }
+]

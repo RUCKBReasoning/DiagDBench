@@ -1,0 +1,61 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Schema and Index Design Anomaly + Transaction Lock Contention Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level statements or transaction demarcations force the engine to read, scan, or hold more data and locks than the business logic really requires.\nSchema and Index Design Anomaly : Physical table, column, partition, or indexing choices do not align with access patterns, obliging otherwise correct queries to traverse large data regions or touch non-covering paths.\nTransaction Lock Contention Anomaly : Concurrent sessions request mutually incompatible locks on the same rows, pages, tables, or metadata, producing long blocking chains or deadlocks that stall OLTP throughput.\n\nWhen all three root causes coexist, the database exhibits an interwoven symptom set: statements appear persistently in slow-query and deadlock logs; execution plans show table or index scans and wide lock footprints; lock-wait time, deadlock frequency, and transaction latency climb together; connection pools back up while CPU and I/O fluctuate between under-utilization during waits and sudden spikes when blocks clear; end-user requests time out or retry, and even modest workload spikes can trigger cascading stalls.\n\nCausally, poorly written workload logic (e.g., missing predicates, oversized batches, or long user-think-time transactions) magnifies the surface area of data each statement touches, multiplying the number and duration of locks it acquires. Because the underlying schema lacks appropriate, selective, and covering indexes, these bloated statements escalate to full scans, further enlarging lock scopes (row → page → table) and prolonging critical-section hold times. The extended locks then collide with other concurrent transactions, and the lock manager becomes a bottleneck, producing wait chains and deadlocks. In turn, these waits lengthen transaction lifetimes, making long-running statements even more susceptible to being blocked and to blocking others, creating a feedback loop in which inefficient logic, poor physical design, and lock contention reinforce each other and dramatically degrade OLTP performance.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.7555837563451776,
+            "bm25_score": 43.631039857799514,
+            "lexical_score": 0.18527918781725888,
+            "matched_terms": [
+                "an",
+                "and",
+                "back",
+                "because",
+                "blocking",
+                "in",
+                "incompatible",
+                "lock",
+                "metadata",
+                "of",
+                "or",
+                "retry",
+                "row",
+                "schema",
+                "sessions",
+                "statement",
+                "than",
+                "the",
+                "time",
+                "transaction",
+                "up",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 143,
+            "entry": {
+                "timeout_id": "mysql84_innodb_row_lock_wait_timeout",
+                "parameter_name": "innodb_lock_wait_timeout",
+                "timeout_category": "innodb_row_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "The length of time in seconds an InnoDB transaction waits for a row lock before giving up.",
+                "trigger_condition": "An InnoDB transaction waits longer than innodb_lock_wait_timeout for a row lock.",
+                "workload_impact": "The lock wait gives up; by default only the current statement is rolled back unless innodb_rollback_on_timeout is enabled.",
+                "default_behavior": "Defined as an InnoDB system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

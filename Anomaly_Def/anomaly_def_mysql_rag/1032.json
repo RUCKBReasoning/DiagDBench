@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Replication Synchronization Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly : The primary instance’s local write-ahead logging path cannot generate, flush, switch, or archive log segments at the rate demanded by the workload.\nReplication Synchronization Anomaly : Downstream replicas or change-data consumers cannot receive, persist, or apply the primary’s log stream fast enough, causing growing replication lag and retention of old log segments.\n\nComposite definition: Both bottlenecks are present at the same time— the primary’s log subsystem is saturated while the replication pipeline is simultaneously stalled—creating a feedback loop in which neither side can progress at the required throughput.\n\nCombined observable phenomena: Commit latency, log-flush and log-sync waits rise sharply; checkpoints and log-file switches occur more frequently yet still leave log directories expanding. Replication monitoring shows widening send, receive, and replay lags; relay logs or retained primary segments mushroom, and replicas deliver increasingly stale reads or fall out of failover eligibility. The primary may throttle or stall new writes when log space cannot be recycled, while replicas may exhibit backpressure, single-threaded apply saturation, or network congestion. Because both paths are impaired, administrators see mixed symptoms—storage alerts on the primary, network or apply lag warnings on replicas, and cascading slowdowns of foreground user transactions.\n\nCausal interaction: A slow local log subsystem inflates commit durations and extends the time each transaction’s log records occupy active segments, reducing the headroom available for replication retention; concurrently, replication lag prevents those segments from being recycled, further lengthening the primary’s log queue and intensifying the local I/O hotspot. Conversely, replication backpressure keeps log segments pinned, forcing the primary to switch to new segments more rapidly and increasing the write-amplification on an already over-stressed log device. The two anomalies therefore reinforce each other—local log saturation starves the replication feed, and replication lag starves log-space reuse—leading to a vicious cycle that can culminate in full disks, suspended commits, and replica divergence.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1552,
+            "score": 0.6247862604019613,
+            "bm25_score": 65.02684713519618,
+            "lexical_score": 0.18463611859838275,
+            "matched_terms": [
+                "and",
+                "apply",
+                "be",
+                "because",
+                "cannot",
+                "change",
+                "downstream",
+                "is",
+                "lag",
+                "local",
+                "log",
+                "network",
+                "on",
+                "or",
+                "replica",
+                "replication",
+                "retention",
+                "stale",
+                "the",
+                "to"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "4012",
+                "error_name": "ER_ASSIGN_GTIDS_TO_ANONYMOUS_TRANSACTIONS_REQUIRES_GTID_MODE_ON",
+                "official_description": "CHANGE REPLICATION SOURCE TO ASSIGN_GTIDS_TO_ANONYMOUS_TRANSACTIONS = LOCAL|<UUID> cannot be executed because @@GLOBAL.GTID_MODE <> ON.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

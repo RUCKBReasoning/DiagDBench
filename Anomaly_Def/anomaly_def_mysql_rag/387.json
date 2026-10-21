@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Composite definition: The system simultaneously experiences a Query Plan Selection Anomaly, in which the optimizer reuses or chooses a markedly sub-optimal execution plan despite accurate statistics, and a Buffer Cache and Latch Contention Anomaly, in which sessions block or spin while fighting for access to hot buffer pages, page pins, or latches inside the buffer manager.\n\nCombined phenomena: The workload shows erratic plan flips, sudden shifts to full table scans or explosive nested-loop joins that dramatically raise page touches per statement. Concurrently, wait-event dashboards light up with buffer busy waits, page-latch or spinlock stalls, and CPU burn without matching throughput. I/O volumes surge because poorly chosen plans thrash the buffer pool, while latch contention lengthens critical sections, making individual statements slower and widening latency variance. Execution plans appear to deteriorate further under heavy concurrency, and end-to-end response times fluctuate unpredictably, obscuring whether the bottleneck is in execution logic or memory access.\n\nCausal chain: Inefficient plans inflate logical I/O, repeatedly hammering a small set of root pages, index leaves, or temporary work tables, concentrating traffic on a handful of buffers and amplifying latch contention. The resulting stalls prolong statement runtimes and delay completion of data-modifying operations, which keeps those same hot pages pinned even longer, further escalating contention. Extended latch waits can, in turn, trigger automatic recompiles, plan cache evictions, or adaptive plan changes that pick yet another sub-optimal plan, creating a feedback loop. Together, the two root causes reinforce each other, driving up CPU spin, blocking time, and I/O pressure, and making the overall performance degradation deeper and harder to diagnose than either anomaly in isolation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.5306319297198555,
+            "bm25_score": 24.327869196860195,
+            "lexical_score": 0.15067204301075268,
+            "matched_terms": [
+                "and",
+                "another",
+                "because",
+                "blocking",
+                "delay",
+                "for",
+                "in",
+                "is",
+                "longer",
+                "of",
+                "or",
+                "sessions",
+                "statement",
+                "than",
+                "the",
+                "time",
+                "up",
+                "wait",
+                "waits"
+            ],
+            "match_count": 19,
+            "entry": {
+                "timeout_id": "mysql84_innodb_row_lock_wait_timeout",
+                "parameter_name": "innodb_lock_wait_timeout",
+                "timeout_category": "innodb_row_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "The length of time in seconds an InnoDB transaction waits for a row lock before giving up.",
+                "trigger_condition": "An InnoDB transaction waits longer than innodb_lock_wait_timeout for a row lock.",
+                "workload_impact": "The lock wait gives up; by default only the current statement is rolled back unless innodb_rollback_on_timeout is enabled.",
+                "default_behavior": "Defined as an InnoDB system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

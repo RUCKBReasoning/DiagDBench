@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Replication Synchronization Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently picks a sub-optimal execution plan—even with reasonable statistics—due to cost-model, plan-cache, or version/parameter issues.\nReplication Synchronization Anomaly : Replication receivers or appliers cannot ingest or replay WAL/redo at the rate produced by the primary, producing widening log-position gaps and lag.\nData Block and Index Integrity Anomaly : Physical data or index pages are corrupted or internally inconsistent, so access methods and integrity checks no longer trust the on-disk structures.\n\nWhen all three root causes manifest together, the system exhibits a tangled failure signature: 1) erratic query latencies and plan flips on the primary and replicas, 2) explosive growth in I/O and CPU as bad plans trigger large scans or nested-loop explosions that read corrupted pages, 3) replication lag that oscillates or stalls because corrupted blocks or redo records cannot be applied, leading to repeated retries or worker crashes, 4) divergence between primary and replicas—some replicas may silently miss or duplicate rows due to underlying index inconsistencies while also being hours behind, and 5) administrative alerts about checksum errors, plan cache thrashing, and disk-space exhaustion from retained WAL segments.\n\nCausally, corrupted data or index structures can distort optimizer statistics or cause runtime page-level errors that prompt the optimizer to abandon efficient access paths, increasing the likelihood of sub-optimal plan selection. These heavier plans generate larger volumes of undo/redo and prolonged locks, inflating the replication stream. Simultaneously, when corrupted pages propagate through WAL, replicas may repeatedly fail to apply them, stalling replay and amplifying synchronization lag; this backlog prevents log recycling on the primary, further stressing storage and exacerbating I/O contention that feeds back into poor plan choices. Thus, each anomaly reinforces the others: corruption undermines plan quality; bad plans inflate replication load; replication stalls surface more corruption and resource pressure, collectively degrading both primary and replica stability.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5568,
+            "score": 0.5081904961006026,
+            "bm25_score": 51.006527687058025,
+            "lexical_score": 0.16520337536740304,
+            "matched_terms": [
+                "access",
+                "and",
+                "are",
+                "data",
+                "disk",
+                "failure",
+                "from",
+                "growth",
+                "log",
+                "manifest",
+                "or",
+                "paths",
+                "pressure",
+                "read",
+                "storage",
+                "the",
+                "while",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013709",
+                "error_name": "ER_COMPONENTS_INFRASTRUCTURE_MANIFEST_DEINIT",
+                "official_description": "Received an error while unloading components read from manifest file: %s",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

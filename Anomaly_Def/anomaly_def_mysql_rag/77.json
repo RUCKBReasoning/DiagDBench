@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + MVCC Version Maintenance Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Optimizer Statistics Anomaly : The cost model relies on stale, incomplete, or skew-blind statistics, producing systematic cardinality misestimates that misguide plan selection.\nMVCC Version Maintenance Anomaly : Obsolete row versions and index entries accumulate faster than background cleanup can reclaim them, inflating table and index size and adding visibility-check overhead.\nBuffer Cache and Latch Contention Anomaly : Frequently accessed pages and in-flight I/O slots are protected by latches that become hot under pressure, forcing sessions to stall or spin while waiting for buffer-cache access.\n\nWhen these three conditions coexist, the database can display a compound symptom set: queries suddenly flip from index to full-table scans over massively bloated heaps and indexes; the scans drag huge numbers of dead tuples into the buffer pool, displacing useful pages and amplifying buffer churn; latch and buffer-busy waits soar, CPUs spin on hot root pages, and overall throughput collapses. Execution-plan estimates diverge drastically from reality, autovacuum or purge workers remain saturated yet fall further behind, checkpoint and background-writer activity spike, and storage consumption and I/O latency rise concurrently. Administrators may observe alternating bursts of high I/O, CPU spin, and memory pressure, with query plans oscillating unpredictably as statistics age and data volume grows.\n\nCausal chain: heavy OLTP update/delete traffic generates MVCC bloat, swelling the physical size of tables and indexes. Because statistics are not refreshed at the same pace, the optimizer still believes row counts are low and selects plans (e.g., nested-loop joins or index probes) that, once executed, touch many more pages than expected. The unexpected I/O inflates buffer-pool turnover; hot index and freelist pages needed for version look-ups suffer latch congestion. Meanwhile, the enlarged object footprints and constant churn consume buffer slots, lengthening dirty-page queues and prolonging latch hold times, which in turn slow vacuum/cleanup workers, allowing even more dead versions to accumulate. This feedback loop ties stale statistics, MVCC bloat, and buffer/latch contention into a self-reinforcing composite anomaly that can cripple transactional workloads unless all three root causes are addressed together.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 641,
+            "score": 0.5878731445066079,
+            "bm25_score": 65.2813898842453,
+            "lexical_score": 0.14303649407361196,
+            "matched_terms": [
+                "and",
+                "as",
+                "because",
+                "execution",
+                "may",
+                "on",
+                "or",
+                "query",
+                "slow",
+                "table",
+                "tables",
+                "that",
+                "the",
+                "this",
+                "under",
+                "version",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "1664",
+                "error_name": "ER_BINLOG_UNSAFE_SYSTEM_TABLE",
+                "official_description": "The statement is unsafe because it uses the general log, slow query log, or performance_schema table(s). This is unsafe because system tables may differ on replicas.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "sql_and_parser",
+                "cause_analysis": "The failure is typically associated with unsupported syntax, invalid statement structure, or feature usage that the target engine version cannot execute as written.",
+                "solution_guidance": "Validate SQL syntax, target-engine compatibility, statement shape, and whether the feature is supported under the current engine version or execution context.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "syntax error",
+                    "feature rejection"
+                ]
+            }
+        }
+    }
+]

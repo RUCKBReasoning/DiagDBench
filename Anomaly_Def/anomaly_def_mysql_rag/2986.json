@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Transaction Log Subsystem Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Engine-level settings (memory pools, checkpoint cadence, log buffer size, parallelism, connection limits, etc.) are mis-calibrated with respect to hardware capacity and workload characteristics.\nTransaction Log Subsystem Anomaly : The write-ahead log path—generation, buffering, flushing, switching, or archiving—cannot sustain the redo rate and therefore becomes the primary bottleneck on commits.\nNetwork and Connectivity Resource Anomaly : Transport, listener, authentication, or socket resources between clients and the database server are saturated or unreliable, throttling request flow and result delivery.\n\nWhen all three faults manifest together, the instance exhibits a dense mix of wait events: sessions stall on LOG FLUSH/LOG WRITE while socket queues simultaneously back up with CLIENT WRITE or CLIENT READ waits; transaction commit latency and connection-establishment timeouts rise in tandem; checkpoint storms and rapid log-file switches coincide with surges of half-open or aborted TCP sessions; archive-lag alarms and replication backlog grow while network retransmissions and round-trip times spike. Performance counters may misleadingly show low CPU and storage utilization because throttling moves upstream to the configuration-limited log buffer and the saturated network layer.\n\nCausal chain: Mis-tuned configuration parameters (e.g., undersized log buffer, aggressive checkpoint interval, synchronous-commit mode, or excessively high connection cap) increase the frequency and volume of log flushes. The already stressed transaction-log subsystem cannot clear buffers fast enough, lengthening commit critical paths. Prolonged commit waits hold backend processes in a socket-write state, inflating the number of active connections and consuming the listener backlog. The congested network further delays replication or archiver shipping, which in turn prevents log file reuse and forces even more frequent log switches and checkpoints. Each layer’s slowdown feeds the next: bad parameters amplify log pressure, log pressure amplifies network queuing, and network lag prevents log archival, starving the log subsystem of free segments and cascading into a full-system throughput collapse.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 16,
+            "score": 0.4881785444703407,
+            "bm25_score": 17.554535042283327,
+            "lexical_score": 0.1155169340463458,
+            "matched_terms": [
+                "and",
+                "are",
+                "client",
+                "latency",
+                "level",
+                "network",
+                "or",
+                "read",
+                "the",
+                "times",
+                "transport",
+                "when",
+                "write"
+            ],
+            "match_count": 93,
+            "entry": {
+                "timeout_id": "mysql84_xplugin_write_timeout",
+                "parameter_name": "mysqlx_write_timeout",
+                "timeout_category": "x_protocol_network_write_timeout",
+                "scope": "global/session/X Plugin",
+                "official_definition": "Write timeout for X Plugin network communication.",
+                "trigger_condition": "A MySQL X Protocol write operation exceeds mysqlx_write_timeout.",
+                "workload_impact": "The X Protocol network write operation times out.",
+                "default_behavior": "Defined as a MySQL X Plugin system variable.",
+                "system_domain": "network_transport",
+                "cause_analysis": "This timeout is usually triggered when network data is not acknowledged, received, or written within the configured transport-level waiting window.",
+                "solution_guidance": "Inspect packet loss, transport latency, client responsiveness, proxy behavior, and whether slow consumers or unstable links are delaying network progress.",
+                "observable_symptoms": [
+                    "network timeout",
+                    "disconnect",
+                    "read/write interruption"
+                ]
+            }
+        }
+    }
+]

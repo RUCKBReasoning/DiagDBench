@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Buffer Cache and Latch Contention Anomaly + CPU Resource Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions block or deadlock each other while waiting on mutually incompatible locks managed by the lock manager.\nBuffer Cache and Latch Contention Anomaly : Sessions serialize on hot buffer-cache pages, latches, or I/O slots inside the buffer manager, stalling logical I/O even when row-level locks are free.\nCPU Resource Anomaly : Database processes saturate host CPU, driving long run queues and scheduler waits regardless of which logical layer issues the work.\n\nWhen all three anomalies arise together, the system experiences intertwined blocking at multiple layers: row/table locks queue transactions; those waiting transactions continue to hold buffer pins and latches, inflating internal contention; meanwhile the accumulation of spin-loops, latch retries, deadlock detectors, and repeated application retries drives CPU utilization to saturation. Observable effects include explosive wait-event diversity (lock waits, buffer-busy waits, latch spins, and CPU run-queue waits), steep increases in end-to-end latency, throughput collapse, escalating deadlock victim counts, and connection pools that exhaust while CPUs remain pegged at or near 100 percent.\n\nCausal chain: a small set of hot rows or pages first triggers lock contention; blocked sessions keep their buffer pages pinned and repeatedly wake to recheck lock status, amplifying buffer-cache and latch contention. The extra spin/wakeup activity multiplies CPU demand, and the over-utilized CPUs delay the lock manager, latch acquisition, and I/O completion, lengthening critical sections and further widening lock and latch queues. The feedback loop between lock holding, buffer/latch hot spots, and CPU saturation creates a self-reinforcing spiral that rapidly degrades overall database performance until one or more pressure points are relieved.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.5071099203016834,
+            "bm25_score": 26.31659156288127,
+            "lexical_score": 0.14334841628959277,
+            "matched_terms": [
+                "and",
+                "blocking",
+                "delay",
+                "holding",
+                "incompatible",
+                "lock",
+                "locks",
+                "long",
+                "of",
+                "or",
+                "sessions",
+                "that",
+                "the",
+                "transaction",
+                "transactions",
+                "waiting",
+                "when",
+                "while"
+            ],
+            "match_count": 300,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

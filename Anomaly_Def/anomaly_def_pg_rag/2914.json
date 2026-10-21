@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Database Memory Allocation Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same data objects, forcing other sessions to wait or be aborted by the deadlock detector.\nDatabase Memory Allocation Anomaly : The database engine and connected sessions collectively consume more physical memory than the host can safely supply, triggering paging, allocation stalls, or OOM events.\nStorage I/O Throughput Anomaly : The sustained rate of physical reads and writes reaches or exceeds the throughput and latency limits of the underlying storage subsystem, causing long device-level wait times.\n\nWhen these three root causes strike at once, blocking chains and deadlocks lengthen because each locked statement is slowed by memory-pressure stalls and storage latency. Queries wait not only on locks but also on buffer-cache misses, swap-in delays, and overloaded I/O queues, inflating lock-wait timers, application response times, and retry storms. OS paging and I/O saturation keep CPU utilisation deceptively moderate while connection pools back up, cache-hit ratios collapse, and lock-manager tables fill with ever-growing blocker–waiter graphs. Deadlock reports, OOM terminations, and storage wait spikes may appear interleaved in logs, making the true scope of the incident hard to discern.\n\nCausally, acute memory overcommit forces the engine to evict hot buffers and spill work areas, which increases physical I/O. The surge in disk traffic pushes the storage layer to its throughput ceiling, lengthening every read and write. These I/O delays prolong the lifetime of row and metadata locks held by active transactions, thus magnifying lock contention and the likelihood of deadlocks. In turn, sessions waiting on locks remain connected longer and continue to reserve memory for cursors and work buffers, worsening the memory shortfall. The positive feedback loop—memory pressure ➝ more I/O ➝ longer lock holds ➝ more waiting sessions ➝ higher memory usage—amplifies all three anomalies and can drive the database into a cascading slowdown or crash unless one of the underlying resource constraints is relieved.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.297540796151443,
+            "bm25_score": 16.20320250513059,
+            "lexical_score": 0.14021052631578945,
+            "matched_terms": [
+                "and",
+                "connection",
+                "exceeds",
+                "for",
+                "in",
+                "is",
+                "latency",
+                "not",
+                "of",
+                "or",
+                "pools",
+                "sessions",
+                "the",
+                "wait",
+                "waiting",
+                "when"
+            ],
+            "match_count": 203,
+            "entry": {
+                "timeout_id": "pg16_libpq_connection_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "client_connection_establishment_timeout",
+                "scope": "libpq/client connection parameter",
+                "official_definition": "Maximum wait for connection, in seconds; zero or not specified means wait indefinitely.",
+                "trigger_condition": "A libpq client connection attempt exceeds connect_timeout seconds.",
+                "workload_impact": "The client connection attempt fails instead of waiting indefinitely.",
+                "default_behavior": "Zero or absent value means wait indefinitely.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Database Configuration Parameter Anomaly + Replication Synchronization Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer repeatedly chooses sub-optimal execution plans despite having reasonably accurate statistics, leading to erratic or inefficient statement performance.\nDatabase Configuration Parameter Anomaly : Engine-level settings for memory, logging, parallelism, and background workers are mis-tuned relative to hardware capacity and workload needs, causing systemic inefficiencies that are not rooted in actual resource exhaustion.\nReplication Synchronization Anomaly : Downstream replicas cannot receive, persist, or apply WAL / redo data as quickly as the primary produces it, resulting in widening replay lag and retention of log segments.\n\nWhen all three root causes coexist, the database exhibits compound symptoms: 1) the same query may oscillate between fast and slow executions or fall back to full scans, 2) CPU, memory, or I/O usage appears either under-utilized or intermittently saturated without a clear pattern, 3) checkpoint storms or oversized log bursts coincide with sudden optimizer plan flips, and 4) replica lag spikes unpredictably, with large log backlogs held open by long-running or poorly planned queries whose resource footprints are inflated by mis-configured memory and parallelism settings. Administrators may observe plan-cache churn, bloated work-memory allocations, growing un-recycled WAL segments, and replicas stuck replaying expensive plans that amplify apply latency.\n\nCausally, misaligned configuration parameters (e.g., overly large work_mem, insufficient shared buffers, aggressive checkpoint intervals, or excessively high max_parallelism) skew the optimizer’s cost model, leading it to prefer plans that assume more memory, CPU, or I/O bandwidth than the system can actually deliver. These bloated plans run longer and generate disproportionate redo, inflating the primary’s transaction log volume. The surge of log output must traverse the replication channel, but downstream nodes already constrained by sub-optimal apply plans and limited resources fall behind, deepening replication lag. The growing backlog prevents log truncation on the primary, which in turn increases disk usage and can trigger further emergency checkpoints, compounding pressure on the mis-tuned buffer and I/O subsystems. Thus, the initial mis-configuration amplifies poor plan choices, both of which magnify redo generation and hinder replication, creating a feedback loop that degrades performance and availability across the entire deployment.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 866,
+            "score": 0.5255189263526036,
+            "bm25_score": 55.38454711046385,
+            "lexical_score": 0.15690862651396553,
+            "matched_terms": [
+                "and",
+                "apply",
+                "between",
+                "cannot",
+                "channel",
+                "configuration",
+                "downstream",
+                "lag",
+                "log",
+                "or",
+                "replica",
+                "replication",
+                "retention",
+                "run",
+                "running",
+                "the",
+                "to",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "3017",
+                "error_name": "ER_REPLICA_SQL_THREAD_MUST_STOP",
+                "official_description": "This operation cannot be performed with a running replica sql thread; run STOP REPLICA SQL_THREAD first",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

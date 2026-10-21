@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Database Memory Allocation Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Optimizer Statistics Anomaly: The cost-based optimizer relies on stale, absent, or corrupt statistics, so row-count and distribution estimates deviate sharply from reality and drive sub-optimal plan choices.\nDatabase Memory Allocation Anomaly: The database engine allocates more buffer cache, work memory, and auxiliary heaps than the host can safely supply, triggering swap, allocation failures, or forced evictions.\nData Block and Index Integrity Anomaly: Physical pages or index structures on disk are corrupted, breaking key order, page links, or checksums and rendering persisted data unreliable.\n\nWhen these three root causes occur together, the workload may exhibit a volatile mix of symptoms:  • Queries suddenly switch to memory-hungry hash or sort plans based on bad cardinality guesses, inflating per-query work buffers just as global memory is already under pressure.  • The inflated memory footprint accelerates paging, process thrashing, or cluster node evictions, while corruption forces repeated retries, table scans, or on-the-fly index rebuilds that further consume cache and temp space.  • Execution plans may appear to \"flap\"—oscillating between different shapes as statistics are auto-recalculated, corrupted pages invalidate plans, or memory pressure triggers re-optimization.  • Integrity check failures and checksum errors surface intermittently because aggressive buffer flushing and page writes, driven by memory scarcity, expose damaged blocks more frequently.  • Monitoring shows simultaneous spikes in logical/physical I/O, memory faults, and severe estimate-to-actual row count gaps, making it difficult to attribute performance regressions to any single layer.\n\nCausal chain: Corrupted data or index pages can poison or prevent correct statistics collection, seeding the optimizer with misleading cardinalities. These misestimates favour large in-memory joins, sorts, or parallel plans that allocate excessive work areas. The resulting memory inflation pushes the engine and operating system into heavy paging, which in turn increases I/O and the likelihood of encountering additional corrupted pages, leading to more consistency checks, plan invalidations, and emergency rewrites. Meanwhile, ongoing memory pressure can starve background tasks that would normally refresh statistics or run integrity scrubbing, allowing both statistics staleness and physical corruption to deepen. The feedback loop among bad statistics, runaway memory allocation, and latent page/index corruption amplifies instability, culminating in severe, hard-to-diagnose performance degradation, query failures, and potential service outages.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.5972554185280241,
+            "bm25_score": 19.29505371878874,
+            "lexical_score": 0.12666666666666665,
+            "matched_terms": [
+                "additional",
+                "and",
+                "are",
+                "check",
+                "data",
+                "from",
+                "global",
+                "is",
+                "more",
+                "of",
+                "or",
+                "stale",
+                "than",
+                "the",
+                "to",
+                "when"
+            ],
+            "match_count": 75,
+            "entry": {
+                "timeout_id": "mysql84_network_read_timeout",
+                "parameter_name": "net_read_timeout",
+                "timeout_category": "network_read_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for more data from a connection before aborting the read.",
+                "trigger_condition": "The server waits for additional data from a connection longer than net_read_timeout.",
+                "workload_impact": "The network read is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

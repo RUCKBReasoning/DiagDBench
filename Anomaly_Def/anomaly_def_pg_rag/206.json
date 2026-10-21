@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Database Configuration Parameter Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Metadata about row counts, value distribution, and correlations is stale or incomplete, causing systematic cardinality misestimation during plan generation.\nDatabase Configuration Parameter Anomaly : Core engine parameters that govern memory, parallelism, checkpointing, and background workers are mis-tuned for the current hardware or workload, creating artificial resource bottlenecks or idle hardware.\n\nWhen both root causes are present, the database simultaneously chooses poor plans and executes them on a poorly calibrated runtime environment. Observable phenomena include:\n• Wildly inaccurate estimated-vs-actual row counts combined with sudden memory spills because work-memory or sort-buffer limits are set too low for the over-sized intermediate result sets produced by the misestimated plans.\n• Queries oscillating between serial and over-parallelized plans as the optimizer tries to compensate for bad statistics while the max-degree-of-parallelism setting is misaligned with CPU capacity, leading to CPU thrashing yet low throughput.\n• Frequent plan recompilations triggered by automatic statistics refreshes colliding with aggressive checkpoint cadence or undersized log buffers, surfacing as alternating CPULOCK or LOGWRITE waits even when neither CPU nor storage is saturated.\n• Post-bulk-load or partition-exchange workloads stalling: stale global stats drive table scans, while undersized buffer pools or too-frequent checkpoints evict the same data repeatedly, causing excessive I/O that masks the true root causes.\n\nCausal chain: stale/missing statistics push the optimizer toward execution plans that consume unexpected amounts of memory, I/O, and CPU. Misconfigured parameters then fail to absorb these spikes—e.g., low work memory forces temp-db spills, small log buffers elongate commit latency, and over-aggressive parallelism amplifies contention. Conversely, poor configuration (such as disabled auto-stats, reduced sampling rates, or altered parallel-threshold parameters after an upgrade) can itself delay or distort statistics collection, perpetuating the misestimation cycle. Together, the two anomalies reinforce each other, making performance regressions broader, harder to diagnose, and more sensitive to data-volume or workload shifts than either anomaly alone.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.33657307095942907,
+            "bm25_score": 13.513410932788066,
+            "lexical_score": 0.1531886024423338,
+            "matched_terms": [
+                "about",
+                "an",
+                "and",
+                "are",
+                "exchange",
+                "for",
+                "idle",
+                "is",
+                "latency",
+                "of",
+                "or",
+                "pools",
+                "stale",
+                "than",
+                "that",
+                "the",
+                "threshold",
+                "triggered",
+                "when",
+                "with"
+            ],
+            "match_count": 166,
+            "entry": {
+                "timeout_id": "pg16_idle_session_timeout",
+                "parameter_name": "idle_session_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle, but not within an open transaction, for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle and not inside an open transaction longer than the configured threshold.",
+                "workload_impact": "The session is terminated; the documentation warns about using this with connection pools or middleware.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

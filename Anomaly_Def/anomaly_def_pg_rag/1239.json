@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Transaction Lock Contention Anomaly + Database Configuration Parameter Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer selects a markedly sub-optimal execution plan despite accurate statistics, often because of faulty cost modeling or unstable plan reuse.\nTransaction Lock Contention Anomaly: Concurrent transactions request incompatible locks on the same resources, leading to long blocking chains or deadlocks that stall throughput.\nDatabase Configuration Parameter Anomaly: Engine-level settings for memory, parallelism, checkpointing, etc., are mis-tuned, so resource management behavior is misaligned with the workload and hardware.\n\nWhen all three root causes coexist, the workload experiences extreme and erratic slowdowns: poorly chosen plans (e.g., full table scans or expansive nested-loop joins) touch far more rows and pages than necessary, inflating the lock footprint and duration per statement. The enlarged critical sections collide under high concurrency, producing deep blocker-waiter chains, frequent deadlocks, and surging lock-wait and retry rates. Meanwhile, mis-configured memory limits, work-memory, or parallelism caps throttle query operators and prolong execution and lock holding times, while aggressive or insufficient checkpoint and log settings amplify I/O spikes that further delay lock acquisition and query progress. Symptoms include sudden plan flips followed by immediate lock pile-ups, CPU and I/O under- or over-utilization that does not correlate with wait events, oscillating throughput, rising application timeouts, and deadlock graphs that implicate statements whose plans recently changed after a configuration tweak.\n\nCausal chain: A mis-tuned configuration (e.g., low work-mem, disabled plan baselines, too high parallelism) nudges the optimizer toward cheaper-on-paper but wider scans or nested-loops, creating a Query Plan Selection Anomaly. The bloated plan expands the number and duration of locks held, which under heavy OLTP concurrency triggers Transaction Lock Contention Anomaly. In turn, lock waits elongate transaction lifetimes, keeping more locks active and feeding back into the optimizer’s cost feedback or adaptive plan mechanisms, potentially causing further plan instability. Simultaneously, the same mis-set parameters (e.g., small buffer pool, aggressive checkpoint) starve running statements of resources, lengthening lock retention and magnifying contention. Thus the three anomalies reinforce each other, creating a compounded performance collapse that is far worse than any single issue alone.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.29101704558653896,
+            "bm25_score": 16.48789704412917,
+            "lexical_score": 0.12958333333333333,
+            "matched_terms": [
+                "after",
+                "and",
+                "are",
+                "does",
+                "for",
+                "holding",
+                "is",
+                "not",
+                "of",
+                "on",
+                "or",
+                "progress",
+                "settings",
+                "than",
+                "the",
+                "to",
+                "when",
+                "which",
+                "with"
+            ],
+            "match_count": 222,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_idle",
+                "parameter_name": "tcp_keepalives_idle",
+                "timeout_category": "network_idle_keepalive_probe_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time with no network activity after which the operating system should send a TCP keepalive message to the client.",
+                "trigger_condition": "A TCP client connection has no network activity longer than tcp_keepalives_idle on systems supporting TCP_KEEPIDLE or an equivalent socket option.",
+                "workload_impact": "Starts TCP keepalive probing for an otherwise idle client connection; together with interval and count settings this can lead to dead connection detection.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

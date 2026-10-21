@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Data Block and Index Integrity Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Systematic cardinality misestimation caused by stale, incomplete, or missing optimizer statistics.\nData Block and Index Integrity Anomaly : Physical corruption or logical inconsistency inside on-disk data and index pages, causing unreliable access paths and incorrect result sets.\nStorage Space Capacity Anomaly : Exhaustion of allocated space for data files, logs, or temporary areas, leading to allocation failures and stalled background maintenance.\n\nComposite definition — The database simultaneously suffers from inaccurate optimizer statistics, latent corruption inside data/index pages, and critical depletion of free storage. Together, these root causes distort cost estimation, break logical consistency, and impede the engine’s ability to allocate space for corrective actions, forming a compound failure mode that degrades both query correctness and availability.\n\nCombined observable phenomena — Queries show extreme and erratic plan choices with grossly wrong cardinality estimates; some executions unexpectedly return missing or duplicate rows or switch to full table scans when indexes are flagged as suspect. Integrity-check utilities and engine logs intermittently report checksum or key-order errors but are unable to repair because REBUILD or DBCC commands abort on \"out of space\" conditions. Simultaneously, statistics-auto-update and index-rebuild tasks are skipped or cancelled due to space exhaustion, causing estimates to diverge further. End-user sessions experience a mix of slow response times, wrong results, and allocation-failed errors, while background processes flood the log with both corruption and no-space diagnostics, making the symptoms appear unrelated and hard to triage.\n\nCausal interaction — Corrupted pages or orphaned index entries can inflate apparent table size and fragment free space, accelerating storage consumption and triggering capacity exhaustion. Once space is scarce, automatic statistics collection, online index rebuilds, and corruption-repair utilities cannot acquire work space, so neither data integrity nor statistics accuracy can be restored. In turn, stale or inaccurate statistics mislead the optimizer into choosing index paths that touch corrupted structures more frequently or into preferring full scans that exacerbate I/O and space pressure via large spool or temp segments. The three anomalies therefore reinforce one another: corruption increases space use, space shortage blocks repair and stats refresh, and bad statistics drive workloads toward the very structures that are damaged, spiraling the system into deeper performance and reliability degradation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.5675668431096392,
+            "bm25_score": 18.525265662208337,
+            "lexical_score": 0.1064957264957265,
+            "matched_terms": [
+                "acquire",
+                "and",
+                "another",
+                "because",
+                "cannot",
+                "for",
+                "in",
+                "is",
+                "or",
+                "sessions",
+                "the",
+                "to",
+                "when",
+                "while"
+            ],
+            "match_count": 143,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

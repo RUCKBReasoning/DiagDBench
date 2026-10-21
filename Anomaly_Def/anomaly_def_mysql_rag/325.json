@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + MVCC Version Maintenance Anomaly + Database Configuration Parameter Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer chooses and/or re-uses a markedly sub-optimal execution plan even though basic statistics are accurate, leading to inefficient access paths, wrong join methods, or inappropriate degrees of parallelism.\nMVCC Version Maintenance Anomaly : Obsolete row versions, undo records, and dead index entries accumulate faster than background cleaners can reclaim them, inflating table size and visibility-check cost in high-churn transactional workloads.\nDatabase Configuration Parameter Anomaly : Engine-level settings governing memory, logging, checkpointing, background workers, and parallelism are mis-tuned for the hardware or workload, causing indirect performance pathologies that are not tied to any true resource exhaustion.\n\nWhen all three conditions coexist, the system exhibits compounding symptoms: query execution times become wildly erratic as the optimizer alternates between cached sub-optimal plans and newly generated plans that must plow through a heavily bloated heap. Sequential scans and nested-loop joins suddenly dominate the profile, generating surges of I/O and undo that further enlarge the version store. Autovacuum or equivalent cleaners run constantly yet never catch up, while poorly sized maintenance workers, buffer pools, and checkpoint intervals exacerbate I/O storms and lock out useful work. Wait-event histograms show a mix of CPU spin on plan compilation, buffer-pin waits during visibility checks, and log-flush stalls even though hardware utilization appears uneven.\n\nCausally, misaligned configuration parameters (e.g., too small autovacuum memory, aggressive plan_cache_size, sub-optimal cost constants, or undersized buffer pool) first create fertile ground for MVCC debris to build up and for the optimizer to receive distorted cost signals. The swelling of dead tuples skews table statistics and increases true I/O costs, widening the gap between estimated and actual costs and prompting the optimizer to pick or reuse plans that look cheap but perform poorly. Those bad plans—such as table scans over bloated relations or explosive nested loops—generate additional undo and redo, accelerating version-store growth. Meanwhile, throttled or starved cleanup workers cannot reclaim space because conservative maintenance cost limits or checkpoint settings delay page recycling. Thus, each root cause amplifies the others: configuration mis-tuning enables version bloat, version bloat misguides plan selection, and poor plans in turn intensify the workload on an already lagging maintenance subsystem, leading to cascading degradation of transactional throughput and stability.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 4441,
+            "score": 0.5886431337350048,
+            "bm25_score": 54.73930608463768,
+            "lexical_score": 0.13477499999999998,
+            "matched_terms": [
+                "access",
+                "and",
+                "are",
+                "check",
+                "database",
+                "engine",
+                "first",
+                "growth",
+                "in",
+                "log",
+                "or",
+                "paths",
+                "redo",
+                "system",
+                "than",
+                "the",
+                "to",
+                "up"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-012558",
+                "error_name": "ER_IB_MSG_RECOVERY_CHECKPOINT_FROM_BEFORE_CLEAN_SHUTDOWN",
+                "official_description": "Are you sure you are using the right redo log files to start up the database? Log sequence number in the redo log files is %llu, less than the log sequence number in the first system tablespace file header, %llu.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

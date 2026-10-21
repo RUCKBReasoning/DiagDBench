@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Buffer Cache and Latch Contention Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Database Configuration Parameter Anomaly: Engine-level settings (memory pools, checkpoint cadence, log sizing, parallelism, etc.) are mis-calibrated with respect to hardware capacity and workload characteristics.\nBuffer Cache and Latch Contention Anomaly: Sessions thrash on hot buffer pages and their associated latches, causing serialization and CPU spinning rather than true memory exhaustion.\nTransaction Log Subsystem Anomaly: The write-ahead log path—log buffer, flush, switch, archive, replication retention—cannot keep pace with redo generation, stalling commits and checkpoints.\n\nComposite definition: The database concurrently suffers from mis-tuned configuration parameters, severe buffer-cache/latch contention, and a saturated transaction-log subsystem. Together they create a feedback loop where write throughput is throttled at multiple layers while internal synchronization points become hot spots.\n\nCombined anomalous phenomena: 1) Commit latency and overall response time spike, with wait-event views showing a mixture of log-flush waits, buffer-busy/page-latch waits, and background-writer or checkpoint waits. 2) CPU usage oscillates between idle gaps (when sessions sleep on I/O or log flush) and spin-loops (while contending for latches). 3) Checkpoints fire more frequently, ejecting dirty pages and intensifying latch contention on the buffer freelist, yet still fail to relieve log pressure because log files are undersized or archiver lagging. 4) Performance regressions appear immediately after a configuration change or version upgrade, but traditional resource monitors show disks and CPUs only partially utilized, making the root cause hard to isolate.\n\nCausal chain: Undersized log segments or slow archiving lengthen commit flush times; administrators react by tightening checkpoint intervals or enlarging work-memory, inadvertently pushing more dirty pages into the buffer pool. The higher dirty-page churn amplifies contention on buffer hash chains and page latches, causing threads to spin and burn CPU without progress. The resulting stall lengthens transaction durations, which in turn sustains a higher volume of concurrent sessions and redo generation, keeping the log subsystem overwhelmed. Because the mis-set parameters (checkpoint cadence, buffer-pool size, parallelism, log buffer length) govern both the buffer manager and the log writer, their poor calibration creates circular amplification: slow log flushes trigger aggressive checkpoints; aggressive checkpoints raise latch contention; latch contention delays the very transactions that must flush the log, thereby deepening the bottleneck. Without correcting all three layers, tuning any single layer in isolation provides only transient relief.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.7419713831478537,
+            "bm25_score": 27.478594114717804,
+            "lexical_score": 0.1399046104928458,
+            "matched_terms": [
+                "and",
+                "any",
+                "because",
+                "contention",
+                "from",
+                "is",
+                "more",
+                "of",
+                "or",
+                "path",
+                "resource",
+                "than",
+                "that",
+                "the",
+                "time",
+                "together",
+                "when",
+                "with",
+                "work",
+                "workload"
+            ],
+            "match_count": 185,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

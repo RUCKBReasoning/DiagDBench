@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Buffer Cache and Latch Contention Anomaly + Replication Synchronization Anomaly",
+            "Description": "Database Memory Allocation Anomaly : Excessive or uncontrolled growth of database memory regions (buffer/plan caches, work areas, etc.) that pushes the host into severe memory pressure, paging, or OOM conditions.\nBuffer Cache and Latch Contention Anomaly : Hot-page or latch serialization inside the buffer manager that forces sessions to spin or wait when pinning, accessing, or flushing shared pages.\nReplication Synchronization Anomaly : Downstream replicas cannot receive, persist, or apply WAL/redo at the rate the primary generates it, leading to widening log‐position and replay lag.\n\nWhen all three root causes are active, the database shows an intertwined failure pattern: memory pressure inflates buffer-replacement churn while hot pages and latch waits spike, driving CPU spin and elongated service times on the primary. The same saturation reduces headroom for the replication sender process, and the stalled page flushes needed to recycle dirty buffers restrain checkpoint progress, so retained log segments and relay logs balloon. On replicas, backlog growth forces larger memory footprints for relay/applier buffers, possibly inducing their own memory exhaustion and further slowing apply. Observability surfaces reveal simultaneous high memory utilization, escalating page-latch or buffer-busy waits, replication apply/flush lag, and log recycling frozen by both memory and latch bottlenecks; symptoms blur together, making single-cause diagnosis difficult.\n\nCausally, uncontrolled memory allocation amplifies buffer pool turnover; as pages are evicted prematurely, they become hot and are immediately re-read, intensifying latch contention. The extra CPU and I/O consumed by this churn slows checkpoint and log flush threads, throttling the replication sender’s ability to stream redo. Replication lag then prevents log truncation, extending the primary’s active log set and enlarging memory-resident replication queues, which feed back into overall memory pressure. On replicas, delayed apply keeps buffer pages dirty longer, prolonging their latch holding time and echoing contention downstream. This positive feedback loop between memory exhaustion, latch serialization, and replication backlog escalates latency, risks OOM or node eviction, and undermines HA objectives.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.467400467988246,
+            "bm25_score": 14.839824397278386,
+            "lexical_score": 0.15869623296820728,
+            "matched_terms": [
+                "an",
+                "and",
+                "are",
+                "for",
+                "holding",
+                "it",
+                "latency",
+                "longer",
+                "of",
+                "on",
+                "or",
+                "progress",
+                "sessions",
+                "the",
+                "this",
+                "time",
+                "waits",
+                "when"
+            ],
+            "match_count": 18,
+            "entry": {
+                "timeout_id": "mysql84_idle_interactive_session_timeout",
+                "parameter_name": "interactive_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds the server waits for activity on an interactive connection before closing it.",
+                "trigger_condition": "An interactive session remains idle longer than interactive_timeout.",
+                "workload_impact": "The server closes the idle interactive connection.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

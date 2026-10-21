@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + CPU Resource Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Obsolete row versions and rollback records accumulate faster than background cleaners can reclaim them, inflating the version store and visibility-check cost.\nCPU Resource Anomaly : Database processes drive host CPU utilization toward saturation, lengthening run-queue waits and inflating per-statement CPU time.\nNetwork and Connectivity Resource Anomaly : Network transport, listener, or connection-slot capacity becomes a bottleneck, delaying connection setup or data transfer between clients and the database.\n\nWhen these three root causes coincide, the system exhibits a tangled symptom set: bloated tables and indexes increase the CPU needed for visibility checks, just as cores are already saturated; long-running or stalled client sessions held up by network latency keep old snapshots open, preventing vacuum/cleaner progress and driving further version buildup; backend processes linger in client-read/client-write or run-queue waits, inflating process counts and CPU context switches. Overall throughput collapses, statement latency shows both CPU and network wait components, connection timeouts rise, and storage footprints and host load graphs climb together, making it difficult to attribute the slowdown to any single layer.\n\nCausally, network slowdowns extend transaction lifetimes, so obsolete row versions cannot be reclaimed, swelling the MVCC store. The enlarged heap forces every subsequent statement to scan more versions, consuming additional CPU cycles and pushing the host into saturation. CPU pressure, in turn, slows both background cleaners and packet processing, exacerbating network queuing and further prolonging client sessions. This positive feedback loop links MVCC backlog, compute exhaustion, and network congestion, each reinforcing the others and jointly degrading database performance under OLTP workloads.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.45033180164707737,
+            "bm25_score": 15.341987971813662,
+            "lexical_score": 0.15234806629834252,
+            "matched_terms": [
+                "and",
+                "are",
+                "can",
+                "check",
+                "client",
+                "connection",
+                "for",
+                "latency",
+                "network",
+                "or",
+                "progress",
+                "sessions",
+                "system",
+                "than",
+                "the",
+                "this",
+                "time",
+                "to",
+                "together",
+                "when"
+            ],
+            "match_count": 179,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_idle",
+                "parameter_name": "tcp_keepalives_idle",
+                "timeout_category": "network_idle_keepalive_probe_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time with no network activity after which the operating system should send a TCP keepalive message to the client.",
+                "trigger_condition": "A TCP client connection has no network activity longer than tcp_keepalives_idle on systems supporting TCP_KEEPIDLE or an equivalent socket option.",
+                "workload_impact": "Starts TCP keepalive probing for an otherwise idle client connection; together with interval and count settings this can lead to dead connection detection.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

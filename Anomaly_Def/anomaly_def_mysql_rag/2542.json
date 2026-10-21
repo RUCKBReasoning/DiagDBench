@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Storage I/O Throughput Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly: Obsolete row versions and logically-deleted index entries pile up faster than background cleanup can reclaim them, inflating data structures and lengthening visibility checks.\nStorage I/O Throughput Anomaly: The physical read/write capacity of the underlying storage subsystem is saturated, driving up latency and queue depth for data-, temp-, and log-file operations.\nNetwork and Connectivity Resource Anomaly: Network paths, listener sockets, or connection slots are exhausted, producing connection errors and stalling back-end processes while they await client I/O.\n\nWhen all three root causes strike at once, the database exhibits a multi-layer performance collapse: bloated tables and indexes demand more I/O per statement, yet the storage layer is already throughput-bound, so buffer flushes, checkpoints, and VACUUM/garbage-collection work are throttled by long device waits. Concurrently, back-end sessions become stuck in client-read or client-write waits because network congestion and socket exhaustion delay result transmission and acknowledgement. Application servers observe both longer query runtimes and sporadic connection failures; inside the database, wait-event profiles oscillate between buffer-cache I/O, VACUUM or purge workers, durability flushes, and client I/O waits. Monitoring shows rapidly expanding on-disk size, rising version-store counters, soaring storage latency, growing replication or WAL sender backlogs, and an increasing count of half-open or timed-out connections. These overlapping symptoms can mask each other: for example, slow query completion caused by storage stalls keeps MVCC snapshots open longer, which in turn inflates version buildup metrics, while network retransmissions can make storage waits appear intermittently idle.\n\nCausally, the three anomalies reinforce one another in a feedback loop. High update/delete churn creates version bloat that forces more page reads and dirty-page writes; this extra traffic pushes the storage subsystem further past its throughput ceiling, lengthening every I/O. Prolonged I/O extends transaction lifetimes and keeps old snapshots alive, preventing MVCC cleanup and amplifying version accumulation. Meanwhile, the elongated statement and commit times hold server processes in active or idle-in-transaction states, swelling the concurrent connection count and filling socket queues. Network slowdowns and retries then stretch transaction durations even more, exacerbating both snapshot retention and I/O pressure. The interlocked resource starvation across MVCC bookkeeping, storage bandwidth, and network connectivity drives the database into a degraded steady state that is far worse than any single anomaly alone.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.4890048474687896,
+            "bm25_score": 23.318246778848444,
+            "lexical_score": 0.13524291497975707,
+            "matched_terms": [
+                "and",
+                "connectivity",
+                "data",
+                "is",
+                "long",
+                "longer",
+                "or",
+                "out",
+                "preventing",
+                "replication",
+                "sender",
+                "than",
+                "the",
+                "this",
+                "times",
+                "waits",
+                "when"
+            ],
+            "match_count": 119,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

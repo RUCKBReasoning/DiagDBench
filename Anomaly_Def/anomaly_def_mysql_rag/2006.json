@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Query Plan Selection Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Optimizer Statistics Anomaly: Row-count, histogram, and correlation metadata are stale, absent, or overly coarse, causing systematic cardinality misestimation and misleading the cost model.\nQuery Plan Selection Anomaly: The optimizer’s decision logic or plan-reuse mechanism selects a sub-optimal execution plan even when statistical inputs are acceptable, leading to inefficient access paths, join orders, or degrees of parallelism.\nOperating System Resource Limit Anomaly: Database processes hit kernel-enforced ceilings for file descriptors, shared memory, threads, or other OS-managed objects, preventing the allocation of additional resources despite apparent database availability.\n\nWhen all three anomalies coexist, the workload exhibits a volatile mix of wrong estimates, erratic plan flips, and hard OS-level allocation failures. Symptoms may include: \n• Extreme divergence between estimated and actual row counts followed by sudden switches between radically different plans.\n• Queries that oscillate between sluggish full scans and explosive nested-loop iterations, creating bursts of temporary objects, file handles, or worker threads until OS limits are hit.\n• Intermittent errors such as \"cannot allocate shared memory\" or \"too many open files\" appearing in tandem with frequent plan recompilations and statistics refresh attempts.\n• Degradation that is hard to triage because poor plans inflate resource consumption, which in turn triggers kernel denials, causing further plan invalidations or forced serial execution.\n\nCausal chain: Stale or incomplete statistics mislead the cost model, increasing the search space of viable plans. The plan-selection anomaly may then lock in an inefficient plan (e.g., parallel hash join with excessive workers or a nested loop with underestimated outer rows). The bloated plan drives higher memory, file-handle, and thread demands, quickly exhausting conservative OS quotas. Once these limits are reached, parallel worker launches, temporary-file creation, or I/O contexts fail, prompting the optimizer to recompile statements or fall back to even less efficient serial plans that run longer and generate more data modifications—further invalidating already stale statistics. This feedback loop intensifies contention, widens the gap between estimated and actual costs, and produces a cascading performance crisis that is more severe than any single anomaly would cause in isolation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.7510132743362832,
+            "bm25_score": 37.46190582765827,
+            "lexical_score": 0.17004424778761063,
+            "matched_terms": [
+                "access",
+                "and",
+                "because",
+                "by",
+                "contention",
+                "execution",
+                "for",
+                "in",
+                "is",
+                "limit",
+                "or",
+                "other",
+                "query",
+                "resource",
+                "statements",
+                "the",
+                "this",
+                "too",
+                "when",
+                "with",
+                "workload"
+            ],
+            "match_count": 95,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

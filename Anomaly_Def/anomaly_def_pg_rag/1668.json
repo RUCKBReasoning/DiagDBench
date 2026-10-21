@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Database Configuration Parameter Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer consistently chooses a markedly sub-optimal execution plan even though statistics are reasonable, leading to excessive I/O, CPU, or skewed access paths.\nDatabase Configuration Parameter Anomaly : Critical engine settings (memory pools, checkpoint cadence, parallelism, etc.) are mis-tuned for the hardware and workload, so the instance’s behavior is limited more by configuration than by true resource scarcity.\nBuffer Cache and Latch Contention Anomaly : Sessions serialize on hot buffer pages or latches inside the buffer manager, causing buffer-busy waits, CPU spin, and throughput collapse.\n\nWhen these three root causes coincide, the database exhibits a compound failure pattern: 1) erratic plan switches or uniformly bad plans inflate logical I/O and amplify page-touch frequency; 2) mis-sized buffer pools, aggressive checkpoints, or poor parallelism settings force constant page eviction and dirty-page flush storms; 3) the flood of page accesses converges on a limited cache, driving latch spins and buffer-busy waits. Observable symptoms therefore include extreme variance in response times, sudden drops in throughput even while CPU or storage appear partially idle, surges of page-latch and log-write waits interleaved with optimizer-related recompile or plan-cache misses, and workload regressions immediately after parameter changes or engine upgrades.\n\nCausal chain: a sub-optimal plan increases the volume and concurrency of page accesses. Because configuration parameters have left the buffer pool undersized and checkpoint cadence too aggressive, these extra pages cannot stay resident; they churn rapidly, keeping dirty-page queues full and forcing frequent flushes. The elevated churn creates hotspots (e.g., index root pages, allocation map pages) on which many sessions contend, escalating latch acquisition time. Meanwhile, mis-tuned parallelism or work-memory settings can inflate the number of concurrent workers executing the bad plan, multiplying the contention. The resulting feedback loop—bad plan → higher I/O → cache churn → latch contention → longer execution → even more concurrent executions—drives a systemic performance meltdown that is far more severe than any single anomaly acting alone.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 244,
+            "score": 0.2798491200775567,
+            "bm25_score": 14.48928104556827,
+            "lexical_score": 0.13848001372448104,
+            "matched_terms": [
+                "and",
+                "by",
+                "configuration",
+                "engine",
+                "execution",
+                "failure",
+                "in",
+                "is",
+                "many",
+                "or",
+                "resource",
+                "the",
+                "to",
+                "too",
+                "with",
+                "workload"
+            ],
+            "match_count": 12,
+            "entry": {
+                "error_code": "P0003",
+                "error_name": "too_many_rows",
+                "official_description": "too many rows",
+                "error_class": "Class P0 - PL/pgSQL Error",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

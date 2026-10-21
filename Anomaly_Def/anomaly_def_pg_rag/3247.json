@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Optimizer Statistics Anomaly + Query Plan Selection Anomaly",
+            "Description": "Schema and Index Design Anomaly : The physical data model and indexing strategy do not align with actual access patterns, forcing otherwise well-written SQL into inherently inefficient access paths.\nOptimizer Statistics Anomaly : Catalog statistics are stale, incomplete, or missing, causing systematic cardinality misestimation that misleads the cost model.\nQuery Plan Selection Anomaly : Even with acceptable statistics in many areas, the optimizer’s decision logic or plan-reuse mechanism chooses sub-optimal execution plans.\n\nWhen all three root causes surface at the same time, the workload experiences a compound performance collapse: 1) poorly aligned schema objects make selective predicates appear non-selective, 2) stale or skew-blind statistics magnify those misconceptions, and 3) the optimizer, relying on bad metadata and limited by inadequate index alternatives, locks in or reuses extremely inefficient plans. Observable symptoms include erratic but consistently high latency, extreme plan variability for the same statement text, full scans on very large tables despite highly selective predicates, sudden explosions in I/O or memory spills after data loads, write slow-downs from oversized or redundant indexes, and innumerable recompilations that nevertheless keep producing bad plans. Because each root cause masks or mimics the symptoms of the others, isolating any single factor through normal troubleshooting becomes difficult.\n\nCausally, the mis-designed schema creates access paths that are intrinsically expensive; stale statistics then hide just how expensive those paths have become, feeding faulty cardinality estimates into the optimizer; finally, the optimizer cements these misperceptions by choosing or reusing plans that amplify I/O and contention. The feedback loop is vicious: inefficient plans trigger more data movement and skew, further invalidating statistics; slow index maintenance delays statistics updates even more; and every fresh plan compilation is biased toward the limited, ill-fitting index set, ensuring that each component perpetuates and intensifies the next, leading to sustained and escalating degradation across both OLTP and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.7444200181042285,
+            "bm25_score": 32.4950853018832,
+            "lexical_score": 0.14806672701409543,
+            "matched_terms": [
+                "access",
+                "and",
+                "any",
+                "because",
+                "contention",
+                "execution",
+                "from",
+                "is",
+                "more",
+                "of",
+                "or",
+                "query",
+                "sql",
+                "statement",
+                "that",
+                "the",
+                "time",
+                "when",
+                "with",
+                "workload"
+            ],
+            "match_count": 321,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

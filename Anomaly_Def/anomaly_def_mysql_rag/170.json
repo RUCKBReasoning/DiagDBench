@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Composite definition: The database is simultaneously affected by unchecked growth of obsolete MVCC row versions/rollback records and by depletion of available disk or tablespace capacity; the version store inflates faster than it can be cleaned while free space shrinks toward a hard boundary.\n\nCombined observable phenomena: free-space monitoring shows a steep, unexplained drop that coincides with sharply rising counts of dead tuples and rollback segments; data-file auto-extension or tablespace growth requests begin to fail, while VACUUM/PURGE workers run constantly yet report little progress. Sequential scans, index range scans, and visibility checks take longer because of page bloat, and the query planner misestimates row counts. Users may first see \"no space left\" or \"cannot allocate version record\" errors, stalled DML statements waiting for space, log-archive back-pressure, and emergency wraparound warnings all at once, making the root cause appear as a generalized outage rather than two specific issues.\n\nCausal interaction: heavy update/delete churn produces a flood of obsolete versions that inflate heap and index pages; this ballooning rapidly consumes remaining disk space and pushes the system into a storage-capacity crisis. Conversely, once free space is scarce, background cleanup cannot allocate the working space it needs to rewrite pages or extend rollback areas, so it falls further behind, allowing even more obsolete versions to accumulate. As space approaches exhaustion, checkpoints and log archiving stall, which in turn prolongs active snapshots and prevents version pruning—creating a positive feedback loop that amplifies both anomalies and accelerates system degradation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.592139648052984,
+            "bm25_score": 15.9088038176157,
+            "lexical_score": 0.12232620320855614,
+            "matched_terms": [
+                "and",
+                "be",
+                "because",
+                "cannot",
+                "for",
+                "is",
+                "longer",
+                "of",
+                "or",
+                "than",
+                "the",
+                "this",
+                "to",
+                "waiting",
+                "while"
+            ],
+            "match_count": 9,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

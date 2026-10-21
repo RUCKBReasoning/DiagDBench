@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Transaction Log Subsystem Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level SQL or transaction design forces the engine to scan, update, or hold far more data and longer transactions than business logic really requires.\nTransaction Log Subsystem Anomaly : The write-ahead log buffer, files, or archival pipeline cannot keep up with the volume of redo that must be generated, flushed, or retained, making commit latency the critical path.\nStorage I/O Throughput Anomaly : The physical storage layer hits its IOPS, throughput, or latency ceiling for the volumes that host data, temp, and especially log files.\n\nCombined phenomena: When all three root causes strike together, the workload produces unusually high redo volume and large result sets, which in turn drive a spike in both data-file and log-file I/O. Commit calls, bulk DML, and even read-only statements experience long-tail latency as they wait first on log flushes and then on saturated storage queues. Engine wait statistics show an intermixed dominance of SQL execution, log-write, durability-flush, and generic I/O waits, making it difficult to attribute slowness to a single layer. Slow-query logs contain repetitive, heavy statements; meanwhile alert logs record frequent log switches, archive backlogs, and checkpoint storms. Application tiers observe timeouts, congestion, and sporadic deadlocks as transactions overrun their expected duration and hold locks longer than normal.\n\nCausal chain and reinforcement: Inefficient SQL inflates the volume of rows read and modified, multiplying the amount of redo that must be generated. This surge overwhelms the transaction-log subsystem, lengthening commit times and causing more log buffering and file switching. The additional log and data traffic push the underlying storage array past its throughput limits, further slowing both log flushes and data-page reads/writes. The slower storage response feeds back into even longer SQL and commit latencies, which extend transaction lifetimes, hold locks, and create still more redo to be written. The three anomalies therefore reinforce each other in a vicious cycle, degrading overall OLTP performance and stability far more severely than any single anomaly would in isolation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.33121774785502267,
+            "bm25_score": 14.037715580989563,
+            "lexical_score": 0.09411764705882353,
+            "matched_terms": [
+                "and",
+                "be",
+                "latency",
+                "long",
+                "or",
+                "query",
+                "sets",
+                "still",
+                "that",
+                "the",
+                "this",
+                "when"
+            ],
+            "match_count": 315,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

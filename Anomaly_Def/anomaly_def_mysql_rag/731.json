@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Optimizer Statistics Anomaly + Database Memory Allocation Anomaly",
+            "Description": "Schema and Index Design Anomaly : Table structures, indexes, partitioning, or data types are mismatched to workload access patterns, forcing inefficient access paths even when SQL is well written.\nOptimizer Statistics Anomaly : Catalog statistics are stale, incomplete, or misleading, causing the optimizer to misestimate cardinalities and pick sub-optimal plans.\nDatabase Memory Allocation Anomaly : The database engine allocates more memory to caches and work areas than the host can safely supply, triggering OS pressure, paging, and cache churn.\n\nWhen all three root causes coexist, the system shows a blend of symptoms: queries that should be index-seek driven are compiled into full scans because the needed indexes are missing or non-covering, while inaccurate statistics further mislead the optimizer into believing those scans are cheap. The resulting plans read far more pages than necessary, bloating buffer pools and spilling large hash and sort operations. Memory consumption rises rapidly, eroding cache hit ratios and provoking paging, temporary spill files, or out-of-memory terminations. Execution times become highly volatile: some requests stall on I/O, others throttle on memory grants, and background processes compete with the OS for RAM, causing node-level instability. Because each anomaly obscures the others, traditional tuning signals—such as adding an index or refreshing statistics—yield only partial relief and regress again under load.\n\nCausal chain: Poor schema and index design creates inherently heavy I/O plans; stale or incomplete statistics hide their true cost and steer the optimizer toward even heavier plans; these bloated plans inflate memory grants and enlarge the working-set size of buffer and work areas. The swollen memory footprint pushes the host into sustained pressure, which in turn degrades cache efficiency and amplifies the I/O impact of the original design flaw. Meanwhile, memory pressure may delay or cancel automatic statistics collection, keeping statistics stale and completing a feedback loop that reinforces all three anomalies. The combined effect is a self-perpetuating degradation cycle that progressively worsens both latency and stability across OLTP and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.6281401737305867,
+            "bm25_score": 21.166572082497808,
+            "lexical_score": 0.12338709677419354,
+            "matched_terms": [
+                "access",
+                "and",
+                "be",
+                "because",
+                "execution",
+                "for",
+                "in",
+                "is",
+                "or",
+                "should",
+                "the",
+                "when",
+                "with",
+                "work",
+                "workload"
+            ],
+            "match_count": 35,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

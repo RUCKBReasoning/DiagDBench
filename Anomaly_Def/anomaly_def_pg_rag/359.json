@@ -1,0 +1,59 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Database Configuration Parameter Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "SQL Workload Logic Anomaly: Application-level statement or transaction design forces the engine to touch more data, rows, or time than the true business requirement demands.\nDatabase Configuration Parameter Anomaly: Instance-level runtime parameters are mis-tuned so that memory, background workers, checkpoint cadence, or parallelism no longer match hardware capacity or workload profile.\nBuffer Cache and Latch Contention Anomaly: Sessions serialize on hot buffer pages, page pins, or lightweight latches, creating a bottleneck inside the buffer manager rather than running out of memory itself.\n\nWhen all three anomalies coexist, the database exhibits a compound symptom pattern: 1) statement latency outliers and repeated slow-query entries; 2) bursty or sustained waits on page latches and buffer-busy events even when global CPU, I/O, or memory utilization looks moderate; 3) rapid oscillations between CPU spinning and idle periods; 4) checkpoint or background-writer storms triggered earlier than expected; 5) application timeouts escalating into long-running transactions that hold hot pages even longer, magnifying contention footprints; and 6) diagnostic views showing both inefficient SQL plans and suspicious configuration ratios (e.g., undersized buffer pool, overly aggressive checkpoint_target) that fail to alleviate the hot-page churn.\n\nCausal chain: inefficient SQL logic inflates the volume and frequency of page touches, turning a few index root pages or sequence blocks into extreme hot spots. A mis-sized buffer pool or ill-timed checkpoint/worker scheduling (configuration anomaly) prevents those pages from staying resident or being flushed smoothly, increasing the turnover of the cache and the number of threads simultaneously demanding the same pages. As concurrency rises, the probability of latch collisions on the overused pages skyrockets, producing Buffer Cache and Latch Contention. In turn, the contention inflates the latency of each already inefficient statement, extending transaction lifetimes and redo generation windows, which further stresses the mis-tuned memory and checkpoint parameters. The three issues therefore reinforce one another in a feedback loop that degrades throughput far more severely than any single anomaly in isolation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.7522443297568925,
+            "bm25_score": 38.10320445690497,
+            "lexical_score": 0.17414776585630856,
+            "matched_terms": [
+                "and",
+                "any",
+                "contention",
+                "from",
+                "long",
+                "longer",
+                "more",
+                "of",
+                "or",
+                "out",
+                "pattern",
+                "query",
+                "running",
+                "sql",
+                "statement",
+                "than",
+                "that",
+                "the",
+                "time",
+                "timed",
+                "triggered",
+                "when",
+                "workload"
+            ],
+            "match_count": 181,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

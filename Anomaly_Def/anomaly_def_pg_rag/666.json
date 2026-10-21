@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Buffer Cache and Latch Contention Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Transaction Lock Contention Anomaly: Concurrent transactions block or deadlock each other while waiting for incompatible locks on the same rows, pages, or metadata resources.\nBuffer Cache and Latch Contention Anomaly: Sessions stall on hot buffer pages or the latches that protect them, causing CPU spin or wait time and slowing page access.\nTransaction Log Subsystem Anomaly: Commit processing and redo generation are throttled by saturated log buffers, slow log writes, or delayed archive/replication, inflating commit latency.\n\nWhen all three conditions arise together, the database experiences a compound bottleneck in which logical row-level blocking, physical buffer-page serialization, and log-flush back-pressure converge. Symptoms include extreme and erratic transaction latency, long blocker–waiter chains that do not clear after deadlock resolution, surging page-latch and log-write waits, CPU spikes from spin-locks, stalled checkpoints, and cascading application timeouts. Standard diagnostic views show simultaneous growth in ungranted locks, latch wait events, and pending log-flush queues, making it hard to attribute the slowdown to any single layer.\n\nCausally, hot rows or pages drive up lock conflicts; blocked transactions then hold buffer pages and latches longer, increasing buffer contention. Prolonged critical-section occupancy inflates redo generation bursts when blockers finally commit, which overwhelms the log buffer and stretches log-flush times. In turn, the sluggish log subsystem delays commit completion, extending lock hold times and keeping pages pinned, which feeds back into both lock and latch queues. The intertwined feedback loops between lock duration, latch residency, and log-flush latency amplify each other, creating a severe, self-reinforcing degradation of OLTP throughput.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.26358812630613687,
+            "bm25_score": 12.694196856064035,
+            "lexical_score": 0.13167237620678915,
+            "matched_terms": [
+                "and",
+                "are",
+                "for",
+                "in",
+                "latency",
+                "not",
+                "of",
+                "or",
+                "sessions",
+                "the",
+                "time",
+                "wait",
+                "waiting",
+                "when"
+            ],
+            "match_count": 139,
+            "entry": {
+                "timeout_id": "pg16_libpq_connection_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "client_connection_establishment_timeout",
+                "scope": "libpq/client connection parameter",
+                "official_definition": "Maximum wait for connection, in seconds; zero or not specified means wait indefinitely.",
+                "trigger_condition": "A libpq client connection attempt exceeds connect_timeout seconds.",
+                "workload_impact": "The client connection attempt fails instead of waiting indefinitely.",
+                "default_behavior": "Zero or absent value means wait indefinitely.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

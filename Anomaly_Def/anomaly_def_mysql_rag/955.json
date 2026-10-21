@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Data Block and Index Integrity Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Composite Definition: The system simultaneously suffers from (1) the optimizer choosing markedly sub-optimal execution plans, (2) latent corruption or structural inconsistency inside data and index pages, and (3) exhaustion or instability of network/connection resources. The workload therefore executes with bad plans against unreliable storage structures while clients communicate through a congested or faulty network layer.\n\nCompound Phenomena: Operators may see the same statement alternate between index scans, full table scans, and nested-loop explosions; some executions unexpectedly return wrong, missing, or duplicated rows because corrupted index pages mis-direct look-ups. The optimizer’s reactive plan changes trigger bursts of I/O that surface additional page-checksum or logical-consistency errors, causing retries or error messages. Concurrently, connection establishment slows, sockets pile up in TIME_WAIT or SYN_RECV, and clients experience intermittent timeouts or SSL-handshake failures. Long-running mis-planned queries stream enlarged result sets that clog already constrained network bandwidth, while aborted or retried sessions further inflate backend counts and plan-cache churn. Overall throughput becomes jagged, latency unpredictable, and data correctness suspect, making diagnosis difficult because each symptom can mask or mimic the others.\n\nCausal Interaction: Page or index corruption distorts the optimizer’s cardinality feedback, leading it to misjudge access costs and select inefficient plans; when these plans downgrade to full scans or generate massively skewed join orders, they issue large I/O bursts that read additional damaged pages, escalating corruption errors. The heavier I/O and longer runtimes inflate result-set sizes and hold server processes busy, lengthening network streaming windows and aggravating existing network congestion. Network slowdowns, in turn, prolong compile times, increase plan cache eviction pressure, and provoke client-side retries that multiply connection attempts, amplifying listener and authentication stress. The compounded load heightens the probability of abrupt disconnects, which can interrupt in-flight writes and leave indexes half-rebuilt, feeding back into structural corruption. Thus each root cause not only adds its own failures but also reinforces the others, driving the database into a spiraling state of poor performance, data inconsistency, and connectivity instability.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.7423658536585366,
+            "bm25_score": 38.67822766217405,
+            "lexical_score": 0.14121951219512194,
+            "matched_terms": [
+                "aborted",
+                "access",
+                "and",
+                "because",
+                "error",
+                "execution",
+                "in",
+                "long",
+                "or",
+                "query",
+                "resource",
+                "running",
+                "select",
+                "statement",
+                "the",
+                "when",
+                "with",
+                "workload"
+            ],
+            "match_count": 46,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

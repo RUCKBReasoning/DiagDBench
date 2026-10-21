@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Database Configuration Parameter Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Row-count, histogram, and correlation metadata are stale, missing, or inaccurate, causing systematic cardinality misestimates that mislead the optimizer during plan generation.\nDatabase Configuration Parameter Anomaly : Engine-level runtime parameters (memory, parallelism, checkpoint, etc.) are mis-tuned for the hardware and workload, so performance limits are hit even when physical resources are not fully utilized.\n\nWhen both conditions exist simultaneously, the workload exhibits plan choices that are not only sub-optimal but also collide with ill-sized memory pools, worker limits, and I/O cadences. Symptoms include: execution plans that swing between inefficient serial scans and over-parallelized joins; sudden spool, sort, or hash spills despite apparently ample server memory; erratic CPU and I/O utilization where some resources idle while sessions wait on memory, workfile, or replan events; frequent recompilations after data changes followed by checkpoint or flush storms triggered by mis-set checkpoint parameters; and highly variable response times where identical statements alternately run fast and then stall on waits that do not match observed hardware saturation.\n\nCausally, incorrect statistics drive the optimizer to favor plans whose resource demands—join order, parallel degree, memory grants, spill behavior—are based on wrong cardinality assumptions. Misaligned configuration parameters then fail to supply, or grossly oversupply, the required resources, turning what might have been a modest inefficiency into severe contention or wasted capacity. Conversely, undersized work memory or buffer pools force more frequent I/O, which can invalidate sampling assumptions and accelerate data churn, making statistics stale even faster. The two root causes therefore reinforce each other: bad statistics choose bad plans; bad configuration magnifies their cost, leading to oscillating performance, noisy wait patterns, and an opaque diagnostic picture that masks the true dual origin of the problem.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.5908727691512423,
+            "bm25_score": 21.286876545191998,
+            "lexical_score": 0.15800572974693616,
+            "matched_terms": [
+                "and",
+                "are",
+                "bad",
+                "during",
+                "for",
+                "idle",
+                "not",
+                "of",
+                "or",
+                "pools",
+                "server",
+                "sessions",
+                "stale",
+                "that",
+                "the",
+                "triggered",
+                "waits",
+                "when",
+                "with"
+            ],
+            "match_count": 100,
+            "entry": {
+                "timeout_id": "mysql84_connection_handshake_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "connection_handshake_timeout",
+                "scope": "global",
+                "official_definition": "The number of seconds that the mysqld server waits for a connect packet before responding with Bad handshake.",
+                "trigger_condition": "A client does not complete the initial connection packet exchange within connect_timeout.",
+                "workload_impact": "The connection attempt fails during handshake.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

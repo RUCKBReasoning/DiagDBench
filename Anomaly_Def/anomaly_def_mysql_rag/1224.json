@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + CPU Resource Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly : The write-ahead logging path (log buffer, log files, archiver/replication pipeline) becomes the primary bottleneck, throttling commit throughput and forcing sessions to wait on log-related events.\nCPU Resource Anomaly : Database executable and worker threads saturate available CPU cores, driving run-queue growth and inflating response times across the workload.\nOperating System Resource Limit Anomaly : Database processes hit kernel-enforced ceilings on objects such as file descriptors, threads, shared-memory segments, or AIO contexts, preventing further resource acquisition.\n\nWhen these three root causes strike concurrently, the database exhibits an intertwined symptom set: commit latency and log-flush waits spike while overall query latency rises in lock-step with host CPU saturation; OS logs show ‘too many open files’, inability to create threads, or exhausted AIO slots, and the database reports both log write stalls and scheduler/runqueues waits. Archiver or replication lag grows because CPU-starved and file-handle-starved background processes cannot keep up, causing log directories to bloat, more log file switches, and periodic freezes where new transactions or worker threads cannot start. The mixture of symptoms makes it difficult to isolate any single layer—log, CPU, or kernel limits—because each amplifies the others, producing a system-wide slowdown that can culminate in partial or full service outage.\n\nCausally, heavy write workloads generate high redo volume that drives both log I/O activity and CPU consumption. As CPU headroom disappears, log-related background tasks (flush, archive, replication) are delayed, lengthening log occupancy time. The prolonged presence of many active log segments inflates the number of open files, AIO contexts, and background threads, quickly breaching conservative OS limits. Once those limits are hit, further log file creation, thread spawning, or I/O submission fails, which in turn blocks commits and forces even more foreground sessions to spin on CPU waiting for log space. This feedback loop—log congestion raising CPU demand, CPU saturation slowing log handling, and OS limits choking both—drives the database into a compounded degraded state that is significantly worse than any single anomaly acting alone.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 268,
+            "score": 0.4711331004825656,
+            "bm25_score": 51.34080043388217,
+            "lexical_score": 0.13006467137915478,
+            "matched_terms": [
+                "an",
+                "and",
+                "is",
+                "it",
+                "keep",
+                "lag",
+                "log",
+                "or",
+                "replication",
+                "start",
+                "state",
+                "step",
+                "the",
+                "to",
+                "when",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "1277",
+                "error_name": "ER_MISSING_SKIP_REPLICA",
+                "official_description": "It is recommended to use --skip-replica-start when doing step-by-step replication with START REPLICA UNTIL; otherwise, you will get problems if you get an unexpected replica's mysqld restart",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Composite anomaly definition: The database simultaneously suffers from unchecked growth of obsolete MVCC row versions and rollback records while also exhausting critical kernel-level resources (file descriptors, shared-memory segments, threads, etc.) enforced by the operating system. The two root causes coexist and interact, producing a compound failure mode that is more severe than either anomaly on its own.\n\nCombined anomalous phenomena: Administrators observe rapidly increasing dead-tuple ratios, bloated tables and indexes, and cleanup workers that are unable to keep pace; at the same time the engine begins to emit errors about failing to open files, create background or parallel workers, or attach to shared memory. Autovacuum/VACUUM jobs may start and immediately abort due to inability to acquire additional file handles or shared-memory slots, causing the version store to grow even faster. Long-running queries and replication slots hold old snapshots, while new sessions intermittently fail to connect. Query latencies rise because of swollen page scans, and partial outages emerge where existing back-ends remain active but maintenance and new work cannot proceed.\n\nCausal interaction: MVCC bloat drives increased I/O, additional temporary files, more background vacuum workers, and larger shared-memory requests—directly inflating consumption of kernel resources such as file descriptors and shm segments. Simultaneously, hitting OS limits throttles or terminates the very maintenance workers needed to reclaim dead versions, so version accumulation accelerates. Each anomaly therefore reinforces the other: MVCC churn pushes the system toward OS ceilings, and the OS ceilings prevent cleanup, creating a feedback loop that rapidly degrades performance, threatens transaction-ID wraparound, and can culminate in a service-level outage.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 556,
+            "score": 0.6073193748276183,
+            "bm25_score": 49.08301020152659,
+            "lexical_score": 0.16484655241131924,
+            "matched_terms": [
+                "and",
+                "at",
+                "because",
+                "but",
+                "by",
+                "cannot",
+                "engine",
+                "failure",
+                "in",
+                "is",
+                "its",
+                "level",
+                "or",
+                "proceed",
+                "resource",
+                "start",
+                "system",
+                "tables",
+                "the",
+                "to"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "1576",
+                "error_name": "OBSOLETE_ER_EVENTS_DB_ERROR",
+                "official_description": "Cannot proceed because system tables used by Event Scheduler were found damaged at server start",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

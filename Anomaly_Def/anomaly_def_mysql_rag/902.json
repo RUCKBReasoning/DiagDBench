@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Replication Synchronization Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Engine-level settings (memory pools, checkpoint cadence, parallelism, etc.) are mis-tuned relative to hardware capacity and workload characteristics.\nReplication Synchronization Anomaly : Standbys or downstream consumers cannot receive, flush, or apply WAL/redo at the rate produced by the primary, creating growing log-position gaps.\n\nComposite definition: The system simultaneously suffers from mis-calibrated runtime parameters and an over-stressed replication pipeline. Configuration flaws on the primary or replicas both distort local resource usage and prevent replicas from keeping up, producing a blend of internal wait imbalances and cross-node lag.\n\nCombined observable phenomena: 1) Rapidly growing replication lag, retained WAL segments, and mounting disk consumption on the primary even though storage and network throughput appear under-utilised; 2) Bursty checkpoint or page-flush activity triggered by an inappropriate checkpoint interval, which in turn floods replication with spikes of redo; 3) Walsender and apply-worker queues backed up while CPU cores remain partly idle because work-memory or parallelism caps throttle apply threads; 4) Stale read-only queries on replicas, increased failover RPO/RTO, and sudden performance regressions following parameter changes, version upgrades, or instance resizing events.\n\nCausal chain: Mis-tuned parameters (e.g., too small max_wal_senders, aggressive checkpoint_timeout, undersized work_mem, or poorly chosen apply-worker parallelism) raise the volume and burstiness of WAL generation and/or limit the number of threads that can ship and replay it, directly intensifying replication synchronization pressure. As replicas fall behind, the primary is forced to retain extra log files, inflating disk usage and lengthening checkpoints, which further exposes the impact of the faulty configuration (longer fsync queues, cache flush storms). Conversely, apply lag on replicas masks the true effect of the parameter mis-tuning, delaying feedback signals such as CPU or I/O saturation and making root-cause isolation harder. The two anomalies therefore reinforce each other: bad parameters magnify replication backlog, and the backlog amplifies the adverse side-effects of the misconfiguration, degrading both primary and replica performance and resilience.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.4573287363837191,
+            "bm25_score": 16.803569690021288,
+            "lexical_score": 0.13582342954159593,
+            "matched_terms": [
+                "activity",
+                "an",
+                "and",
+                "are",
+                "idle",
+                "is",
+                "it",
+                "longer",
+                "number",
+                "of",
+                "on",
+                "or",
+                "pools",
+                "stale",
+                "the",
+                "triggered"
+            ],
+            "match_count": 19,
+            "entry": {
+                "timeout_id": "mysql84_idle_interactive_session_timeout",
+                "parameter_name": "interactive_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds the server waits for activity on an interactive connection before closing it.",
+                "trigger_condition": "An interactive session remains idle longer than interactive_timeout.",
+                "workload_impact": "The server closes the idle interactive connection.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

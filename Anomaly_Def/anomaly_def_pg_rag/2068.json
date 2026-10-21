@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Buffer Cache and Latch Contention Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Database Memory Allocation Anomaly: Excessive or uncontrolled growth of database memory regions (buffer caches, work areas, plan cache, etc.) pushes the host beyond its safe physical- or virtual-memory envelope.\nBuffer Cache and Latch Contention Anomaly: Hot buffer pages and their protecting latches become serialization points, forcing sessions to wait, spin, or stall while competing for page access rather than for higher-level locks.\nOperating System Resource Limit Anomaly: The database engine or its worker processes exhaust kernel-enforced limits such as file descriptors, shared-memory segments, semaphores, or thread quotas, preventing new allocations or spawns.\n\nWhen all three root causes arise concurrently, the system exhibits a blended failure pattern: 1) memory-pressure symptoms such as paging, rising RSS, or OOM kills; 2) escalating buffer-busy and latch wait events accompanied by CPU spin and latency spikes; and 3) intermittent \"cannot allocate resource\" errors, failed connection attempts, or stalled background workers as kernel limits are hit. Swapping amplifies latch hold times, making contention metrics surge, while blocked or crashed auxiliary processes (e.g., check-pointers, log writers, or parallel workers) further starve the buffer pool and inflate both wait and memory footprints. The overall effect is sharp throughput collapse, erratic response times, and partial outages that can be difficult to attribute to a single layer.\n\nCausal chain: unbounded memory allocation enlarges the buffer cache and per-session work areas, increasing the absolute number of dirty pages and active latches; longer flush cycles and greater page churn intensify latch contention. The prolonged waits keep transactions open and memory pinned, which in turn accelerates memory consumption. As memory pressure mounts, the kernel begins paging and elevates the likelihood of hitting process limits for address space, file handles, or worker threads. Once OS limits are breached, essential database helpers fail to start or crash, reducing the system’s ability to recycle or flush buffers and releasing latches even more slowly. The three anomalies therefore reinforce one another in a positive feedback loop—memory bloat fuels contention, contention prolongs memory residency, and both drive the engine into kernel resource exhaustion—culminating in severe, workload-agnostic instability.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 106,
+            "score": 0.24537919872803296,
+            "bm25_score": 14.189023737327302,
+            "lexical_score": 0.14349433606041534,
+            "matched_terms": [
+                "and",
+                "be",
+                "by",
+                "engine",
+                "failed",
+                "failure",
+                "in",
+                "instability",
+                "is",
+                "its",
+                "level",
+                "or",
+                "pressure",
+                "resource",
+                "the",
+                "to",
+                "workload"
+            ],
+            "match_count": 13,
+            "entry": {
+                "error_code": "25P02",
+                "error_name": "in_failed_sql_transaction",
+                "official_description": "in failed sql transaction",
+                "error_class": "Class 25 - Invalid Transaction State",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

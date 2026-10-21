@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Replication Synchronization Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Critical engine settings (memory, logging, parallelism, checkpoint cadence, etc.) are mis-tuned relative to hardware capacity and workload needs.\nReplication Synchronization Anomaly : Standbys or downstream consumers cannot receive or apply WAL/redo at the rate the primary produces it, causing ever-growing replication lag.\nOperating System Resource Limit Anomaly : Kernel-enforced quotas on file descriptors, shared memory, processes, or other OS objects throttle the database independently of its own internal resource management.\n\nWhen all three faults coexist, the system exhibits a blended failure signature: replication slots stall and retain large volumes of primary WAL, checkpoint frequency spikes yet log recycling is blocked, background workers or apply processes fail to start due to exhausted OS handles, and wait-event statistics show both idle hardware and intense spin or log-write waits. End-users observe increasing replica staleness, sudden session or worker creation errors, erratic latency on the primary, and rapid disk-space consumption from unrecycled logs. Troubleshooting is complicated because each layer (engine parameters, replication, kernel) shows partial symptoms that mask or mimic the others.\n\nCausally, an undersized checkpoint or work-memory setting can inflate WAL generation and stall autovacuum, pushing more redo toward replicas. If OS limits simultaneously cap network sockets, async-I/O contexts, or background threads, the apply side or even the primary’s replication sender processes cannot keep pace, amplifying lag. The growing log backlog prevents log truncation, which in turn triggers aggressive checkpoints per the misconfigured parameters, intensifying I/O surges and memory pressure. Each layer’s throttling therefore compounds the next: mis-tuned engine parameters accelerate load, OS limits restrict the threads and kernel objects needed to digest that load, and replication becomes the visible bottleneck while the primary itself edges toward resource exhaustion. Together they create a self-reinforcing loop that degrades throughput, threatens availability, and obscures root-cause isolation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.7425956937799043,
+            "bm25_score": 24.771896077080605,
+            "lexical_score": 0.14198564593301433,
+            "matched_terms": [
+                "an",
+                "and",
+                "are",
+                "can",
+                "idle",
+                "is",
+                "latency",
+                "network",
+                "of",
+                "on",
+                "operating",
+                "or",
+                "session",
+                "settings",
+                "system",
+                "the",
+                "to",
+                "together",
+                "when",
+                "which"
+            ],
+            "match_count": 237,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_idle",
+                "parameter_name": "tcp_keepalives_idle",
+                "timeout_category": "network_idle_keepalive_probe_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time with no network activity after which the operating system should send a TCP keepalive message to the client.",
+                "trigger_condition": "A TCP client connection has no network activity longer than tcp_keepalives_idle on systems supporting TCP_KEEPIDLE or an equivalent socket option.",
+                "workload_impact": "Starts TCP keepalive probing for an otherwise idle client connection; together with interval and count settings this can lead to dead connection detection.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

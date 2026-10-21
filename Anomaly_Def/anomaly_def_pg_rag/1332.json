@@ -1,0 +1,44 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Storage Space Capacity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Sessions compete for hot or repeatedly-evicted buffer pages, latches, and in-flight I/O slots, causing stalls and spin-loops below the lock manager. \nStorage Space Capacity Anomaly : Physical or logical free space in data, log, temp, or backup areas reaches hard limits, producing allocation failures and halting growth-related operations. \nOperating System Resource Limit Anomaly : Kernel-enforced ceilings on file handles, shared memory, semaphores, thread counts, or cgroup quotas are exhausted, preventing the database from opening files, spawning workers, or allocating IPC objects.\n\nWhen these three root causes strike concurrently, the database exhibits a compound failure mode: massive buffer-busy and page-latch waits drive CPU usage upward while throughput collapses; simultaneous space exhaustion triggers data-file auto-extend errors, log-switch stalls, temp-space sort failures, and repeated retry I/O bursts; in parallel, the kernel refuses new file descriptors, shared memory segments, or threads, so checkpoints, background writers, and recovery processes abort or hang. Operators observe an explosive growth in wait events (buffer I/O, latch, space allocation, and OS resource errors), sessions freezing mid-transaction, orphaned processes that cannot exit cleanly, and mixed symptoms that obscure any single root cause.\n\nCausally, hot-page contention forces intense churn in the buffer pool, inflating dirty page counts and accelerating disk writes; this hastens the consumption of remaining free space, pushing the system toward storage exhaustion. As space fills, the engine repeatedly opens and closes files, allocates temporary segments, and spawns error-handling workers, rapidly consuming file handles, shared memory, and thread quotas until OS limits are hit. Conversely, once OS limits block new file or I/O allocations, checkpoints and flush threads back up, leaving dirty buffers pinned longer and amplifying latch contention. The three anomalies therefore reinforce one another, creating a feedback loop that degrades throughput, inflates latency, and can culminate in a full service outage unless all contributing layers—buffer management, storage capacity, and operating-system limits—are simultaneously relieved.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 144,
+            "score": 0.13388601436031347,
+            "bm25_score": 9.3470330481756,
+            "lexical_score": 0.09984202211690363,
+            "matched_terms": [
+                "and",
+                "as",
+                "cannot",
+                "engine",
+                "error",
+                "failure",
+                "or",
+                "that",
+                "the",
+                "usage"
+            ],
+            "match_count": 11,
+            "entry": {
+                "error_code": "42846",
+                "error_name": "cannot_coerce",
+                "official_description": "cannot coerce",
+                "error_class": "Class 42 - Syntax Error or Access Rule Violation",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "sql_and_parser",
+                "cause_analysis": "The failure is typically associated with unsupported syntax, invalid statement structure, or feature usage that the target engine version cannot execute as written.",
+                "solution_guidance": "Validate SQL syntax, target-engine compatibility, statement shape, and whether the feature is supported under the current engine version or execution context.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "syntax error",
+                    "feature rejection"
+                ]
+            }
+        }
+    }
+]

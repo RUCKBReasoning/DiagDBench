@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Storage I/O Throughput Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer chooses a markedly sub-optimal execution plan even though statistics are adequate, leading to unnecessary work, poor join methods, or non-selective access paths.\nStorage I/O Throughput Anomaly: The physical storage layer is saturated, so read/write latency, IOPS queues, and device wait times all climb well above design limits.\nOperating System Resource Limit Anomaly: Kernel-enforced caps on file handles, async-I/O contexts, threads, shared memory, or similar resources are reached, blocking further allocations by the database processes.\n\nWhen these three root causes strike simultaneously, symptoms compound: a suddenly degraded plan may switch from index probes to full table scans, inflating I/O volume precisely when the storage subsystem is already at or beyond throughput capacity. The bloated I/O demand lengthens device queues and elevates buffer-I/O and log-file waits; meanwhile, the database tries to open more files, spawn extra parallel or I/O helper threads, or allocate larger async-I/O queues to cope, but the operating system refuses additional resources. End-users see erratic execution times, timeouts, and partial outages where existing sessions hang on I/O waits while new sessions, parallel workers, or background check-pointers fail to start, sometimes emitting kernel \"too many open files\", \"cannot create thread\", or \"AIO context limit reached\" errors. Performance metrics show a puzzling mix of optimizer plan churn, soaring physical I/O latency, and sporadic OS-level allocation failures that mask one another and hinder straightforward diagnosis.\n\nCausally, a poor plan acts as the initial amplifier, multiplying page reads and log writes. The excess demand pushes the storage layer into saturation, driving up latency and elongating the lifespan of every I/O request. Prolonged I/O times inflate the number of simultaneously active requests, which in turn drives the engine to request more kernel objects—file descriptors for every open segment, async-I/O control blocks, and worker threads. Once OS limits are hit, these new allocations are denied, causing additional plan invalidations, failed worker creation, and fallback to even less efficient serial plans. Each layer therefore feeds the next: sub-optimal planning → storage overload → OS resource exhaustion → further planning and execution degradation, creating a reinforcing spiral that dramatically worsens overall database throughput and availability.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.6809330612734396,
+            "bm25_score": 23.706861789368155,
+            "lexical_score": 0.1513559322033898,
+            "matched_terms": [
+                "additional",
+                "and",
+                "are",
+                "check",
+                "for",
+                "from",
+                "is",
+                "latency",
+                "more",
+                "number",
+                "of",
+                "or",
+                "read",
+                "sessions",
+                "the",
+                "to",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 110,
+            "entry": {
+                "timeout_id": "mysql84_network_read_timeout",
+                "parameter_name": "net_read_timeout",
+                "timeout_category": "network_read_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for more data from a connection before aborting the read.",
+                "trigger_condition": "The server waits for additional data from a connection longer than net_read_timeout.",
+                "workload_impact": "The network read is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

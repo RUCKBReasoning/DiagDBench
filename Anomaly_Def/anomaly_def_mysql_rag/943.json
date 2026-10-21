@@ -1,0 +1,59 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Operating System Resource Limit Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Engine-level runtime parameters are mis-tuned relative to hardware capacity, workload profile, or version defaults, causing artificial pressure on memory, logging, background workers, parallelism, and checkpoints.\nOperating System Resource Limit Anomaly : Kernel-enforced ceilings on file handles, shared memory, processes/threads, or other OS objects are reached, preventing the database from allocating the resources it requests.\nNetwork and Connectivity Resource Anomaly : The transport, listener, socket, or authentication layers cannot sustain the incoming connection or data-transfer rate, leading to backlog growth, refusals, and stalled client I/O.\n\nWhen these three root causes coincide, the database exhibits a mosaic of symptoms: connection attempts time out or are rejected even when the instance appears up; established sessions suffer erratic latency with alternating client-read/client-write waits, punctuated by spikes of log-write or checkpoint waits that do not correlate with disk utilization; background workers and parallel executors intermittently fail to start, producing engine errors about thread creation, file-descriptor exhaustion, or shared-memory allocation; monitoring shows low CPU or I/O utilization despite severe throughput collapse, while OS socket queues and semaphore tables are saturated and network retransmission rates climb. Administrators may observe sudden surges of aborted connections after configuration changes, followed by partial outages where only pre-existing sessions continue processing slowly.\n\nCausally, aggressive or ill-suited database parameter settings (e.g., too many max connections, oversized work-memory, or excessive parallel-worker limits) drive the engine to request more kernel objects and network sockets than the host’s hard limits allow. Once OS quotas are hit, new backends, files, or AIO contexts cannot be created, which in turn starves internal executors and amplifies the mis-tuned engine behaviors—checkpoints bunch up, log buffers fill, and memory pressure grows. Simultaneously, the throttled listener and congested network stack delay or drop connection attempts, prompting client retries that further inflate connection counts and resource requests, accelerating exhaustion of both OS and engine quotas. The interlocking feedback loops between misconfiguration, kernel denials, and network contention thus reinforce each other, yielding a compound degradation that is harder to diagnose than any single anomaly alone.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.6316176241642286,
+            "bm25_score": 24.454714142236746,
+            "lexical_score": 0.18351063829787234,
+            "matched_terms": [
+                "aborted",
+                "and",
+                "are",
+                "authentication",
+                "client",
+                "connection",
+                "data",
+                "from",
+                "is",
+                "latency",
+                "more",
+                "network",
+                "not",
+                "of",
+                "or",
+                "read",
+                "sessions",
+                "than",
+                "the",
+                "time",
+                "to",
+                "waits",
+                "when"
+            ],
+            "match_count": 45,
+            "entry": {
+                "timeout_id": "mysql84_network_read_timeout",
+                "parameter_name": "net_read_timeout",
+                "timeout_category": "network_read_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for more data from a connection before aborting the read.",
+                "trigger_condition": "The server waits for additional data from a connection longer than net_read_timeout.",
+                "workload_impact": "The network read is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

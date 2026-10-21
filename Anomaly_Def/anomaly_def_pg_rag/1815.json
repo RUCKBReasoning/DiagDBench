@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + MVCC Version Maintenance Anomaly",
+            "Description": "Schema and Index Design Anomaly : Table, partition, and index structures do not match workload access patterns, forcing the optimizer into wide scans, non-covering lookups, and excessive index maintenance work.\nMVCC Version Maintenance Anomaly : Obsolete row versions and logically deleted index entries pile up faster than background cleaners can reclaim them, inflating on-disk structures and visibility-check overhead.\n\nCombined anomalous phenomena: 1) Table and index files grow rapidly because bloat from dead MVCC versions is layered on top of redundant or poorly chosen indexes, driving up I/O volume for every scan. 2) Queries that should be selective are executed as full-table or full-index scans; the scans now traverse many more pages than the live data actually needs, so latency and buffer churn escalate. 3) Autovacuum or similar cleanup workers run almost constantly yet fail to catch up, their work slowed by the oversized and mis-aligned index set they must walk. 4) Statistics drift as the live-row density drops, further skewing the optimizer toward the already expensive plans. 5) Write throughput degrades because every UPDATE/DELETE must touch multiple unnecessary indexes and append more row versions, while also contending with long-running cleanup tasks.\n\nCausal interaction: Sub-optimal schema and indexing choices increase the number and size of index entries that must be maintained for every data change, directly lengthening MVCC undo/redo chains and the work that vacuum processes must perform. As cleaners fall behind, version bloat expands the physical tables, magnifying the cost of the original design flaw by making sequential scans even heavier and rendering existing indexes less selective. The two root causes therefore reinforce each other: bad design slows version cleanup; delayed cleanup enlarges data structures and statistics errors, making the design mismatch more harmful. The feedback loop can quickly push an OLTP system into a state where both read and write performance deteriorate sharply and maintenance windows cannot recover in time.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.6821006972040983,
+            "bm25_score": 28.883320511334624,
+            "lexical_score": 0.15206499661475964,
+            "matched_terms": [
+                "an",
+                "and",
+                "because",
+                "cannot",
+                "change",
+                "for",
+                "index",
+                "is",
+                "of",
+                "or",
+                "other",
+                "row",
+                "schema",
+                "table",
+                "than",
+                "that",
+                "the",
+                "time",
+                "to",
+                "while"
+            ],
+            "match_count": 251,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

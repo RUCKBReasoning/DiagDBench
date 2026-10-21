@@ -1,0 +1,60 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Buffer Cache and Latch Contention Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Composite Definition: The database simultaneously suffers from (1) a static mismatch between the physical schema/index design and the workload’s access patterns, (2) intense contention on buffer-cache pages and their associated latches, and (3) saturation of network or connection-handling resources between clients and the database server. The three conditions coexist and interact, causing cascading slow-downs that span the storage engine, memory subsystem, and client/server communication path.\n\nCombined Observable Phenomena: • Queries that should be selective devolve into full-table or non-covering index scans, inflating logical and physical I/O. • Buffer-busy waits, page-latch or buffer-pin waits, and CPU spin time rise sharply as many sessions fight for a small set of hot pages (e.g., root or leaf blocks of sub-optimal indexes). • Checkpoints and dirty-page flushes lengthen, further holding latches. • End-user response times are erratic; spikes propagate outside the server as clients experience longer socket read/write waits, connection-establishment delays, and intermittent \"too many connections\" or timeout errors. • Network interfaces and listener backlogs show elevated retransmits and queued connections because slow queries keep back-end sessions busy and tied to open sockets, while application pools repeatedly retry.\n\nCausal Chain and Mutual Reinforcement: Inefficient schema and missing/ill-chosen indexes force large scans and concentrate inserts/updates on a few pages, rapidly cycling pages through a limited buffer pool. The resulting churn and hot-page concentration escalate buffer cache and latch contention, stalling worker threads and extending query runtimes. Prolonged execution keeps transactions and result sets open longer, inflating the number and lifetime of network connections. As network buffers fill and authentication slots or socket queues become saturated, new sessions wait or fail, prompting client retries that further increase concurrency inside the engine. The surge of concurrent, long-running scans worsens latch pressure and buffer churn, while stalled network I/O delays page clean-outs and checkpoint completion, creating a feedback loop that amplifies latency and throughput collapse across all three layers.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.7525225225225225,
+            "bm25_score": 38.86662549803332,
+            "lexical_score": 0.17507507507507508,
+            "matched_terms": [
+                "access",
+                "and",
+                "be",
+                "because",
+                "completion",
+                "contention",
+                "execution",
+                "from",
+                "long",
+                "longer",
+                "of",
+                "or",
+                "path",
+                "query",
+                "resource",
+                "running",
+                "should",
+                "that",
+                "the",
+                "time",
+                "timeout",
+                "too",
+                "user",
+                "workload"
+            ],
+            "match_count": 278,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Data Block and Index Integrity Anomaly + CPU Resource Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly : The write-ahead log pipeline (buffer, writer, flush, switch, archive, and replication retention) is saturated or stalled, inflating commit latency and halting forward progress of write activity.\nData Block and Index Integrity Anomaly : On-disk table or index pages have become physically or logically corrupt, breaking key order, links, or checksums so that the storage structures can no longer be trusted.\nCPU Resource Anomaly : Database processes collectively consume and contend for CPU cycles to the point of host-level saturation, slowing every CPU-bound activity.\n\nWhen these three root causes strike at the same time, the system exhibits a multilayer failure signature: commits and checkpoints hang behind growing log backlogs while overall response times balloon; wait-event views show simultaneous LOG_FLUSH, ARCHIVE, and CPU_RUN_QUEUE contention; integrity-check jobs or auto-repair tasks report checksum, page-verification, or index-key errors yet take unusually long to complete; query plans degrade from indexed lookups to full scans, amplifying CPU consumption and redo generation; error logs interleave corruption reports with \"log file switch/checkpoint not complete\" warnings; replication or backup processes stall because both corrupt pages and unarchived logs block their progress.\n\nCausally, corruption in data or index pages can force the optimizer or recovery components to perform full-table scans, index rebuilds, or page rereads, multiplying CPU demand and drastically increasing redo production. The surge of log records stresses an already constrained log subsystem; slower log flushes lengthen commit hold times, causing active sessions to accumulate and consume even more CPU while waiting. In parallel, CPU saturation slows the log writer, archive, and integrity-check threads, further delaying log persistence and corruption repair. The feedback loop—corruption-driven redo volume → log subsystem bottleneck → session pile-up → CPU exhaustion → slower corruption handling and log flushing—escalates until the database experiences severe throughput collapse or enters protective shutdown.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.7468589377498571,
+            "bm25_score": 28.36577873540299,
+            "lexical_score": 0.15619645916619074,
+            "matched_terms": [
+                "an",
+                "and",
+                "be",
+                "because",
+                "block",
+                "for",
+                "is",
+                "longer",
+                "of",
+                "or",
+                "session",
+                "sessions",
+                "the",
+                "to",
+                "transaction",
+                "wait",
+                "waiting",
+                "when",
+                "while",
+                "write"
+            ],
+            "match_count": 46,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

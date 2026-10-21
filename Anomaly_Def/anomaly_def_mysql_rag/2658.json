@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + MVCC Version Maintenance Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same data items, leading to long blocking chains or deadlocks that stall commit progress until waiters are released or victims are aborted.\nMVCC Version Maintenance Anomaly : Obsolete row versions and undo/rollback records accumulate faster than background cleanup can reclaim them, inflating tables and indexes and adding visibility-check overhead.\nStorage Space Capacity Anomaly : Data, index, log, or temp areas approach or reach their physical or logical size limits, causing allocation failures, halted writes, and system-wide back-pressure.\n\nWhen all three conditions arise together, the database exhibits compound symptoms: lock-wait queues lengthen while table and index sizes balloon, buffer-pool hit ratios fall as bloated pages evict hot ones, and checkpoint or log-flush operations stall when storage space runs out. Applications experience timeouts and frequent deadlock or \"out of space\" errors, throughput collapses, and background vacuum/garbage-collection workers spin but make little progress because they themselves are blocked or cannot allocate additional work space. Monitoring shows soaring lock-wait time, rapidly shrinking free bytes in data and log volumes, expanding version stores, and a surge of log and temp-space allocation failures.\n\nCausally, heavy lock contention tends to prolong transaction lifetimes, delaying commit/rollback and preventing cleanup workers from advancing the MVCC horizon; this accelerates version bloat. The swelling version store expands data files and rollback segments, consuming additional disk space, while extended lock holds also keep undo and redo logs active, slowing log recycling. As storage fills, auto-extension failures and throttled write paths further lengthen commit latency, which in turn exacerbates lock queues and deadlock frequency. The feedback loop between blocked transactions, unreclaimed versions, and dwindling storage amplifies each individual anomaly, driving the system toward a space-exhaustion and availability crisis that is more severe than any single root cause alone.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.7447183098591549,
+            "bm25_score": 30.28196056353386,
+            "lexical_score": 0.14906103286384975,
+            "matched_terms": [
+                "aborted",
+                "and",
+                "back",
+                "because",
+                "blocking",
+                "cannot",
+                "in",
+                "incompatible",
+                "is",
+                "lock",
+                "of",
+                "or",
+                "row",
+                "than",
+                "the",
+                "this",
+                "time",
+                "transaction",
+                "wait",
+                "when"
+            ],
+            "match_count": 126,
+            "entry": {
+                "timeout_id": "mysql84_innodb_row_lock_wait_timeout",
+                "parameter_name": "innodb_lock_wait_timeout",
+                "timeout_category": "innodb_row_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "The length of time in seconds an InnoDB transaction waits for a row lock before giving up.",
+                "trigger_condition": "An InnoDB transaction waits longer than innodb_lock_wait_timeout for a row lock.",
+                "workload_impact": "The lock wait gives up; by default only the current statement is rolled back unless innodb_rollback_on_timeout is enabled.",
+                "default_behavior": "Defined as an InnoDB system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

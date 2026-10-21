@@ -1,0 +1,62 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Composite definition: The database engine is simultaneously mis-configured at the internal parameter level while also experiencing scarcity or instability in the network / connection-handling layer. The first root cause compromises how the server allocates memory, workers, checkpoints, and connection slots; the second restricts or delays the flow of client traffic to those same resources. Together they form a compound bottleneck that can manifest even when underlying CPU, memory, and storage hardware are not fully utilized.\n\nCombined anomalous phenomena: • Sudden surges of \"too many connections\" or authentication timeouts followed by log-write or buffer-pin waits inside already connected sessions. • Listener backlog overflows that coincide with background writers or checkpointers awakening more frequently than expected. • In-flight transactions stalling on client-read/client-write events while the server side simultaneously shows idle CPU yet elevated spin or latch contention because work-memory, parallelism, or buffer-pool sizes were tuned for a higher throughput than the unstable network can deliver. • Rapid oscillation between under-utilization (due to absent clients) and burst saturation (due to retry storms) that triggers checkpoint storms, aggressive WAL flushing, or worker exhaustion dictated by the mis-set parameters. • OS socket tables and database backend counts both hitting their respective limits, producing a mixture of connection-refused errors and internal \"resource busy\" wait events that are hard to attribute to a single layer.\n\nCausal chain: Poorly calibrated configuration parameters (e.g., oversized connection limit, undersized work-memory, aggressive checkpoint cadence) raise the sensitivity of the engine to fluctuations in connection rate and traffic volume. When the network layer concurrently suffers congestion, packet loss, or listener queue exhaustion, clients perform retries or leave half-open sockets that consume the very connection slots the engine over-allocated. This inflates backend processes/threads, increases per-session memory pressure, and forces more frequent checkpoints or log flushes. These engine-level side effects, in turn, lengthen transaction latency, causing yet more client-side timeouts and retransmissions that further stress network and socket resources. The feedback loop between parameter misconfiguration and network resource exhaustion amplifies both problems, obscures the true root causes, and can degrade throughput and stability well beyond what either anomaly would cause in isolation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.6868399497078046,
+            "bm25_score": 21.059764550187136,
+            "lexical_score": 0.1746186440677966,
+            "matched_terms": [
+                "and",
+                "are",
+                "authentication",
+                "can",
+                "client",
+                "connection",
+                "for",
+                "handling",
+                "idle",
+                "is",
+                "latency",
+                "network",
+                "not",
+                "of",
+                "on",
+                "or",
+                "session",
+                "sessions",
+                "socket",
+                "than",
+                "the",
+                "this",
+                "to",
+                "together",
+                "when",
+                "with"
+            ],
+            "match_count": 251,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_idle",
+                "parameter_name": "tcp_keepalives_idle",
+                "timeout_category": "network_idle_keepalive_probe_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time with no network activity after which the operating system should send a TCP keepalive message to the client.",
+                "trigger_condition": "A TCP client connection has no network activity longer than tcp_keepalives_idle on systems supporting TCP_KEEPIDLE or an equivalent socket option.",
+                "workload_impact": "Starts TCP keepalive probing for an otherwise idle client connection; together with interval and count settings this can lead to dead connection detection.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

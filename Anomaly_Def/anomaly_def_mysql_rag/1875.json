@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Buffer Cache and Latch Contention Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Database Configuration Parameter Anomaly: Engine-level runtime parameters are mis-tuned relative to hardware capacity and workload, leading to behavior that is sub-optimal even though the underlying resources themselves are not yet saturated.\nBuffer Cache and Latch Contention Anomaly: Sessions serialize on hot buffer pages, latches, or I/O slots, producing buffer-busy and page-latch waits that inflate latency while CPUs appear either under-utilised or spinning.\nStorage Space Capacity Anomaly: The database or log storage layer runs out of allocatable space, provoking allocation failures, forced checkpoints, and write stalls.\n\nCombined anomalous phenomena: When all three root causes coexist, the instance exhibits pronounced and intertwined symptoms. Mis-sized buffer-pool, checkpoint, and log-size parameters cause aggressive page eviction and frequent checkpoints that amplify latch waits on hot pages. The extra dirty-page flushes and log switches rapidly consume the already limited free space, leading to intermittent \"out-of-space\" or \"cannot extend\" errors. As space nears exhaustion, background writers and checkpoint processes throttle foreground work, holding critical latches longer and causing latch wait and CPU spin spikes. Performance monitoring shows a perplexing mix of buffer-busy waits, log-write stalls, and space-allocation errors, while hardware I/O and CPU utilisation fluctuate between idle gaps and short saturation bursts.\n\nCausal chain and interaction: Sub-optimal configuration (e.g., undersized buffer pool, small log files, overly aggressive checkpoint interval) increases the churn of dirty pages and log segments. This churn heightens buffer-cache turnover and concentrates access on a reduced set of hot pages, elevating latch contention. Simultaneously, the frequent checkpoints and log switches allocate space at an accelerated pace, depleting the already constrained storage. As free space shrinks, write operations block on space availability, prolonging the duration that pages remain pinned and latches are held, which in turn worsens contention. The stalled writes force additional checkpoints and emergency autovacuum or purge activity, each governed by the same poor parameter settings, creating a feedback loop that propagates latency, raises the risk of transaction timeouts, and can ultimately push the database into read-only or shutdown states.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.7360624849663672,
+            "bm25_score": 25.5108575310446,
+            "lexical_score": 0.14745989304812834,
+            "matched_terms": [
+                "an",
+                "and",
+                "block",
+                "cannot",
+                "holding",
+                "is",
+                "longer",
+                "of",
+                "or",
+                "sessions",
+                "the",
+                "this",
+                "to",
+                "transaction",
+                "wait",
+                "waits",
+                "when",
+                "while",
+                "write"
+            ],
+            "match_count": 89,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

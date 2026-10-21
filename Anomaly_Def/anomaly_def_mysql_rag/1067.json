@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + MVCC Version Maintenance Anomaly",
+            "Description": "SQL Workload Logic Anomaly: Application-level SQL or transaction design forces the engine to scan or modify far more data, rows, or time than business logic actually requires.\nMVCC Version Maintenance Anomaly: Excessive accumulation of obsolete row versions and undo/rollback segments outpaces background cleanup, inflating on-disk structures and visibility-check cost.\n\nComposite definition: The database simultaneously suffers from poorly written workload logic that drives unnecessary row accesses and prolonged transactions, while MVCC version garbage is not reclaimed fast enough. Together, these conditions form a feedback loop where bloated version stores degrade performance and further magnify the inefficiencies of the SQL workload.\n\nCombined observable phenomena:  • Sharp and erratic tail latencies, frequent application timeouts, and growing slow-query logs.  • Rapid growth of table and index size despite stable business data volume; rising dead-to-live row ratios and increasing checkpoint or vacuum runtimes.  • Long-running transactions that pin old snapshots, causing vacuum freezes, and in turn exacerbate bloat.  • Escalating I/O and memory consumption as wide scans touch many stale pages, leading to cache churn, higher CPU spent on visibility checks, and potential autovacuum saturation.  • Optimizer misestimates due to inflated statistics, yielding even less efficient plans and reinforcing the original workload inefficiencies.\n\nCausal interaction: Inefficient SQL patterns (e.g., bulk updates without selective predicates, chatty ORM loops, transactions left open across think time) generate high churn of updates/deletes and create extensive undo/version chains. Those same long transactions also hold old snapshots, preventing garbage collection. As background cleaners fall behind, table and index bloat increases, making each subsequent oversized query or scan more expensive, which prolongs execution and transaction lifetimes. The compounded effect is a vicious cycle: bad workload logic produces more MVCC debris, the unreclaimed debris slows queries and elongates transactions, and the prolonged transactions inhibit cleanup, driving the system into progressively degraded throughput and escalating resource consumption.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.7346744186046511,
+            "bm25_score": 26.602051082578246,
+            "lexical_score": 0.1155813953488372,
+            "matched_terms": [
+                "and",
+                "behind",
+                "execution",
+                "in",
+                "is",
+                "long",
+                "or",
+                "query",
+                "resource",
+                "running",
+                "the",
+                "time",
+                "together",
+                "workload"
+            ],
+            "match_count": 52,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

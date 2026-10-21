@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Storage I/O Throughput Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "SQL Workload Logic Anomaly : The application issues inefficient SQL or transaction patterns that force the engine to process and move more data than business logic actually requires.\nStorage I/O Throughput Anomaly : The physical storage layer cannot deliver the sustained read/write bandwidth, IOPS, or latency demanded by the engine.\nOperating System Resource Limit Anomaly : Kernel-enforced limits on file handles, shared memory, threads, or other OS objects are exhausted by the database process.\n\nWhen these three root causes coexist, the database shows a compound symptom set: statements already slow from poor SQL logic wait even longer on saturated storage queues; overall latency and variance spike, with slow-query logs filling rapidly and application timeouts multiplying. Simultaneously, the engine begins to emit file-open, async-I/O, or thread-creation errors as OS quotas are hit, causing new sessions, parallel workers, or log writer helpers to fail intermittently. Wait-event profiles oscillate between buffer-I/O, log-write stalls, and OS-level resource-acquisition waits, making diagnosis non-trivial. Long-running transactions hold locks and pins while they repeatedly retry failed I/O or background task creation, further inflating contention and cascading delays across otherwise independent workloads.\n\nCausal chain: inefficient SQL logic amplifies data volume and row touches, inflating buffer misses and forcing heavier physical I/O. The excess I/O drives the storage subsystem past its throughput ceiling, lengthening every read/write and inflating device queue depth. Prolonged I/O completion times keep database worker threads busy for longer, increasing the concurrent demand for kernel objects—more open file descriptors, async-I/O contexts, and waiting threads—until OS-imposed limits are breached. Once those limits are hit, new I/O requests or worker threads fail or block, which in turn triggers additional retries and longer transactions inside the database engine, further increasing data volume and I/O pressure. Each anomaly therefore reinforces the others, creating a feedback loop that degrades throughput, elevates tail latency, and risks partial or total service outage.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.6243612310432334,
+            "bm25_score": 27.737278633841466,
+            "lexical_score": 0.1439464882943144,
+            "matched_terms": [
+                "acquisition",
+                "and",
+                "cannot",
+                "for",
+                "in",
+                "locks",
+                "longer",
+                "or",
+                "retry",
+                "sessions",
+                "than",
+                "the",
+                "to",
+                "transaction",
+                "waiting",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 136,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

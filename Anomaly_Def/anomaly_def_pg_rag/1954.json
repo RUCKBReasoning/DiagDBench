@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Replication Synchronization Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Schema and Index Design Anomaly: Physical data-model and indexing choices do not match workload access patterns, forcing the optimizer into full scans, non-covering lookups, and excessive maintenance overhead that inflate I/O and log volume.\nReplication Synchronization Anomaly: Standby or subscriber systems cannot ingest or apply the primary’s change stream fast enough, producing growing log-position gaps, replay lag, and retention of un-archived log segments on the primary.\nStorage Space Capacity Anomaly: Allocated data, temp, or log areas approach exhaustion, leading to allocation failures, halted extensions, and stalled recycling of log/temporary space.\n\nWhen all three root causes co-exist, the database experiences cascading symptoms: 1) poorly indexed queries generate large scans, temp spills, and bloated undo/redo, elongating transactions; 2) the surge in log volume overwhelms replication apply threads, widening replication lag and forcing the primary to retain ever-growing log segments; 3) retained logs, enlarged indexes, and temporary spill files rapidly consume remaining disk space, triggering auto-extend failures, halted DML, aborted queries, and replica disconnections. Monitoring shows simultaneous spikes in query latency, checkpoint age, replica delay, and space usage, making it difficult to attribute blame to any single subsystem.\n\nCausally, inefficient schema and index design is the first amplifier: every read and write becomes heavier, generating more undo/redo and larger index updates. The inflated log stream must be shipped and replayed downstream; limited apply throughput on replicas turns this into chronic replication backlog. Because the primary cannot recycle log segments that replicas have not replayed, space consumption on both primary and replica storage rises sharply. As free space shrinks, auto-extension or archive operations fail, which in turn stalls new writes and further delays replication, establishing a feedback loop that degrades performance and can culminate in an outage. The intertwined nature of design inefficiencies, replication lag, and space exhaustion complicates diagnosis, as each anomaly masks and intensifies the others.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.6210459888360416,
+            "bm25_score": 20.72208166522557,
+            "lexical_score": 0.13069418386491558,
+            "matched_terms": [
+                "aborted",
+                "an",
+                "and",
+                "any",
+                "because",
+                "cannot",
+                "change",
+                "delay",
+                "is",
+                "of",
+                "or",
+                "query",
+                "schema",
+                "that",
+                "the",
+                "this",
+                "transactions",
+                "when"
+            ],
+            "match_count": 258,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

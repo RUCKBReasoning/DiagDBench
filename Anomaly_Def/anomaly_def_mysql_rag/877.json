@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Replication Synchronization Anomaly + Storage Space Capacity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Replication Synchronization Anomaly : Standbys or downstream consumers cannot receive or apply WAL/redo fast enough to keep up with the primary, widening the log-position gap.\nStorage Space Capacity Anomaly : Physical or logical free space in data, log, archive, temp, or backup areas is exhausted, causing allocation failures and stalls.\nOperating System Resource Limit Anomaly : Kernel-enforced limits on file handles, shared memory, semaphores, threads, or similar objects are reached, preventing the database from creating or accessing required resources.\n\nWhen all three conditions arise together, the database estate experiences a spiraling failure mode: replication lag grows, retained WAL or relay logs accumulate, and the resulting surge in on-disk log volume drives the underlying storage toward full. At the same time, exhausted OS limits prevent archiver, cleanup, or apply processes from opening additional files, allocating shared memory, or spawning workers, so neither the primary nor the replicas can reclaim space or accelerate catch-up. Symptoms include rapidly inflating disk usage on primaries and standbys, replica replay lag jumping while apply workers crash or refuse to start, repeated \"no space\" or \"too many open files\" errors in both database and system logs, stalled checkpoints, disabled autovacuum or compaction tasks, and an increasing number of read-only queries served stale data from far-behind replicas.\n\nCausal chain and reinforcement: (1) Initial OS resource exhaustion (e.g., file-descriptor limits) throttles replication apply processes and archive writers; (2) slowed apply causes WAL retention on the primary, inflating log volume; (3) the sudden consumption of disk space triggers storage-capacity breaches that further block WAL archiving and temp-space operations; (4) with storage full, retry storms and additional worker spawns push the system even harder against the same OS limits, causing more process failures; (5) the feedback loop leaves both primary and replicas unable to advance, risking total outage or data-loss exposure if the primary crashes before replicas catch up.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 4848,
+            "score": 0.648894646822586,
+            "bm25_score": 67.6431916711407,
+            "lexical_score": 0.19083876575401998,
+            "matched_terms": [
+                "and",
+                "are",
+                "cannot",
+                "capacity",
+                "data",
+                "disk",
+                "failure",
+                "failures",
+                "file",
+                "files",
+                "in",
+                "is",
+                "log",
+                "mode",
+                "only",
+                "or",
+                "read",
+                "redo",
+                "start",
+                "storage",
+                "the",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-012965",
+                "error_name": "OBSOLETE_ER_IB_MSG_LOG_FILES_RESIZE_ON_START_IN_READ_ONLY_MODE",
+                "official_description": "Cannot resize redo log files in read-only mode. Provide --innodb_redo_log_capacity >= %lluMB or start without --innodb-read-only.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

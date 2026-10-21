@@ -1,0 +1,59 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Storage I/O Throughput Anomaly + CPU Resource Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly : The log‐write, flush, switch, or archive path becomes the primary bottleneck, stalling commit processing and redo generation.\nStorage I/O Throughput Anomaly : The physical storage layer saturates its read/write or IOPS capacity, elevating latency for any file on the affected volumes.\nCPU Resource Anomaly : Host CPU cores are saturated by database processes, leaving little head-room for additional work and elongating run-queue waits.\n\nWhen these three root causes strike simultaneously, the database can exhibit a multi-layer performance collapse: commits and checkpoints queue behind slow log flushes; data and log I/O waits pile up because the storage subsystem itself is bandwidth-starved; meanwhile CPU remains pinned, so background writer, log writer, archiver, and user sessions all contend for compute cycles, lengthening every wait even further. Observable symptoms include: rapidly escalating commit latency, frequent log‐file switch warnings coupled with slow archive completion, device queue depths pegged, service times well above specification, scheduler and run-queue waits dominating wait-class views, and a system-wide slowdown where both short OLTP transactions and maintenance tasks time out or deadlock around resource starvation.\n\nCausally, each anomaly amplifies the others. A slow storage plane prolongs every log write, which increases the lifetime of foreground sessions holding latches and therefore raises CPU pressure; the elevated CPU load in turn slows log-writer and I/O submission threads, lowering the effective IOPS they can push to an already saturated device. As checkpoints and archivers miss their windows, log directories bloat, producing larger, burstier write operations that further flood the constrained storage path. The vicious cycle leads to a feedback loop where storage stalls raise CPU usage (busy-waiting, context switches), high CPU usage throttles I/O throughput (delayed submissions), and both together deepen the log subsystem bottleneck, potentially driving the database into prolonged stalls or crash-recovery scenarios.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.7508222996515679,
+            "bm25_score": 26.251297419282107,
+            "lexical_score": 0.16940766550522646,
+            "matched_terms": [
+                "an",
+                "and",
+                "any",
+                "because",
+                "context",
+                "database",
+                "for",
+                "holding",
+                "is",
+                "lifetime",
+                "of",
+                "or",
+                "sessions",
+                "that",
+                "the",
+                "time",
+                "to",
+                "transaction",
+                "user",
+                "waiting",
+                "waits",
+                "when"
+            ],
+            "match_count": 253,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

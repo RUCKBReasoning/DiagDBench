@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Database Memory Allocation Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Optimizer Statistics Anomaly: The costing inputs that drive plan selection (row counts, histograms, correlation, etc.) are stale or incomplete, causing systematic cardinality misestimation.\nDatabase Memory Allocation Anomaly: Aggregate buffer cache, work-area, and auxiliary memory growth pushes the host into sustained pressure, paging, or OOM scenarios.\nStorage I/O Throughput Anomaly: The physical disks or storage fabric are saturated in IOPS, bandwidth, or latency, so read/write requests queue and slow down regardless of database intent.\n\nWhen all three conditions coexist, the workload experiences erratic and worsening performance: queries are compiled into sub-optimal plans that favor either hash joins, large sorts, or table scans based on bad statistics, which in turn allocate excessive work memory and drive up buffer-cache churn. The inflated memory footprint exhausts physical RAM, causing the kernel to start paging exactly while the storage subsystem is already operating at or beyond its throughput limits. Swapping competes with normal data, temp, and log I/O, so I/O queues back up even further. Execution plans then encounter both severe memory pressure (work-area spills, frequent eviction of hot pages) and disk stalls (elevated read/write latency), leading to unstable runtimes, timeouts, and possible instance crashes.\n\nCausally, stale or missing statistics mislead the optimizer into choosing data-hungry execution strategies (e.g., full scans, multi-gigabyte sorts) that inflate memory requests. These oversized allocations accelerate consumption of buffer cache and per-query work memory, tipping the system into OS-level paging. The resulting swap traffic lands on already saturated storage, deepening I/O queues and latency. Conversely, high I/O latency slows down statistics collection jobs, prolonging staleness and reinforcing bad plans, while memory pressure can evict cached statistics objects, further degrading estimation accuracy. The feedback loop among poor statistics, runaway memory usage, and storage saturation drives a spiral of degrading performance across both transactional and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 16,
+            "score": 0.6551623096091183,
+            "bm25_score": 15.6524743062211,
+            "lexical_score": 0.11733766233766234,
+            "matched_terms": [
+                "and",
+                "are",
+                "data",
+                "is",
+                "latency",
+                "level",
+                "or",
+                "read",
+                "slow",
+                "the",
+                "unstable",
+                "when",
+                "write"
+            ],
+            "match_count": 79,
+            "entry": {
+                "timeout_id": "mysql84_xplugin_write_timeout",
+                "parameter_name": "mysqlx_write_timeout",
+                "timeout_category": "x_protocol_network_write_timeout",
+                "scope": "global/session/X Plugin",
+                "official_definition": "Write timeout for X Plugin network communication.",
+                "trigger_condition": "A MySQL X Protocol write operation exceeds mysqlx_write_timeout.",
+                "workload_impact": "The X Protocol network write operation times out.",
+                "default_behavior": "Defined as a MySQL X Plugin system variable.",
+                "system_domain": "network_transport",
+                "cause_analysis": "This timeout is usually triggered when network data is not acknowledged, received, or written within the configured transport-level waiting window.",
+                "solution_guidance": "Inspect packet loss, transport latency, client responsiveness, proxy behavior, and whether slow consumers or unstable links are delaying network progress.",
+                "observable_symptoms": [
+                    "network timeout",
+                    "disconnect",
+                    "read/write interruption"
+                ]
+            }
+        }
+    }
+]

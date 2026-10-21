@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + CPU Resource Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Simultaneous hot-page access forces sessions to serialize on buffer-cache latches, page pins, or I/O slots, stalling execution at the storage-engine layer.\nCPU Resource Anomaly : Database and ancillary processes drive host CPU utilisation to saturation, exhausting compute cycles and lengthening run-queue and scheduler waits.\nNetwork and Connectivity Resource Anomaly : Client ↔ server transport, listener, socket, or authentication resources become bottlenecked, delaying connection setup and data transfer.\n\nWhen these three root causes strike together the system exhibits a multilayer bottleneck: 1) intra-engine waits such as buffer-busy and page-latch spikes, 2) host-level symptoms of CPU exhaustion—high load averages, context-switch storms, runaway spin polling in latch code, and 3) external indicators of connectivity stress—rising connection-establishment latency, backlog overflow, and client-side timeouts. Because each tier is impaired, end-to-end response times degrade non-linearly, with seemingly random query slowdowns, erratic throughput, and bursts of failed or abandoned client sessions that mask the true root causes.\n\nCausal interaction: Hotspot pages force sessions into latch spin loops that chew CPU; the inflated CPU demand pushes the host to saturation, lengthening the time threads hold latches and further intensifying buffer contention. The overwhelmed schedulers also delay kernel-space network interrupts and socket processing, which inflates round-trip times and backs up the database listener. Conversely, stalled or retried client connections keep backend processes in a suspended or half-active state while still owning buffer pins, extending the lifetime of page locks and exacerbating latch queues. The feedback loop among latch spin, CPU starvation, and network backlog can cascade quickly, turning localized hot-page contention into cluster-wide performance collapse.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 15,
+            "score": 0.5103985769068335,
+            "bm25_score": 14.973694834624531,
+            "lexical_score": 0.1198338220918866,
+            "matched_terms": [
+                "and",
+                "client",
+                "data",
+                "delaying",
+                "is",
+                "latency",
+                "level",
+                "network",
+                "or",
+                "the",
+                "times",
+                "transport",
+                "when"
+            ],
+            "match_count": 49,
+            "entry": {
+                "timeout_id": "mysql84_xplugin_read_timeout",
+                "parameter_name": "mysqlx_read_timeout",
+                "timeout_category": "x_protocol_network_read_timeout",
+                "scope": "global/session/X Plugin",
+                "official_definition": "Read timeout for X Plugin network communication.",
+                "trigger_condition": "A MySQL X Protocol read operation exceeds mysqlx_read_timeout.",
+                "workload_impact": "The X Protocol network read operation times out.",
+                "default_behavior": "Defined as a MySQL X Plugin system variable.",
+                "system_domain": "network_transport",
+                "cause_analysis": "This timeout is usually triggered when network data is not acknowledged, received, or written within the configured transport-level waiting window.",
+                "solution_guidance": "Inspect packet loss, transport latency, client responsiveness, proxy behavior, and whether slow consumers or unstable links are delaying network progress.",
+                "observable_symptoms": [
+                    "network timeout",
+                    "disconnect",
+                    "read/write interruption"
+                ]
+            }
+        }
+    }
+]

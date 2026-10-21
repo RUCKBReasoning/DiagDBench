@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Database Memory Allocation Anomaly + Storage Space Capacity Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level statements or transaction design force the engine to scan, join, or return far more data than business logic requires.\nDatabase Memory Allocation Anomaly : The database process allocates buffer cache, work memory, plan cache, and other heaps beyond the safe physical memory envelope, provoking OS-level pressure.\nStorage Space Capacity Anomaly : Physical or logical free space in data files, logs, or temporary areas drops to a hard boundary, risking allocation failures and stalled writes.\n\nWhen all three root causes manifest together, the database experiences a compound failure mode: chatty or over-broad SQL rapidly fills buffer caches and per-query work areas, driving resident-set size to the limit. As memory pressure mounts, the engine begins spilling sort, hash, and intermediate result sets to temporary segments, which in turn accelerates consumption of data-file, temp, and log space. The already space-starved storage layer struggles to extend or recycle files, causing write stalls, \"out of space\" errors, aborted transactions, and repeated retries from the application layer. Performance telemetry shows a mix of long-tail statement latency, swapping or OOM events, and sudden allocation failures in temporary or archive areas—symptoms that, when observed in isolation, are difficult to attribute to any single layer.\n\nCausal chain: overly expensive SQL (1) inflates memory demand, inflating caches and per-operation work buffers; (2) this pushes the instance into heavy paging or triggers aggressive spill-to-disk behavior; (3) the resulting temporary and log growth rapidly depletes remaining storage capacity; (4) once space is exhausted, memory-relief spills fail, forcing even more memory retention and amplifying OOM risk. Each anomaly therefore feeds the next: inefficient workload begets memory saturation, memory saturation begets disk spills, and disk spills exhaust space, which in turn prevents the memory layer from offloading work, creating a feedback loop that can cascade into node eviction, service outage, or data-load failure.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.47361433704374817,
+            "bm25_score": 23.046964485377586,
+            "lexical_score": 0.14128205128205126,
+            "matched_terms": [
+                "aborted",
+                "and",
+                "any",
+                "from",
+                "is",
+                "long",
+                "of",
+                "operation",
+                "or",
+                "prevents",
+                "query",
+                "statement",
+                "than",
+                "that",
+                "the",
+                "this",
+                "transaction",
+                "transactions",
+                "when"
+            ],
+            "match_count": 311,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

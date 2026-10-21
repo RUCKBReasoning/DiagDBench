@@ -1,0 +1,45 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + MVCC Version Maintenance Anomaly + CPU Resource Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently chooses sub-optimal execution plans despite reasonably accurate statistics, leading to excessive I/O, row visits, or parallelism misuse.\nMVCC Version Maintenance Anomaly : Obsolete row versions and rollback records accumulate faster than background cleanup can reclaim them, inflating tables/indexes and adding visibility-check overhead.\nCPU Resource Anomaly : Database back-end and maintenance processes drive host CPU utilization to saturation, creating run-queue waits and pervasive latency spikes.\n\nWhen all three conditions coexist, the database exhibits a blended failure pattern: queries flip to or remain on inefficient plans that scan or join far more rows than necessary; the scanned pages are bloated with dead tuples, so every logical row access requires extra visibility checks and additional buffer churn; the surplus work manifests as sustained CPU saturation, causing system-wide slowdowns. Autovacuum or garbage-collection workers run constantly yet make little progress because they compete for the same exhausted CPU, while critical user queries also stall on CPU run-queue waits. Statistics drift as table bloat grows, amplifying plan instability and fostering new mis-plans. Symptoms include erratic plan changes, explosive growth of table and index size, skyrocketing CPU wait events, and workload latency that degrades non-linearly with concurrency.\n\nCausally, poor plan choices initiate oversized scans and high row lookups, inflating CPU consumption and prolonging transaction lifetimes; the longer execution times delay cleanup horizon advancement, letting MVCC garbage pile up. The ensuing table bloat further skews cardinality estimates, nudging the optimizer toward even worse plans—especially when plan reuse locks in bad strategies—creating a vicious feedback loop. Meanwhile, the compounded read-amplification from dead rows and the CPU-intensive mis-plans jointly saturate the processor, throttling both foreground queries and background vacuuming. The throttled cleanup then falls further behind, intensifying version accumulation and perpetuating the cycle until the system experiences severe throughput collapse or reaches transaction-ID wraparound danger.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 136,
+            "score": 0.46413644747987554,
+            "bm25_score": 23.848905537950074,
+            "lexical_score": 0.09097345132743362,
+            "matched_terms": [
+                "and",
+                "failure",
+                "for",
+                "logical",
+                "or",
+                "rollback",
+                "same",
+                "the",
+                "transaction",
+                "with"
+            ],
+            "match_count": 11,
+            "entry": {
+                "error_code": "40000",
+                "error_name": "transaction_rollback",
+                "official_description": "transaction rollback",
+                "error_class": "Class 40 - Transaction Rollback",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "concurrency_and_transaction",
+                "cause_analysis": "The failure is typically associated with concurrent transactions contending for the same logical resources, incompatible lock acquisition order, or transaction-state conflicts surfaced by the engine.",
+                "solution_guidance": "Inspect blocking chains, reduce conflicting write overlap, shorten transaction lifetime, review lock acquisition order, and verify whether transaction scheduling or retry logic needs adjustment.",
+                "observable_symptoms": [
+                    "blocking",
+                    "rollback",
+                    "retry",
+                    "stalled transaction"
+                ]
+            }
+        }
+    }
+]

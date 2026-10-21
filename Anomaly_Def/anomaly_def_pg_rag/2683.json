@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + MVCC Version Maintenance Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently picks a substantially sub-optimal execution plan even though statistics are reasonably accurate and the query text is unchanged.\nMVCC Version Maintenance Anomaly : Obsolete row versions and logically deleted index entries accumulate faster than background cleanup can reclaim them, inflating storage and visibility-check overhead.\nData Block and Index Integrity Anomaly : On-disk heap pages or index structures become physically or logically corrupted, breaking key order, page links, or heap–index correspondence.\n\nCombined phenomena: 1) Sudden plan flips from index probes to full scans on tables whose physical size has exploded from version bloat or whose indexes have become unreliable, 2) huge gaps between estimated and actual row counts because corruption and bloat distort statistics, 3) escalating I/O, CPU, and memory consumption during long-running OLTP statements, 4) vacuum/cleanup workers stuck or failing on corrupted pages while plan cache thrashes with ever-changing bad plans, 5) user-visible symptoms ranging from intermittent wrong-result sets (duplicate or missing rows) to query-timeouts and engine warnings about both wraparound danger and page checksum errors.\n\nCausal chain: MVCC version bloat enlarges tables and skews visibility statistics, which misleads the optimizer into choosing cost-based plans that look cheaper but are disastrous in practice. Corrupted index or heap pages further undermine the optimizer’s cardinality feedback, triggering even worse plan choices or forcing full scans that magnify the impact of the bloated storage layer. In turn, the poor plans often perform wide scans and high-churn updates that generate yet more row versions and touch damaged pages, hampering cleanup workers whose failure allows both bloat and corruption to deepen. The three faults therefore reinforce one another, driving a feedback loop of growing storage, deteriorating plan quality, rising resource usage, and increasing risk of data-access errors in a live OLTP workload.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.7455364455364455,
+            "bm25_score": 33.38838771618857,
+            "lexical_score": 0.1517881517881518,
+            "matched_terms": [
+                "access",
+                "and",
+                "because",
+                "execution",
+                "from",
+                "is",
+                "long",
+                "more",
+                "of",
+                "or",
+                "quality",
+                "query",
+                "resource",
+                "running",
+                "than",
+                "that",
+                "the",
+                "user",
+                "with",
+                "workload"
+            ],
+            "match_count": 294,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

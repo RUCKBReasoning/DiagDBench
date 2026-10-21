@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer chooses a markedly sub-optimal execution plan despite usable statistics, often because of flawed cost comparisons, plan reuse pathologies, or version/configuration changes.\nOperating System Resource Limit Anomaly : The database hits kernel-enforced ceilings on objects such as file descriptors, shared-memory segments, threads, or async-I/O contexts, causing failures outside the engine’s own resource governance.\n\nWhen both root causes are present, workloads exhibit erratic and hard-to-explain behaviour: the same statement may alternate between fast and extremely slow executions; some runs error out with OS-level \"cannot create thread/file/shm\" messages, while others limp through with degraded performance. Parallel queries may start but stall after only a subset of workers appear, leading to skewed execution, temp-spill explosions, or repeated plan abort/retry cycles. System-wide, operators observe sudden surges in CPU and I/O from full scans or massive hash builds selected by the optimizer, coinciding with spikes in kernel resource-exhaustion logs. Session creation, background autovacuum or checkpoint processes, and I/O completion threads intermittently fail, producing partial outages that disappear once load subsides.\n\nCausal chain: a poor plan often allocates far more resources than a well-tuned one—opening many table/index files, spawning numerous workers, or spilling to large temporary files. This accelerates consumption of kernel-limited objects, pushing the system over OS quotas. Once limits are reached, the database cannot create additional workers, files, or I/O contexts, causing in-flight queries to abort or replan. The optimizer, unaware of the external constraint, may repeatedly choose the same high-resource plan, triggering a feedback loop of retries, plan cache pollution, and further resource churn. Conversely, OS denials can invalidate or refuse parallel plans, forcing the optimizer to fall back to less efficient serial scans, which lengthen execution time and keep resources busy even longer. The mutual reinforcement of bad plan choices and kernel resource exhaustion amplifies latency variance, throughput collapse, and operational instability across both transactional and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.4490847656829551,
+            "bm25_score": 21.578870005205566,
+            "lexical_score": 0.13443359876701771,
+            "matched_terms": [
+                "after",
+                "and",
+                "are",
+                "between",
+                "can",
+                "kernel",
+                "latency",
+                "or",
+                "queries",
+                "query",
+                "session",
+                "system",
+                "that",
+                "the",
+                "this",
+                "time",
+                "when",
+                "while"
+            ],
+            "match_count": 325,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

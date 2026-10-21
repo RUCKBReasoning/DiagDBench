@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Replication Synchronization Anomaly",
+            "Description": "Optimizer Statistics Anomaly: Input metadata about data distribution is stale or inaccurate, misleading the optimizer and yielding systematically mis-estimated cardinalities and inefficient execution plans.\nReplication Synchronization Anomaly: The replication subsystem cannot receive, persist, or apply primary-side log records fast enough, producing sustained apply and log position lag between primary and replicas.\n\nWhen both root causes are active, the database exhibits a compound failure pattern: poorly costed queries inflate I/O, CPU, memory, and transaction duration on the primary, while the same bloated workloads generate larger, burstier redo streams that downstream replicas cannot keep up with. Monitoring may simultaneously show massive row-count estimation errors, sudden plan changes, lock escalation, and runaway temporary space on the primary, alongside widening replication lag, unresolved replication slots or relay logs, and rising primary log-device utilization. Read-only replica queries may return highly stale data, and planned failovers can take far longer due to both statistics-induced replay slowdowns and the backlog of unapplied log records. Administrators may misinterpret the symptoms because performance degradation appears on both primary and replicas with different surface metrics.\n\nCausally, stale or incomplete statistics provoke the optimizer to choose plans that scan or sort far more data than necessary, elongating transactions and inflating the volume of generated undo/redo. The surge of log traffic stresses the replication channel; any pre-existing bandwidth, CPU, or threading limits on the replica amplify lag. In turn, the growing replication backlog prevents timely log truncation on the primary, further increasing storage pressure and I/O contention, which exacerbates plan performance problems. The prolonged replay times on replicas delay statistics refresh jobs often scheduled there, allowing statistics staleness to persist and creating a feedback loop that continuously degrades both query performance and replication health.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.7485274356103023,
+            "bm25_score": 34.25050068785664,
+            "lexical_score": 0.1617581187010078,
+            "matched_terms": [
+                "and",
+                "apply",
+                "channel",
+                "data",
+                "downstream",
+                "health",
+                "is",
+                "lag",
+                "longer",
+                "or",
+                "replica",
+                "replication",
+                "than",
+                "the",
+                "timely",
+                "times",
+                "to",
+                "when"
+            ],
+            "match_count": 27,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

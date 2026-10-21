@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Storage I/O Throughput Anomaly + CPU Resource Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly: Accumulation of obsolete row versions and index entries outpaces background cleanup, inflating the version store and visibility-check work per statement.\nStorage I/O Throughput Anomaly: Physical devices or virtual volumes cannot deliver the read/write bandwidth, IOPS, or latency budget demanded by the database workload.\nCPU Resource Anomaly: Host CPU cores are driven to sustained saturation by database processes, leaving little headroom for other tasks.\n\nWhen all three root causes manifest simultaneously, the system shows a blended pathology: data and indexes grow rapidly while auto-vacuum or purge workers run constantly yet make no headway; buffer-pool miss rates climb, leading to more physical reads that wait in long device queues; foreground sessions exhibit both high I/O wait and elevated CPU run-queue latency; query plans that must scan bloated heaps spend extra CPU cycles on version visibility checks, only to stall again on slow block delivery; background writer, checkpointer, and log-flush threads extend commit latency, and overall transaction response times and batch windows stretch unpredictably. Monitoring views reveal swollen rollback segments, disk queues pegged, and CPU usage near 100 %, making it difficult to isolate any single dominant wait class.\n\nCausally, heavy update/delete churn expands the version store, inflating table and index footprints. The larger on-disk working set overwhelms the storage subsystem, elevating I/O latency. Slow I/O in turn delays cleanup workers, allowing even more dead versions to accumulate and further bloat storage. As each user query now touches more pages and performs extra visibility checks, CPU demand rises. With CPUs already saturated, context-switch overhead grows, further slowing background tasks such as vacuuming and checkpoint flushing, which then generate burstier I/O patterns that intensify storage contention. The feedback loop among unchecked version buildup, degraded I/O throughput, and exhausted CPU cycles drives the database into a self-reinforcing degradation spiral that is difficult to recover from without addressing all three underlying resource constraints together.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.7459235807860262,
+            "bm25_score": 30.145443408709266,
+            "lexical_score": 0.15307860262008732,
+            "matched_terms": [
+                "and",
+                "budget",
+                "by",
+                "contention",
+                "for",
+                "in",
+                "is",
+                "long",
+                "or",
+                "other",
+                "query",
+                "resource",
+                "statement",
+                "the",
+                "together",
+                "when",
+                "with",
+                "work",
+                "workload"
+            ],
+            "match_count": 23,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

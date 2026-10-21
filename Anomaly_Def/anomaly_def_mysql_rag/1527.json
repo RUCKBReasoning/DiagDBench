@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Replication Synchronization Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly: The database’s local write-ahead logging path is saturated or stalled, so commit processing, log buffering, flushing, or archiving becomes the performance bottleneck.\nReplication Synchronization Anomaly: Downstream replicas or change-data consumers fall behind because they cannot receive, write, or apply log records at the pace the primary generates them, creating widening log-position gaps and retention of old log segments.\nStorage Space Capacity Anomaly: One or more storage areas—data files, log volumes, archive destinations, temp, or backup locations—approach or reach full utilization, resulting in allocation failures and preventing normal growth or recycling.\n\nCombined phenomena: With all three conditions active, the database exhibits escalating commit latency, prolonged log-flush and log-sync waits, and frequent pauses or timeouts for foreground transactions. Replication lag grows rapidly; replicas report increasing receive and replay delay, and failover readiness degrades. Log and archive directories expand uncontrollably until the underlying volume exhausts free space, after which both primary commits and replica apply threads may halt with \"out of space\" or \"cannot allocate log segment\" errors. Checkpoints and archive/relay-log purges trigger more often but complete slowly, leading to checkpoint storms, lock contention, and excessive CPU usage in background processes. Monitoring dashboards show simultaneous spikes in log-related waits, replication delay, and disk-space alerts, making it difficult to attribute the primary symptom to a single layer.\n\nCausal chain and reinforcement: Saturated transaction-log I/O slows commit throughput, which lengthens the queue of unsent log records to replicas. The growing replication backlog forces the primary to retain older log segments, blocking log recycling. This retention, combined with high redo generation, rapidly consumes remaining disk capacity on both primary and replica log or archive volumes, triggering the storage space anomaly. Once space becomes scarce, log switches or archive writes may hang, further increasing commit latency and deepening replication lag. Conversely, if storage fills first, log archiving and replica relay writing stall, which feeds back into the log subsystem by preventing segment reuse and inflating the in-memory log buffer. The intertwined feedback loops among log I/O saturation, replication backlog, and space exhaustion create a self-amplifying failure that can culminate in a total halt of transactional processing and replication.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.5762780434379405,
+            "bm25_score": 22.860747133305892,
+            "lexical_score": 0.12452488687782806,
+            "matched_terms": [
+                "and",
+                "because",
+                "blocking",
+                "cannot",
+                "change",
+                "delay",
+                "for",
+                "in",
+                "is",
+                "lock",
+                "or",
+                "the",
+                "this",
+                "to",
+                "transaction",
+                "waits"
+            ],
+            "match_count": 73,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

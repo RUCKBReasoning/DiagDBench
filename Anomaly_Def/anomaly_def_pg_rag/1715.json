@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Composite Definition: The database simultaneously suffers from a log-pipeline bottleneck (generation, flush, switch, archive, or replication-retention of the redo stream) and a device-level I/O-throughput bottleneck on the same set of volumes, so both the engine’s ability to produce/consume log records and the physical storage’s ability to service any reads or writes are saturated at once.\n\nCombined Phenomena: Commit latency, log-flush waits, and log-sync waits rise sharply while overall read/write wait events, queue depths, and device service times balloon. Checkpoints and log-file switches become more frequent, yet archives lag and log directories expand because the storage system cannot sustain the throughput required to off-load segments. Data-file and temp-file access also slow down, causing mixed wait profiles where buffer-I/O, durability flush, and general read/write stalls appear together. From the application side, short OLTP transactions begin to time out, batch windows overrun, and even read-only statements intermittently pause when they need to extend undo or temp segments that share the stressed devices. Diagnostic tools show CPU utilization moderate, but both log-specific waits and device-level I/O waits dominate session snapshots, making the true primary bottleneck difficult to distinguish.\n\nCausal Chain: Heavy write activity first drives the transaction-log subsystem toward its throughput ceiling; because the same or adjacent storage stack is already near capacity, log-flushes queue up behind other data and temp I/Os, further extending commit latency. The lengthened commit path forces background processes (checkpoints, archiver, replication capture) to work harder and more frequently, injecting additional synchronous and asynchronous I/O into an already saturated storage layer. Conversely, the storage-level saturation feeds back into the log pipeline: slow archive writes delay log-file reuse, causing log buffer pressure and more frequent log switches. The two bottlenecks thus reinforce each other in a feedback loop that magnifies latency, starves worker threads, and can ultimately halt forward progress if log space cannot be reclaimed.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.33416240519379625,
+            "bm25_score": 12.749006372618465,
+            "lexical_score": 0.13166666666666665,
+            "matched_terms": [
+                "activity",
+                "and",
+                "are",
+                "at",
+                "be",
+                "can",
+                "is",
+                "latency",
+                "or",
+                "progress",
+                "session",
+                "system",
+                "that",
+                "the",
+                "time",
+                "when",
+                "while"
+            ],
+            "match_count": 246,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

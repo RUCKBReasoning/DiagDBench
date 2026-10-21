@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Definition: A composite condition where the optimizer selects sub-optimal execution plans while, at the same time, the underlying storage subsystem cannot sustain the read/write volume demanded by the workload. Both root causes are active concurrently, so poor plans inflate the amount of physical I/O exactly when the storage layer is least able to absorb it.\n\nCombined anomalous phenomena: • Rapid plan flips from index access to full or partial table scans that drive a surge in random and sequential I/O. • Execution plans that suddenly escalate parallelism, hash operations, or temp-space usage, causing long stretches of I/O wait even though CPU remains under-utilised. • Device queue depths pinned, read/write latency climbing, and database wait events dominated by both I/O-bound events and plan-related spills (e.g., workfile or spool I/O). • Query response times and batch windows inflate non-linearly; minor plan mis-estimates yield major slow-downs because each extra page read is throttled by saturated storage. • Performance variability is extreme across executions: identical SQL may run fast when the plan is good or during low I/O contention, yet crawl when an inferior plan coincides with peak device saturation, making diagnosis appear intermittent.\n\nCausal interaction: A sub-optimal plan often multiplies logical I/O (e.g., scanning whole partitions, materialising large join inputs, spilling to temp), thereby exerting additional pressure on storage throughput. Conversely, chronic storage saturation elongates I/O service times, which can distort runtime feedback, invalidate adaptive plan features, and provoke the optimizer to abandon previously efficient access paths (e.g., choosing broad scans over point lookups because the perceived random I/O cost becomes prohibitive). The two anomalies thus form a feedback loop: bad plans create excess I/O, the slow I/O worsens plan execution cost, and subsequent recompilations may entrench even worse plans, driving the database into a sustained low-throughput, high-latency state that affects both OLTP and OLAP workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.7416662476429918,
+            "bm25_score": 26.546340607861932,
+            "lexical_score": 0.1388874921433061,
+            "matched_terms": [
+                "access",
+                "amount",
+                "and",
+                "because",
+                "contention",
+                "execution",
+                "from",
+                "is",
+                "long",
+                "of",
+                "or",
+                "query",
+                "sql",
+                "that",
+                "the",
+                "time",
+                "when",
+                "with",
+                "workload"
+            ],
+            "match_count": 252,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Transaction Log Subsystem Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Composite definition: The database simultaneously suffers from (1) a physical data-model and indexing layout that forces excessive or non-selective data access and heavy index maintenance, (2) a transaction-log subsystem that cannot absorb or flush the resulting surge of redo records, and (3) storage that is approaching or has reached its free-space limits. Together, these three root causes create a feedback loop in which inefficient data access multiplies write volume, overwhelms log handling, and rapidly exhausts available space, crippling both query execution and commit processing.\n\nCombined anomalous phenomena: • Queries that should be index-efficient devolve into full scans, row-by-row lookups, or repeated non-covering index probes, causing inflated I/O and redo generation. • Concurrent DML shows rising commit and checkpoint latency, with spikes in LOG_WRITE / LOG_FLUSH waits, frequent log switches, and archiver backlogs. • Free space in data, temp, and especially log or archive destinations plummets; auto-extend and allocation failures, \"out of space\" errors, and emergency space reclamation events appear. • Application sessions observe a mixture of slow query response, stalled commits, temporary-space errors, and, in extreme cases, database‐wide hang as log segments cannot be created or recycled. The overlapping symptom set can obscure diagnosis because performance waits (from design flaws) and hard space errors (from storage pressure) manifest simultaneously with log-related stalls.\n\nCausal interaction: Suboptimal schema and missing/oversized indexes inflate the amount and size of data modified per transaction and multiply index maintenance work. This drives up redo generation and forces the transaction-log subsystem to flush larger volumes more frequently. As the log subsystem approaches its throughput ceiling, commits queue and log switches accelerate, generating even more archived segments. The elevated churn, combined with space-wasting indexes and fragmented tables, rapidly consumes disk capacity. Shrinking free space further slows both data and log I/O, while full archive or data destinations prevent log recycling, amplifying commit stalls. The inability to rebuild or drop problematic indexes due to space scarcity locks the system in a self-reinforcing degradation loop that severely impacts OLTP workload throughput and availability.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.48573478154515265,
+            "bm25_score": 20.38504783740617,
+            "lexical_score": 0.12866473149492016,
+            "matched_terms": [
+                "amount",
+                "and",
+                "because",
+                "cannot",
+                "from",
+                "has",
+                "is",
+                "locks",
+                "of",
+                "or",
+                "query",
+                "schema",
+                "sessions",
+                "that",
+                "the",
+                "this",
+                "transaction",
+                "while"
+            ],
+            "match_count": 290,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Data Block and Index Integrity Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently chooses a severely sub-optimal execution plan even though statistics are acceptable.\nData Block and Index Integrity Anomaly : Physical data pages or index structures are corrupted or inconsistent with their logical contents.\nStorage I/O Throughput Anomaly : The underlying storage layer is saturated, creating high latency and constrained read/write bandwidth.\n\nWhen all three root causes are present, the database may exhibit an erratic mixture of symptoms: plans may flip between index and full-table scans or force parallelism yet still deliver poor performance; index scans can silently miss or duplicate rows, prompting the optimizer to distrust indexes and fall back to heavy full scans that flood the already-saturated storage subsystem; corruption-triggered retries, page re-reads, or forced consistency checks magnify I/O waits, while excessive physical reads caused by bad plans further deepen the storage bottleneck. Administrators may observe soaring logical and physical I/O counts, plan cache churn, frequent checksum or page-link errors in the error log, growing queue depths on the storage array, and wildly fluctuating query latencies that are difficult to attribute to a single layer.\n\nCausally, corrupted index or data pages undermine the optimizer’s cardinality assumptions, increasing the likelihood of a poor plan choice. A sub-optimal plan in turn generates higher I/O volumes (e.g., full scans, random lookups) that push the storage system beyond its throughput budget. The saturated storage prolongs every page access, which amplifies the runtime cost gap between the chosen plan and an ideal plan, and may expose additional latent corrupt pages as more blocks are touched. Feedback loops such as automatic plan re-compilation after error detection or repeated I/O retries can cause plan thrashing and further I/O escalation, creating a self-reinforcing degradation that impacts both transactional and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.6309376791409672,
+            "bm25_score": 16.958508916650956,
+            "lexical_score": 0.10627767235926627,
+            "matched_terms": [
+                "an",
+                "and",
+                "block",
+                "is",
+                "of",
+                "or",
+                "the",
+                "to",
+                "triggered",
+                "waits",
+                "when",
+                "while",
+                "write"
+            ],
+            "match_count": 140,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

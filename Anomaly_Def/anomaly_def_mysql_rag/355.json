@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Replication Synchronization Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently chooses a highly sub-optimal execution plan even though statistics are adequate, inflating resource consumption per statement.\nReplication Synchronization Anomaly : Standbys or downstream consumers cannot receive or apply WAL / redo records at the rate the primary produces them, causing widening replication lag.\nStorage I/O Throughput Anomaly : The physical storage layer is saturated in bandwidth, IOPS, or latency, throttling database reads and writes.\n\nWhen all three surface together, the database exhibits extreme and hard-to-diagnose slowdown: suddenly changed plans trigger large table scans, hash spills, or explosion of nested-loop iterations that issue far more physical I/O and generate excessive redo. The bloated I/O stream collides with an already-constrained storage subsystem, driving up queue depths and latency on both data and log devices. As commit latency grows, the primary’s WAL archive accumulates, replicas fall minutes to hours behind, their replay workers stall on the same saturated disks, and read-only workloads on replicas see stale or inconsistent data. Monitoring shows simultaneous spikes in logical I/O from plan churn, physical I/O wait from device saturation, and steep climbs in replication send, write, and replay lag, making it unclear which layer is primary.\n\nCausally, a bad plan magnifies data-page and log traffic, pushing the storage layer past its throughput ceiling. Prolonged storage saturation lengthens commit times and slows WAL shipping, directly aggravating replication lag. In turn, the replica’s delayed apply holds WAL segments open on the primary, preventing log recycling and forcing yet more physical writes to already bottlenecked volumes. The feedback loop—poor plan → excess I/O → storage saturation → replication backlog → retained WAL → further I/O pressure—creates a self-reinforcing degradation that compromises both OLTP responsiveness and analytical query SLAs.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.7032543231869881,
+            "bm25_score": 26.59987633403753,
+            "lexical_score": 0.15238095238095234,
+            "matched_terms": [
+                "and",
+                "are",
+                "data",
+                "from",
+                "is",
+                "latency",
+                "more",
+                "of",
+                "or",
+                "read",
+                "replica",
+                "replication",
+                "responsiveness",
+                "stale",
+                "the",
+                "to",
+                "wait",
+                "when"
+            ],
+            "match_count": 17,
+            "entry": {
+                "timeout_id": "mysql84_replica_network_timeout",
+                "parameter_name": "replica_net_timeout",
+                "timeout_category": "replication_network_timeout",
+                "scope": "global/replication",
+                "official_definition": "The number of seconds to wait for more data from a source/replica connection before aborting the read.",
+                "trigger_condition": "A replica waits longer than replica_net_timeout for more data from the source connection.",
+                "workload_impact": "The replication network read is aborted and the replica considers the connection interrupted.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

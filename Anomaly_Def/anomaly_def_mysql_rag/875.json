@@ -1,0 +1,63 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer consistently chooses a sub-optimal execution plan even though statistics are credible, leading to excessive CPU, I/O, or memory consumption per statement.\nNetwork and Connectivity Resource Anomaly : Client-to-server transport, listener, or session resources are saturated or unstable, producing connection delays, socket backlogs, and data-transfer stalls.\n\nWhen both root causes are present, the database shows a mixture of intra-engine and external latency signals: queries oscillate between different plans or stick to an inefficient plan that produces large intermediate result sets; those result sets linger in memory and on the wire while network throughput is constrained, causing back-end sessions to accumulate in client-read waits. Application servers observe longer connect times, sporadic authentication failures, and wide variability in statement latency, with some executions timing out during planning, others during result shipping. Plan changes may appear random because plan recompilations coincide with bursts of connection retries, while connection pool exhaustion masks whether the slowness originates in the optimizer or the network.\n\nThe causal chain often starts with a poor plan that executes for much longer and returns far more rows than necessary, inflating payload size and holding server processes and sockets open. The extended lifespan of each session amplifies pressure on the listener backlog and OS socket queues, pushing the network layer into congestion and raising round-trip times. Elevated network latency, in turn, delays completion feedback to the optimizer and exacerbates bind-sensitive plan instability; frequent reconnect attempts triggered by client timeouts further churn the plan cache, encouraging additional sub-optimal plan compilations. The two anomalies thus reinforce each other, multiplying concurrency, skewing resource estimates, and degrading overall throughput far beyond what either issue would cause in isolation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.7546011373179119,
+            "bm25_score": 26.080634763272016,
+            "lexical_score": 0.23045454545454547,
+            "matched_terms": [
+                "additional",
+                "and",
+                "are",
+                "authentication",
+                "client",
+                "connection",
+                "data",
+                "for",
+                "holding",
+                "is",
+                "latency",
+                "longer",
+                "more",
+                "network",
+                "of",
+                "or",
+                "read",
+                "server",
+                "session",
+                "sessions",
+                "than",
+                "the",
+                "to",
+                "triggered",
+                "waits",
+                "when",
+                "whether"
+            ],
+            "match_count": 42,
+            "entry": {
+                "timeout_id": "mysql84_network_read_timeout",
+                "parameter_name": "net_read_timeout",
+                "timeout_category": "network_read_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for more data from a connection before aborting the read.",
+                "trigger_condition": "The server waits for additional data from a connection longer than net_read_timeout.",
+                "workload_impact": "The network read is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

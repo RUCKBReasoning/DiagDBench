@@ -1,0 +1,59 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Transaction Lock Contention Anomaly + MVCC Version Maintenance Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Costing metadata (row counts, histograms, correlations) is stale or incomplete, driving systematic cardinality errors and sub-optimal execution-plan choices.\nTransaction Lock Contention Anomaly : Concurrent transactions compete for incompatible locks, causing long blocking chains or deadlocks that stall or abort workload threads.\nMVCC Version Maintenance Anomaly : Obsolete row versions accumulate faster than background cleanup can reclaim them, inflating table size and adding visibility-check overhead.\n\nWhen all three root causes coincide, the system exhibits a mixture of planning errors, long-running and frequently killed queries, swelling table and index footprints, and sharply rising response-time variance. Cardinality misestimates lead the optimizer to prefer plans that scan or update far more rows than necessary; these over-wide scans touch many pages, hold locks for longer intervals, and create large numbers of new or updated row versions. The inflated I/O and extended lock hold times intensify blocking, lengthen deadlock cycles, and cause more frequent victim rollbacks, which in turn spawn even more dead tuples and rollback records. Cleanup workers, already lagging behind, fall further behind due to persistent lock waits on hot pages, so version bloat and statistics staleness both worsen. Monitoring views show simultaneously exploding lock-wait seconds, growing version-store or autovacuum backlogs, and widening gaps between estimated and actual row counts in execution plans.\n\nCausally, stale or missing statistics first misguide the optimizer into choosing lock-heavy or scan-heavy plans, expanding the lock footprint and prolonging transaction duration. The resulting lock contention not only slows foreground work but also blocks background statistics refreshes and version-cleanup tasks, allowing both statistics staleness and version bloat to reinforce themselves. Accumulated dead tuples distort future statistics, further degrading plan quality, while the swollen heap forces longer scans that keep locks active, fueling a feedback loop that degrades throughput and risks transaction-ID or version-store exhaustion.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.6562179641244861,
+            "bm25_score": 32.17417478379937,
+            "lexical_score": 0.1582995951417004,
+            "matched_terms": [
+                "active",
+                "and",
+                "blocking",
+                "cleanup",
+                "for",
+                "incompatible",
+                "is",
+                "lock",
+                "locks",
+                "long",
+                "longer",
+                "metadata",
+                "of",
+                "or",
+                "than",
+                "that",
+                "the",
+                "time",
+                "transaction",
+                "transactions",
+                "when",
+                "while"
+            ],
+            "match_count": 212,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

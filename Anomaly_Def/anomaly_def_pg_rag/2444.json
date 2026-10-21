@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Database Configuration Parameter Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Accumulation of obsolete row versions and index entries outpaces background cleanup, inflating the version store and bloating data pages.\nDatabase Configuration Parameter Anomaly : Engine-level settings for memory, checkpointing, worker throttles, and parallelism are mis-tuned relative to hardware capacity and workload demands, creating artificial bottlenecks.\nStorage I/O Throughput Anomaly : The underlying storage subsystem reaches or nears its physical I/O bandwidth or IOPS limits, driving up read/write latency and queue depth.\n\nWhen all three root causes strike together, the database experiences a feedback loop in which version churn rapidly enlarges tables and indexes, mis-calibrated parameters prevent aggressive vacuuming and amplify checkpoint bursts, and the swollen data plus write-heavy cleanup tasks saturate an already over-stressed storage layer. Observable symptoms converge: the version store and rollback segments grow without bound; autovacuum or purge workers stay perpetually active yet make little progress; checkpoint and log-flush waits spike even while CPU cores are idle; device-level latency soars, causing statement execution times and replication lag to lengthen; query plans degrade because optimizer statistics lag behind the bloated heap; and monitoring shows conflicting signals of low CPU but high wait ratios on buffer-I/O, log write, and vacuum-related events.\n\nCausally, heavy UPDATE/DELETE workloads generate large numbers of dead tuples (MVCC anomaly). Because memory, autovacuum cost limits, and checkpoint intervals are misconfigured (configuration anomaly), the engine cannot reclaim space promptly and instead accumulates ever-larger dirty pages and WAL. The enlarged working set and prolonged checkpoints push sustained random and sequential I/O beyond what the disk subsystem can deliver (storage throughput anomaly). Elevated I/O latency further slows cleanup workers, lengthening the visibility horizon and accelerating version buildup. This vicious cycle intensifies page bloat, inflates WAL, and keeps the system trapped in a deteriorating state where each anomaly reinforces the others, ultimately threatening transaction-ID wraparound or instance unavailability.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 87,
+            "score": 0.18407270791536073,
+            "bm25_score": 8.64948541684081,
+            "lexical_score": 0.13626142463368635,
+            "matched_terms": [
+                "and",
+                "but",
+                "cannot",
+                "configuration",
+                "data",
+                "engine",
+                "execution",
+                "in",
+                "its",
+                "level",
+                "or",
+                "state",
+                "statement",
+                "the",
+                "to",
+                "together",
+                "workload"
+            ],
+            "match_count": 13,
+            "entry": {
+                "error_code": "2203G",
+                "error_name": "sql_json_item_cannot_be_cast_to_target_type",
+                "official_description": "sql json item cannot be cast to target type",
+                "error_class": "Class 22 - Data Exception",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

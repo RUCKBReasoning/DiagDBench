@@ -1,0 +1,44 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Replication Synchronization Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Composite Definition: The database simultaneously suffers (1) intense page-level latch and buffer-cache contention, (2) replication pipelines that are unable to keep pace with the primary’s log generation, and (3) underlying on-disk data or index corruptions. The coexistence of these three root causes creates a feedback loop where local access serialization, cross-node log back-pressure, and structural corruption all interact to degrade throughput, inflate latency, and jeopardize data availability and correctness.\n\nBuffer Cache and Latch Contention Anomaly: Hot or churned buffer pages force sessions to queue or spin on latches, pins, or page-content locks, stalling CPU cores and delaying I/O.\nReplication Synchronization Anomaly: Standby or subscriber nodes fall behind because they cannot receive, write, or replay the primary’s WAL/redo stream at production speed, causing growing replica lag and retention of log segments on the primary.\nData Block and Index Integrity Anomaly: Physical page faults, checksum mismatches, or broken index structures make on-disk data unreliable, provoking verification errors, failed probes, or forced full scans.\n\nCombined Observable Phenomena: • Severe and uneven response-time spikes as foreground queries wait on contested buffer latches while simultaneously encountering checksum or key-order failures that trigger re-reads or error handling. • Escalating replication lag and ballooning retained log files because corrupted pages or invalid index changes repeatedly fail during apply or trigger error-induced rollbacks, further throttling the replication receiver and apply threads. • CPU saturation from spin-locks on the primary, paired with high I/O and checkpoint pressure as unrecycled log segments accumulate. • On replicas, apply workers loop on retry logic or halt on corruption detection, leading to divergent data sets and loss of fail-over readiness.\n\nCausal Chain and Interaction: Corrupted pages or indexes force additional buffer fetches, page retries, and error-handling logic, amplifying latch contention on already hot pages. The same corrupt blocks propagate into the write-ahead log; when replicas attempt to fetch or apply these records, they stall or error, slowing acknowledgment and widening replication lag. The primary, unable to recycle log segments due to replica lag, retains extra dirty buffers and log pages, inflating memory pressure and intensifying buffer churn. Heightened page churn and larger dirty sets extend flush cycles, keeping buffer latches locked longer and feeding back into contention. Meanwhile, replication apply retries repeatedly touch the same corrupt pages, further loading buffer latches and I/O paths. This vicious circle degrades both local transaction latency and distributed consistency, risking cascading failures and potential loss of data durability across the cluster.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 94,
+            "score": 0.35227162483097707,
+            "bm25_score": 24.694792488149083,
+            "lexical_score": 0.09063625450180071,
+            "matched_terms": [
+                "and",
+                "consistency",
+                "corruption",
+                "data",
+                "index",
+                "integrity",
+                "or",
+                "structural",
+                "the",
+                "with"
+            ],
+            "match_count": 10,
+            "entry": {
+                "error_code": "23P01",
+                "error_name": "exclusion_violation",
+                "official_description": "exclusion violation",
+                "error_class": "Class 23 - Integrity Constraint Violation",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "integrity_and_constraints",
+                "cause_analysis": "The failure is typically associated with logical data inconsistency, structural corruption, uniqueness conflicts, or referential-integrity rules being violated by the workload or storage state.",
+                "solution_guidance": "Validate data consistency, inspect constraints and index integrity, and check whether data-cleaning, repair, or workload correction is required before retrying.",
+                "observable_symptoms": [
+                    "constraint failure",
+                    "duplicate data rejection",
+                    "corruption warning"
+                ]
+            }
+        }
+    }
+]

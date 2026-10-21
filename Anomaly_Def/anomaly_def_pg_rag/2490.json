@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Database Configuration Parameter Anomaly",
+            "Description": "Schema and Index Design Anomaly : Static mismatch between the physical data model (tables, partitions, indexes, constraints, data types) and the workload’s access patterns, forcing otherwise well-written SQL into inefficient access paths.\nDatabase Configuration Parameter Anomaly : Miscalibrated engine-level settings (memory, checkpoint cadence, parallelism, background workers, etc.) that do not reflect hardware capacity, workload mix, or version defaults, creating artificial pressure or underutilisation of resources.\n\nWhen both root causes are present, the system shows compounded symptoms:  • Queries already slowed by full-table scans or non-covering indexes also suffer extra page faults because the buffer pool is undersized or aggressively flushed.  • Log-write, checkpoint, or memory-grant waits spike after every large scan or bulk modification, yet CPU, I/O, or memory remain paradoxically under-utilised.  • Execution plans oscillate between equally poor alternatives as the optimiser reacts to volatile memory and parallelism limits, making performance nondeterministic.  • Background cleaners, auto-vacuum or statistics refresh jobs lag behind, amplifying bloat and stale metadata, which further degrades index selectivity and plan quality.  • Performance improves dramatically only when both an index change and a parameter correction are applied, making single-knob tuning appear ineffective.\n\nCausally, the defective schema/index design inflates I/O, memory, and logging demands. Mis-set configuration parameters then prevent the engine from absorbing that excess load—e.g., a small buffer pool forces each unnecessary full scan to thrash the cache; a tight work-memory cap makes the optimiser choose even less efficient plans; an aggressive checkpoint interval turns the surplus dirty pages from the scans into frequent flush storms; and oversized parallelism or connection limits waste memory on sessions that spend most of their time doing table scans. Conversely, because the configuration hides real hardware headroom or triggers artificial bottlenecks, DBAs may overlook the design flaw, allowing both issues to reinforce each other and drive the system into chronic, workload-wide slowdowns that affect both transactional and analytical queries.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.42361462364112834,
+            "bm25_score": 15.759960587881636,
+            "lexical_score": 0.1418490185613473,
+            "matched_terms": [
+                "after",
+                "an",
+                "and",
+                "are",
+                "by",
+                "connection",
+                "is",
+                "not",
+                "of",
+                "on",
+                "or",
+                "sessions",
+                "stale",
+                "system",
+                "that",
+                "the",
+                "time",
+                "to",
+                "when",
+                "which"
+            ],
+            "match_count": 284,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_interval",
+                "parameter_name": "tcp_keepalives_interval",
+                "timeout_category": "network_keepalive_retry_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time after which a TCP keepalive message that has not been acknowledged by the client should be retransmitted.",
+                "trigger_condition": "A TCP keepalive probe is not acknowledged for tcp_keepalives_interval on systems supporting TCP_KEEPINTVL or an equivalent socket option.",
+                "workload_impact": "Controls retry timing for keepalive probes used to detect unresponsive client connections.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

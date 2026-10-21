@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Database Configuration Parameter Anomaly + Database Memory Allocation Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Excessive accumulation of obsolete MVCC versions and index entries because background vacuum/clean-up can’t keep pace with update/delete churn.\nDatabase Configuration Parameter Anomaly : Mis-tuned engine settings (memory pools, checkpoints, parallelism, cleanup thresholds, etc.) that are out of line with hardware capacity or workload demands.\nDatabase Memory Allocation Anomaly : Run-time memory consumption by caches, work areas, and background workers that exceeds safe physical limits, leading to OS pressure or OOM events.\n\nWhen these three root causes strike at the same time, the system exhibits a super-imposed fault pattern: version stores and rollback segments balloon rapidly while vacuum or purge workers are hamstrung by overly conservative parameter limits; meanwhile, memory granted to buffer pools, workspaces, or parallel workers keeps expanding until the host experiences swap storms or OOM kills. Operators observe\n• explosive growth of table and index size with falling live-row density,\n• vacuum/cleanup processes constantly active yet failing to shrink bloat,\n• checkpoint and background writer bursts that coincide with memory pressure, paging, or sudden restarts,\n• erratic planner estimates due to stale statistics and cache churn, causing sub-optimal plans that further increase work-memory usage,\n• wait-event mixes that contradict hardware metrics (e.g., log write stalls while disks and CPUs are under-utilised), and\n• sharp throughput collapses whenever the OS reclaims memory or the database throttles activity to protect its version store.\n\nCausally, mis-aligned configuration parameters (e.g., undersized autovacuum workers, small maintenance_work_mem, overly large shared buffers, excessive per-query work_mem, or aggressive parallelism) throttle the very processes required to prune dead tuples while simultaneously inflating memory footprints. The unreclaimed MVCC versions bloat tables and indexes, forcing the buffer manager to cache more pages and the planner to choose heavier hash/sort paths, which in turn demands additional work memory. As memory pressure mounts, the OS starts paging; swap latency slows both cleanup and foreground queries, allowing even more version build-up. Any emergency vacuum, checkpoint storm, or crash recovery triggered by OOM then restarts the cycle, making the intertwined anomalies mutually reinforcing and progressively degrading OLTP performance and stability.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.6805637957156561,
+            "bm25_score": 21.79548462279057,
+            "lexical_score": 0.12025862068965518,
+            "matched_terms": [
+                "and",
+                "because",
+                "by",
+                "exceeds",
+                "in",
+                "or",
+                "pattern",
+                "query",
+                "the",
+                "time",
+                "triggered",
+                "when",
+                "with",
+                "work",
+                "workload"
+            ],
+            "match_count": 149,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,61 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + MVCC Version Maintenance Anomaly + Replication Synchronization Anomaly",
+            "Description": "Schema and Index Design Anomaly: Static mismatch between table structures / index layout and workload access patterns forces inefficient scans and excessive maintenance work, independent of statistics freshness or plan-selection logic.\nMVCC Version Maintenance Anomaly: Accumulation of obsolete row versions and rollback records outpaces background cleanup, bloating tables/indexes and raising visibility-check overhead in high-churn environments.\nReplication Synchronization Anomaly: Downstream replicas fall behind because they cannot receive or apply primary-generated log records at the production rate, causing widening log lags and retention of old WAL segments.\n\nWhen all three root causes coexist, the system exhibits compounded symptoms:  • Queries on the primary perform long full-table or non-covering index scans against increasingly bloated storage, showing step-function latency spikes and misestimated plans.  • Update/delete-heavy workloads generate surging version stores; vacuum or purge workers remain perpetually active yet fail to reclaim space, leading to runaway disk growth on both primary and replicas.  • Excessive WAL produced by large, fragmented heaps and nonselective indexes saturates network and I/O channels, so replicas accumulate growing replay lag, expose stale data to read traffic, and hold back log recycling on the primary.  • Failover readiness deteriorates; maintenance windows lengthen as index rebuilds, vacuums, and catch-up replays compete for resources. Distinguishing which layer is at fault becomes difficult because every observed slowdown (scans, vacuums, replication) appears mutually reinforcing.\n\nCausally, ineffective schema and index design first increases I/O per query and amplifies row churn (e.g., heap-only tuple updates prevented by missing HOT-friendly indexes). The heavier churn inflates MVCC version chains; without supportive indexes, cleanup workers scan whole tables, fall behind, and leave more dead tuples. This bloat inflates each checkpoint’s WAL volume and lengthens full-table scans, further stressing CPU and storage. The swollen and write-intensive WAL stream then overwhelms replication channels; replicas that also suffer from the same poor indexing and version bloat replay changes even more slowly, extending apply lag. The prolonged retention of old snapshots on lagging replicas in turn delays VACUUM’s ability to reclaim dead versions on the primary, accelerating disk growth and perpetuating the vicious performance spiral.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1310,
+            "score": 0.7536346619687293,
+            "bm25_score": 93.70077324684672,
+            "lexical_score": 0.17878220656243118,
+            "matched_terms": [
+                "and",
+                "apply",
+                "between",
+                "downstream",
+                "in",
+                "is",
+                "lag",
+                "log",
+                "network",
+                "or",
+                "performance",
+                "primary",
+                "replication",
+                "retention",
+                "row",
+                "so",
+                "stale",
+                "system",
+                "table",
+                "tables",
+                "that",
+                "the",
+                "this",
+                "to",
+                "when",
+                "without"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "3749",
+                "error_name": "ER_TABLE_WITHOUT_PK",
+                "official_description": "Unable to create or change a table without a primary key, when the system variable 'sql_require_primary_key' is set. Add a primary key to the table or unset this variable to avoid this message. Note that tables without a primary key can cause performance problems in row-based replication, so please consult your DBA before changing this setting.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

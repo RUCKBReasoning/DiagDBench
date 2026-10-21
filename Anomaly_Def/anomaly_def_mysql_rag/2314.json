@@ -1,0 +1,46 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + MVCC Version Maintenance Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Composite Definition: The database simultaneously suffers from sub-optimal physical schema/index design, uncontrolled accumulation of obsolete MVCC row versions, and impending or actual exhaustion of available storage space. Each individual defect is problematic on its own, but their coexistence creates a feedback loop that severely degrades performance, threatens data availability, and complicates recovery or maintenance operations.\n\nCombined Observable Phenomena: Queries that should be index-efficient devolve into full-table or full-index scans across massively bloated heaps and indexes. Execution plans show both missing/ineffective indexes and misestimates caused by inflated table statistics. DML workloads experience escalating latency due to heavier page splits, visibility checks, and cache churn. Background cleanup workers (vacuum, purge, garbage collection) run nearly continuously yet fail to reclaim space fast enough; they also contend with poorly designed indexes that prolong every page visit. Meanwhile, data files, index segments, undo/rollback areas, and archive or log destinations grow rapidly, pushing the system toward auto-extend limits, out-of-space errors, or emergency read-only mode. Administrators may observe cyclic spikes of I/O, checkpoint stalls, and failed maintenance tasks that themselves need additional temporary space.\n\nCausal Interaction: Poor schema and indexing force queries—especially UPDATE and DELETE statements common in OLTP—to touch far more rows and pages than necessary, inflating the number and size of versioned tuples produced by MVCC. The surge in obsolete versions overwhelms cleanup workers; because indexes are non-covering or redundant, those workers must scan and rewrite extra pages, consuming CPU, I/O, and generating further versions. The resulting table and index bloat accelerates storage consumption, edging the system toward capacity limits. As free space dwindles, auto-extension failures and log-recycling stalls slow or block both application traffic and background maintenance, allowing even more version debris to accumulate. Conversely, space exhaustion prevents full vacuuming or index rebuilds that could mitigate bloat, locking the system into a vicious spiral of growing size, falling performance, and increasing risk of downtime.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 15,
+            "score": 0.32420668725673263,
+            "bm25_score": 9.555166393879263,
+            "lexical_score": 0.08471786833855799,
+            "matched_terms": [
+                "and",
+                "are",
+                "data",
+                "is",
+                "latency",
+                "or",
+                "out",
+                "read",
+                "slow",
+                "the"
+            ],
+            "match_count": 58,
+            "entry": {
+                "timeout_id": "mysql84_xplugin_read_timeout",
+                "parameter_name": "mysqlx_read_timeout",
+                "timeout_category": "x_protocol_network_read_timeout",
+                "scope": "global/session/X Plugin",
+                "official_definition": "Read timeout for X Plugin network communication.",
+                "trigger_condition": "A MySQL X Protocol read operation exceeds mysqlx_read_timeout.",
+                "workload_impact": "The X Protocol network read operation times out.",
+                "default_behavior": "Defined as a MySQL X Plugin system variable.",
+                "system_domain": "network_transport",
+                "cause_analysis": "This timeout is usually triggered when network data is not acknowledged, received, or written within the configured transport-level waiting window.",
+                "solution_guidance": "Inspect packet loss, transport latency, client responsiveness, proxy behavior, and whether slow consumers or unstable links are delaying network progress.",
+                "observable_symptoms": [
+                    "network timeout",
+                    "disconnect",
+                    "read/write interruption"
+                ]
+            }
+        }
+    }
+]

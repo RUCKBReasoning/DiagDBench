@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + CPU Resource Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently chooses sub-optimal execution plans despite having reasonably accurate statistics, causing unnecessary work or wrong join/scan strategies.\nCPU Resource Anomaly : Database and related processes saturate host CPU, driving run-queue and context-switch pressure and inflating response times across the workload.\nOperating System Resource Limit Anomaly : Database processes exhaust kernel-enforced limits (file descriptors, threads, shared-memory segments, AIO contexts, cgroup quotas, etc.), preventing creation or use of required OS resources.\n\nWhen these three issues coincide, the system shows a tangled symptom set: plans suddenly oscillate between different shapes, often favoring CPU-hungry scans or over-parallelized executions; overall CPU utilization sticks at or near 100 %, with long scheduler waits and rising load averages; at peak times new worker threads, parallel execution servers, or file handles fail to allocate, triggering engine errors, session drops, or silent plan de-parallelization. Latency spikes and throughput collapse propagate across both transactional and analytical statements, and troubleshooting is complicated because each layer (optimizer, database engine, kernel) reports its own errors that appear unrelated but stem from the same intertwined crisis.\n\nCausally, a poor plan may multiply CPU instructions per row, immediately driving processor saturation. As CPUs max out, thread scheduling delays lengthen, which stretches query runtimes, prolongs lock holds, and amplifies the impact of the bad plan. The prolonged high concurrency keeps spawning or retaining additional workers, consuming file handles, threads, and AIO slots until kernel limits are breached. Once those limits are hit, the engine cannot create new execution or I/O contexts, forcing further plan changes (e.g., abandoning parallelism or spilling to disk) that again increase CPU demand. Conversely, initial OS-level denials of resources can cause the optimizer to discard preferred plans, selecting fallback plans that are far more CPU intensive. The feedback loop between sub-optimal plans, CPU exhaustion, and kernel limit violations rapidly degrades performance and can escalate to partial or full service outages.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.3977746028817562,
+            "bm25_score": 15.326700950119763,
+            "lexical_score": 0.10016230002318571,
+            "matched_terms": [
+                "and",
+                "causing",
+                "is",
+                "long",
+                "or",
+                "out",
+                "preventing",
+                "the",
+                "times",
+                "to",
+                "waits",
+                "when"
+            ],
+            "match_count": 55,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Transaction Log Subsystem Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Schema and Index Design Anomaly: Static mismatch between physical data model—including tables, partitions, indexes, and data types—and the workload’s access patterns, forcing inefficient scans and excessive row touches even when SQL is well-written.\nTransaction Log Subsystem Anomaly: Commit path is throttled by log-buffer, log-file, or archive constraints so that generating, flushing, or retaining redo becomes the dominant bottleneck during write activity.\nStorage I/O Throughput Anomaly: Underlying disks, flash, or shared storage cannot sustain the aggregate read/write bandwidth or IOPS demanded by data, temp, and log files, driving up latency and queue depth.\n\nWhen these three root causes coexist, the database exhibits a compound failure mode: poorly indexed OLTP statements trigger large full-table scans, non-covering index lookups, and row-by-row updates that inflate redo generation while inflating random and sequential I/O. The swollen redo stream collides with an undersized or mis-placed transaction log that is already slow to flush, producing surging commit latency, frequent log-write and log-sync waits, prolonged checkpoint or log-switch stalls, and replication/archival backlogs. Meanwhile the same saturated storage layer must service both the inefficient data accesses and the frantic log writes, so device queue depths remain maxed, read latency for lookup queries spikes, and foreground sessions pile up on both I/O and log-related waits. Application symptoms range from sluggish queries and time-outs to lock contention and failed commits during peak periods.\n\nCausally, the sub-optimal schema and index design multiplies the volume of physical page accesses and redo records per transaction. This heightened I/O demand strikes a storage subsystem already at its throughput limits, amplifying latency for every read and write. The bloated redo stream intensifies pressure on the transaction-log subsystem; slow log flushes extend commit duration, keeping locks and latches held longer and lengthening transaction runtimes—which in turn hold resources, increase contention, and compound I/O demand. As the log subsystem stalls, background checkpoints and archivers issue more aggressive I/O, further congesting the storage path that is simultaneously handling inefficient data scans. The feedback loop between design-induced I/O amplification, log-flush throttling, and device saturation produces a severe, self-reinforcing degradation that is difficult to diagnose if each layer is observed in isolation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.32145704381576845,
+            "bm25_score": 15.136855711189323,
+            "lexical_score": 0.1263276517819411,
+            "matched_terms": [
+                "activity",
+                "and",
+                "by",
+                "data",
+                "handling",
+                "is",
+                "latency",
+                "longer",
+                "on",
+                "or",
+                "remain",
+                "sessions",
+                "the",
+                "this",
+                "time",
+                "when"
+            ],
+            "match_count": 190,
+            "entry": {
+                "timeout_id": "pg16_tcp_user_timeout",
+                "parameter_name": "tcp_user_timeout",
+                "timeout_category": "network_unacknowledged_data_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies how long transmitted data may remain unacknowledged before the TCP connection is forcibly closed.",
+                "trigger_condition": "TCP data sent by PostgreSQL remains unacknowledged longer than tcp_user_timeout on systems supporting TCP_USER_TIMEOUT.",
+                "workload_impact": "The TCP connection is forcibly closed.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

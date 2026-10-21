@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Query Plan Selection Anomaly",
+            "Description": "Schema and Index Design Anomaly : Physical data-model structures (tables, indexes, partitions, data types, constraints) do not align with workload access patterns, forcing any query to traverse inefficient access paths.\nQuery Plan Selection Anomaly : The optimizer, despite having usable statistics, chooses or reuses an execution plan whose cost model decisions are markedly sub-optimal for the current parameter set and runtime context.\n\nWhen both root causes are present simultaneously, the database exhibits a blend of structural and planning symptoms: frequent full-table or full-index scans alternate unpredictably with unstable index probes; the same statement may oscillate between several inefficient plans, each still burdened by non-covering or missing indexes. CPU and I/O surge during both reads and writes, latch/lock contention rises due to longer scan durations, and plan cache bloat appears as the optimizer repeatedly compiles variants attempting to compensate for design flaws. Performance tuning becomes confusing because adding hints or forcing plans yields only temporary relief—subsequent executions regress whenever data distributions, parameter values, or cache states change. End-user latency is highly variable, with some executions timing out while others complete acceptably after index-rebuilds or manual plan fixes.\n\nCausally, an ill-suited physical schema narrows the set of viable access paths, pushing the optimizer toward plans that are already at a disadvantage. The optimizer’s cost model, facing inadequate or overly broad indexes and non-selective partitions, may misrank the remaining alternatives, leading to erratic plan choices. Each poor choice amplifies the cost penalties inherent in the flawed schema, while the unstable plans obscure the underlying design defect by making performance appear non-deterministic. Conversely, plan churn can mask which structural changes would help, delaying corrective indexing or schema redesign. Together, the two anomalies form a feedback loop in which weak structures invite bad plans, and bad plans magnify the impact of weak structures, resulting in chronic, hard-to-diagnose performance degradation across both transactional and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.46382561817768947,
+            "bm25_score": 24.590284133466,
+            "lexical_score": 0.13034883720930232,
+            "matched_terms": [
+                "after",
+                "and",
+                "are",
+                "at",
+                "between",
+                "can",
+                "during",
+                "is",
+                "latency",
+                "not",
+                "or",
+                "query",
+                "still",
+                "that",
+                "the",
+                "when",
+                "while"
+            ],
+            "match_count": 209,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

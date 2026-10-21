@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Query Plan Selection Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Schema and Index Design Anomaly : Static mismatch between the physical data model (tables, partitions, indexes, datatypes, constraints) and the workload’s access patterns forces otherwise well-written SQL to use inherently inefficient access paths.\nQuery Plan Selection Anomaly : The optimizer selects a markedly sub-optimal execution plan despite reasonably accurate statistics, often due to cost-model quirks, plan-cache reuse, or version/configuration changes.\nNetwork and Connectivity Resource Anomaly : Client ↔ server transport, authentication, or socket resources become saturated or unstable, causing connection stalls, retransmissions, or session back-pressure outside the core execution engine.\n\nWhen all three root causes coexist, symptoms compound: queries lacking proper indexes or partitioning are prone to be costed poorly and may receive volatile or outright bad plans (full scans, non-covering index probes, or bloated parallel plans). These heavier plans generate excessive I/O and large intermediate/result sets that take longer to ship across the network. The protracted data transfer holds server worker threads in client-write waits, inflates transaction response times, and keeps connections open longer. Meanwhile, plan thrashing and retries—triggered by timeouts or aborted sessions—inflate the number of concurrent parses and connections, quickly exhausting listener backlogs, socket buffers, or backend process slots. Operators observe a mixture of symptoms: alternating execution plans, sudden latency spikes, CPU and I/O surges, growing queues of half-open or idle-in-transaction sessions, client timeouts, and rising network retransmission or authentication wait counters.\n\nCausally, the poor physical design starves the optimizer of efficient options, increasing the probability that any small costing bias or plan-cache quirk yields a disastrous plan. Those bloated plans, in turn, magnify network load and session lifetimes, making the system more sensitive to existing bandwidth limits or connection-slot ceilings. Network slowdowns feed back into the database: lingering result transfers delay cursor closure, prolong locks, and trigger client-side retries that invalidate or pollute the plan cache, further destabilizing plan selection. The intertwined feedback loops between inefficient physical access, unstable plan choice, and constrained connectivity drive a runaway degradation that is far more severe than any single anomaly alone.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.7106792653538674,
+            "bm25_score": 27.464864521766906,
+            "lexical_score": 0.15363636363636363,
+            "matched_terms": [
+                "aborted",
+                "and",
+                "any",
+                "database",
+                "delay",
+                "index",
+                "is",
+                "longer",
+                "of",
+                "or",
+                "schema",
+                "session",
+                "sessions",
+                "than",
+                "that",
+                "the",
+                "to",
+                "transaction",
+                "triggered",
+                "waits",
+                "when"
+            ],
+            "match_count": 290,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

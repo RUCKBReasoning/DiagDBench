@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Data Block and Index Integrity Anomaly + CPU Resource Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Data Block and Index Integrity Anomaly : Physical or logical corruption inside on-disk table and index pages causes their contents, links, or checksums to diverge from the catalog’s logical view.\nCPU Resource Anomaly : Database processes consume nearly all available compute cycles, driving the host into sustained CPU saturation.\nNetwork and Connectivity Resource Anomaly : Network paths, sockets, or listener capacity become saturated or error-prone, delaying or preventing client connections and result delivery.\n\nWhen all three faults emerge concurrently, symptoms overlap and intensify: index lookups may miss or duplicate rows while the engine simultaneously slows every request because worker threads fight for CPU time. Clients experience long connect times, sporadic time-outs, and stalled result streaming. Corruption-driven plan fall-backs to full table scans magnify CPU consumption; the extra CPU load in turn prolongs session lifetimes, holding sockets open and inflating connection pools until the listener backlog overflows. Meanwhile, high retransmission rates and half-open sockets mask or mimic corruption-induced query retries, making it difficult to distinguish data loss from transport loss. Monitoring views show a mix of page-verification errors, runaway CPU wait events, and growing client-read/client-write waits, with apparent contradictions such as high CPU usage during periods of low completed-query throughput.\n\nCausally, latent page or index corruption forces the optimizer to abandon efficient access paths, converting lightweight index probes into CPU-intensive scans that accelerate CPU saturation. The overwhelmed scheduler elongates execution and recovery tasks, extending the window in which corrupted pages are touched and potentially propagating further damage (e.g., during redo or checkpoint). Prolonged execution times increase the number of concurrent active sessions, stretching connection pools, filling TCP queues, and amplifying any pre-existing network congestion. Conversely, packet loss and repeated client retries inflate transactional workload, feeding more statements into an already CPU-bound engine and raising the likelihood that corrupted pages are read, escalating error rates. The intertwined feedback loops among corruption retries, CPU starvation, and network back-pressure can rapidly push the database into a degraded or unavailable state.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.41027965089136287,
+            "bm25_score": 18.210170212845696,
+            "lexical_score": 0.14884135472370766,
+            "matched_terms": [
+                "and",
+                "are",
+                "can",
+                "client",
+                "connection",
+                "holding",
+                "number",
+                "of",
+                "on",
+                "or",
+                "pools",
+                "probes",
+                "session",
+                "sessions",
+                "tcp",
+                "that",
+                "the",
+                "time",
+                "to",
+                "when"
+            ],
+            "match_count": 235,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_count",
+                "parameter_name": "tcp_keepalives_count",
+                "timeout_category": "network_keepalive_failure_threshold",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the number of TCP keepalive messages that can be lost before the server connection to the client is considered dead.",
+                "trigger_condition": "The number of lost TCP keepalive probes reaches tcp_keepalives_count on systems supporting TCP_KEEPCNT.",
+                "workload_impact": "The server can consider the client connection dead after the configured keepalive failure threshold.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

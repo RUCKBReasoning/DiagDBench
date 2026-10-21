@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Database Configuration Parameter Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level SQL or transaction design forces the engine to read, write, or lock more data than the business logic truly requires.\nDatabase Configuration Parameter Anomaly : Engine runtime parameters are mis-tuned relative to hardware capabilities and workload characteristics, leading to inefficient memory, logging, checkpoint, or parallelism behavior.\nStorage I/O Throughput Anomaly : The physical storage layer is unable to sustain the read/write volume demanded, causing elevated latency and saturated I/O queues.\n\nWhen these three root causes coincide, the database exhibits pronounced and wide-ranging distress: individual statements and whole transactions linger in slow-query logs, while wait-event histograms show a mix of buffer-IO, log-write, checkpoint, and CPU spin waits that do not correlate with actual CPU saturation. Memory pools may thrash, causing frequent page evictions and a surge of physical reads; meanwhile, undersized log or checkpoint settings trigger aggressive flushing that collides with already maxed-out storage bandwidth. Users observe erratic response times, timeouts, and long recovery or maintenance windows. Monitoring tools report simultaneously high logical work (scans, joins, large result sets), sub-optimal cache hit ratios due to constrained buffers, and steep rises in device-level latency and queue depth. Distinguishing which layer is primary becomes difficult because symptoms propagate across SQL, engine, and hardware boundaries.\n\nCausally, inefficient SQL patterns inflate data access demands, multiplying buffer misses and redo generation. Misaligned configuration—such as an undersized buffer pool, low work-memory, or aggressive checkpoint interval—prevents the engine from absorbing this excess demand in memory, forcing even more traffic to disk and more frequent log flushes. The compounded I/O volume then overwhelms storage throughput, further slowing page and log writes. In turn, the elevated I/O latency prolongs transaction lifetimes and amplifies lock holding introduced by the chatty or bulk SQL, while the engine’s reactive background tasks (auto-checkpoint, cleaner, autovacuum, etc.) intensify their efforts and compete for the same scarce I/O bandwidth. The feedback loop between poor workload design, misconfiguration, and storage saturation drives a self-reinforcing degradation that can stall both OLTP and analytical workloads until all contributing layers are addressed together.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.5856633314385526,
+            "bm25_score": 22.051010213592036,
+            "lexical_score": 0.16702531645569618,
+            "matched_terms": [
+                "and",
+                "are",
+                "data",
+                "for",
+                "from",
+                "holding",
+                "is",
+                "latency",
+                "more",
+                "not",
+                "of",
+                "or",
+                "pools",
+                "read",
+                "than",
+                "the",
+                "this",
+                "to",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 117,
+            "entry": {
+                "timeout_id": "mysql84_network_read_timeout",
+                "parameter_name": "net_read_timeout",
+                "timeout_category": "network_read_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for more data from a connection before aborting the read.",
+                "trigger_condition": "The server waits for additional data from a connection longer than net_read_timeout.",
+                "workload_impact": "The network read is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

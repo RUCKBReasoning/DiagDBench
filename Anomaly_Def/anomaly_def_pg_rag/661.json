@@ -1,0 +1,45 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Transaction Lock Contention Anomaly + CPU Resource Anomaly",
+            "Description": "Composite definition: The database simultaneously suffers from stale or incomplete optimizer statistics, severe transaction-level lock contention, and host-level CPU saturation. Each root cause is independently harmful, but when they occur together they create a reinforcing feedback loop that degrades throughput and response time in a highly concurrent OLTP workload.\n\nCombined anomalous phenomena: 1) Execution plans show large cardinality misestimates and select sub-optimal join orders or access paths, often choosing full scans or low-selectivity index probes. 2) Those plans increase the number of rows touched and the duration of data-modifying statements, inflating the lock footprint and prolonging lock hold times. 3) Concurrent sessions pile up in long blocker-waiter chains; deadlock reports, application timeouts, and rising lock-wait seconds are observed alongside surging CPU utilisation near 100 %. 4) The CPU run queue grows as sessions spin on latch/lock manager operations, while background statistics-update tasks and deadlock detectors compete for the same saturated cores. Symptoms become hard to attribute to a single layer because query plans, lock waits, and CPU pressure all appear as co-primary bottlenecks.\n\nCausal chain: Stale statistics → cardinality misestimation → inefficient, work-expensive plans → longer statement execution and larger lock scopes → lock contention and deadlocks → increased context switching and spin-waiting in the lock manager → CPU saturation. The saturated CPUs in turn slow automatic statistics collection and prolong rollback or deadlock-victim cleanup, keeping statistics stale and locks held even longer, thereby amplifying both the contention and the compute bottleneck in a self-reinforcing cycle.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 100,
+            "score": 0.31730568550293864,
+            "bm25_score": 16.81018777233322,
+            "lexical_score": 0.10671996542783059,
+            "matched_terms": [
+                "access",
+                "and",
+                "context",
+                "execution",
+                "for",
+                "is",
+                "or",
+                "statement",
+                "the",
+                "time",
+                "transaction"
+            ],
+            "match_count": 10,
+            "entry": {
+                "error_code": "25003",
+                "error_name": "inappropriate_access_mode_for_branch_transaction",
+                "official_description": "inappropriate access mode for branch transaction",
+                "error_class": "Class 25 - Invalid Transaction State",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "authentication_and_authorization",
+                "cause_analysis": "The failure is typically associated with user identity, privilege scope, object access checks, or credential validation at session establishment or statement execution time.",
+                "solution_guidance": "Verify account credentials, privilege grants, object ownership, role settings, and whether the execution context has sufficient access rights.",
+                "observable_symptoms": [
+                    "access denied",
+                    "authentication failure",
+                    "permission error"
+                ]
+            }
+        }
+    }
+]

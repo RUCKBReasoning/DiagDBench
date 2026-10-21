@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + MVCC Version Maintenance Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Composite definition: The database simultaneously suffers from (1) a physical data-model and indexing layout that does not fit the workload, (2) an over-accumulation of obsolete MVCC row versions that background cleaners cannot reclaim in time, and (3) saturation of the underlying storage subsystem’s throughput or IOPS budget. Together these three root causes create a self-reinforcing performance collapse that affects all foreground operations.\n\nCombined observable phenomena: Queries that should be selective are forced into full scans because of missing or non-covering indexes; those scans traverse bloated tables and indexes swollen by unreclaimed row versions, causing many more pages to be read. Update- and delete-heavy transactions generate large amounts of new versions while every write waits on busy storage queues, inflating commit latency. Autovacuum / purge workers run continuously yet make little progress because their own I/O is throttled; monitoring shows high I/O wait time, deep device queues, rising table and index sizes, misestimated row counts, escalating buffer churn, and sudden spikes in response-time variance. Application sessions may experience both read latency (from scan expansion and I/O stalls) and write latency (from version logging and log-flush bottlenecks), with dead-tuple ratios and storage-level alerts increasing in parallel.\n\nCausal interaction: Poor schema and index design forces the engine to touch far more pages per statement, multiplying physical reads and writes. The extra I/O load accelerates MVCC version churn, because non-covering updates and unnecessary full-row rewrites generate additional row versions and index entries. As obsolete versions pile up, cleanup workers must process larger heaps and indexes; however, their work is throttled by the same saturated storage layer, allowing bloat to grow unchecked. The expanding data footprint further degrades cache efficiency and amplifies I/O demand, pushing the storage subsystem deeper into saturation. This vicious cycle—design inefficiencies → excess version generation → storage bloat → I/O overload → slower cleanup → further bloat—causes a compounded degradation in throughput and latency that is far more severe than any single anomaly would produce in isolation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 661,
+            "score": 0.4026508390173066,
+            "bm25_score": 48.93879948388848,
+            "lexical_score": 0.14470108695652173,
+            "matched_terms": [
+                "and",
+                "as",
+                "cannot",
+                "engine",
+                "in",
+                "is",
+                "logging",
+                "non",
+                "or",
+                "self",
+                "statement",
+                "that",
+                "the",
+                "version",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "1686",
+                "error_name": "ER_BINLOG_UNSAFE_MULTIPLE_ENGINES_AND_SELF_LOGGING_ENGINE",
+                "official_description": "Mixing self-logging and non-self-logging engines in a statement is unsafe.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "sql_and_parser",
+                "cause_analysis": "The failure is typically associated with unsupported syntax, invalid statement structure, or feature usage that the target engine version cannot execute as written.",
+                "solution_guidance": "Validate SQL syntax, target-engine compatibility, statement shape, and whether the feature is supported under the current engine version or execution context.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "syntax error",
+                    "feature rejection"
+                ]
+            }
+        }
+    }
+]

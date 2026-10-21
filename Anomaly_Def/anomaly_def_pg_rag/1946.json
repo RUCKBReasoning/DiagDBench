@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Replication Synchronization Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly: The log-write, flush, switch, or archive path on the primary instance cannot sustain the redo generation rate, so commit processing stalls on log-related waits and space shortages.\nReplication Synchronization Anomaly: Standbys or downstream consumers fall behind because they cannot receive, persist, or apply the primary’s log stream fast enough, causing growing send/receive/replay lag and preventing log recycling on the source.\nData Block and Index Integrity Anomaly: Physical pages or index structures are corrupt or mutually inconsistent, producing checksum failures, wrong-result reads, and apply/redo errors.\n\nWhen all three faults are present simultaneously, the system exhibits an intertwined symptom set:  \n• End-user transactions see sharply rising commit latency, intermittent \"log full\" or \"cannot allocate new log segment\" errors, and sudden throughput cliffs.  \n• Replication monitoring shows ballooning send-, write-, and replay-lag; relay logs and retained primary log segments grow unchecked; failover readiness drops to zero.  \n• Integrity checkers and query workloads report checksum failures, duplicate/missing rows, and replication apply errors such as \"redo/row for missing page\" or \"index inconsistent with heap\".  \n• The primary’s log directory and the replica’s relay/redo directories expand simultaneously, checkpoint frequency spikes, and background archiver or apply processes cycle between idle, retry, and crash-restart states.  \n• Because the same retained log segments are needed both for crash-recovery of corrupt objects and for lagging replicas, storage fills faster, further throttling log writes and widening replication gaps.\n\nCausal chain: Corruption inside data blocks or index pages can cause the replica’s apply thread to halt or repeatedly retry the same failing redo, instantly creating a replication backlog. That backlog forces the primary to retain old log files, which consumes log-device space and intensifies the existing log-subsystem bottleneck; the resulting commit stalls generate even more drastic checkpoint and log-switch pressure, raising the chance of additional corruption during stressed I/O. Meanwhile, the saturated log path slows delivery of fixes (e.g., repairs, index rebuilds) to replicas, so corruption-induced apply failures persist and continue blocking log recycling. The feedback loop between log saturation, replication lag, and corruption-triggered apply errors amplifies each individual anomaly, degrading both write availability and read consistency across the cluster and leaving the entire estate vulnerable to data loss or extended outage.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.3731719846491962,
+            "bm25_score": 14.160981954022247,
+            "lexical_score": 0.1216417910447761,
+            "matched_terms": [
+                "an",
+                "and",
+                "are",
+                "for",
+                "idle",
+                "inside",
+                "latency",
+                "of",
+                "or",
+                "that",
+                "the",
+                "transaction",
+                "triggered",
+                "user",
+                "when",
+                "with"
+            ],
+            "match_count": 256,
+            "entry": {
+                "timeout_id": "pg16_idle_session_timeout",
+                "parameter_name": "idle_session_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle, but not within an open transaction, for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle and not inside an open transaction longer than the configured threshold.",
+                "workload_impact": "The session is terminated; the documentation warns about using this with connection pools or middleware.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

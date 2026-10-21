@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Database Configuration Parameter Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer repeatedly chooses a substantially sub-optimal execution plan even though the statistics fed to the costing model are reasonably accurate.\nDatabase Configuration Parameter Anomaly : Critical engine parameters (memory, checkpoint, parallelism, etc.) are mis-tuned relative to hardware capacity and workload characteristics, causing avoidable pressure on internal subsystems.\nNetwork and Connectivity Resource Anomaly : The network layer, listener, or connection slots cannot sustain the offered session or data-transfer rate, introducing transport-level latency and throttling.\n\nWhen these three root causes coincide, symptoms layer on top of each other: 1) plan flips or plan skew inflate CPU time, I/O volume, and row counts; 2) mis-sized memory pools or overly aggressive checkpoint and parallelism settings amplify the resource demand created by the bad plans, producing bursty log flushes, buffer churn, and background-worker backlog; 3) the inflated execution times keep back-end sessions open longer, increasing concurrent connection counts and result-set sizes, which further saturate listener queues and network throughput. Clients experience sporadic latency spikes, mixed SQL wait events (plan-related CPU/iowait, configuration-driven buffer and log waits, plus client-read/write waits), and occasional connection timeouts or refusals that are hard to attribute to any single layer.\n\nCausal chain: a sub-optimal plan detonates resource usage; the mis-configured memory/checkpoint/parallelism parameters prevent the engine from absorbing this surge efficiently, leading to page-flush storms, log-write stalls, or worker exhaustion; the prolonged queries then hold sockets, backlog authentication, and push the connection pool over its limits, making the network layer itself a visible bottleneck. Conversely, network slowdowns lengthen query durations, giving the optimizer more chances to cache or reuse poor plans under skewed bind values, while configuration pressure keeps invalidating or recompiling plans. Together these feedback loops magnify each anomaly’s impact, dragging overall throughput and predictability far below what any single issue would cause alone.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 16,
+            "score": 0.5867674252293805,
+            "bm25_score": 20.142438550342142,
+            "lexical_score": 0.1485958173282117,
+            "matched_terms": [
+                "and",
+                "are",
+                "client",
+                "configured",
+                "data",
+                "latency",
+                "level",
+                "network",
+                "or",
+                "read",
+                "session",
+                "the",
+                "this",
+                "times",
+                "transport",
+                "when",
+                "write"
+            ],
+            "match_count": 16,
+            "entry": {
+                "timeout_id": "mysql84_xplugin_write_timeout",
+                "parameter_name": "mysqlx_write_timeout",
+                "timeout_category": "x_protocol_network_write_timeout",
+                "scope": "global/session/X Plugin",
+                "official_definition": "Write timeout for X Plugin network communication.",
+                "trigger_condition": "A MySQL X Protocol write operation exceeds mysqlx_write_timeout.",
+                "workload_impact": "The X Protocol network write operation times out.",
+                "default_behavior": "Defined as a MySQL X Plugin system variable.",
+                "system_domain": "network_transport",
+                "cause_analysis": "This timeout is usually triggered when network data is not acknowledged, received, or written within the configured transport-level waiting window.",
+                "solution_guidance": "Inspect packet loss, transport latency, client responsiveness, proxy behavior, and whether slow consumers or unstable links are delaying network progress.",
+                "observable_symptoms": [
+                    "network timeout",
+                    "disconnect",
+                    "read/write interruption"
+                ]
+            }
+        }
+    }
+]

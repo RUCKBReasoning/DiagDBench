@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + MVCC Version Maintenance Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Optimizer Statistics Anomaly : The optimizer bases its cost estimates on stale or incomplete metadata, causing systematic misestimation of cardinalities and ultimately poor plan choices.\nMVCC Version Maintenance Anomaly : Obsolete row versions and rollback records accumulate faster than background cleanup can reclaim them, inflating table and index size and increasing visibility-check costs.\nStorage I/O Throughput Anomaly : The physical devices that store data, temp, or log files become throughput- or latency-bound, so every read or write waits behind saturated queues.\n\nWhen all three root causes appear together, symptoms overlap and magnify: execution plans chosen from incorrect statistics are forced to scan or join vastly larger on-disk structures bloated by version buildup; these larger scans, in turn, drive far more physical I/O against disks that are already maxed out, pushing latency higher and keeping buffer-pool hit ratios low. Administrators observe wildly inaccurate row-count estimates, sudden plan flips after data-change bursts, soaring table and index sizes, nonstop autovacuum or purge activity, steep growth in I/O wait events, and long-running queries that stall during large sequential reads or log flushes. Cleanup workers and statistics refresh jobs may run continuously but still fall behind because every page read or written is throttled by the saturated storage layer, while critical OLTP transactions suffer from both plan inefficiency and I/O backlog.\n\nCausally, MVCC version bloat first enlarges the physical footprint of hot tables and indexes. This footprint inflation invalidates previously correct statistics and raises the volume of data the optimizer must consider, seeding the Optimizer Statistics Anomaly. Misestimated plans often select full scans or sub-optimal join orders that touch even more pages, amplifying storage traffic. The extra I/O exacerbates the Storage I/O Throughput Anomaly, slowing both foreground queries and the background cleaners that would otherwise shrink the version store and trigger statistics refreshes. The stalled cleaners allow even more bloat to accumulate, which further skews statistics and perpetuates a feedback loop of increasing workload cost and diminishing throughput.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.660449175988148,
+            "bm25_score": 25.670444721558212,
+            "lexical_score": 0.15275142314990514,
+            "matched_terms": [
+                "activity",
+                "after",
+                "and",
+                "are",
+                "can",
+                "check",
+                "during",
+                "is",
+                "latency",
+                "long",
+                "or",
+                "queries",
+                "running",
+                "stale",
+                "still",
+                "that",
+                "the",
+                "this",
+                "when",
+                "while"
+            ],
+            "match_count": 207,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

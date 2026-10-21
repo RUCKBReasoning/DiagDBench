@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + MVCC Version Maintenance Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently chooses sub-optimal execution plans despite having reasonably accurate statistics.\nMVCC Version Maintenance Anomaly : Obsolete row versions and rollback data accumulate faster than background cleanup can reclaim them, inflating storage and visibility-check overhead.\nNetwork and Connectivity Resource Anomaly : Network, listener, socket, or authentication resources become saturated, slowing or preventing client connections and data transfer.\n\nWhen these three root causes strike together, the database exhibits extreme and hard-to-pinpoint performance degradation. Poorly chosen plans trigger long-running scans or nested-loop explosions that touch far more rows than expected; the excess I/O and CPU prolong transaction lifetimes, causing snapshots to remain open and preventing version cleanup. The resulting table and index bloat further pollute statistics and widen the gap between estimated and actual costs, encouraging the optimizer to continue selecting bad plans. Meanwhile, the oversized result sets and elongated execution times keep back-end processes and sockets busy, filling connection pools, exhausting listener backlogs, and amplifying network queuing delays, retransmissions, and connection-establishment failures. Observability signals therefore include rapidly growing table sizes and version-store length, erratic plan changes with soaring execution costs, rising client-side timeouts, half-open connections, and a mix of in-database (buffer-read, MVCC visibility check) waits and network I/O waits.\n\nCausally, a feedback loop emerges: (1) Sub-optimal plans inflate row access counts and execution duration. (2) Prolonged transactions retain old snapshots, blocking vacuum/cleanup and accelerating MVCC version bloat. (3) The swollen heap and misestimated cardinalities drive the optimizer toward even worse plans, perpetuating step 1. (4) Larger result sets and longer server think-time keep connections occupied, pushing the network and listener layer to saturation, which in turn delays new sessions and retries, increasing concurrency spikes. (5) Connection stalls further lengthen transaction lifetimes, intensifying MVCC retention and plan misestimation. Together, these intertwined effects degrade throughput, inflate latency, and threaten availability in high-churn transactional environments.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.6165962625329604,
+            "bm25_score": 23.53037426779909,
+            "lexical_score": 0.16166114333057166,
+            "matched_terms": [
+                "and",
+                "authentication",
+                "between",
+                "can",
+                "check",
+                "client",
+                "connection",
+                "establishment",
+                "latency",
+                "long",
+                "or",
+                "pools",
+                "query",
+                "running",
+                "sessions",
+                "sets",
+                "socket",
+                "that",
+                "the",
+                "time",
+                "when"
+            ],
+            "match_count": 224,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

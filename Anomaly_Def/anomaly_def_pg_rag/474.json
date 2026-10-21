@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Transaction Lock Contention Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Stale, missing, or insufficient statistics distort the optimizer’s cardinality estimates and costing inputs, driving systematically poor plan choices.\nTransaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same resources, producing long blocking chains or deadlocks that stall throughput.\nOperating System Resource Limit Anomaly : Database processes hit kernel-enforced ceilings for handles, memory segments, semaphores, threads, or similar OS objects, preventing new allocations and halting growth of work.\n\nCombined phenomena: When all three root causes coexist, the system exhibits severe and erratic slowdowns. Misestimated row counts lead the optimizer to pick plans that scan or update far more data than necessary, inflating lock footprints, extending lock hold times, and triggering cascades of blocking and deadlocks. Sessions that become stuck waiting on locks or deadlock retries remain logged in, consuming connections, file descriptors, shared-memory slots, or semaphore entries until global OS quotas are exhausted. Once kernel limits are reached, new client logins, background workers, or parallel query processes fail to start, causing partial outages and amplifying application time-outs. Monitoring may show exploding lock-wait queues, skyrocketing wait-on-OS resource allocation failures, drastic drops in throughput, and sudden bursts of deadlock victim errors, all while execution plans display grossly inaccurate cardinality estimates.\n\nCausal chain: (1) Stale or missing statistics mislead the optimizer into choosing high-cost, bulk-locking execution plans (e.g., full table scans without useful indexes), thereby lengthening transaction duration and widening the scope of acquired locks; (2) the prolonged and enlarged lock holding intensifies lock contention, inducing blocker-waiter trees and frequent deadlocks; (3) each blocked or orphaned backend continues to hold kernel objects—file handles, semaphores, threads—pushing the database toward OS resource limits; (4) once those limits are hit, new sessions and maintenance workers (including auto-statistics refresh jobs) cannot start, preventing correction of the stale statistics and forcing more sessions into lock waits. This feedback loop compounds latency, throughput collapse, and availability degradation in OLTP workloads.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.2788555784994982,
+            "bm25_score": 13.028664836966588,
+            "lexical_score": 0.1450811608460403,
+            "matched_terms": [
+                "and",
+                "are",
+                "client",
+                "for",
+                "holding",
+                "in",
+                "latency",
+                "of",
+                "or",
+                "sessions",
+                "stale",
+                "the",
+                "this",
+                "time",
+                "wait",
+                "waiting",
+                "when"
+            ],
+            "match_count": 130,
+            "entry": {
+                "timeout_id": "pg16_libpq_connection_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "client_connection_establishment_timeout",
+                "scope": "libpq/client connection parameter",
+                "official_definition": "Maximum wait for connection, in seconds; zero or not specified means wait indefinitely.",
+                "trigger_condition": "A libpq client connection attempt exceeds connect_timeout seconds.",
+                "workload_impact": "The client connection attempt fails instead of waiting indefinitely.",
+                "default_behavior": "Zero or absent value means wait indefinitely.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

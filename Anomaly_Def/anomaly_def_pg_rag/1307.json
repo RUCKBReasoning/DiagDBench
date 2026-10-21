@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + CPU Resource Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent sessions block or deadlock because they request incompatible locks on the same database resources.\nCPU Resource Anomaly : Database and related processes drive host CPU utilization to sustained saturation, starving other work of compute cycles.\nNetwork and Connectivity Resource Anomaly : Client-server communication or connection-handling infrastructure becomes a bottleneck, producing slow or failed connects and stalled socket I/O.\n\nWhen all three root causes manifest together, the database experiences compound distress: lock wait chains and deadlocks lengthen application response times; at the same time, CPU cores are fully subscribed by spin-loops, deadlock detection, and repeated statement retries; meanwhile, clients struggle to obtain or keep connections as the listener and socket queues overflow. Observable symptoms include: exploding lock-wait and deadlock counters, soaring host load averages and context-switch rates, widespread \"CPU busy\" or scheduler wait events, surging connection-attempt failures, elevated network retransmissions, and application timeouts that cannot easily be attributed to a single layer.\n\nCausal interaction: Network slowdowns or connection slot exhaustion increase transaction round-trip latency, keeping transactions open longer and extending the interval during which they hold locks—thereby intensifying lock contention. Prolonged blocking chains induce repeated client retries and server-side deadlock detection, each consuming additional CPU and spawning more connection activity that further stresses the network stack. In parallel, near-maxed CPU resources lengthen lock acquisition and deadlock-resolution cycles, causing locks to persist even longer and amplifying contention. The escalating feedback loop among delayed network I/O, prolonged locks, and CPU saturation can quickly propagate through the workload, degrading throughput, inflating latency, and precipitating widespread application failures.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.7517752808988764,
+            "bm25_score": 31.975257310794024,
+            "lexical_score": 0.17258426966292134,
+            "matched_terms": [
+                "and",
+                "because",
+                "blocking",
+                "cannot",
+                "context",
+                "database",
+                "incompatible",
+                "lock",
+                "longer",
+                "obtain",
+                "of",
+                "or",
+                "other",
+                "sessions",
+                "statement",
+                "that",
+                "the",
+                "time",
+                "to",
+                "transaction",
+                "when"
+            ],
+            "match_count": 226,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

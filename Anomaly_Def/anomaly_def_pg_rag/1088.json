@@ -1,0 +1,47 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Database Memory Allocation Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Core runtime settings (buffer pools, work-mem, parallelism, checkpoint cadence, etc.) are mis-tuned relative to hardware and workload. \nDatabase Memory Allocation Anomaly : The engine’s aggregate memory footprint grows beyond safe physical RAM or swap capacity, provoking paging, OOM events, and cache churn. \nOperating System Resource Limit Anomaly : Kernel-level ceilings on virtual memory, shared memory, file handles, and processes/threads are reached, preventing further allocations or session creation.\n\nWhen these three root causes coincide, the system exhibits a compound failure pattern: 1) sudden or cyclical surges in memory consumption driven by aggressive engine settings, 2) operating-system paging, swap storms, or outright OOM kills, 3) intermittent errors indicating inability to obtain shared memory segments, create threads, or open files, 4) erratic checkpoint or log-flush bursts followed by long I/O stalls, 5) plummeting cache hit ratios and escalating CPU wait time despite low measured CPU utilization, and 6) partial outages where existing sessions hang while new connections, background workers, or parallel tasks are rejected.\n\nCausal chain: Oversized or unbalanced configuration parameters (e.g., buffer caches and per-query work-mem) push the engine to allocate more memory than the host can sustain, immediately triggering the memory-allocation anomaly. As the resident set swells, the database hits kernel limits on address space, shared memory, or locked memory, converting pure memory pressure into hard allocation failures. Each kernel denial feeds back into the engine: aborted worker creation disables parallel query, failed shared-buffer extensions force aggressive checkpointing, and OOM terminations leave orphaned semaphores and file handles that further consume limited kernel objects. The three anomalies therefore reinforce one another, amplifying instability and making the performance degradation harder to diagnose because symptoms oscillate between internal waits, OS-level memory pressure, and explicit kernel limit violations.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 25,
+            "score": 0.11086514886592469,
+            "bm25_score": 5.113457871163068,
+            "lexical_score": 0.12449494949494949,
+            "matched_terms": [
+                "and",
+                "by",
+                "configuration",
+                "engine",
+                "failure",
+                "in",
+                "instability",
+                "level",
+                "or",
+                "pressure",
+                "resource",
+                "the",
+                "to",
+                "workload"
+            ],
+            "match_count": 10,
+            "entry": {
+                "error_code": "22005",
+                "error_name": "error_in_assignment",
+                "official_description": "error in assignment",
+                "error_class": "Class 22 - Data Exception",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

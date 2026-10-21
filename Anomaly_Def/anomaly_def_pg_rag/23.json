@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Data Block and Index Integrity Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Sessions are forced to serialize on hot or pinned buffer-cache pages and their associated latches, causing CPU spin, buffer-busy waits, and latency spikes.\nData Block and Index Integrity Anomaly : Physical data or index pages become inconsistent, producing checksum errors, broken links, and mismatched row counts that undermine the reliability of access paths.\nStorage Space Capacity Anomaly : Data, log, temp, or archive areas run out of free bytes or cannot extend, leading to allocation failures, stalled checkpoints, and halted DML or DDL operations.\n\nWhen these three root causes strike concurrently, the database exhibits a multilayered failure pattern: extreme buffer-busy and page-latch waits mount while queries intermittently return wrong or duplicate rows, and sessions suddenly abort with \"no space left/on­device\" or \"corruption detected\" errors. Dirty pages linger in the buffer pool because checkpoints cannot allocate extra extents or recycle full log segments, increasing latch hold times and CPU spin. Simultaneously, corruption on hot pages causes repeated read-retry or logical consistency checks, amplifying contention as many sessions revisit the same damaged buffers. Administrators may see a chaotic mix of space-exhaustion alerts, corruption traces, and soaring latch wait graphs, making the individual symptoms hard to disentangle.\n\nCausally, space exhaustion can stall or abort write-ahead logging and checkpoints, leaving pages partially flushed and heightening the risk of on-disk corruption. Corrupted or half-written pages then become hot spots as the engine repeatedly retries I/O and consistency verification, escalating latch contention within the buffer manager. The prolonged residency of dirty or suspect pages further reduces usable cache space, intensifying buffer churn and spin waits. In turn, the elevated contention slows down page flushing and file-growth operations, causing log and data files to reach capacity even faster. This vicious circle intertwines the three anomalies, degrading both performance and data integrity across transactional and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.3294399942094172,
+            "bm25_score": 11.219314046195354,
+            "lexical_score": 0.10027557140541415,
+            "matched_terms": [
+                "and",
+                "are",
+                "data",
+                "latency",
+                "may",
+                "on",
+                "or",
+                "sessions",
+                "the",
+                "this",
+                "when",
+                "within"
+            ],
+            "match_count": 164,
+            "entry": {
+                "timeout_id": "pg16_tcp_user_timeout",
+                "parameter_name": "tcp_user_timeout",
+                "timeout_category": "network_unacknowledged_data_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies how long transmitted data may remain unacknowledged before the TCP connection is forcibly closed.",
+                "trigger_condition": "TCP data sent by PostgreSQL remains unacknowledged longer than tcp_user_timeout on systems supporting TCP_USER_TIMEOUT.",
+                "workload_impact": "The TCP connection is forcibly closed.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Database Configuration Parameter Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer chooses a markedly sub-optimal execution plan even though statistics are adequate, often due to flawed costing logic or unstable plan reuse.\nDatabase Configuration Parameter Anomaly : Critical engine parameters (memory, parallelism, checkpoint, logging, etc.) are mis-tuned for the actual hardware and workload, so performance bottlenecks arise from the settings themselves rather than true resource exhaustion.\n\nWhen both root causes manifest concurrently, workloads can display erratic and highly unpredictable behavior: the same query text flips between multiple poor plans, each suffering from exaggerated latency spikes whenever mis-configured memory, I/O, or parallelism thresholds are crossed. For example, a nested-loop plan mistakenly preferred by the optimizer may thrash in buffer cache because work-memory or buffer-pool sizes were reduced, leading to sudden spills, excessive log-write stalls, and surges in CPU wait events even though system-wide utilization appears low. Observers may see alternating patterns of unused hardware capacity and short bursts of saturation, growing plan cache churn, frequent checkpoint storms following heavy scans, and performance regressions that defy single-factor explanations.\n\nCausally, misaligned configuration parameters distort the runtime feedback loop the optimizer relies on—e.g., underestimated I/O costs after an overly small buffer pool, or skewed parallelism decisions when max worker threads are capped—raising the likelihood of sub-optimal plan selection. Once an inefficient plan is chosen, the stress it places on memory, I/O, or logging can quickly collide with the already tight engine limits, amplifying waits and triggering further plan invalidations or re-compilations. This feedback cycle deepens the performance degradation: bad plans magnify pressure on mis-configured resources, while the resulting resource contention influences the optimizer to continue choosing or retaining poor plans, ultimately destabilizing both transactional and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.3809147976549803,
+            "bm25_score": 13.25125000096898,
+            "lexical_score": 0.13144736842105262,
+            "matched_terms": [
+                "an",
+                "and",
+                "are",
+                "for",
+                "is",
+                "it",
+                "latency",
+                "of",
+                "on",
+                "or",
+                "than",
+                "the",
+                "this",
+                "waits",
+                "when"
+            ],
+            "match_count": 29,
+            "entry": {
+                "timeout_id": "mysql84_idle_interactive_session_timeout",
+                "parameter_name": "interactive_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds the server waits for activity on an interactive connection before closing it.",
+                "trigger_condition": "An interactive session remains idle longer than interactive_timeout.",
+                "workload_impact": "The server closes the idle interactive connection.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

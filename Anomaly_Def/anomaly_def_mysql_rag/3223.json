@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Replication Synchronization Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Engine-level settings such as memory pools, checkpoint cadence, log sizing, parallelism, or worker counts are mis-tuned relative to hardware capacity, workload profile, or version defaults, degrading internal subsystems even though underlying resources are not yet saturated.\nReplication Synchronization Anomaly : Standby or downstream replicas cannot receive, write, or apply primary-generated redo fast enough, producing widening log-position gaps and sustained replication lag.\nStorage Space Capacity Anomaly : Physical or logical free space for data, temp, or log areas is exhausted, causing allocation failures, halted log recycling, and stalled foreground work.\n\nWhen all three root causes coexist, the primary instance may emit excessive log volume because of sub-optimal parameter choices (e.g., tiny checkpoint intervals or oversized per-statement work memory), while replicas fall behind, forcing the primary to retain large amounts of unapplied WAL/redo. The retained logs, together with mis-sized data and temp areas, quickly consume the remaining disk space. Operators observe a compound symptom set: chronic replication lag, growing numbers of retained or relay log segments, persistent write-ahead-log or archive directories nearing 100 % capacity, checkpoint storms that spike I/O yet leave CPU and network partially idle, sudden client errors for \"no space left on device,\" and degraded failover readiness. Diagnostic views show misaligned buffer or work-memory usage, replication apply workers blocked, and space alarms firing simultaneously, making individual blame hard to assign.\n\nCausally, aggressive or poorly chosen configuration parameters inflate redo generation and restrict log file size or checkpoint frequency, pressuring both replication throughput and disk usage. The resulting replication bottleneck prevents log truncation on the primary, accelerating space consumption. As free space diminishes, background checkpoints and archive writes slow further, feeding back into longer stall times and even larger log backlogs. Conversely, disk-full conditions on replicas throttle their apply rate, deepening lag and forcing the primary to retain yet more logs. The intertwined feedback loops between misconfiguration, replication drag, and space exhaustion amplify each issue, potentially culminating in a full-disk outage and loss of high-availability guarantees.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 16,
+            "score": 0.5430919121305879,
+            "bm25_score": 18.121857384095815,
+            "lexical_score": 0.1359683794466403,
+            "matched_terms": [
+                "and",
+                "are",
+                "client",
+                "data",
+                "for",
+                "is",
+                "level",
+                "loss",
+                "network",
+                "not",
+                "or",
+                "slow",
+                "the",
+                "times",
+                "when",
+                "write"
+            ],
+            "match_count": 105,
+            "entry": {
+                "timeout_id": "mysql84_xplugin_write_timeout",
+                "parameter_name": "mysqlx_write_timeout",
+                "timeout_category": "x_protocol_network_write_timeout",
+                "scope": "global/session/X Plugin",
+                "official_definition": "Write timeout for X Plugin network communication.",
+                "trigger_condition": "A MySQL X Protocol write operation exceeds mysqlx_write_timeout.",
+                "workload_impact": "The X Protocol network write operation times out.",
+                "default_behavior": "Defined as a MySQL X Plugin system variable.",
+                "system_domain": "network_transport",
+                "cause_analysis": "This timeout is usually triggered when network data is not acknowledged, received, or written within the configured transport-level waiting window.",
+                "solution_guidance": "Inspect packet loss, transport latency, client responsiveness, proxy behavior, and whether slow consumers or unstable links are delaying network progress.",
+                "observable_symptoms": [
+                    "network timeout",
+                    "disconnect",
+                    "read/write interruption"
+                ]
+            }
+        }
+    }
+]

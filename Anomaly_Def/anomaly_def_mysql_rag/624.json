@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Storage Space Capacity Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Accumulation of obsolete row versions and rollback records outpaces background cleanup, causing version-store growth and visibility-check overhead.\nStorage Space Capacity Anomaly : Physical or logical free space for data files, logs, or temp areas is exhausted, producing allocation failures and write stalls.\n\nWhen these two root causes strike simultaneously, the database shows an explosive rise in disk usage, steep declines in live-row density, and a shrinking pool of free blocks. Autovacuum or purge workers run constantly yet make no headway; at the same time their I/O requests contend with data-file auto-extension and log archiving that are repeatedly failing due to lack of space. Transactions may begin to receive no-space-left or cannot-extend errors, large scans slow dramatically because they wade through bloated heaps, and the planner misestimates both row counts and cost. Checkpoint, archive, or temp-space operations start to stall, and engine alerts escalate from version-store wraparound warnings to imminent tablespace exhaustion.\n\nCausal interaction: heavy update/delete churn creates surging MVCC garbage, inflating tables and indexes until they consume the remaining free extents; the resulting space pressure prevents cleanup workers from allocating new pages they need for rewriting pages or writing index-cleanup batches, so version reclamation slows further. Meanwhile out-of-space conditions can pause WAL recycling and force longer retention of old segments, which in turn widens the snapshot horizon and keeps old row versions alive. This feedback loop makes each anomaly reinforce the other, quickly degrading performance and threatening database availability.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2700,
+            "score": 0.5800027642997775,
+            "bm25_score": 74.80644101372516,
+            "lexical_score": 0.20706845238095237,
+            "matched_terms": [
+                "and",
+                "archiving",
+                "are",
+                "capacity",
+                "check",
+                "data",
+                "disk",
+                "engine",
+                "extension",
+                "failures",
+                "file",
+                "growth",
+                "is",
+                "log",
+                "logs",
+                "or",
+                "pressure",
+                "remaining",
+                "storage",
+                "tablespace",
+                "the",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010815",
+                "error_name": "ER_BINLOG_FILE_EXTENSION_NUMBER_RUNNING_LOW",
+                "official_description": "Next log extension: %lu. Remaining log filename extensions: %lu. Please consider archiving some logs.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Storage I/O Throughput Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Composite definition: The database is simultaneously constrained by (1) the internal transaction-log subsystem, (2) the physical I/O bandwidth of the storage stack, and (3) exhaustion of available storage space. All three bottlenecks are active at the same time, so any write-ahead logging, data-file activity, or archive operation is slowed or blocked both by log-layer limits, by device-level throughput saturation, and by the lack of free capacity. \n\nTransaction Log Subsystem Anomaly: The log buffer, log files, or archive/replication pipeline cannot accept or flush redo fast enough, inflating commit-path waits and stalling writers.\nStorage I/O Throughput Anomaly: The underlying volumes hit their IOPS/MB-per-sec ceiling, causing long I/O service times for data, temp, and log requests even when CPU is idle.\nStorage Space Capacity Anomaly: Free space on data, temp, log, or archive destinations falls to zero, triggering allocation failures, auto-extension aborts, and blocked background writers.\n\nCombined phenomena:  • Exponential growth in commit latency as log flushes queue behind saturated devices whose queues are already deep.  • Bursts of log-file switches, checkpoints, and archiver warnings, quickly followed by \"out of space\" or \"cannot extend\" errors when remaining capacity is consumed.  • Mixed wait-event profiles showing both log-related waits (log file sync, log buffer space) and generic storage waits (db file sequential/scattered read, write complete), often accompanied by repeated retry loops from background processes trying to allocate or archive space they cannot get.  • Throughput collapses for both transactional and maintenance workloads; batch windows elongate while foreground OLTP sessions experience timeouts or deadlocks due to stalled commits.  • Monitoring may show paradoxical metrics: high I/O queue depth with near-zero write progress and a flat-lining archive-log position.\n\nCausal chain and interaction: The undersized or slow log subsystem forces frequent flushes and switches, which in turn drive additional write traffic to the already saturated storage, deepening I/O queues and increasing latency. As throughput drops, the log archives and datafile checkpoints slow, preventing timely reuse of log segments and accelerating space consumption. When remaining capacity is exhausted, new log segments and auto-extending datafiles can no longer be allocated, freezing further writes. Conversely, space exhaustion can push the engine into aggressive checkpointing and log switching, amplifying log-subsystem pressure. The intertwined feedback loops among log pressure, bandwidth saturation, and capacity depletion produce a self-reinforcing stall that is far more severe than any single anomaly alone.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.43931821434921053,
+            "bm25_score": 18.556212101165872,
+            "lexical_score": 0.14689416155691815,
+            "matched_terms": [
+                "activity",
+                "and",
+                "are",
+                "by",
+                "data",
+                "idle",
+                "is",
+                "latency",
+                "long",
+                "longer",
+                "may",
+                "on",
+                "or",
+                "progress",
+                "sessions",
+                "than",
+                "the",
+                "time",
+                "when"
+            ],
+            "match_count": 265,
+            "entry": {
+                "timeout_id": "pg16_tcp_user_timeout",
+                "parameter_name": "tcp_user_timeout",
+                "timeout_category": "network_unacknowledged_data_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies how long transmitted data may remain unacknowledged before the TCP connection is forcibly closed.",
+                "trigger_condition": "TCP data sent by PostgreSQL remains unacknowledged longer than tcp_user_timeout on systems supporting TCP_USER_TIMEOUT.",
+                "workload_impact": "The TCP connection is forcibly closed.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

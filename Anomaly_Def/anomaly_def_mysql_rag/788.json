@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Buffer Cache and Latch Contention Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Critical metadata about data distribution is stale, incomplete, or missing, causing the optimizer to misestimate cardinalities and choose sub-optimal execution plans.\nBuffer Cache and Latch Contention Anomaly : Heavy concurrent access to a small set of hot pages or an undersized buffer pool forces sessions to serialize on buffer latches and page pins, inflating wait times and CPU spin.\nOperating System Resource Limit Anomaly : Kernel-enforced ceilings on file descriptors, shared memory, semaphores, threads, or cgroup quotas are reached, preventing the database from allocating additional low-level resources.\n\nComposite definition: The database concurrently suffers from incorrect optimizer statistics, severe buffer-cache/latch contention, and exhaustion of critical OS-level resources. Poor plan choices amplify page hot spots, while latch storms and multiplied background activity consume kernel objects until hard limits are hit, jointly throttling throughput and raising latency.\n\nCombined anomalous phenomena: 1) Execution plans with grossly inaccurate row-count estimates repeatedly choose nested loops or index range scans that hammer the same root, inner-table, or index pages. 2) Buffer-busy and page-latch wait events surge; CPU utilization shows high spin without corresponding work completion. 3) As sessions accumulate in latch waits, new connections, parallel workers, or I/O requests start failing with \"too many open files,\" \"cannot allocate shared memory,\" or \"unable to create thread\" errors logged by both the engine and the OS. 4) Automatic statistics refresh jobs abort due to unavailable OS handles, keeping statistics stale and locking the system in a degradation loop. Diagnosis becomes difficult because symptoms oscillate between optimizer misestimates, latch waits, and sporadic OS allocation errors.\n\nCausal chain: Stale or low-quality statistics lead the optimizer to route a large fraction of queries through plans that over-concentrate activity on a narrow set of pages (e.g., small hash tables, root index pages, or hot partitions). The resulting hot-page pattern drives intense latch contention in the buffer manager. Prolonged latch waits inflate session counts, background I/O, and retry loops, which in turn consume additional file handles, semaphores, and thread slots. Once OS resource limits are breached, new workers and auto-statistics jobs fail, preventing corrective statistics collection and reinforcing misestimation. Simultaneously, limited OS resources slow checkpoint and flush operations, keeping hot pages resident and further intensifying latch storms—forming a self-reinforcing feedback loop that degrades both transactional and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5967,
+            "score": 0.4661318559637589,
+            "bm25_score": 56.92525330829867,
+            "lexical_score": 0.13210702341137123,
+            "matched_terms": [
+                "and",
+                "cannot",
+                "completion",
+                "contention",
+                "is",
+                "limits",
+                "new",
+                "of",
+                "or",
+                "prolonged",
+                "resource",
+                "table",
+                "the",
+                "to",
+                "too",
+                "until",
+                "wait",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-015044",
+                "error_name": "ER_GROUP_REPLICATION_CERTIFIER_MESSAGE_LARGE",
+                "official_description": "The certification information, part of the required information to the new member join the group, is too big and cannot be send. Please wait until the value of the column COUNT_TRANSACTIONS_ROWS_VALIDATING of the table performance_schema.replication_group_member_stats decreases and try to join the new member again.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "timeout_and_waiting",
+                "cause_analysis": "The failure is typically associated with extended waiting, resource queues, unresponsive peers, or configured time limits being exceeded before the requested operation completes.",
+                "solution_guidance": "Check wait sources, blocking chains, network responsiveness, timeout settings, and whether resource contention is prolonging operation completion.",
+                "observable_symptoms": [
+                    "timeout",
+                    "prolonged waiting",
+                    "interrupted operation"
+                ]
+            }
+        }
+    }
+]

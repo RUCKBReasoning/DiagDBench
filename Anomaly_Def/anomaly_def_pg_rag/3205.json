@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Database Memory Allocation Anomaly + Replication Synchronization Anomaly",
+            "Description": "Composite definition: The database is simultaneously burdened by inefficient or over-broad SQL logic, runaway memory consumption inside the engine, and lagging downstream replicas that cannot keep pace with the primary’s write-ahead log stream.\n\nCombined anomalous phenomena: End-user requests show highly variable and often excessive latency; some stall while waiting for memory or lock release, others time out due to stale replica reads or failovers that take longer than expected. On the primary, statement and transaction statistics expose wide table scans, oversized result sets, and long-lived transactions that hold buffer pages and transaction IDs. Memory graphs reveal rising resident-set size, frequent swapping, and oscillating buffer-cache hit ratios caused by churn in work areas and plan cache. In parallel, replication monitoring views show widening write/flush/replay lags, growing retained WAL segments or relay logs, and periodic cascading back-pressure where the primary blocks log recycling. Cluster managers may detect node heart-beat stalls or trigger failover because memory pressure and replication backlog jointly lengthen recovery point objectives.\n\nCausal chain and interaction: Inefficient SQL constructs inflate result sets and prolong transactions, inflating per-query work memory, sort/hash buffers, and plan-cache entries. This accelerates overall memory allocation growth; once physical RAM is saturated, the OS begins paging, slowing local I/O and CPU scheduling. The same heavy queries generate larger and more numerous log records, which must traverse the replication channel. Memory pressure on both primary and replicas throttles apply workers and can evict useful cache lines, diminishing replay throughput. As replicas fall behind, the primary is forced to retain additional log segments, further consuming memory and storage and exacerbating the allocation anomaly. Conversely, memory stalls on the primary delay log generation and transmission bursts, producing uneven flow control and amplifying replication lag. The intertwined feedback loop between bloated workload semantics, memory exhaustion, and impaired replication escalates resource contention, degrades performance for both OLTP requests and analytical queries, and erodes high-availability guarantees.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 232,
+            "score": 0.7388602843131067,
+            "bm25_score": 64.39618400961962,
+            "lexical_score": 0.17329338407968256,
+            "matched_terms": [
+                "allocation",
+                "amplifying",
+                "and",
+                "availability",
+                "buffer",
+                "consumption",
+                "engine",
+                "inside",
+                "is",
+                "latency",
+                "memory",
+                "or",
+                "out",
+                "oversized",
+                "per",
+                "pressure",
+                "sql",
+                "the",
+                "with",
+                "workload"
+            ],
+            "match_count": 16,
+            "entry": {
+                "error_code": "HV001",
+                "error_name": "fdw_out_of_memory",
+                "official_description": "fdw out of memory",
+                "error_class": "Class HV - Foreign Data Wrapper Error (SQL/MED)",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "memory_and_buffer",
+                "cause_analysis": "The failure is typically associated with insufficient memory headroom, buffer pressure, oversized intermediate state, or memory-allocation constraints inside the engine or client library.",
+                "solution_guidance": "Check memory availability, per-session memory settings, large sorts or hashes, and whether workload concurrency is amplifying memory consumption.",
+                "observable_symptoms": [
+                    "memory pressure",
+                    "allocation failure",
+                    "spill",
+                    "unstable latency"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,60 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Database Memory Allocation Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions compete for mutually incompatible locks on the same rows, pages, or metadata, causing long blocking chains or deadlocks that stall or abort work.\nDatabase Memory Allocation Anomaly : The database engine's cumulative memory footprint for caches, work areas, and background heaps exceeds safe physical limits, provoking host-level pressure, paging, or OOM terminations.\n\nWhen both root causes manifest together, the system shows a blended symptom set: lock wait time, deadlock reports, and application time-outs rise while, in parallel, process resident-set size climbs, OS swap activity surges, cache hit ratios fluctuate, and sporadic OOM or eviction events appear. Queries blocked on locks hold private work buffers longer, inflating overall memory use; conversely, memory pressure can throttle or pre-empt processes, stretching statement execution time and prolonging lock ownership, so blocking trees lengthen rapidly. Connection pools fill as sessions queue behind both lock and memory bottlenecks, throughput collapses, and recovery routines such as lock-timeout victim selection or kernel OOM killer may trigger cascading rollbacks and node restarts.\n\nCausally, heavy lock contention forces many concurrent sessions to remain active and retain their per-session allocations, expanding memory consumption. Growing memory pressure induces CPU stalls, swapping, or task cancellation, slowing query completion and extending the lifetime of held locks. This positive feedback loop amplifies each anomaly: lock waits create more resident memory, while memory starvation prolongs lock holds, together degrading transactional latency and risking systemic instability.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.6555303104217646,
+            "bm25_score": 28.620441643006586,
+            "lexical_score": 0.19042086447838805,
+            "matched_terms": [
+                "and",
+                "blocking",
+                "connection",
+                "for",
+                "incompatible",
+                "lifetime",
+                "lock",
+                "longer",
+                "metadata",
+                "of",
+                "or",
+                "session",
+                "sessions",
+                "statement",
+                "the",
+                "this",
+                "timeout",
+                "to",
+                "transaction",
+                "wait",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 116,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

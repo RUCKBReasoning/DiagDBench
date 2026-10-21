@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Storage I/O Throughput Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Stale, incomplete, or missing optimizer statistics cause systematic cardinality misestimation and mis-costing of execution plans.\nStorage I/O Throughput Anomaly : Physical read/write capacity of the underlying storage is saturated, driving high I/O latency, deep device queues, and dominant I/O wait time in the database.\nOperating System Resource Limit Anomaly : Kernel-enforced limits on file handles, shared memory, semaphores, async-I/O contexts, threads, or processes are reached, preventing the engine from allocating essential OS resources.\n\nWhen all three root causes coexist, the workload is exposed to a compounded failure mode: misestimated plans choose I/O-heavy access paths and excessive spool/temporary operations; the resulting surge in physical reads, writes, and temp-file activity collides with an already bandwidth-constrained storage layer, inflating latency and queue depths. Prolonged I/O waits keep sessions and background workers alive longer, driving descriptor, thread, and AIO-context usage up to or beyond kernel limits. Once those limits are hit, new workers, parallel threads, and statistics-gathering jobs fail to spawn, producing errors about file or resource exhaustion and further preventing corrective statistics refresh.\n\nCausal chain and mutual reinforcement: (1) Inaccurate statistics steer queries toward volume-scanning or temp-spilling plans, multiplying I/O demand. (2) Storage saturation lengthens every I/O, amplifying the cost of those suboptimal plans and delaying automatic statistics maintenance, leaving statistics even staler. (3) High latency and prolonged session lifetimes consume more OS handles, async-I/O slots, and threads; once OS limits are reached, additional I/O contexts cannot be opened, throttling the database below its configured parallelism and exacerbating throughput bottlenecks. (4) The failure of auto-stats jobs due to missing workers or file handles locks the system into a vicious cycle of ever-worsening plan quality, I/O pressure, and resource exhaustion, leading to widespread slowdowns, partial outages, or complete service interruption.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.5049559960036892,
+            "bm25_score": 20.439016377465695,
+            "lexical_score": 0.16740304369170347,
+            "matched_terms": [
+                "activity",
+                "and",
+                "are",
+                "from",
+                "is",
+                "latency",
+                "longer",
+                "more",
+                "of",
+                "or",
+                "read",
+                "session",
+                "sessions",
+                "stale",
+                "the",
+                "time",
+                "to",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 1,
+            "entry": {
+                "timeout_id": "mysql84_replica_network_timeout",
+                "parameter_name": "replica_net_timeout",
+                "timeout_category": "replication_network_timeout",
+                "scope": "global/replication",
+                "official_definition": "The number of seconds to wait for more data from a source/replica connection before aborting the read.",
+                "trigger_condition": "A replica waits longer than replica_net_timeout for more data from the source connection.",
+                "workload_impact": "The replication network read is aborted and the replica considers the connection interrupted.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

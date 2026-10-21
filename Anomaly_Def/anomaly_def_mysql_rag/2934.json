@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + CPU Resource Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Sessions serialize on hot buffer-cache pages and the latches protecting them, producing buffer-busy/page-latch waits and spin loops inside the buffer manager.\nCPU Resource Anomaly : Database processes consume nearly all available CPU cycles, pushing system-wide utilization and run-queue lengths to saturation levels.\n\nWhen both root causes strike simultaneously, the database experiences a feedback loop in which excessive CPU spin and context switching from latch contention coexist with, and intensify, host CPU saturation. Observable symptoms include: sustained 90-100 % CPU usage alongside a high fraction of CPU time spent in spin-wait; explosive run-queue growth paired with elevated buffer-busy, latch free, and scheduler wait events; steep, wide-ranging latency spikes where even simple statements stall behind both CPU scarcity and latch acquisition; and uneven throughput as hot pages intermittently freeze large parts of the workload while other sessions starve for CPU.\n\nCausally, hot-page contention forces foreground processes to enter tight spin loops, burning CPU while waiting for latches; this self-generates the CPU Resource Anomaly. Conversely, a pre-existing CPU bottleneck lengthens critical sections inside the buffer manager because latch holders are scheduled less frequently, inflating the hold times seen by other sessions and deepening buffer contention. The two anomalies therefore reinforce each other: latch spin escalates CPU pressure, while CPU starvation magnifies latch hold durations, propagating stalls across the workload and driving the database into a mutually amplifying spiral of compute exhaustion and buffer-cache serialization.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.7455384615384615,
+            "bm25_score": 24.86804161100333,
+            "lexical_score": 0.15179487179487178,
+            "matched_terms": [
+                "and",
+                "because",
+                "behind",
+                "by",
+                "contention",
+                "for",
+                "in",
+                "other",
+                "resource",
+                "statements",
+                "the",
+                "this",
+                "time",
+                "when",
+                "with",
+                "workload"
+            ],
+            "match_count": 138,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

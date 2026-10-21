@@ -1,0 +1,47 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Replication Synchronization Anomaly + CPU Resource Anomaly",
+            "Description": "Schema and Index Design Anomaly: Static mismatch between physical data model (tables, indexes, partitions, data types, constraints) and workload access patterns forces inefficient access paths and excessive I/O. \nReplication Synchronization Anomaly: Standby or downstream replicas cannot receive, write, or apply primary log records fast enough, producing widening replication lag and retained logs. \nCPU Resource Anomaly: Database processes saturate host CPU, driving high run-queue lengths and system-wide latency once compute capacity is exhausted.\n\nWhen all three root causes coincide, the system exhibits a blend of severe symptoms: primary queries show full-table scans and multiple non-covering index lookups that spike CPU consumption; CPUs on both primary and replicas run near 100 %, inflating context switches and scheduler waits; replication lag explodes as replicas choke on compute-heavy, poorly indexed redo application; primary retains ever-growing write-ahead logs, leading to disk-space pressure and prolonged failover times; application requests observe erratic latency due to CPU starvation, while read replicas deliver increasingly stale or inconsistent data. Performance troubleshooting becomes difficult because each layer (query design, system load, and replication health) appears to be the bottleneck at different moments.\n\nCausally, sub-optimal schema and missing/inefficient indexes inflate the CPU cost of every read and write. The excess CPU load on the primary slows transaction processing and inflates generated redo volume through larger scan and update operations. The same flawed schema exists on replicas, so their single-threaded or limited-parallelism apply processes struggle even more, consuming CPU cycles to re-execute costly statements and intensifying replication lag. Growing lag prevents log recycling on the primary, increasing disk pressure and forcing additional checkpoints that further tax CPU. The sustained high CPU utilization on both primary and replicas feeds back into longer query times and slower replication apply, forming a reinforcing loop that degrades throughput and jeopardizes recovery objectives.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.2331813647867418,
+            "bm25_score": 8.943220524892087,
+            "lexical_score": 0.09097090449082859,
+            "matched_terms": [
+                "and",
+                "data",
+                "is",
+                "latency",
+                "longer",
+                "on",
+                "or",
+                "stale",
+                "system",
+                "the",
+                "when"
+            ],
+            "match_count": 201,
+            "entry": {
+                "timeout_id": "pg16_tcp_user_timeout",
+                "parameter_name": "tcp_user_timeout",
+                "timeout_category": "network_unacknowledged_data_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies how long transmitted data may remain unacknowledged before the TCP connection is forcibly closed.",
+                "trigger_condition": "TCP data sent by PostgreSQL remains unacknowledged longer than tcp_user_timeout on systems supporting TCP_USER_TIMEOUT.",
+                "workload_impact": "The TCP connection is forcibly closed.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

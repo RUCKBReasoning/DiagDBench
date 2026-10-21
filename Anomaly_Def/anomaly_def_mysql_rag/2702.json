@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Data Block and Index Integrity Anomaly + CPU Resource Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Mis-tuned engine parameters (memory pools, checkpoint cadence, parallelism limits, etc.) create artificial pressure or idle gaps that do not reflect the true hardware capacity.\nData Block and Index Integrity Anomaly : Physical pages or index structures on disk become internally inconsistent or corrupted, making stored data and access paths unreliable.\nCPU Resource Anomaly : Database processes consume an abnormally large share of CPU cycles, driving the host to sustained compute saturation.\n\nCombined phenomena: The instance shows near-100 % CPU utilisation, long run-queues, and pervasive scheduler waits while I/O devices oscillate between bursts and idle periods. Queries that once used indexes fall back to full scans or repeatedly re-read pages after failed checksum validations, inflating CPU usage and causing erratic latency spikes. Frequent checkpoints or aggressive background verification jobs—triggered by tight configuration thresholds—collide with corruption-induced page rereads, producing log-flush storms and lock contention. Monitoring highlights mismatches between hardware utilisation (CPU pegged, disks underused) and wait-event mixes that include CPU spin waits, page verification failures, and redo-flush pressure. Application symptoms range from sporadic “page corruption” or “could not read block” errors to global slow-downs as the engine burns CPU retrying failed I/O and running mis-sized maintenance tasks.\n\nCausal chain: 1) Misconfigured memory and checkpoint parameters shrink buffer pools or force excessively frequent flushes, magnifying I/O churn and the probability that latent page or index corruption is touched. 2) Encountering corrupted structures causes the optimizer to abandon indexes or to invoke page-verification and error-recovery code paths that are markedly CPU-intensive. 3) The unexpected CPU demand pushes the host into saturation; with parallelism caps set too high, additional worker threads compete for already scarce cycles, further amplifying CPU waits. 4) High CPU load slows checkpoint completion and recovery threads, extending the window in which partially flushed or torn pages can propagate, potentially worsening corruption. Thus, mis-tuned configuration, latent storage corruption, and compute exhaustion create a self-reinforcing loop that degrades performance, increases error rates, and jeopardizes data integrity across both transactional and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.6577638775939635,
+            "bm25_score": 22.60162332792679,
+            "lexical_score": 0.1614035087719298,
+            "matched_terms": [
+                "additional",
+                "and",
+                "are",
+                "data",
+                "for",
+                "from",
+                "global",
+                "idle",
+                "is",
+                "latency",
+                "not",
+                "of",
+                "or",
+                "pools",
+                "read",
+                "the",
+                "to",
+                "triggered",
+                "wait",
+                "waits"
+            ],
+            "match_count": 128,
+            "entry": {
+                "timeout_id": "mysql84_network_read_timeout",
+                "parameter_name": "net_read_timeout",
+                "timeout_category": "network_read_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for more data from a connection before aborting the read.",
+                "trigger_condition": "The server waits for additional data from a connection longer than net_read_timeout.",
+                "workload_impact": "The network read is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

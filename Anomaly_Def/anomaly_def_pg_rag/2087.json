@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Transaction Log Subsystem Anomaly + CPU Resource Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Excessive accumulation of obsolete row versions, rollback records, and dead index entries outpaces background cleanup, inflating storage and visibility-check costs. \nTransaction Log Subsystem Anomaly : Write-ahead log generation, flushing, or archival becomes the bottleneck, stalling commits and growing the log store. \nCPU Resource Anomaly : Database processes saturate host CPU, creating system-wide compute starvation regardless of which layer drives the load. \n\nWhen all three conditions coexist, the database exhibits a cascade of symptoms: commit latency and \"log write/log flush\" waits soar while user transactions also spend more time on MVCC visibility scans and vacuum/garbage-collection contention. Table and index sizes balloon, leading to longer buffer misses and heavier background I/O. Simultaneously, CPU utilization remains pegged; cleanup workers, log-flush daemons, and application sessions compete for cycles, causing elevated run-queue times and mixed wait profiles (CPU, log I/O, MVCC lookup) that are difficult to disentangle. Checkpoints may fire more frequently yet complete more slowly, archiver lag grows, and planner misestimates rise as row-density statistics drift, further inflating CPU and log pressure.\n\nCausally, heavy update/delete churn produces large volumes of undo/redo, first stretching MVCC storage and then flooding the transaction log. The bloated heap forces longer visibility checks, which consume extra CPU; at the same time, intensified log flushing and background vacuum both demand CPU and I/O bandwidth. As CPU saturation lengthens every worker’s service time, cleanup and archiver processes fall further behind, letting dead versions and unarchived logs accumulate. The feedback loop—more dead versions → more log generation → more CPU demand → slower cleanup/flushing—amplifies each anomaly and can tip the database into a write-path stall or emergency shutdown due to version-store or log-space exhaustion.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.7457654698242933,
+            "bm25_score": 29.621938251648185,
+            "lexical_score": 0.15255156608097784,
+            "matched_terms": [
+                "and",
+                "database",
+                "for",
+                "index",
+                "longer",
+                "of",
+                "or",
+                "row",
+                "sessions",
+                "table",
+                "that",
+                "the",
+                "time",
+                "to",
+                "transaction",
+                "user",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 265,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

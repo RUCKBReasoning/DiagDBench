@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Transaction Log Subsystem Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Schema and Index Design Anomaly : The physical table, index, and partition design does not match workload access patterns, forcing inefficient full scans, non-covering index probes, and excessive row/memory churn.\nTransaction Log Subsystem Anomaly : The write-ahead log buffer, file groups, or archiver cannot absorb or flush redo fast enough, so commits wait on log-write, log-flush, and log-sync events.\nOperating System Resource Limit Anomaly : Kernel-enforced caps on file handles, shared memory, semaphores, I/O contexts, or process/thread counts are reached, preventing the database from allocating required OS resources.\n\nWhen these three root causes coexist, the workload experiences an explosive mix of symptoms: poorly indexed DML and wide range scans generate abnormally large redo streams that quickly fill the log buffer and force frantic log-file switches. Commit latency, \"log file sync/write\" and \"log buffer space\" waits surge, while background archiver or replication workers fall behind, swelling archive directories. As sessions queue behind stalled commits, the database tries to open more files, allocate additional shared memory, start extra log writer or archiver threads, and spawn parallel workers—actions that collide with tight OS limits. Soon the error logs show alternating database wait events and kernel denials (EMFILE, ENOMEM, ENOSPC, semaphore limits), new sessions or workers fail to start, and parts of the system enter a semi-hung state where reads limp along but writes time out or abort.\n\nCausally, the inefficient schema/index design inflates the volume and frequency of data modifications and undo/redo generation. This elevated redo rate saturates an already undersized or mis-placed transaction-log subsystem, prolonging commit paths and increasing the lifetime and number of active log files. The resulting backlog drives the engine to open more descriptors, maintain more control files, grow log buffers, and spawn additional background tasks, all of which consume kernel objects. If OS limits are conservative or have been depleted by earlier failures, these requests begin to fail, which in turn prevents log switches, flushes, or worker creation, aggravating log congestion and magnifying the performance collapse. Thus, each root cause amplifies the others, producing a severe, intertwined bottleneck that is far more debilitating than any single anomaly alone.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.6313945620245819,
+            "bm25_score": 24.11432531641755,
+            "lexical_score": 0.17057387057387055,
+            "matched_terms": [
+                "and",
+                "are",
+                "data",
+                "does",
+                "from",
+                "is",
+                "latency",
+                "more",
+                "not",
+                "number",
+                "of",
+                "or",
+                "replication",
+                "sessions",
+                "than",
+                "the",
+                "this",
+                "time",
+                "to",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 89,
+            "entry": {
+                "timeout_id": "mysql84_replica_network_timeout",
+                "parameter_name": "replica_net_timeout",
+                "timeout_category": "replication_network_timeout",
+                "scope": "global/replication",
+                "official_definition": "The number of seconds to wait for more data from a source/replica connection before aborting the read.",
+                "trigger_condition": "A replica waits longer than replica_net_timeout for more data from the source connection.",
+                "workload_impact": "The replication network read is aborted and the replica considers the connection interrupted.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

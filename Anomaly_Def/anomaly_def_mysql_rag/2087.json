@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Transaction Log Subsystem Anomaly + CPU Resource Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Excessive accumulation of obsolete row versions, rollback records, and dead index entries outpaces background cleanup, inflating storage and visibility-check costs. \nTransaction Log Subsystem Anomaly : Write-ahead log generation, flushing, or archival becomes the bottleneck, stalling commits and growing the log store. \nCPU Resource Anomaly : Database processes saturate host CPU, creating system-wide compute starvation regardless of which layer drives the load. \n\nWhen all three conditions coexist, the database exhibits a cascade of symptoms: commit latency and \"log write/log flush\" waits soar while user transactions also spend more time on MVCC visibility scans and vacuum/garbage-collection contention. Table and index sizes balloon, leading to longer buffer misses and heavier background I/O. Simultaneously, CPU utilization remains pegged; cleanup workers, log-flush daemons, and application sessions compete for cycles, causing elevated run-queue times and mixed wait profiles (CPU, log I/O, MVCC lookup) that are difficult to disentangle. Checkpoints may fire more frequently yet complete more slowly, archiver lag grows, and planner misestimates rise as row-density statistics drift, further inflating CPU and log pressure.\n\nCausally, heavy update/delete churn produces large volumes of undo/redo, first stretching MVCC storage and then flooding the transaction log. The bloated heap forces longer visibility checks, which consume extra CPU; at the same time, intensified log flushing and background vacuum both demand CPU and I/O bandwidth. As CPU saturation lengthens every worker’s service time, cleanup and archiver processes fall further behind, letting dead versions and unarchived logs accumulate. The feedback loop—more dead versions → more log generation → more CPU demand → slower cleanup/flushing—amplifies each anomaly and can tip the database into a write-path stall or emergency shutdown due to version-store or log-space exhaustion.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.5133579276571852,
+            "bm25_score": 11.868421068255614,
+            "lexical_score": 0.1212588761286929,
+            "matched_terms": [
+                "and",
+                "are",
+                "check",
+                "complete",
+                "for",
+                "latency",
+                "of",
+                "or",
+                "sessions",
+                "that",
+                "the",
+                "time",
+                "waits",
+                "when"
+            ],
+            "match_count": 89,
+            "entry": {
+                "timeout_id": "mysql84_connection_handshake_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "connection_handshake_timeout",
+                "scope": "global",
+                "official_definition": "The number of seconds that the mysqld server waits for a connect packet before responding with Bad handshake.",
+                "trigger_condition": "A client does not complete the initial connection packet exchange within connect_timeout.",
+                "workload_impact": "The connection attempt fails during handshake.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

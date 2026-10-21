@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Replication Synchronization Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Schema and Index Design Anomaly: Static mismatch between physical data model (tables, partitions, indexes, datatypes, constraints) and workload access patterns forces inefficient access paths even when SQL is well-written.\nReplication Synchronization Anomaly: Replication pipeline cannot receive, persist, or apply WAL/redo at the pace the primary generates it, causing widening log-position gaps and lag across nodes.\nStorage I/O Throughput Anomaly: Underlying storage subsystem is saturated in bandwidth, IOPS, or latency, so physical reads and writes queue up, inflating I/O wait times for data, temp, and log files.\n\nWhen all three anomalies coexist, the database exhibits a compounded performance collapse: primary queries perform full scans and excessive random look-ups due to poor schema and index design, inflating read and write volumes exactly when the storage layer is already throughput-bound. The bloated I/O stream amplifies storage queue depths, elevates data-file and log-file latencies, and slows checkpoint and flush operations. Simultaneously, the replication channel falls further behind because the primary’s overloaded log writer produces a high volume of change records while the replica’s apply threads stall on the same storage bottlenecks. Monitoring shows runaway query latency, surging buffer cache misses, prolonged commit times, rapidly growing replication lag, retention of old WAL segments on the primary, and near-continuous storage wait events on both primary and replicas, making it difficult to attribute delays to any single layer.\n\nCausally, inefficient access paths caused by poor schema and indexing multiply the physical I/O demand. This burst of disk activity collides with limited storage throughput, extending read/write latencies and commit times. Longer commit paths inflate the volume and lifespan of log data waiting to be shipped, so replication lag widens. As replicas struggle with the same sub-optimal schema and the shared storage bottleneck, their apply rate drops, which in turn prevents the primary from recycling log segments, further increasing disk usage and pressure on the constrained storage subsystem. The vicious cycle of excessive I/O, storage saturation, and replication backlog can ultimately threaten both performance and availability of the entire database environment.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.6377808448197637,
+            "bm25_score": 25.913992875652355,
+            "lexical_score": 0.15619645916619074,
+            "matched_terms": [
+                "and",
+                "be",
+                "because",
+                "cannot",
+                "change",
+                "for",
+                "is",
+                "longer",
+                "of",
+                "or",
+                "schema",
+                "the",
+                "this",
+                "to",
+                "wait",
+                "waiting",
+                "when",
+                "while",
+                "write",
+                "written"
+            ],
+            "match_count": 23,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

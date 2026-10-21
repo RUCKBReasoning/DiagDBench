@@ -1,0 +1,60 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Transaction Log Subsystem Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently selects sub-optimal execution plans even though statistics are adequate, leading to inefficient operator choices, wrong join orders, or loss of parallelism.\nTransaction Log Subsystem Anomaly : The write-ahead log path (buffer, file group, archiver, or replica shipping) becomes the primary bottleneck, inflating commit latency and stalling write activity.\nNetwork and Connectivity Resource Anomaly : Network transport, listener, socket, or authentication resources are saturated or unstable, limiting connection throughput and inflating client-side latency.\n\nWhen all three root causes strike together, the database experiences a multilayer performance collapse: 1) poorly chosen plans amplify the volume and burstiness of redo generation; 2) the overloaded log subsystem lengthens commit and flush times, causing sessions to queue on log-related waits; 3) prolonged execution and commit phases keep server processes busy and network sockets open, driving up concurrent connection counts, which in turn suffer from network backlog, retransmissions, and timeout storms. Observable symptoms blend: sudden plan flips to full scans coincide with surging redo size per transaction; commit duration, \"log write\" and \"log sync\" waits skyrocket; at the same time, clients report connection timeouts, authentication stalls, or sluggish result streaming. Monitoring may show high CPU from sub-optimal plans, disk I/O saturation isolated to log devices, growing archive or replica lag, plus an explosion of ESTABLISHED and TIME_WAIT sockets and listener backlog overflows.\n\nCausally, sub-optimal plans inflate I/O and row-level change volume, directly increasing redo generation and frequency of log flushes. The stressed log path elongates transaction completion, holding locks and backend processes longer, which multiplies concurrent session counts and socket occupancy. Network saturation further delays acknowledgement of commit replies and result sets, causing application retries that re-enter the optimizer, generating yet more inefficient plans and additional redo. This feedback loop causes each anomaly to reinforce the others, degrading throughput, inflating latency across tiers, and making isolated diagnosis difficult because symptoms of one layer (e.g., network timeouts) are in fact rooted in the compounded failures of all three subsystems.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.7064378290454841,
+            "bm25_score": 23.33670613704369,
+            "lexical_score": 0.19353099730458218,
+            "matched_terms": [
+                "activity",
+                "and",
+                "are",
+                "authentication",
+                "client",
+                "connection",
+                "from",
+                "holding",
+                "latency",
+                "longer",
+                "more",
+                "network",
+                "of",
+                "or",
+                "replica",
+                "session",
+                "sessions",
+                "the",
+                "this",
+                "time",
+                "timeout",
+                "to",
+                "waits",
+                "when"
+            ],
+            "match_count": 8,
+            "entry": {
+                "timeout_id": "mysql84_replica_network_timeout",
+                "parameter_name": "replica_net_timeout",
+                "timeout_category": "replication_network_timeout",
+                "scope": "global/replication",
+                "official_definition": "The number of seconds to wait for more data from a source/replica connection before aborting the read.",
+                "trigger_condition": "A replica waits longer than replica_net_timeout for more data from the source connection.",
+                "workload_impact": "The replication network read is aborted and the replica considers the connection interrupted.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

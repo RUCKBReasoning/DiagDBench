@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Replication Synchronization Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Critical optimizer metadata (row counts, histograms, correlation data) is stale or incomplete, producing systematic cardinality errors and sub-optimal execution plans.\nReplication Synchronization Anomaly : The replication channel cannot ship, write, or apply change-stream records as fast as the primary generates them, causing widening log gaps and replay lag.\nNetwork and Connectivity Resource Anomaly : Transport paths, listeners, sockets, or authentication slots are saturated or unstable, throttling client traffic and any database communication that relies on the same network.\n\nWhen all three root causes strike together, the database exhibits a blended symptom set:  • Queries on the primary and on read replicas show severe plan drift, long runtimes, and explosive I/O because misestimated cardinalities choose inefficient join orders or missing indexes. • These bloated queries emit outsized result sets and hold transactions open longer, enlarging write-ahead logs. • Replication views show rapidly increasing send/receive/replay lag, while primary log segments accumulate and disk usage grows because they cannot be recycled. • Concurrently, client sessions and replication transport report connection stalls, timeouts, retransmissions, or \"too many connections\" errors as the network and listener queues saturate. • On read replicas, both stale data (because of lag) and stale statistics (never refreshed due to catch-up backlog) yield even poorer plans, making troubleshooting signals hard to attribute to any single layer.\n\nCausal interaction: Inaccurate statistics produce heavyweight queries that inflate log volume and prolong transaction lifetimes; the surge in redo must traverse the replication channel, stressing apply workers. Network congestion and exhausted connection resources throttle that channel, amplifying replication lag. The growing lag forces the primary to retain more log files, increasing storage pressure and further slowing I/O for already inefficient queries. On replicas, delayed replay postpones statistics refresh jobs, perpetuating optimizer inaccuracy and compounding bad plan generation. The feedback loop between poor plans (from stale statistics), network-induced replication slowdown, and replication-induced resource retention drives a cascading degradation that impacts both OLTP and analytical workloads across the cluster.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.3851958205014008,
+            "bm25_score": 13.262267192748425,
+            "lexical_score": 0.1392016660881638,
+            "matched_terms": [
+                "and",
+                "any",
+                "are",
+                "authentication",
+                "client",
+                "connection",
+                "for",
+                "is",
+                "longer",
+                "of",
+                "open",
+                "or",
+                "sessions",
+                "stale",
+                "that",
+                "the",
+                "transaction",
+                "when"
+            ],
+            "match_count": 239,
+            "entry": {
+                "timeout_id": "pg16_idle_session_timeout",
+                "parameter_name": "idle_session_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle, but not within an open transaction, for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle and not inside an open transaction longer than the configured threshold.",
+                "workload_impact": "The session is terminated; the documentation warns about using this with connection pools or middleware.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

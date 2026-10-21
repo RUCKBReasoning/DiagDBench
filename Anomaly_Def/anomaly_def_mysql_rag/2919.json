@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Database Memory Allocation Anomaly: Memory regions owned by the database engine grow beyond the safe limits of the host, driving paging, swapping, or OOM events.\nStorage I/O Throughput Anomaly: Underlying storage volumes are unable to deliver the required read/write bandwidth or IOPS, resulting in persistently elevated latency and long device queues.\n\nComposite anomaly definition: The database simultaneously exhausts server memory while the storage subsystem is already throughput-bound. The memory allocator keeps demanding pages that the storage layer cannot supply or flush fast enough, and the storage layer cannot keep pace with the extra traffic induced by memory pressure.\n\nCombined anomalous phenomena: 1) Dramatic oscillation between memory and I/O waits—buffer-cache eviction storms lead to surges of physical reads, while swap activity inflates write traffic. 2) CPU utilization appears sporadic: worker threads stall on both page-in/page-out operations and storage waits, masking the true root causes. 3) Cache-hit ratios plunge despite large cache sizes, checkpoint and log-flush latency spikes, batch windows stretch, and clustered or virtualized nodes face eviction due to compounded memory and I/O SLA violations. 4) Diagnostic views show ballooning resident-set size, high page-fault rates, deep storage queues, and mixed wait events (buffer I/O, memory latch sleep, page flushes) that are hard to attribute to a single layer.\n\nCausal chain and interaction: Excessive memory allocation evicts hot pages prematurely, forcing the engine to issue more physical reads; the already saturated storage cannot satisfy these reads quickly, causing sessions to remain active longer and hold even more memory, which further heightens memory pressure. Conversely, slow storage flushes delay the release of dirty buffers and temp segments, obliging the engine to allocate additional memory to continue processing, inching the system closer to swapping. Each anomaly amplifies the other, creating a feedback loop that degrades throughput, increases latency, and threatens instance stability far more severely than either issue in isolation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.722666589070218,
+            "bm25_score": 21.86150953991652,
+            "lexical_score": 0.153,
+            "matched_terms": [
+                "activity",
+                "additional",
+                "and",
+                "are",
+                "is",
+                "latency",
+                "longer",
+                "more",
+                "of",
+                "or",
+                "read",
+                "server",
+                "sessions",
+                "than",
+                "the",
+                "to",
+                "wait",
+                "waits"
+            ],
+            "match_count": 138,
+            "entry": {
+                "timeout_id": "mysql84_network_read_timeout",
+                "parameter_name": "net_read_timeout",
+                "timeout_category": "network_read_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for more data from a connection before aborting the read.",
+                "trigger_condition": "The server waits for additional data from a connection longer than net_read_timeout.",
+                "workload_impact": "The network read is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

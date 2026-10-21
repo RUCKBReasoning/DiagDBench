@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Transaction Log Subsystem Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level SQL or transaction design forces the engine to scan, update, or hold far more data and longer transactions than business logic really requires.\nTransaction Log Subsystem Anomaly : The write-ahead log buffer, files, or archival pipeline cannot keep up with the volume of redo that must be generated, flushed, or retained, making commit latency the critical path.\nStorage I/O Throughput Anomaly : The physical storage layer hits its IOPS, throughput, or latency ceiling for the volumes that host data, temp, and especially log files.\n\nCombined phenomena: When all three root causes strike together, the workload produces unusually high redo volume and large result sets, which in turn drive a spike in both data-file and log-file I/O. Commit calls, bulk DML, and even read-only statements experience long-tail latency as they wait first on log flushes and then on saturated storage queues. Engine wait statistics show an intermixed dominance of SQL execution, log-write, durability-flush, and generic I/O waits, making it difficult to attribute slowness to a single layer. Slow-query logs contain repetitive, heavy statements; meanwhile alert logs record frequent log switches, archive backlogs, and checkpoint storms. Application tiers observe timeouts, congestion, and sporadic deadlocks as transactions overrun their expected duration and hold locks longer than normal.\n\nCausal chain and reinforcement: Inefficient SQL inflates the volume of rows read and modified, multiplying the amount of redo that must be generated. This surge overwhelms the transaction-log subsystem, lengthening commit times and causing more log buffering and file switching. The additional log and data traffic push the underlying storage array past its throughput limits, further slowing both log flushes and data-page reads/writes. The slower storage response feeds back into even longer SQL and commit latencies, which extend transaction lifetimes, hold locks, and create still more redo to be written. The three anomalies therefore reinforce each other in a vicious cycle, degrading overall OLTP performance and stability far more severely than any single anomaly would in isolation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.32708940585802476,
+            "bm25_score": 13.395734439095381,
+            "lexical_score": 0.12654375182908983,
+            "matched_terms": [
+                "amount",
+                "an",
+                "and",
+                "any",
+                "for",
+                "latency",
+                "longer",
+                "of",
+                "or",
+                "than",
+                "that",
+                "the",
+                "this",
+                "transaction",
+                "when",
+                "with"
+            ],
+            "match_count": 314,
+            "entry": {
+                "timeout_id": "pg16_idle_session_timeout",
+                "parameter_name": "idle_session_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle, but not within an open transaction, for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle and not inside an open transaction longer than the configured threshold.",
+                "workload_impact": "The session is terminated; the documentation warns about using this with connection pools or middleware.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

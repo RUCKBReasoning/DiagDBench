@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Query Plan Selection Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Optimizer input metadata is stale or incomplete, causing systematic cardinality misestimation.\nQuery Plan Selection Anomaly : The optimizer’s plan-choice logic or plan-reuse mechanism selects a sub-optimal execution plan even though statistics could otherwise support a good plan.\n\nWhen both root causes are present simultaneously, the database exhibits extreme and erratic performance swings: severe row-estimate errors align with wildly fluctuating plan shapes, producing alternating bursts of full-table scans, runaway nested-loop joins, or inappropriate parallelism. Identical SQL statements may oscillate between multiple poor plans after every data load, while query-level and system-level resource usage spike unpredictably. Operators show estimates off by orders of magnitude, but even after statistics refresh the bad plans can persist because of plan-cache reuse or cost-model bias; conversely, forced recompilations aimed at fixing plan issues quickly revert to using fresh yet equally misguided estimates. The mix of misestimation and unstable plan selection complicates troubleshooting, as symptoms attributed to one layer may actually stem from their intertwined effects.\n\nCausally, stale or inadequate statistics misinform the cost model, increasing the search space where the optimizer must still pick a plan. At the same time, weaknesses in plan selection logic (e.g., parameter-sensitive reuse, altered cost parameters, missing plan baselines) can magnify the harm: poor estimates steer the optimizer toward inferior plans, and once a bad plan is cached it is repeatedly reused even after statistics are eventually corrected, masking recovery of estimation accuracy. Conversely, a defective plan choice that bypasses index access or disables adaptive features accelerates data skew and workload volatility, causing statistics to become stale even faster. The feedback loop between wrong estimates and unstable plan selection thus amplifies resource contention, query latency, and throughput collapse across both transactional and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.7437142857142857,
+            "bm25_score": 29.38017257281599,
+            "lexical_score": 0.14571428571428569,
+            "matched_terms": [
+                "access",
+                "and",
+                "because",
+                "by",
+                "contention",
+                "execution",
+                "in",
+                "is",
+                "or",
+                "query",
+                "resource",
+                "statements",
+                "the",
+                "time",
+                "when",
+                "with",
+                "workload"
+            ],
+            "match_count": 139,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

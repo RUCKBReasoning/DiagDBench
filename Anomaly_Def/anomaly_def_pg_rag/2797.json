@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Database Memory Allocation Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently picks or reuses a sub-optimal execution plan even though statistics are adequate, leading to excessive I/O, CPU, or memory work per statement.\nDatabase Memory Allocation Anomaly : Database components (buffer cache, work areas, plan cache, parallel worker buffers, etc.) collectively grow beyond the safe physical-memory envelope of the host, provoking paging, swapping, or OOM events.\nOperating System Resource Limit Anomaly : Kernel-enforced quotas on handles, shared memory, threads, or address space are exhausted, preventing the database from allocating additional OS resources.\n\nWhen these three root causes coexist, the workload can oscillate between slow but still-running and partial or complete outages. Sub-optimal plans trigger unexpectedly large hash joins, sorts, or full scans, inflating per-query memory demand and filling buffer and work pools. Escalating memory pressure induces paging, RSS bloat, and frequent eviction of useful cache pages; concurrently, kernel limits on shared memory segments, file descriptors, or thread counts are reached as the engine attempts to create more work areas, temporary files, or workers to compensate. Symptoms therefore include: erratic response-time spikes, sudden plan changes followed by memory spikes, frequent \"cannot allocate memory / shared memory / file descriptor\" errors, aborted parallel starts, background-process deaths, and intermittent connection failures even while existing sessions hang in memory-stall states.\n\nCausal chain: a bad plan (1) dramatically increases memory consumption; the bloated buffers and work areas (2) drive the engine into aggressive allocation behavior that surpasses configured or implicit OS quotas; once kernel limits are hit (3) the database can no longer obtain additional shared memory, threads, or temp files, causing further plan invalidations, forced serial execution, or outright failures that feedback into the optimizer and connection pool. Conversely, prior exhaustion of OS resources can suppress parallelism or temp-space availability, nudging the optimizer toward still worse plans that consume yet more memory. The intertwined feedback loops among poor plan choice, runaway memory growth, and hard OS ceilings amplify each other, rapidly degrading throughput and stability across both OLTP and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 228,
+            "score": 0.6230350118790526,
+            "bm25_score": 46.4396446470186,
+            "lexical_score": 0.1229390681003584,
+            "matched_terms": [
+                "allocation",
+                "and",
+                "availability",
+                "buffer",
+                "consumption",
+                "engine",
+                "large",
+                "memory",
+                "or",
+                "per",
+                "pressure",
+                "sorts",
+                "the",
+                "workload"
+            ],
+            "match_count": 15,
+            "entry": {
+                "error_code": "HV090",
+                "error_name": "fdw_invalid_string_length_or_buffer_length",
+                "official_description": "fdw invalid string length or buffer length",
+                "error_class": "Class HV - Foreign Data Wrapper Error (SQL/MED)",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "memory_and_buffer",
+                "cause_analysis": "The failure is typically associated with insufficient memory headroom, buffer pressure, oversized intermediate state, or memory-allocation constraints inside the engine or client library.",
+                "solution_guidance": "Check memory availability, per-session memory settings, large sorts or hashes, and whether workload concurrency is amplifying memory consumption.",
+                "observable_symptoms": [
+                    "memory pressure",
+                    "allocation failure",
+                    "spill",
+                    "unstable latency"
+                ]
+            }
+        }
+    }
+]

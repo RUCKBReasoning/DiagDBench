@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Database Configuration Parameter Anomaly + CPU Resource Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently chooses sub-optimal execution plans despite reasonably accurate statistics, leading to inefficient operator choices, wrong join orders, or inappropriate degrees of parallelism.\nDatabase Configuration Parameter Anomaly : Engine-level settings for memory, parallelism, logging, or background workers are mis-tuned for the hardware or workload, creating systemic pressure or artificial throttling independent of actual resource capacity.\nCPU Resource Anomaly : Database processes drive the host CPUs to sustained saturation, producing high run-queue depths, context switching, and widespread latency spikes.\n\nWhen these three root causes manifest together, symptoms intertwine and intensify: the system oscillates between radically different plans, some of which spawn excessive parallel workers or CPU-heavy operators just as configuration mis-settings (e.g., over-aggressive max parallelism, undersized buffer pool, or tiny work-memory limits) force the engine to rely on CPU-intensive re-execution or spill-heavy strategies. Checkpoints or background cleaners triggered by poor parameter choices contend for the same overcrowded CPU cores, so wait-event views simultaneously show CPU-bound runqueue waits and configuration-driven stalls such as log flush or buffer eviction pauses. Performance becomes erratic—queries that sometimes fly collapse into severe slowdowns after plan cache invalidations, while overall throughput plateaus even though I/O and memory appear under-utilised.\n\nCausally, misconfigured parameters first distort the optimizer’s cost landscape (e.g., inaccurate CPU vs. I/O weighting, inflated parallelism limits, or constrained memory per operation). These distortions bias plan selection towards CPU-intensive paths. The resulting heavy compute demand pushes the host into saturation, triggering the CPU Resource Anomaly. In turn, the congested CPU environment slows background tasks governed by the same mis-tuned parameters, causing more frequent plan recompiles, cache flushing, and checkpoint storms that invalidate or evict plans—further increasing the likelihood of sub-optimal plan selection. This feedback loop amplifies latency variability, reduces throughput, and makes isolating any single layer’s contribution difficult, as optimizer misjudgments, parameter miscalibration, and genuine CPU exhaustion continuously reinforce one another.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.6262492370585567,
+            "bm25_score": 23.117793499779047,
+            "lexical_score": 0.13,
+            "matched_terms": [
+                "and",
+                "by",
+                "execution",
+                "for",
+                "in",
+                "operation",
+                "or",
+                "query",
+                "resource",
+                "the",
+                "this",
+                "together",
+                "triggered",
+                "when",
+                "work",
+                "workload"
+            ],
+            "match_count": 103,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

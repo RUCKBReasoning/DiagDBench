@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Composite Definition: The database simultaneously suffers from uncontrolled growth and pressure in engine memory structures while the transaction-log subsystem becomes a bottleneck for commit processing and log maintenance, causing intertwined resource exhaustion on both memory and log-write paths.\n\nDatabase Memory Allocation Anomaly: Excessive or ungoverned consumption of buffer caches, work areas, plan caches, and other in-process heaps that pushes the host beyond its safe physical or virtual memory limits.\nTransaction Log Subsystem Anomaly: Saturation or stall of the write-ahead logging pipeline—generation, buffering, flushing, switching, or archiving—so that commit latency and log-related waits dominate foreground response times.\n\nCombined Phenomena: When these root causes coincide, users observe sharp and erratic increases in transaction commit latency, sporadic hangs during checkpoints or log switches, and surges in memory-related wait events (e.g., latch or spin contention on shared buffers). The database process RSS balloons while the operating system begins paging, which further slows log-buffer flushes. Checkpoint storms, log-archive backlogs, and replication lag expand alongside dropping cache hit ratios, frequent worker memory spills, and OOM terminations. Performance metrics show intertwined CPU stalls on memory pressure and log-sync waits, making it difficult to attribute the slowdown to a single layer. Clustered or virtualized nodes may be evicted as both memory starvation and prolonged I/O times violate health thresholds.\n\nCausal Interaction: Excessive in-memory allocations inflate the log-buffer contents (larger hash/sort results, bigger undo segments, expanded cache metadata), generating a higher redo rate that intensifies pressure on already constrained log files. Conversely, log-flush slowdowns lengthen transaction lifetimes, holding work and session memory for longer and preventing allocations from being released, which amplifies overall memory consumption. Paging triggered by memory overcommit further degrades log-write throughput, while blocked commits keep more sessions active, snowballing both anomalies. This positive feedback loop quickly degrades throughput and stability, making remediation of either layer alone insufficient until both memory governance and log subsystem capacity are addressed.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.7407470288624788,
+            "bm25_score": 24.242178590909923,
+            "lexical_score": 0.13582342954159593,
+            "matched_terms": [
+                "and",
+                "be",
+                "causing",
+                "health",
+                "lag",
+                "longer",
+                "or",
+                "preventing",
+                "replication",
+                "the",
+                "this",
+                "times",
+                "to",
+                "triggered",
+                "waits",
+                "when"
+            ],
+            "match_count": 40,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Transaction Lock Contention Anomaly + Storage Space Capacity Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-layer statements or transaction patterns that obligate the engine to scan or modify more data, rows, or duration than the true business need demands.\nTransaction Lock Contention Anomaly : Concurrent transactions compete for incompatible locks on the same resources, producing long blocking chains or deadlocks.\nStorage Space Capacity Anomaly : Allocated data, log, or temporary space is exhausted or nearly exhausted, preventing further allocations and blocking space-consuming operations.\n\nWhen these three root causes coexist, the system experiences a compound failure mode: overly heavy or long-lived SQL requests inflate undo, redo, and temporary usage just as they hold locks for extended periods; meanwhile, shrinking free space slows or halts growth of data files, temp segments, and transaction logs. Observable effects include: 1) surging statement and transaction latency with frequent application timeouts, 2) expanding lock wait graphs where blockers cannot finish because they are stalled on space-allocation or log flush operations, 3) deadlocks followed by rollbacks that re-execute the same inefficient SQL, 4) rapid consumption of tablespace, log, or temp space culminating in allocation-failure errors that freeze active transactions mid-commit, and 5) escalating connection-pool saturation as sessions queue behind both locks and space shortages, making it difficult to isolate a single culprit.\n\nCausally, chatty or scan-heavy SQL inflates row-level change sets and temp work files, which in turn intensify lock footprints and prolong transaction lifetimes. The prolonged holds amplify contention, increasing the number and duration of waiting transactions. Each blocked or retried transaction further multiplies DML volume and redo generation, accelerating consumption of data and log space. As space nears exhaustion, auto-extend or log-archive operations stall, preventing commit processing and keeping locks active even longer, which deepens the contention spiral. The feedback loop between space exhaustion, prolonged lock retention, and inefficient SQL processing can rapidly degrade OLTP throughput and force widespread rollbacks or outages.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.3441067524710656,
+            "bm25_score": 16.454402634689906,
+            "lexical_score": 0.13540609137055837,
+            "matched_terms": [
+                "and",
+                "are",
+                "can",
+                "connection",
+                "failure",
+                "is",
+                "latency",
+                "number",
+                "of",
+                "on",
+                "or",
+                "sessions",
+                "system",
+                "that",
+                "the",
+                "to",
+                "when"
+            ],
+            "match_count": 236,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_count",
+                "parameter_name": "tcp_keepalives_count",
+                "timeout_category": "network_keepalive_failure_threshold",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the number of TCP keepalive messages that can be lost before the server connection to the client is considered dead.",
+                "trigger_condition": "The number of lost TCP keepalive probes reaches tcp_keepalives_count on systems supporting TCP_KEEPCNT.",
+                "workload_impact": "The server can consider the client connection dead after the configured keepalive failure threshold.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

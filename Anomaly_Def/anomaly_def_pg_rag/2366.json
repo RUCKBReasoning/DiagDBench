@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Database Memory Allocation Anomaly + CPU Resource Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Obsolete row versions and rollback records accumulate faster than background cleaners can reclaim them, causing table bloat and visibility-check overhead.\nDatabase Memory Allocation Anomaly : Database memory regions (buffers, work areas, caches, temporary segments) grow past safe host limits, triggering OS-level pressure, paging, or OOM events.\nCPU Resource Anomaly : Database processes consume an abnormally high and sustained share of CPU, saturating cores and lengthening run-queue waits.\n\nWhen these three root causes strike concurrently, the system exhibits a compound failure pattern: bloated heaps and indexes inflate the buffer-cache footprint, which in turn competes with per-query work areas and background workers for RAM. Memory pressure forces the operating system to page, and every faulted-in page or reclaimed version must still be visibility-checked, driving up CPU cycles per row. The escalating CPU demand keeps all cores near saturation, prolongs cleaner and checkpointer cycles, and further delays version reclamation. Observable symptoms therefore include explosive growth of on-disk table size, runaway resident-set size, swap activity, soaring CPU utilisation, high scheduler/run-queue waits, persistent autovacuum or purge workers unable to keep up, mis-estimated plans due to bloated statistics, cache-hit ratio collapse, and widespread query latency spikes that blur the boundary between I/O, memory, and CPU bottlenecks.\n\nCausally, heavy update/delete churn produces excessive dead versions; the enlarged version store inflates buffer-pool usage and forces more aggressive caching, pushing overall memory consumption past safe thresholds. Paging and memory throttling slow cleaner threads, letting even more dead tuples accumulate. Each subsequent access must traverse larger page chains and perform more visibility checks, amplifying CPU usage. Near-saturated CPUs delay both user queries and background maintenance, so version cleanup and memory reclamation fall further behind, creating a feedback loop where MVCC bloat drives memory exhaustion, memory pressure amplifies CPU demand, and CPU saturation prevents recovery—ultimately degrading throughput and threatening system stability.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.49985997400727894,
+            "bm25_score": 16.38750105270934,
+            "lexical_score": 0.12220113851992409,
+            "matched_terms": [
+                "activity",
+                "and",
+                "be",
+                "can",
+                "check",
+                "dead",
+                "failure",
+                "latency",
+                "of",
+                "on",
+                "or",
+                "system",
+                "that",
+                "the",
+                "to",
+                "when"
+            ],
+            "match_count": 276,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_count",
+                "parameter_name": "tcp_keepalives_count",
+                "timeout_category": "network_keepalive_failure_threshold",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the number of TCP keepalive messages that can be lost before the server connection to the client is considered dead.",
+                "trigger_condition": "The number of lost TCP keepalive probes reaches tcp_keepalives_count on systems supporting TCP_KEEPCNT.",
+                "workload_impact": "The server can consider the client connection dead after the configured keepalive failure threshold.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

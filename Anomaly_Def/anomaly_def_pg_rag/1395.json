@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + CPU Resource Anomaly",
+            "Description": "Schema and Index Design Anomaly : Physical data-model and indexing choices mismatch workload access paths, forcing otherwise correct SQL to read or write far more data than necessary.\nCPU Resource Anomaly : Host CPU cores become saturated by database processes, throttling all sessions regardless of their individual efficiency.\n\nWhen these root causes strike together, the system displays a blend of I/O-heavy access paths and persistent CPU saturation. Execution plans show full scans, large hash or sort operations, and repeated key lookups, while OS metrics report high run-queue depth, elevated context switches, and spikes in CPU time for the most frequent statements. Latency escalates non-linearly: queries slowed by scan-heavy plans also wait longer in CPU run queues, causing lock hold times, connection pool exhaustion, and sporadic timeouts. Maintenance tasks (auto-vacuum, statistics refresh, checkpoint, log flushing) compete for already scarce CPU, so short stalls ripple into user-visible slowdowns and variance in response times.\n\nCausally, sub-optimal schema and missing or misaligned indexes compel the optimizer to choose resource-hungry plans that read and process excess rows; this inflates per-query CPU demand. The aggregate effect of many such inefficient executions drives CPU Resource Anomaly. Once cores are saturated, the scheduler elongates every CPU quantum, further magnifying the cost of each scan, join, and sort. High CPU pressure delays background tasks that might otherwise mitigate bloat or refresh statistics, locking the system into a feedback loop where degraded physical design and compute starvation reinforce one another, ultimately depressing throughput and threatening stability under both transactional and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.34367721254781525,
+            "bm25_score": 12.13216736717429,
+            "lexical_score": 0.13346858638743456,
+            "matched_terms": [
+                "and",
+                "are",
+                "connection",
+                "for",
+                "latency",
+                "longer",
+                "of",
+                "or",
+                "otherwise",
+                "sessions",
+                "system",
+                "than",
+                "the",
+                "this",
+                "time",
+                "to",
+                "together",
+                "when"
+            ],
+            "match_count": 230,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_idle",
+                "parameter_name": "tcp_keepalives_idle",
+                "timeout_category": "network_idle_keepalive_probe_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time with no network activity after which the operating system should send a TCP keepalive message to the client.",
+                "trigger_condition": "A TCP client connection has no network activity longer than tcp_keepalives_idle on systems supporting TCP_KEEPIDLE or an equivalent socket option.",
+                "workload_impact": "Starts TCP keepalive probing for an otherwise idle client connection; together with interval and count settings this can lead to dead connection detection.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Transaction Lock Contention Anomaly + Database Memory Allocation Anomaly",
+            "Description": "Composite anomaly definition: The system concurrently suffers from (1) the optimizer choosing sub-optimal execution plans, (2) intense lock-manager contention that blocks or deadlocks transactions, and (3) runaway memory consumption that pushes the database process or host into sustained memory pressure. All three root causes are present at the same time and jointly degrade workload performance.\n\nCombined anomalous phenomena: Application sessions experience long and highly variable response times as poorly chosen plans amplify row visits and prolong critical sections, which in turn lengthen lock-hold durations and enlarge blocker–waiter chains. Concurrently, inflated work areas, plan-cache bloat, and growing buffer caches drive the process RSS beyond physical memory, triggering operating-system paging or OOM killer events. Monitoring shows oscillating or flip-flopping execution plans, escalating lock-wait counters, frequent deadlock victim messages, rapid growth of memory allocations and swap, drop-offs in cache hit ratios due to churn, CPU stalls caused by memory thrashing, and eventual connection timeouts or node restarts that further disturb plan stability and lock recovery.\n\nCausal chain and interaction: A bad plan (e.g., full table scan instead of index seek) inflates I/O and keeps row-level or page locks active far longer, increasing the probability and duration of blocking and deadlocks. The same inefficient plan may require oversized hash/sort buffers or spawn excessive parallel workers, accelerating memory consumption. Elevated memory pressure leads the engine or operating system to evict clean pages, flush caches, or invoke swapping, extending I/O times and further slowing statement completion—thereby lengthening lock hold times and widening contention. Repeated plan invalidations caused by memory pressure or crash recovery prompt the optimizer to regenerate and possibly pick different sub-optimal plans, creating performance whiplash. The feedback loop among bad plans, lock buildup, and memory exhaustion can cascade into severe throughput collapse and service instability, making isolated tuning of any single layer ineffective until all three contributing root causes are addressed together.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.7338989809481612,
+            "bm25_score": 28.619353360998648,
+            "lexical_score": 0.11299660316053758,
+            "matched_terms": [
+                "and",
+                "by",
+                "contention",
+                "engine",
+                "execution",
+                "long",
+                "or",
+                "query",
+                "statement",
+                "the",
+                "time",
+                "together",
+                "work",
+                "workload"
+            ],
+            "match_count": 2,
+            "entry": {
+                "timeout_id": "mysql84_regular_expression_time_limit",
+                "parameter_name": "regexp_time_limit",
+                "timeout_category": "expression_evaluation_time_limit",
+                "scope": "global/session",
+                "official_definition": "The time limit for regular expression matching operations performed by the regular expression engine.",
+                "trigger_condition": "A regular expression match operation exceeds regexp_time_limit.",
+                "workload_impact": "The regular expression operation is constrained by the configured time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

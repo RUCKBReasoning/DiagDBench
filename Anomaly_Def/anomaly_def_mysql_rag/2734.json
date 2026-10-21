@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Replication Synchronization Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Obsolete row versions and deleted index entries accumulate faster than background cleanup can reclaim them, inflating the version store and heap size.\nReplication Synchronization Anomaly : Stand-by or downstream replicas cannot receive or apply transaction-log records at the rate the primary generates them, producing sustained replication lag.\nData Block and Index Integrity Anomaly : Physical pages or index structures become internally inconsistent, causing logical/physical corruption and unreliable access paths.\n\nWhen all three root causes coexist, the system shows a blended symptom set: the primary’s tables and indexes grow rapidly while replication monitoring reports widening write/flush/replay gaps; VACUUM/cleanup workers stay permanently backlogged and may repeatedly abort or skip ranges because they encounter corrupted pages; replica apply workers stall on the same corrupt blocks, causing cascading log retention on the primary. Query plans on both primary and replicas degrade—some scans slow down due to bloated heaps, others fall back to full scans after detecting unusable indexes, and read-only replicas deliver increasingly stale or incorrect results. Disk consumption spikes on every node (heap bloat on the primary, retained WAL on the primary, expanded relay logs on replicas), and administrative utilities report both version-age horizon warnings and page-checksum or key-order errors.\n\nCausal interaction: heavy update/delete churn creates large WAL streams and rapid version accumulation. Replication lag prevents the primary from advancing its replication-xmin horizon, so VACUUM cannot prune old versions, further enlarging the version store. The swollen version store in turn magnifies WAL volume, worsening replication lag in a feedback loop. Concurrently, any latent on-disk block or index corruption causes VACUUM or replica apply processes to error out or slow down, freezing progress at exactly the pages that need cleanup or replay; this halting behavior amplifies both the version-maintenance backlog and the replication gap. Conversely, the prolonged presence of corrupted pages inside an ever-growing heap complicates detection and repair because corruption signatures are buried under layers of obsolete versions. The three anomalies therefore reinforce each other, accelerating storage growth, degrading query correctness, and eroding failover readiness far more severely than any single anomaly alone.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.742163993675175,
+            "bm25_score": 32.2929675283444,
+            "lexical_score": 0.14054664558391686,
+            "matched_terms": [
+                "administrative",
+                "and",
+                "apply",
+                "causing",
+                "data",
+                "downstream",
+                "lag",
+                "or",
+                "out",
+                "progress",
+                "replica",
+                "replication",
+                "than",
+                "the",
+                "this",
+                "to",
+                "when"
+            ],
+            "match_count": 129,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

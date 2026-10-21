@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Storage I/O Throughput Anomaly + CPU Resource Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Storage I/O Throughput Anomaly : Physical read/write bandwidth or IOPS on the underlying storage devices is saturated, driving up I/O latency and queue depths independent of database engine settings.\nCPU Resource Anomaly : Host CPU cycles are exhausted, leaving insufficient compute capacity for database foreground and background tasks, which inflates run-queue waits and overall response time.\nOperating System Resource Limit Anomaly : Kernel-enforced ceilings on file handles, processes/threads, shared memory, AIO contexts, or other kernel objects are reached, preventing the database from allocating required OS resources.\n\nWhen these three root causes arise concurrently, the database exhibits a multi-layer resource crunch: 1) response times degrade as I/O queues lengthen and disk latencies spike, 2) CPU utilization plateaus at or near 100 %, with elevated context-switch and scheduler waits, while some processes spin or back-off waiting for I/O, and 3) new sessions, background workers, or asynchronous I/O requests intermittently fail with OS-level \"resource exhausted\" errors. Wait-event profiles simultaneously show heavy data-file/log-file I/O waits, CPU run-queue waits, and sudden surges in OS-error-related waits. Batch windows overrun, interactive transactions stall, and recovery or checkpoint operations lag, making it difficult to pinpoint a single bottleneck because symptoms oscillate between compute, I/O, and kernel allocation failures.\n\nCausally, the three anomalies can reinforce one another in a vicious cycle: storage saturation elongates I/O service times, causing worker threads to hold CPU longer or spin in kernel space, which raises overall CPU demand. Elevated CPU load inflates context switching and system-call overhead, consuming additional kernel objects (threads, AIO contexts) and pushing the process toward OS resource limits. Once those limits are reached, failed allocations further stall I/O submission and worker scheduling, deepening both the storage backlog and CPU queuing. Conversely, hitting OS limits (e.g., AIO context caps or file-descriptor ceilings) can throttle parallel I/O issuance, reducing effective throughput while worker threads busy-wait, inflating CPU usage. The intertwined feedback loops between saturated disks, maxed-out CPUs, and exhausted kernel limits rapidly deteriorate database throughput and availability unless all three layers are relieved together.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2687,
+            "score": 0.5520420056730114,
+            "bm25_score": 57.77365285941698,
+            "lexical_score": 0.19405555555555554,
+            "matched_terms": [
+                "and",
+                "are",
+                "capacity",
+                "data",
+                "disk",
+                "engine",
+                "error",
+                "event",
+                "failures",
+                "file",
+                "from",
+                "is",
+                "latency",
+                "log",
+                "or",
+                "scheduler",
+                "storage",
+                "the",
+                "while",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010802",
+                "error_name": "ER_EVENT_SCHEDULER_ERROR_LOADING_FROM_DB",
+                "official_description": "Event Scheduler: Error while loading from disk.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

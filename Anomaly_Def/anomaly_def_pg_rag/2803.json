@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Buffer Cache and Latch Contention Anomaly + CPU Resource Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions block or deadlock each other while waiting on mutually incompatible locks managed by the lock manager.\nBuffer Cache and Latch Contention Anomaly : Sessions serialize on hot buffer-cache pages, latches, or I/O slots inside the buffer manager, stalling logical I/O even when row-level locks are free.\nCPU Resource Anomaly : Database processes saturate host CPU, driving long run queues and scheduler waits regardless of which logical layer issues the work.\n\nWhen all three anomalies arise together, the system experiences intertwined blocking at multiple layers: row/table locks queue transactions; those waiting transactions continue to hold buffer pins and latches, inflating internal contention; meanwhile the accumulation of spin-loops, latch retries, deadlock detectors, and repeated application retries drives CPU utilization to saturation. Observable effects include explosive wait-event diversity (lock waits, buffer-busy waits, latch spins, and CPU run-queue waits), steep increases in end-to-end latency, throughput collapse, escalating deadlock victim counts, and connection pools that exhaust while CPUs remain pegged at or near 100 percent.\n\nCausal chain: a small set of hot rows or pages first triggers lock contention; blocked sessions keep their buffer pages pinned and repeatedly wake to recheck lock status, amplifying buffer-cache and latch contention. The extra spin/wakeup activity multiplies CPU demand, and the over-utilized CPUs delay the lock manager, latch acquisition, and I/O completion, lengthening critical sections and further widening lock and latch queues. The feedback loop between lock holding, buffer/latch hot spots, and CPU saturation creates a self-reinforcing spiral that rapidly degrades overall database performance until one or more pressure points are relieved.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.2842530312165345,
+            "bm25_score": 13.680528672134333,
+            "lexical_score": 0.14330170777988613,
+            "matched_terms": [
+                "activity",
+                "and",
+                "are",
+                "by",
+                "connection",
+                "holding",
+                "latency",
+                "long",
+                "on",
+                "or",
+                "pools",
+                "remain",
+                "sessions",
+                "system",
+                "the",
+                "when"
+            ],
+            "match_count": 300,
+            "entry": {
+                "timeout_id": "pg16_tcp_user_timeout",
+                "parameter_name": "tcp_user_timeout",
+                "timeout_category": "network_unacknowledged_data_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies how long transmitted data may remain unacknowledged before the TCP connection is forcibly closed.",
+                "trigger_condition": "TCP data sent by PostgreSQL remains unacknowledged longer than tcp_user_timeout on systems supporting TCP_USER_TIMEOUT.",
+                "workload_impact": "The TCP connection is forcibly closed.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

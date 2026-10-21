@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Replication Synchronization Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Database Memory Allocation Anomaly : The engine and background components consume memory or swap beyond the safe limits of the host, provoking OS-level pressure, paging, cache churn, or OOM terminations.\nReplication Synchronization Anomaly : Standbys or downstream consumers cannot receive, persist, or apply log records as fast as the primary generates them, causing growing log-position gaps, replay lag, and log-retention bloat.\nNetwork and Connectivity Resource Anomaly : Transport links, listeners, socket buffers, or authentication paths between clients/replicas and the server saturate or stall, yielding connection timeouts, retransmissions, and backlog overflows.\n\nWhen these three root causes strike concurrently, the database exhibits a compound failure pattern: 1) primary and replica nodes show escalating resident-set sizes, swap activity, and cache thrash; 2) replication delay widens rapidly, with retained WAL or relay logs ballooning in both memory and disk, exhausting further resources; 3) clients and replicas experience sporadic disconnects, SYN backlog drops, increased round-trip times, and authentication stalls. Monitoring dashboards may reveal intertwined spikes in memory usage, network retransmits, and apply lag, making it difficult to attribute the dominant bottleneck. Failover readiness deteriorates as replicas fall behind while simultaneously suffering from memory pressure and network instability.\n\nCausally, heavy memory over-allocation on the primary competes with the kernel for page cache and socket buffers, curtailing throughput of the WAL sender and elevating TCP retransmission rates. Network congestion and handshake retries slow log streaming further, forcing the primary to retain more unshipped segments—which occupy additional shared memory and disk—amplifying the original memory pressure. On the replica side, delayed reception plus its own memory contention hampers redo apply, causing relay logs to accumulate in RAM and on disk, which in turn exacerbates memory exhaustion. The feedback loop between memory shortages, impaired network I/O, and escalating replication backlog can culminate in cascading stalls, OOM kills, or split-brain failovers across the cluster.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.3613647563379139,
+            "bm25_score": 13.79911287736217,
+            "lexical_score": 0.10628571428571428,
+            "matched_terms": [
+                "activity",
+                "and",
+                "authentication",
+                "connection",
+                "for",
+                "it",
+                "of",
+                "on",
+                "or",
+                "server",
+                "the",
+                "when"
+            ],
+            "match_count": 30,
+            "entry": {
+                "timeout_id": "mysql84_idle_noninteractive_session_timeout",
+                "parameter_name": "wait_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds the server waits for activity on a noninteractive connection before closing it.",
+                "trigger_condition": "A noninteractive session remains idle longer than wait_timeout.",
+                "workload_impact": "The server closes the idle connection.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

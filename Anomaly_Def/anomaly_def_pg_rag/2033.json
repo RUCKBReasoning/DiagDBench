@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Data Block and Index Integrity Anomaly + CPU Resource Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Pages or their associated latches become hot, forcing concurrent sessions to serialize on buffer-cache access and stall on lightweight synchronization primitives.\nData Block and Index Integrity Anomaly : Persisted data or index pages are physically or logically corrupt, making on-disk structures unreliable and provoking verification or consistency failures.\nCPU Resource Anomaly : Database processes monopolize host CPU cycles, driving the machine toward saturation and elongating every code path that needs scheduler time.\n\nWhen all three conditions arise together, the system exhibits a toxic blend of symptoms: 1) extreme buffer-busy and page-latch waits as sessions spin to acquire contended buffers, 2) intermittent or repeated checksum, page-link, or index-key errors as the same hot pages are found to be corrupt, 3) host CPU utilization pegged near 100 %, with spin-loops and retry logic crowding the run queue, and 4) workload-wide latency spikes or complete hang because threads waiting on latches are starved by other threads burning CPU on corruption retries or background verification tasks. Error logs may oscillate between latch time-out messages and corruption alerts; execution plans may flip from index to full scans, further inflating both latch pressure and CPU consumption.\n\nCausal chain: corruption in a frequently accessed page forces the engine to re-read, re-verify, or fail-and-retry the page, extending the time that its buffer and latch are held. The prolonged hold amplifies latch contention, causing additional sessions to spin or sleep while the corrupt page is examined. Those spin loops translate directly into elevated CPU demand, which in turn slows the OS scheduler and lengthens latch wait times even more. The spiraling CPU saturation also delays background writer and check-pointer threads, impeding dirty-page eviction and increasing buffer-pool turnover, which raises the probability of repeatedly touching the same corrupt pages. Thus each anomaly reinforces the others, progressively degrading throughput and making root-cause isolation difficult until the corruption is repaired, latch pressure relieved, and CPU usage normalized.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 215,
+            "score": 0.2755254049812495,
+            "bm25_score": 11.535805719620075,
+            "lexical_score": 0.17228598014888336,
+            "matched_terms": [
+                "and",
+                "associated",
+                "be",
+                "by",
+                "data",
+                "engine",
+                "error",
+                "execution",
+                "found",
+                "in",
+                "is",
+                "its",
+                "logic",
+                "or",
+                "pressure",
+                "resource",
+                "the",
+                "to",
+                "together",
+                "with",
+                "workload"
+            ],
+            "match_count": 10,
+            "entry": {
+                "error_code": "HV005",
+                "error_name": "fdw_column_name_not_found",
+                "official_description": "fdw column name not found",
+                "error_class": "Class HV - Foreign Data Wrapper Error (SQL/MED)",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

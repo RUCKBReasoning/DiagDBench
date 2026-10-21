@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Query Plan Selection Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Schema and Index Design Anomaly: Static mismatch between physical data model (tables, indexes, partitions, data types, constraints) and actual workload access patterns forces intrinsically inefficient access paths independent of statistics or optimizer choices.\nQuery Plan Selection Anomaly: Optimizer chooses or reuses a markedly sub-optimal execution plan even though statistics are adequate, due to cost-model or plan-cache issues, leading to unexpected full scans, bad join orders, or loss of parallelism.\nOperating System Resource Limit Anomaly: Database processes hit kernel-enforced ceilings for file descriptors, shared memory, threads, or other OS objects, causing failures to allocate required resources despite sufficient logical capacity inside the DB engine.\n\nWhen all three root causes coexist, workloads encounter a multilayered performance and stability collapse: poorly designed or missing indexes inflate the amount of data each statement must touch; simultaneous optimizer mis-decisions steer execution toward full scans, Cartesian joins, or serial plans that intensify I/O, memory, and worker-process demands; and as these bloated executions proliferate, the database tries to open many more files, allocate larger shared buffers, or spawn extra workers, quickly exhausting OS-level limits. Symptoms include extreme and erratic query latency, bursts of plan flips with divergent runtimes, sudden errors such as “too many open files,” inability to create parallel workers, partial outages where new sessions fail while existing ones slow to a crawl, and log files showing both optimizer plan hashes oscillating and kernel resource-exhaustion messages.\n\nCausally, the deficient schema/index design first widens the resource footprint of every logical operation. This magnifies the cost sensitivity of the optimizer, increasing the chance it will pick unstable or poor plans that appear cheapest under its imperfect model. The resulting heavier plans (e.g., table scans, large hash joins) drive up file-handle usage, shared-memory allocation, and thread counts, rapidly approaching or breaching OS quotas. Once kernel limits are hit, the engine cannot create additional I/O contexts, open segment files, or spawn background/parallel workers, which in turn forces further plan re-optimization and emergency fallbacks to even less efficient serial execution paths. The feedback loop between bad design, volatile plan selection, and hard OS ceilings culminates in compounded performance degradation, plan thrashing, and intermittent availability loss that is difficult to attribute to any single layer without holistic diagnosis.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 15,
+            "score": 0.3399140892987337,
+            "bm25_score": 13.52610436867948,
+            "lexical_score": 0.12365085114089097,
+            "matched_terms": [
+                "and",
+                "are",
+                "data",
+                "for",
+                "is",
+                "latency",
+                "level",
+                "loss",
+                "operation",
+                "or",
+                "slow",
+                "the",
+                "this",
+                "unstable",
+                "when"
+            ],
+            "match_count": 14,
+            "entry": {
+                "timeout_id": "mysql84_xplugin_read_timeout",
+                "parameter_name": "mysqlx_read_timeout",
+                "timeout_category": "x_protocol_network_read_timeout",
+                "scope": "global/session/X Plugin",
+                "official_definition": "Read timeout for X Plugin network communication.",
+                "trigger_condition": "A MySQL X Protocol read operation exceeds mysqlx_read_timeout.",
+                "workload_impact": "The X Protocol network read operation times out.",
+                "default_behavior": "Defined as a MySQL X Plugin system variable.",
+                "system_domain": "network_transport",
+                "cause_analysis": "This timeout is usually triggered when network data is not acknowledged, received, or written within the configured transport-level waiting window.",
+                "solution_guidance": "Inspect packet loss, transport latency, client responsiveness, proxy behavior, and whether slow consumers or unstable links are delaying network progress.",
+                "observable_symptoms": [
+                    "network timeout",
+                    "disconnect",
+                    "read/write interruption"
+                ]
+            }
+        }
+    }
+]

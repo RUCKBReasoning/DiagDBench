@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + MVCC Version Maintenance Anomaly + CPU Resource Anomaly",
+            "Description": "Optimizer Statistics Anomaly: Optimizer metadata (row counts, histograms, correlation data) is stale or incomplete, driving systematic cardinality misestimates and sub-optimal plan selection.\nMVCC Version Maintenance Anomaly: Obsolete row versions and deleted index entries accumulate faster than background cleanup can reclaim them, inflating on-disk and in-memory structures and lengthening visibility checks.\nCPU Resource Anomaly: Database processes consume an abnormally high share of CPU cycles, pushing the host toward saturation and broadening latency across the workload.\n\nWhen all three root causes coexist, the system exhibits a blended failure pattern: execution plans built on outdated statistics must traverse massively bloated heaps and indexes, amplifying I/O and visibility-check work per statement; the excess work drives CPU utilisation to sustained saturation, which in turn slows the very maintenance workers (autovacuum, garbage collection, statistics refresh) needed to correct the bloat and the stale statistics. Symptoms include extreme divergence between estimated and actual row counts, sudden plan flips toward full-table scans or deeply nested loops, rapidly growing table sizes even without data growth, rising CPU run-queue depth, frequent scheduler/runqueue wait events inside the database, and escalating response-time variance for both read and write transactions.\n\nCausally, heavy update/delete churn first causes MVCC bloat. The enlarged relation footprints and visibility checks lengthen scan times, but the optimizer—relying on stale statistics—continues to believe the tables are smaller or differently distributed, selecting plans that magnify CPU demand. The resulting CPU saturation deprioritises or starves background cleaners and statistics gatherers, letting bloat and statistics staleness spiral further. Each component therefore reinforces the next: bloat corrupts statistics accuracy, bad statistics trigger CPU-hungry plans, and CPU starvation blocks the maintenance required to arrest bloat, producing a self-amplifying performance collapse in high-churn OLTP environments.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.7251640625649352,
+            "bm25_score": 19.773413659757505,
+            "lexical_score": 0.11803921568627451,
+            "matched_terms": [
+                "and",
+                "execution",
+                "for",
+                "in",
+                "is",
+                "or",
+                "pattern",
+                "resource",
+                "statement",
+                "the",
+                "time",
+                "when",
+                "work",
+                "workload"
+            ],
+            "match_count": 135,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

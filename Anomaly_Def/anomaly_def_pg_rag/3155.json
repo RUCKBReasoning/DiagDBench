@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly: Excessive accumulation of obsolete row versions and index entries outpaces background cleanup, inflating the version store and bloating on-disk structures.\nTransaction Log Subsystem Anomaly: The generation, flushing, or archival of write-ahead log (WAL) records becomes the bottleneck, stretching commit latency and stalling write throughput.\n\nComposite definition: Both version-store bloat and log-subsystem saturation are active at the same time, so every modifying transaction must cope with heavier MVCC bookkeeping while also waiting longer for its corresponding log records to be flushed and archived.\n\nCombined anomalous phenomena: 1) Commit times rise unpredictably because transactions spend extra CPU cycles scanning swollen version chains and then block on congested log-flush waits. 2) Table and index files grow rapidly alongside the WAL directory, causing storage exhaustion warnings for both data and log areas. 3) Autovacuum or purge workers run continuously yet fall further behind, while checkpoint and log-archive processes report backlog; checkpoint storms triggered by the log side amplify IO pressure on already bloated heaps. 4) Planners misestimate row counts due to table bloat, producing scan plans that magnify the I/O amplified by frequent checkpoints, making it difficult to attribute latency spikes to one layer alone.\n\nCausal chain and reinforcement: High update/delete churn first inflates the version store; the extra redo produced by deleting and relinking MVCC versions accelerates WAL generation. The swollen WAL in turn forces more frequent checkpoints and log-file switches, throttling background cleaners that need IO bandwidth to prune dead tuples, so MVCC bloat accumulates even faster. If archive or replication lag prevents log recycling, disk space pressure can suspend new transactions; long-running snapshots retained by slow replicas also keep old versions alive, preventing cleanup. Thus each anomaly feeds the other, creating a positive feedback loop that degrades throughput, inflates storage, and risks full-stop outages.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.30773138077237516,
+            "bm25_score": 12.646720411976968,
+            "lexical_score": 0.09825590368884086,
+            "matched_terms": [
+                "and",
+                "are",
+                "by",
+                "data",
+                "latency",
+                "long",
+                "longer",
+                "on",
+                "or",
+                "the",
+                "time",
+                "triggered"
+            ],
+            "match_count": 316,
+            "entry": {
+                "timeout_id": "pg16_tcp_user_timeout",
+                "parameter_name": "tcp_user_timeout",
+                "timeout_category": "network_unacknowledged_data_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies how long transmitted data may remain unacknowledged before the TCP connection is forcibly closed.",
+                "trigger_condition": "TCP data sent by PostgreSQL remains unacknowledged longer than tcp_user_timeout on systems supporting TCP_USER_TIMEOUT.",
+                "workload_impact": "The TCP connection is forcibly closed.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

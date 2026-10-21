@@ -1,0 +1,44 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + MVCC Version Maintenance Anomaly + Database Memory Allocation Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions hold or request mutually incompatible locks on the same rows, pages, or metadata, forming long blocking chains or deadlocks that stall progress until victims are rolled back.\nMVCC Version Maintenance Anomaly : Obsolete row versions and undo records accumulate faster than background cleaners can reclaim them, inflating the version store and degrading visibility checks.\nDatabase Memory Allocation Anomaly : Buffer caches, work areas, and other in-memory structures grow beyond the host’s safe capacity, provoking paging, OOM kills, or instance restarts.\n\nWhen these three root causes strike at once, the database exhibits a toxic mix of symptoms:  \n• Sessions pile up in lock-wait or deadlock retry loops while overall transaction throughput and application responsiveness collapse.  \n• Heap and index footprints balloon because cleanup workers are prevented from advancing the snapshot horizon, inflating on-disk size, slowing sequential scans, and further stressing shared buffers.  \n• The surging version store and proliferating lock objects consume large amounts of shared memory; combined with unbounded per-query work areas and buffer-cache churn, this tips the host into heavy paging or OOM events.  \n• Monitoring shows simultaneous spikes in lock-wait time, deadlock detections, bloat and vacuum/autovacuum lag, rapidly growing memory RSS, and degraded cache hit ratios; emergency restarts may occur, wiping in-flight work and masking the underlying dual/triple interaction.\n\nCausal interaction: Hot rows or long-running transactions first create lock contention. Blocked or orphaned transactions hold snapshots open, freezing the MVCC cleanup horizon and causing rapid version accumulation. The expanding version store must be cached or paged, driving up shared-memory and OS memory consumption. Rising memory pressure slows background cleaners, which further delays version reclamation, while paging elongates lock-hold durations as transactions struggle to read bloated pages. This positive feedback loop tightens lock contention, accelerates bloat, and amplifies memory exhaustion, ultimately threatening database availability through deadlocks, timeouts, and process termination.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 114,
+            "score": 0.24335526822240777,
+            "bm25_score": 16.170545952144543,
+            "lexical_score": 0.09490987983978638,
+            "matched_terms": [
+                "and",
+                "be",
+                "in",
+                "must",
+                "or",
+                "pressure",
+                "termination",
+                "the",
+                "to",
+                "transaction",
+                "with"
+            ],
+            "match_count": 9,
+            "entry": {
+                "error_code": "2D000",
+                "error_name": "invalid_transaction_termination",
+                "official_description": "invalid transaction termination",
+                "error_class": "Class 2D - Invalid Transaction Termination",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

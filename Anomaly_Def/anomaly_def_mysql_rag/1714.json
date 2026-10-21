@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Composite Definition: The database simultaneously suffers from a log-pipeline bottleneck (generation, flush, switch, archive, or replication-retention of the redo stream) and a device-level I/O-throughput bottleneck on the same set of volumes, so both the engine’s ability to produce/consume log records and the physical storage’s ability to service any reads or writes are saturated at once.\n\nCombined Phenomena: Commit latency, log-flush waits, and log-sync waits rise sharply while overall read/write wait events, queue depths, and device service times balloon. Checkpoints and log-file switches become more frequent, yet archives lag and log directories expand because the storage system cannot sustain the throughput required to off-load segments. Data-file and temp-file access also slow down, causing mixed wait profiles where buffer-I/O, durability flush, and general read/write stalls appear together. From the application side, short OLTP transactions begin to time out, batch windows overrun, and even read-only statements intermittently pause when they need to extend undo or temp segments that share the stressed devices. Diagnostic tools show CPU utilization moderate, but both log-specific waits and device-level I/O waits dominate session snapshots, making the true primary bottleneck difficult to distinguish.\n\nCausal Chain: Heavy write activity first drives the transaction-log subsystem toward its throughput ceiling; because the same or adjacent storage stack is already near capacity, log-flushes queue up behind other data and temp I/Os, further extending commit latency. The lengthened commit path forces background processes (checkpoints, archiver, replication capture) to work harder and more frequently, injecting additional synchronous and asynchronous I/O into an already saturated storage layer. Conversely, the storage-level saturation feeds back into the log pipeline: slow archive writes delay log-file reuse, causing log buffer pressure and more frequent log switches. The two bottlenecks thus reinforce each other in a feedback loop that magnifies latency, starves worker threads, and can ultimately halt forward progress if log space cannot be reclaimed.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.745,
+            "bm25_score": 30.578288174342692,
+            "lexical_score": 0.14999999999999997,
+            "matched_terms": [
+                "an",
+                "and",
+                "back",
+                "because",
+                "cannot",
+                "delay",
+                "in",
+                "is",
+                "of",
+                "only",
+                "or",
+                "required",
+                "session",
+                "the",
+                "time",
+                "transaction",
+                "up",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 82,
+            "entry": {
+                "timeout_id": "mysql84_innodb_row_lock_wait_timeout",
+                "parameter_name": "innodb_lock_wait_timeout",
+                "timeout_category": "innodb_row_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "The length of time in seconds an InnoDB transaction waits for a row lock before giving up.",
+                "trigger_condition": "An InnoDB transaction waits longer than innodb_lock_wait_timeout for a row lock.",
+                "workload_impact": "The lock wait gives up; by default only the current statement is rolled back unless innodb_rollback_on_timeout is enabled.",
+                "default_behavior": "Defined as an InnoDB system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

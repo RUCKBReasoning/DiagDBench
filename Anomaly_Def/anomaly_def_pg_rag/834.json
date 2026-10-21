@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Pages in the buffer pool become hot bottlenecks; sessions spend excessive time spinning or waiting on latches, buffer-busy events, or page-pin contention rather than doing useful work.\nData Block and Index Integrity Anomaly : Physical data-file or index structures are corrupted—checksums fail, page links are broken, or key ordering is incorrect—so the storage layer can no longer be trusted.\n\nComposite anomaly definition:\nBoth anomalies are present simultaneously: the system must serialize access to a small set of buffer-cache pages while some of those very pages (or others they reference) are physically or logically corrupted. The engine therefore contends for buffers that may be unreadable, fail verification, or require rebuild/repair logic, coupling heavy latch pressure with integrity faults.\n\nCombined observable phenomena:\n• Extremely high buffer-busy, page-latch, and pin waits mixed with bursts of physical I/O retries, checksum failures, or corruption error messages.\n• Queries alternately hang (due to latch spin or waits) and abort (due to corruption detection), causing erratic latency and throughput collapse.\n• Repeated automatic page rereads, forced checkpoints, or background verification tasks intensify buffer churn, while failing index lookups trigger fall-back full scans that further stress the buffer pool.\n• Recovery or consistency-checker utilities run longer than usual, holding latches while rereading or rebuilding corrupted pages, which starves foreground workloads.\n\nCausal interaction and amplification:\nCorrupted pages often force extra I/O, checksum validation, or reconstruction work, keeping the corresponding buffer frames pinned and latches held far longer than normal; this multiplies latch wait times and propagates hot-page contention across sessions. Conversely, severe latch contention slows dirty-page flushing and recovery operations, increasing the window during which corrupted or partially written pages remain in play, raising the likelihood of additional integrity errors. The intertwined feedback loop of prolonged latch holds and recurring corruption checks can eventually exhaust worker pools, trigger automatic fail-safe shutdowns, or lead to cascading query failures, making rapid identification and coordinated remediation essential.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.4439061106774439,
+            "bm25_score": 14.387268664009046,
+            "lexical_score": 0.14597306212204508,
+            "matched_terms": [
+                "and",
+                "are",
+                "be",
+                "can",
+                "holding",
+                "is",
+                "latency",
+                "messages",
+                "of",
+                "on",
+                "or",
+                "pools",
+                "sessions",
+                "system",
+                "that",
+                "the",
+                "this",
+                "time",
+                "to"
+            ],
+            "match_count": 198,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_count",
+                "parameter_name": "tcp_keepalives_count",
+                "timeout_category": "network_keepalive_failure_threshold",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the number of TCP keepalive messages that can be lost before the server connection to the client is considered dead.",
+                "trigger_condition": "The number of lost TCP keepalive probes reaches tcp_keepalives_count on systems supporting TCP_KEEPCNT.",
+                "workload_impact": "The server can consider the client connection dead after the configured keepalive failure threshold.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

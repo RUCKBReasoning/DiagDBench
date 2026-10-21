@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Replication Synchronization Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Database Memory Allocation Anomaly : Excessive or uncontrolled growth of buffer caches, plan caches, work areas, or auxiliary memory regions that pushes the database process and host beyond safe physical-memory limits, triggering paging, OOM events, or node eviction.\nReplication Synchronization Anomaly : Replicas, subscribers, or downstream consumers are unable to receive, persist, or apply primary transaction-log records at the rate they are generated, causing widening log-position gaps, replay lag, and retention of old log segments.\nData Block and Index Integrity Anomaly : On-disk data pages or index structures become internally inconsistent—checksum failures, broken page links, key ordering errors—leading to wrong or missing results and corruption-related engine errors.\n\nWhen these three root causes are concurrent, the system exhibits a compounded failure profile: memory pressure on the primary and replicas grows as bloated buffer/plan caches coexist with ever-expanding retained WAL / redo segments held for lagging replicas; intensive retry loops and corruption checks amplify CPU usage and stall foreground queries. Replication delay masks or propagates latent page and index corruptions, so stale replicas may serve inconsistent reads or, upon catch-up, replay corrupt blocks that trigger crash-recovery cycles, further bloating memory with repeated recovery allocations. Operators observe erratic throughput, sharp drops in cache hit ratios, frequent OOM killer or instance restarts, rapidly filling disks due to unrecycled logs, replica apply processes stuck on corrupt pages, and divergence between primary and replica query results that is hard to attribute to any single layer.\n\nCausally, runaway memory allocation on the primary inflates per-process RSS and can throttle background tasks that recycle log segments, causing prolonged WAL retention exactly when replicas are already behind. The swelling log backlog forces replicas to allocate large relay buffers and extend on-disk log stores, exacerbating their own memory and I/O pressure and slowing apply latency further. As replicas eventually replay large bursts of changes, latent data-block or index corruption—possibly originating from earlier memory-pressured writes or storage faults—surfaces during redo or validation, halting apply threads and freezing replication. The primary, unable to recycle logs because of stalled replicas, accumulates even more un-flushed cache and log pages, increasing the probability of additional memory exhaustion and corruption events. This feedback loop tightens the coupling between allocation pressure, replication lag, and structural corruption, driving the cluster toward cascading failures and data-availability risks.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.4197008397071642,
+            "bm25_score": 14.971821550628604,
+            "lexical_score": 0.09699186991869918,
+            "matched_terms": [
+                "and",
+                "because",
+                "delay",
+                "for",
+                "in",
+                "is",
+                "or",
+                "retry",
+                "the",
+                "this",
+                "to",
+                "transaction",
+                "when"
+            ],
+            "match_count": 69,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

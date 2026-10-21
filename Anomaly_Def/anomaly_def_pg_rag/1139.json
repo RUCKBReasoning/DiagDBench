@@ -1,0 +1,60 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Optimizer Statistics Anomaly + Transaction Lock Contention Anomaly",
+            "Description": "Schema and Index Design Anomaly: The physical data model and indexing strategy are misaligned with workload access patterns, forcing otherwise well-written statements into inherently inefficient access paths.\nOptimizer Statistics Anomaly: Row-count, histogram, and correlation metadata are stale or inaccurate, misleading the optimizer into systematic cardinality misestimation and sub-optimal plan selection.\nTransaction Lock Contention Anomaly: Concurrent transactions request incompatible locks on the same resources, creating long blocking chains or deadlocks that throttle throughput.\n\nCombined anomalous phenomena: When a poor physical design lacks selective or covering indexes and statistics no longer represent actual data, the optimizer may choose wide table or index scans, nested-loop joins on vastly underestimated row sets, or plans that touch far more rows than expected. These long-running, I/O-heavy statements acquire large lock footprints, hold them for extended periods, and may escalate from row to page or table level. As concurrency rises, wait queues, deadlock reports, victim rollbacks, application timeouts, and sudden throughput collapses all appear, often immediately after data-skewing events or bulk loads. Performance tuning signals become noisy: execution plans show both gross misestimates and missing indexes, while lock-monitoring views simultaneously display growing blocker/waitee chains.\n\nCausal chain: Faulty schema design starts the problem by depriving critical queries of efficient access paths, inflating the number of rows and pages they must touch. Stale statistics compound the issue by hiding the true cost of these scans, so the optimizer avoids any remaining selective indexes or chooses join orders that maximize locking scope. The resulting queries run longer and lock more rows, creating hotspots that multiple sessions hit concurrently, triggering blocking and deadlocks. Prolonged blocking, in turn, delays commit points and automatic statistics maintenance, which makes statistics even staler and further obscures the need for new indexes—forming a vicious feedback loop that degrades both read and write performance across the OLTP workload.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.7521415220293725,
+            "bm25_score": 40.349353359727886,
+            "lexical_score": 0.17380507343124166,
+            "matched_terms": [
+                "acquire",
+                "and",
+                "any",
+                "blocking",
+                "for",
+                "incompatible",
+                "index",
+                "lock",
+                "longer",
+                "metadata",
+                "of",
+                "or",
+                "row",
+                "schema",
+                "sessions",
+                "table",
+                "than",
+                "that",
+                "the",
+                "to",
+                "transaction",
+                "when",
+                "while"
+            ],
+            "match_count": 218,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

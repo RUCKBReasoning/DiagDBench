@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Database Memory Allocation Anomaly + Replication Synchronization Anomaly",
+            "Description": "Composite Definition:\nThe system simultaneously suffers from sub-optimal physical data-model and indexing choices, runaway memory consumption in core database caches and work areas, and a replication pipeline that cannot keep up with the primary’s log generation. The three conditions coexist and interact, degrading both local performance and cross-node consistency.\n\nCombined Observable Phenomena:\n• Queries on large or hot tables execute unexpected full scans or non-covering index probes, inflating logical and physical I/O and blowing out buffer-cache and work-memory allocations.\n• Database and replica nodes show rapidly growing resident-set sizes, OS paging, or OOM terminations; cache-hit ratios fluctuate as memory churn forces frequent page eviction.\n• Replication monitoring reports widening send/receive/replay lags; primary retains extra WAL / redo segments, and read replicas serve increasingly stale data or fall out of synchronous commit windows.\n• Periodic spikes in CPU and I/O utilization coincide with long-running hash/sort operations spawned by poorly indexed queries, further delaying log flushes and replica apply loops.\n• Failover or read-scaling SLAs degrade; maintenance windows for index creation or log retention cleanup extend unexpectedly because of memory pressure and replica backlog.\n\nCausal Chain and Reinforcement:\nInefficient schema and index design forces heavy, often parallel, scans and large hash/sort buffers that inflate memory usage. The resulting memory allocation anomaly triggers OS-level pressure, causing cache thrashing and slower local I/O. These same resource-intensive queries generate large volumes of redo/WAL data; meanwhile, replicas—already starved of memory and CPU due to identical schema inefficiencies and memory pressure—apply changes more slowly, creating replication lag. Growing lag prevents log recycling on the primary, further consuming memory for log buffers and disk space for retained segments, which in turn prolongs checkpoints and increases memory demand. Thus, each anomaly amplifies the others: bad access paths inflate memory needs; memory pressure throttles performance and increases log volume; and stressed replicas fall behind, feeding back into higher resource consumption and degraded resiliency across the cluster.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 251,
+            "score": 0.5891192381595906,
+            "bm25_score": 57.29465872212346,
+            "lexical_score": 0.17369724375538328,
+            "matched_terms": [
+                "already",
+                "and",
+                "apply",
+                "cross",
+                "keep",
+                "lag",
+                "log",
+                "node",
+                "or",
+                "replica",
+                "replication",
+                "retention",
+                "running",
+                "stale",
+                "the",
+                "to",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "1254",
+                "error_name": "OBSOLETE_ER_SLAVE_WAS_RUNNING",
+                "official_description": "Replica is already running",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

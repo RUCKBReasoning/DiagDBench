@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Database Memory Allocation Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Optimizer Statistics Anomaly : The cost model receives stale or incomplete statistics, resulting in systematic cardinality misestimation and sub-optimal plan shapes.\nDatabase Memory Allocation Anomaly : Cumulative memory reserved for caches, work areas, and background structures exceeds the safe limits of the host, provoking paging, cache shrinkage, or OOM termination.\nBuffer Cache and Latch Contention Anomaly : Sessions serialize on hot buffer pages, latches, or I/O slots, producing buffer-busy and latch waits that throttle throughput.\n\nWhen all three root causes surface concurrently, the system exhibits a compound failure pattern: queries choose memory-intensive operators (hash joins, large sorts) based on misestimated cardinalities; these operators overrun available work memory, forcing the engine to evict clean pages, shrink caches, and escalate to temporary spill or OS swap. The resulting buffer churn and reduced cache residency turn frequently accessed index root pages into hotspots, driving latch spin and wait amplification. Observable symptoms include wildly inaccurate plan estimates, sudden plan regressions after data changes, escalating resident-set size, swap-daemon or cgroup throttling, plummeting buffer-cache hit ratios, surges in PAGE_LATCH_* or BUFFER_BUSY waits, CPU spin without progress, and query runtimes that grow super-linearly with concurrency.\n\nCausal interaction: stale statistics mislead the optimizer to request much more (or much less) memory than is actually needed; over-allocated work areas aggregate across many sessions, tipping the instance into global memory pressure. As the engine trims the buffer pool to free memory for work areas, hotter pages cycle in and out more frequently, extending the hold time of latches protecting those pages. Longer latch waits elongate query execution, keeping their memory allocations alive and further intensifying pressure. Conversely, memory shortages can inhibit automatic statistics refresh jobs, perpetuating statistics staleness, while latch contention slows data-modification operations, leaving partitions in states that diverge further from recorded statistics. The three anomalies thus form a feedback loop that magnifies latency, degrades throughput, and risks stability far more severely than any single anomaly would in isolation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 1262,
+            "score": 0.39510603476295353,
+            "bm25_score": 40.112281201111045,
+            "lexical_score": 0.13249748471480535,
+            "matched_terms": [
+                "and",
+                "engine",
+                "exceeds",
+                "execution",
+                "failure",
+                "in",
+                "is",
+                "limits",
+                "on",
+                "or",
+                "pattern",
+                "pressure",
+                "size",
+                "the",
+                "to",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "3699",
+                "error_name": "ER_REGEXP_PATTERN_TOO_BIG",
+                "official_description": "The regular expression pattern exceeds limits on size or complexity.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

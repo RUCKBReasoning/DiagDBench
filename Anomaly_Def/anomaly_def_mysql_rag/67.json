@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Data Block and Index Integrity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Optimizer input metadata (row counts, histograms, correlation stats) is stale, missing, or inaccurate, causing systematic cardinality misestimation.\nData Block and Index Integrity Anomaly : On-disk table and index pages are physically or logically corrupted, breaking key ordering, page links, or heap-to-index consistency.\nOperating System Resource Limit Anomaly : Kernel-enforced limits on file handles, shared memory, semaphores, threads, or other OS objects are exhausted, preventing the database from allocating critical resources.\n\nWhen all three root causes coexist, symptoms intertwine: queries may flip from efficient index plans to full table scans because the optimizer underestimates or overestimates row counts while simultaneously distrusting corrupted indexes and encountering OS errors when attempting to open alternate access paths, spawn parallel workers, or read recovery segments. Estimated-vs-actual row gaps, repeated plan recompilations, and integrity check failures surface alongside sporadic \"cannot open file\" or \"cannot create shared memory\" engine errors. Administrators may observe erratic performance spikes, partially missing result sets, and intermittent session or background-worker failures; corruption repair or index rebuild attempts may abort midway due to OS resource denials, leaving objects in even less consistent states.\n\nCausal chain: stale or absent statistics can drive the optimizer to favor access paths that intensively exercise particular indexes or create large temporary workfiles, increasing I/O and handle usage; this added pressure accelerates the exhaustion of OS-level limits. Once limits are hit, critical maintenance tasks—such as automatic page verification, index rebuilds, or statistics refreshes—fail to complete, allowing existing block and index corruptions to persist and spread. Conversely, latent page corruption can trigger repeated plan invalidations and emergency scans that inflate resource consumption, hastening resource-limit breaches and deferring statistics collection that relies on full object scans. The mutual reinforcement of bad statistics, structural corruption, and kernel resource starvation creates a feedback loop that steadily degrades both query correctness and engine availability.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.7359866220735786,
+            "bm25_score": 22.630376991246834,
+            "lexical_score": 0.11995540691192866,
+            "matched_terms": [
+                "and",
+                "attempting",
+                "attempts",
+                "because",
+                "cannot",
+                "in",
+                "is",
+                "metadata",
+                "or",
+                "session",
+                "the",
+                "this",
+                "to",
+                "when",
+                "while"
+            ],
+            "match_count": 4,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

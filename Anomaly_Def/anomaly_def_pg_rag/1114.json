@@ -1,0 +1,61 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Data Block and Index Integrity Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly : Bottleneck in generation, flushing, archival or retention of write-ahead log records, stalling commit processing and write throughput.\nData Block and Index Integrity Anomaly : On-disk data or index pages have become corrupted or internally inconsistent, making persisted structures logically or physically unreliable.\nNetwork and Connectivity Resource Anomaly : Client-to-server transport, listener or connection-handling resources are saturated or unstable, delaying or aborting session establishment and data transfer.\n\nWhen these three root causes strike simultaneously, the database may exhibit a multi-layered failure signature: commits hang or time-out, yet even successful transactions later surface missing or duplicated rows due to latent corruption; error logs show alternating bursts of log-flush and log-sync waits, page-checksum failures and connection-refused messages; clients experience a mix of slow authentication, dropped sessions, and data-integrity exceptions. Recovery utilities and background check-pointers run continuously but fall behind because log archival stalls, while network retransmissions and half-open sockets amplify commit latency. Administrative attempts to rebuild indexes or run integrity checks are throttled by both log I/O saturation and unreliable network channels, making the true extent of corruption hard to assess.\n\nCausal chain: network congestion and listener saturation increase round-trip latency for commit handshakes and archiver file transfers, lengthening the time each transaction occupies the log buffer. The swollen log backlog forces aggressive checkpointing and log switches; if the underlying data pages are already corrupt, these checkpoints repeatedly hit verification errors, provoking partial rollbacks and even more redo generation, further overloading the log subsystem. Conversely, corruption in indexes or data blocks can trigger excessive redo (e.g., repetitive page-clean operations or index rebuild attempts) that drives the log system into saturation. The resulting log-flush stalls prolong transaction hold-times, thereby keeping sockets open longer and inflating the population of active connections, which worsens the existing network bottleneck. This self-reinforcing loop degrades both durability and consistency guarantees, making OLTP workloads unable to meet latency or correctness SLAs while obscuring the primary point of failure.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.6469927950768326,
+            "bm25_score": 19.719706980859712,
+            "lexical_score": 0.18912294647588768,
+            "matched_terms": [
+                "and",
+                "are",
+                "authentication",
+                "can",
+                "check",
+                "client",
+                "connection",
+                "establishment",
+                "failure",
+                "handling",
+                "latency",
+                "messages",
+                "of",
+                "on",
+                "or",
+                "server",
+                "session",
+                "sessions",
+                "system",
+                "that",
+                "the",
+                "this",
+                "time",
+                "to",
+                "when"
+            ],
+            "match_count": 213,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_count",
+                "parameter_name": "tcp_keepalives_count",
+                "timeout_category": "network_keepalive_failure_threshold",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the number of TCP keepalive messages that can be lost before the server connection to the client is considered dead.",
+                "trigger_condition": "The number of lost TCP keepalive probes reaches tcp_keepalives_count on systems supporting TCP_KEEPCNT.",
+                "workload_impact": "The server can consider the client connection dead after the configured keepalive failure threshold.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

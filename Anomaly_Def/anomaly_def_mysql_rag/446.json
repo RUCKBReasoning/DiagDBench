@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Buffer Cache and Latch Contention Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Database Configuration Parameter Anomaly: Engine-level settings (memory pools, checkpoint cadence, log sizing, parallelism, etc.) are mis-calibrated with respect to hardware capacity and workload characteristics.\nBuffer Cache and Latch Contention Anomaly: Sessions thrash on hot buffer pages and their associated latches, causing serialization and CPU spinning rather than true memory exhaustion.\nTransaction Log Subsystem Anomaly: The write-ahead log path—log buffer, flush, switch, archive, replication retention—cannot keep pace with redo generation, stalling commits and checkpoints.\n\nComposite definition: The database concurrently suffers from mis-tuned configuration parameters, severe buffer-cache/latch contention, and a saturated transaction-log subsystem. Together they create a feedback loop where write throughput is throttled at multiple layers while internal synchronization points become hot spots.\n\nCombined anomalous phenomena: 1) Commit latency and overall response time spike, with wait-event views showing a mixture of log-flush waits, buffer-busy/page-latch waits, and background-writer or checkpoint waits. 2) CPU usage oscillates between idle gaps (when sessions sleep on I/O or log flush) and spin-loops (while contending for latches). 3) Checkpoints fire more frequently, ejecting dirty pages and intensifying latch contention on the buffer freelist, yet still fail to relieve log pressure because log files are undersized or archiver lagging. 4) Performance regressions appear immediately after a configuration change or version upgrade, but traditional resource monitors show disks and CPUs only partially utilized, making the root cause hard to isolate.\n\nCausal chain: Undersized log segments or slow archiving lengthen commit flush times; administrators react by tightening checkpoint intervals or enlarging work-memory, inadvertently pushing more dirty pages into the buffer pool. The higher dirty-page churn amplifies contention on buffer hash chains and page latches, causing threads to spin and burn CPU without progress. The resulting stall lengthens transaction durations, which in turn sustains a higher volume of concurrent sessions and redo generation, keeping the log subsystem overwhelmed. Because the mis-set parameters (checkpoint cadence, buffer-pool size, parallelism, log buffer length) govern both the buffer manager and the log writer, their poor calibration creates circular amplification: slow log flushes trigger aggressive checkpoints; aggressive checkpoints raise latch contention; latch contention delays the very transactions that must flush the log, thereby deepening the bottleneck. Without correcting all three layers, tuning any single layer in isolation provides only transient relief.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.7426470588235293,
+            "bm25_score": 25.11224129284536,
+            "lexical_score": 0.14215686274509803,
+            "matched_terms": [
+                "and",
+                "because",
+                "by",
+                "cannot",
+                "change",
+                "for",
+                "in",
+                "is",
+                "length",
+                "of",
+                "only",
+                "or",
+                "sessions",
+                "than",
+                "the",
+                "time",
+                "transaction",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 22,
+            "entry": {
+                "timeout_id": "mysql84_innodb_row_lock_wait_timeout",
+                "parameter_name": "innodb_lock_wait_timeout",
+                "timeout_category": "innodb_row_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "The length of time in seconds an InnoDB transaction waits for a row lock before giving up.",
+                "trigger_condition": "An InnoDB transaction waits longer than innodb_lock_wait_timeout for a row lock.",
+                "workload_impact": "The lock wait gives up; by default only the current statement is rolled back unless innodb_rollback_on_timeout is enabled.",
+                "default_behavior": "Defined as an InnoDB system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

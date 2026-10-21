@@ -1,0 +1,44 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Database Memory Allocation Anomaly",
+            "Description": "Composite definition: The database simultaneously suffers from excessive accumulation of obsolete MVCC row versions and uncontrolled growth of memory-resident structures, causing both storage-level bloat and host-level memory pressure at the same time.\n\nMVCC Version Maintenance Anomaly: Obsolete row versions, undo/rollback records, and dead index entries pile up faster than background cleanup processes can purge them, inflating on-disk objects and lengthening visibility checks.\nDatabase Memory Allocation Anomaly: Buffer caches, work areas, plan caches, and other memory heaps expand beyond the safe limits of physical RAM, leading to paging, OOM kills, and degraded cache efficiency.\n\nCombined symptoms: • Rapid growth of both on-disk relation size and in-memory buffers devoted to stale row versions and undo, driving the database process’s RSS steadily upward. • Cleanup workers that are chronically scheduled yet starved for RAM, showing frequent restarts or throttling under OS memory pressure. • Elevated I/O due to double handling of data: bloated tables require longer scans while reduced cache effectiveness forces more disk reads; simultaneous swapping further slows I/O paths. • Query latencies become highly variable: readers traverse ever-larger version chains while also stalling on memory allocation, and writers may experience checkpoint or WAL backpressure. • Nodes in clustered/VM environments may be evicted or reboot due to exceeded memory cgroups, with recovery complicated by large undo/redo segments.\n\nCausal interaction: The surge of obsolete versions expands both the persistent heap and the in-memory buffer pool, directly increasing memory consumption. As the memory envelope is exceeded, the operating system begins paging or terminates processes, which in turn slows or interrupts background vacuum/garbage-collection workers, allowing even more dead versions to accumulate—a positive feedback loop. Memory pressure also reduces effective work memory per query, causing hash/sort spills that further inflate temporary files and prolong transactions, keeping old snapshots open and preventing version pruning. Conversely, long-running or memory-hungry queries spawned during memory bloat delay transaction-ID advancement, deepening the MVCC horizon problem. The intertwined effects amplify each other, degrading throughput, increasing crash risk, and making root-cause isolation harder because symptoms of storage bloat and memory exhaustion appear concurrently.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 100,
+            "score": 0.3886701284384757,
+            "bm25_score": 22.236253219202403,
+            "lexical_score": 0.08698101062117798,
+            "matched_terms": [
+                "and",
+                "at",
+                "checks",
+                "for",
+                "is",
+                "or",
+                "the",
+                "time",
+                "transaction",
+                "with"
+            ],
+            "match_count": 16,
+            "entry": {
+                "error_code": "25003",
+                "error_name": "inappropriate_access_mode_for_branch_transaction",
+                "official_description": "inappropriate access mode for branch transaction",
+                "error_class": "Class 25 - Invalid Transaction State",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "authentication_and_authorization",
+                "cause_analysis": "The failure is typically associated with user identity, privilege scope, object access checks, or credential validation at session establishment or statement execution time.",
+                "solution_guidance": "Verify account credentials, privilege grants, object ownership, role settings, and whether the execution context has sufficient access rights.",
+                "observable_symptoms": [
+                    "access denied",
+                    "authentication failure",
+                    "permission error"
+                ]
+            }
+        }
+    }
+]

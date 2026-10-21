@@ -1,0 +1,46 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Storage I/O Throughput Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer chooses a markedly sub-optimal execution plan even though statistics are adequate, leading to unnecessary work, poor join methods, or non-selective access paths.\nStorage I/O Throughput Anomaly: The physical storage layer is saturated, so read/write latency, IOPS queues, and device wait times all climb well above design limits.\nOperating System Resource Limit Anomaly: Kernel-enforced caps on file handles, async-I/O contexts, threads, shared memory, or similar resources are reached, blocking further allocations by the database processes.\n\nWhen these three root causes strike simultaneously, symptoms compound: a suddenly degraded plan may switch from index probes to full table scans, inflating I/O volume precisely when the storage subsystem is already at or beyond throughput capacity. The bloated I/O demand lengthens device queues and elevates buffer-I/O and log-file waits; meanwhile, the database tries to open more files, spawn extra parallel or I/O helper threads, or allocate larger async-I/O queues to cope, but the operating system refuses additional resources. End-users see erratic execution times, timeouts, and partial outages where existing sessions hang on I/O waits while new sessions, parallel workers, or background check-pointers fail to start, sometimes emitting kernel \"too many open files\", \"cannot create thread\", or \"AIO context limit reached\" errors. Performance metrics show a puzzling mix of optimizer plan churn, soaring physical I/O latency, and sporadic OS-level allocation failures that mask one another and hinder straightforward diagnosis.\n\nCausally, a poor plan acts as the initial amplifier, multiplying page reads and log writes. The excess demand pushes the storage layer into saturation, driving up latency and elongating the lifespan of every I/O request. Prolonged I/O times inflate the number of simultaneously active requests, which in turn drives the engine to request more kernel objects—file descriptors for every open segment, async-I/O control blocks, and worker threads. Once OS limits are hit, these new allocations are denied, causing additional plan invalidations, failed worker creation, and fallback to even less efficient serial plans. Each layer therefore feeds the next: sub-optimal planning → storage overload → OS resource exhaustion → further planning and execution degradation, creating a reinforcing spiral that dramatically worsens overall database throughput and availability.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 107,
+            "score": 0.3365519068937644,
+            "bm25_score": 28.980671376079727,
+            "lexical_score": 0.10759322033898305,
+            "matched_terms": [
+                "and",
+                "blocking",
+                "check",
+                "in",
+                "is",
+                "limits",
+                "or",
+                "prolonged",
+                "queues",
+                "resource",
+                "the",
+                "wait"
+            ],
+            "match_count": 14,
+            "entry": {
+                "error_code": "25P03",
+                "error_name": "idle_in_transaction_session_timeout",
+                "official_description": "idle in transaction session timeout",
+                "error_class": "Class 25 - Invalid Transaction State",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "timeout_and_waiting",
+                "cause_analysis": "The failure is typically associated with extended waiting, resource queues, unresponsive peers, or configured time limits being exceeded before the requested operation completes.",
+                "solution_guidance": "Check wait sources, blocking chains, network responsiveness, timeout settings, and whether resource contention is prolonging operation completion.",
+                "observable_symptoms": [
+                    "timeout",
+                    "prolonged waiting",
+                    "interrupted operation"
+                ]
+            }
+        }
+    }
+]

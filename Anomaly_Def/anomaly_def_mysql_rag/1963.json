@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Query Plan Selection Anomaly + Transaction Lock Contention Anomaly",
+            "Description": "Optimizer Statistics Anomaly : The optimizer relies on stale, incomplete, or otherwise inaccurate statistics, leading to systematic cardinality misestimation.\nQuery Plan Selection Anomaly : Despite reasonably accurate statistics, the optimizer may still choose a sub-optimal execution plan because of cost-model flaws, plan-cache reuse, or version/configuration changes.\nTransaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same resources, causing blocking chains or deadlocks that stall throughput.\n\nWhen these three root causes coexist, the database exhibits a blend of inaccurate row-count estimates, erratic or degraded plan choices, and severe lock waits. Misestimated cardinalities or a poor plan (e.g., an unexpected full table scan or a broad nested-loop join) can dramatically enlarge the number or duration of row touches, thereby inflating the lock footprint and extending lock hold times. The swollen execution latencies feed back into the lock manager, lengthening wait queues, triggering deadlocks under high concurrency, and generating bursts of lock-wait/timeout errors alongside frequent plan recompilations or plan flips. Performance becomes highly unpredictable: some executions complete quickly, others stall behind long blockers, and overall throughput and SLA compliance collapse, making it difficult to distinguish whether the primary culprit is the optimizer or the lock subsystem.\n\nCausally, stale or missing statistics first mislead the optimizer, and any surviving misestimation gaps that the cost model fails to correct push the optimizer toward inefficient plans. These bloated plans touch more rows or use inappropriate join orders, which in a busy OLTP environment increases lock acquisition and hold times. The resulting lock contention slows down data-modifying statements, prolongs transactions, and further skews the data distribution, making statistics even staler and encouraging additional plan recompilations. This positive feedback loop amplifies both the optimizer defects and the locking bottlenecks, creating a compounded performance crisis that cannot be resolved by addressing only one of the underlying root causes.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.42977170013105165,
+            "bm25_score": 20.007286337153182,
+            "lexical_score": 0.1338609383832674,
+            "matched_terms": [
+                "and",
+                "be",
+                "because",
+                "behind",
+                "by",
+                "contention",
+                "execution",
+                "is",
+                "long",
+                "or",
+                "query",
+                "the",
+                "this",
+                "timeout",
+                "when",
+                "whether"
+            ],
+            "match_count": 92,
+            "entry": {
+                "timeout_id": "mysql84_regular_expression_time_limit",
+                "parameter_name": "regexp_time_limit",
+                "timeout_category": "expression_evaluation_time_limit",
+                "scope": "global/session",
+                "official_definition": "The time limit for regular expression matching operations performed by the regular expression engine.",
+                "trigger_condition": "A regular expression match operation exceeds regexp_time_limit.",
+                "workload_impact": "The regular expression operation is constrained by the configured time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + MVCC Version Maintenance Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "SQL Workload Logic Anomaly: Application-layer statement or transaction design that forces the engine to process more data, rows, or time than business logic truly requires.\nMVCC Version Maintenance Anomaly: Accumulation of obsolete row versions and rollback records faster than background cleanup can reclaim them, leading to bloat and visibility-check overhead.\nOperating System Resource Limit Anomaly: Exhaustion of kernel-enforced resources such as file handles, shared-memory segments, or thread quotas that are outside the database engine’s direct control.\n\nWhen all three anomalies occur together, the system exhibits an amplified symptom set: statement latency and slow-query log entries multiply, while table and index bloat lengthen sequential scans and skew planner estimates. Background autovacuum or purge workers run continuously yet fall further behind, and at the same time they intermittently fail to spawn or allocate I/O contexts because per-process file-handle or thread limits have been hit. Users see long-tail response times, timeouts, and sudden \"cannot allocate shared memory / cannot create worker\" errors. Disk footprint grows rapidly, checkpoint and backup times lengthen, and idle sessions that remain open across think-time exacerbate both version buildup and handle consumption, blurring the boundary between SQL inefficiency, storage bloat, and OS-level shortages.\n\nCausally, chatty or scan-heavy SQL patterns generate excessive updates, deletes, and wide scans, inflating the version store. The bloated heap forces larger buffer and I/O footprints, pushing the engine to open more file descriptors and spawn more maintenance workers. As OS limits are reached, those workers throttle or fail, so version reclamation slows even further, letting bloat accelerate. The growing data size in turn lengthens already sub-optimal SQL operations, prolonging transactions and keeping snapshots open, which preserves even more dead rows. Thus, poor workload logic fuels version accumulation; version accumulation drives higher resource consumption; and OS resource ceilings choke the very background tasks needed to recover, locking the system into a downward performance spiral.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.46609283776539323,
+            "bm25_score": 19.502398292817258,
+            "lexical_score": 0.11019677996422182,
+            "matched_terms": [
+                "an",
+                "and",
+                "because",
+                "cannot",
+                "in",
+                "or",
+                "sessions",
+                "statement",
+                "than",
+                "the",
+                "to",
+                "transaction",
+                "when",
+                "while"
+            ],
+            "match_count": 42,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

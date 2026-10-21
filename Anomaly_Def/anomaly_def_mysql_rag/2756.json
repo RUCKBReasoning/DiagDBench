@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Replication Synchronization Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly : The primary’s write-ahead log files, buffers, or archiver processes become the bottleneck for commit processing, inflating log-flush and log-sync latency and triggering frequent log-file switches or checkpoint storms.\nReplication Synchronization Anomaly : Downstream replicas or change-data consumers cannot receive, persist, or apply log records quickly enough, causing widening log-position gaps, replay lag, and retained log segments on the primary.\n\nWhen both root causes manifest together the database exhibits a feedback loop of write-path stress and replication backlog. Observable symptoms include: \n• Spiking commit latency, \"log file sync/log flush\" and \"log file write\" waits on the primary, accompanied by rising \"replication send/receive\" waits.\n• Rapid log-file growth, repeated log rotation or archiver stalls, and exhaustion of log or archive storage because replicas hold old segments open.\n• Steadily increasing replication delay metrics (lag in bytes, seconds, or LSNs), stale read-only replicas, and degraded failover readiness.\n• Periodic write stalls or throttling when the primary cannot obtain a free log segment, coinciding with network congestion or apply slowdowns on replicas.\n• Amplified recovery-time objectives (RTO) as both local crash-recovery checkpoints and remote apply queues grow.\n\nCausal interaction: A saturated transaction-log subsystem lengthens commit cycles, inflating the volume and duration of outstanding redo that must be shipped. The slower and bulkier the local logging becomes, the more bursty and voluminous the traffic a replica must ingest and replay. Conversely, replication lag prevents timely log-segment reuse, forcing the primary to keep and continuously allocate additional log files. This enlarges the on-disk log footprint, increases file-switch frequency, and intensifies flushing pressure, further degrading log I/O performance. The two anomalies thus reinforce each other, creating a vicious cycle where log congestion on the primary and apply lag on replicas mutually aggravate, potentially culminating in write outages, replica desynchronization, or uncontrolled storage growth.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3066,
+            "score": 0.5686830497073209,
+            "bm25_score": 55.585595546694584,
+            "lexical_score": 0.16202070770281032,
+            "matched_terms": [
+                "and",
+                "apply",
+                "downstream",
+                "keep",
+                "lag",
+                "log",
+                "network",
+                "or",
+                "replica",
+                "replication",
+                "send",
+                "stale",
+                "sync",
+                "the",
+                "to",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-011182",
+                "error_name": "ER_SEMISYNC_REPLICA_SEND_REPLY_FAILED",
+                "official_description": "Semi-sync replica send reply failed: %s (%d).",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

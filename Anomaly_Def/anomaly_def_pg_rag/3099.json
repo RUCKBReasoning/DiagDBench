@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Query Plan Selection Anomaly + Storage Space Capacity Anomaly",
+            "Description": "SQL Workload Logic Anomaly: Application-level statement or transaction design that processes or returns more data than business logic requires.\nQuery Plan Selection Anomaly: Optimizer chooses a markedly sub-optimal execution plan even though statistics are adequate.\nStorage Space Capacity Anomaly: Physical or logical free space in data, temp, or log areas is exhausted or near exhaustion, blocking further allocations.\n\nWhen these three root causes strike together, the system executes needlessly heavy statements with inefficient plans that materialize excessive intermediate results, generate bloated logs, and sustain long transactions exactly when the underlying storage pools are already at – or racing toward – capacity limits. Observable effects include dramatic and erratic query slowdowns, bursts of temporary‐segment growth, sudden switches to full table scans that flood I/O, rapid log or tablespace filling, allocation failures during sorts or hash joins, transaction rollbacks due to \"out of space\" errors, prolonged lock holding, application timeouts, and oscillating plan shapes as the optimizer reacts to space-induced feedback such as disabled parallelism or spilled hash areas.\n\nCausally, inefficient workload logic feeds large row sets and long-running transactions to the optimizer. A poor plan choice magnifies that volume through full scans, wide hash joins, and repeated re-executions, inflating temp usage and redo/undo generation. The resulting surge in data, temp, and log consumption accelerates space depletion; once critical thresholds are crossed, auto-extension stops or file growth stalls, causing further plan instability (e.g., fallback to disk-heavy plans when memory spills cannot allocate space) and forcing the application to keep transactions open longer while retrying, which in turn continues enlarging logs and temp segments. Thus each anomaly amplifies the others, forming a feedback loop that degrades performance, increases failure rates, and complicates diagnosis.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.647633159737513,
+            "bm25_score": 28.990170709290577,
+            "lexical_score": 0.14928571428571427,
+            "matched_terms": [
+                "and",
+                "blocking",
+                "cannot",
+                "holding",
+                "is",
+                "lock",
+                "longer",
+                "of",
+                "or",
+                "row",
+                "statement",
+                "table",
+                "than",
+                "that",
+                "the",
+                "to",
+                "transaction",
+                "when",
+                "while"
+            ],
+            "match_count": 314,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

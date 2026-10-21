@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + CPU Resource Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Obsolete row versions, rollback records, and dead index entries accumulate faster than background cleanup workers can reclaim them.\nCPU Resource Anomaly : Database processes sustain near-saturation CPU consumption, starving other work and inflating latency.\nOperating System Resource Limit Anomaly : Database processes hit kernel-enforced ceilings such as file descriptors, shared-memory segments, or thread counts, causing allocation failures.\n\nWhen all three root causes are active, the system shows a compound failure signature: vacuum or purge workers spin at 100 % CPU yet make little progress, overall host load and context-switch rates soar, and the engine begins to log errors about failing to spawn new workers, open files, or extend shared memory. Query latencies rise non-linearly; some sessions stall on visibility checks of bloated tables while others are rejected outright by the kernel. Monitoring views show both a growing version store and a backlog of blocked or aborted background jobs. Administrators may observe that even emergency maintenance commands refuse to start because required handles or processes cannot be created.\n\nCausal chain: heavy UPDATE/DELETE churn inflates the version store, awakening more cleanup workers; these workers consume additional CPU cycles and create more kernel objects (threads, file handles, async-I/O contexts). The extra CPU demand pushes the host to saturation, lengthening task-switch queues and slowing all workers—including those needed for cleanup—so the MVCC bloat worsens. Meanwhile, the multiplication of worker threads and open files drives the process toward OS resource ceilings; once those limits are reached, new vacuum workers and client sessions fail to start, eliminating the very mechanisms that could relieve version pressure. The three anomalies therefore reinforce one another: MVCC bloat triggers CPU saturation, CPU saturation accelerates kernel object creation, OS denials block remediation, and the feedback loop rapidly degrades overall database availability.\n",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.4952705137264494,
+            "bm25_score": 22.69590844364148,
+            "lexical_score": 0.14807473714123331,
+            "matched_terms": [
+                "aborted",
+                "and",
+                "are",
+                "at",
+                "be",
+                "can",
+                "checks",
+                "client",
+                "kernel",
+                "latency",
+                "or",
+                "progress",
+                "query",
+                "sessions",
+                "system",
+                "that",
+                "the",
+                "when",
+                "while"
+            ],
+            "match_count": 267,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

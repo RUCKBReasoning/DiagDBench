@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Replication Synchronization Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Schema and Index Design Anomaly: Static mismatch between physical data model (tables, partitions, indexes, datatypes, constraints) and workload access patterns forces inefficient access paths even when SQL is well-written.\nReplication Synchronization Anomaly: Replication pipeline cannot receive, persist, or apply WAL/redo at the pace the primary generates it, causing widening log-position gaps and lag across nodes.\nStorage I/O Throughput Anomaly: Underlying storage subsystem is saturated in bandwidth, IOPS, or latency, so physical reads and writes queue up, inflating I/O wait times for data, temp, and log files.\n\nWhen all three anomalies coexist, the database exhibits a compounded performance collapse: primary queries perform full scans and excessive random look-ups due to poor schema and index design, inflating read and write volumes exactly when the storage layer is already throughput-bound. The bloated I/O stream amplifies storage queue depths, elevates data-file and log-file latencies, and slows checkpoint and flush operations. Simultaneously, the replication channel falls further behind because the primary’s overloaded log writer produces a high volume of change records while the replica’s apply threads stall on the same storage bottlenecks. Monitoring shows runaway query latency, surging buffer cache misses, prolonged commit times, rapidly growing replication lag, retention of old WAL segments on the primary, and near-continuous storage wait events on both primary and replicas, making it difficult to attribute delays to any single layer.\n\nCausally, inefficient access paths caused by poor schema and indexing multiply the physical I/O demand. This burst of disk activity collides with limited storage throughput, extending read/write latencies and commit times. Longer commit paths inflate the volume and lifespan of log data waiting to be shipped, so replication lag widens. As replicas struggle with the same sub-optimal schema and the shared storage bottleneck, their apply rate drops, which in turn prevents the primary from recycling log segments, further increasing disk usage and pressure on the constrained storage subsystem. The vicious cycle of excessive I/O, storage saturation, and replication backlog can ultimately threaten both performance and availability of the entire database environment.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5707,
+            "score": 0.6020292459784311,
+            "bm25_score": 64.04269851693812,
+            "lexical_score": 0.181168712218355,
+            "matched_terms": [
+                "access",
+                "and",
+                "data",
+                "disk",
+                "file",
+                "for",
+                "increasing",
+                "is",
+                "latency",
+                "log",
+                "or",
+                "paths",
+                "pressure",
+                "redo",
+                "storage",
+                "the",
+                "waiting",
+                "with",
+                "write",
+                "writer"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013864",
+                "error_name": "OBSOLETE_ER_IB_MSG_LOG_WRITER_WAIT_ON_NEW_LOG_FILE",
+                "official_description": "Redo log writer is waiting for a new redo log file. Consider increasing innodb_redo_log_capacity.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

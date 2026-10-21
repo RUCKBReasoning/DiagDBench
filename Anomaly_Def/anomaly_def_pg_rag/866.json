@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Transaction Log Subsystem Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "SQL Workload Logic Anomaly : The submitted SQL or transaction design forces the engine to read, write, or lock far more data and for longer intervals than the business case requires.\nTransaction Log Subsystem Anomaly : The write-ahead logging path—log buffer, log files, archiver, or replication retention—cannot keep pace with redo generation, throttling commit throughput.\nOperating System Resource Limit Anomaly : Kernel-enforced ceilings on file descriptors, shared memory, semaphores, threads, or cgroup quotas prevent the database from allocating the resources it needs.\n\nWhen these three root causes coincide, the system exhibits compounded symptoms: application statements show extreme and highly variable response times; commit latency spikes and fluctuates as log flushes back up; slow-query logs fill with the same chatty or scan-heavy statements; background error logs reveal \"unable to open file\", \"cannot allocate shared memory\", or thread-creation failures; checkpoints and log-switch storms occur more frequently; sessions intermittently fail to start or hang during commit; and archival/replication lag balloons, causing retention directories to overflow. Performance degradations appear erratic because even minor workload surges exacerbate both log contention and operating-system denial events, while the bloated, long-running transactions keep locks and resources held, amplifying blocking chains.\n\nCausal chain: inefficient SQL or over-long transactions inflate redo generation and hold resources for extended periods, driving the transaction log subsystem to its limits. As log buffers and files saturate, the database requests more file handles, I/O contexts, shared memory, and background threads to flush, switch, or archive logs. Simultaneously, OS-level limits on these kernel objects cap the database’s ability to relieve log pressure. The stalled log subsystem lengthens commit times, which further prolongs the already excessive transactions produced by the workload logic anomaly, creating larger bursts of redo and compounding lock contention. This feedback loop accelerates consumption of kernel resources until limits are hit, after which both new sessions and log-handling processes fail, precipitating a cascading slowdown or partial outage of the transactional workload.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.30520462091342776,
+            "bm25_score": 14.84571041916174,
+            "lexical_score": 0.13126550868486353,
+            "matched_terms": [
+                "and",
+                "are",
+                "by",
+                "data",
+                "handling",
+                "latency",
+                "long",
+                "longer",
+                "on",
+                "or",
+                "sessions",
+                "system",
+                "than",
+                "the",
+                "this",
+                "when"
+            ],
+            "match_count": 204,
+            "entry": {
+                "timeout_id": "pg16_tcp_user_timeout",
+                "parameter_name": "tcp_user_timeout",
+                "timeout_category": "network_unacknowledged_data_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies how long transmitted data may remain unacknowledged before the TCP connection is forcibly closed.",
+                "trigger_condition": "TCP data sent by PostgreSQL remains unacknowledged longer than tcp_user_timeout on systems supporting TCP_USER_TIMEOUT.",
+                "workload_impact": "The TCP connection is forcibly closed.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

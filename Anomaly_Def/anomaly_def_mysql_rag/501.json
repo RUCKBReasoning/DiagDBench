@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + MVCC Version Maintenance Anomaly",
+            "Description": "Composite anomaly definition: The database simultaneously suffers from stale or incomplete optimizer statistics and an overgrown MVCC version store whose cleanup has fallen behind. As a result, the cost-based optimizer makes decisions on metadata that are both outdated and distorted by heap and index bloat, producing systematically mis-estimated and sub-optimal execution plans.\n\nCombined anomalous phenomena: 1) Extreme and erratic divergences between estimated and actual row counts, with estimates often orders of magnitude off due to statistics that no longer reflect the swollen base tables. 2) Query plans flip unpredictably between index scans and full-table or bitmap scans as the optimizer struggles to evaluate heavily bloated relation sizes. 3) Execution times elongate because plans chosen to access small perceived row sets instead confront large on-disk footprints and must wade through many dead tuples, incurring excessive random I/O, CPU spent on visibility checks, and memory consumed by mis-sized hash or sort operations. 4) Autovacuum or background purge workers appear saturated yet ineffective; meanwhile, automatic statistics refresh jobs are throttled or miss their windows, causing a persistent feedback loop of poor plans and further bloat.\n\nCausal chain and interaction: MVCC version accumulation inflates table and index pages, rapidly invalidating previously accurate statistics and increasing the skew between logical row counts and physical storage size. The optimizer, lacking fresh or sufficiently detailed statistics, underestimates result sizes and selects access paths that intensify I/O and CPU pressure. These heavier plans prolong query execution and hold snapshots open longer, which in turn delays version reclamation and forces the version store to grow even faster. The enlarged version store makes maintenance operations costlier, causing further delays in both vacuum/purge cycles and statistics refresh, thereby reinforcing the downward spiral of bloat, misestimation, and degraded performance.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 4854,
+            "score": 0.6534674715398547,
+            "bm25_score": 46.80942907454797,
+            "lexical_score": 0.135941893158388,
+            "matched_terms": [
+                "access",
+                "and",
+                "are",
+                "disk",
+                "in",
+                "of",
+                "or",
+                "pages",
+                "paths",
+                "pressure",
+                "size",
+                "sizes",
+                "storage",
+                "the",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-012971",
+                "error_name": "ER_IB_MSG_1147",
+                "official_description": "Tablespace size stored in header is %lu pages, but the sum of data file sizes is %lu pages",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

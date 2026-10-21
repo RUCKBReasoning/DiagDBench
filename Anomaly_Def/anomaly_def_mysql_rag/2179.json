@@ -1,0 +1,62 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Schema and Index Design Anomaly: A static mismatch between the physical data model (tables, indexes, partitions, constraints, data types) and the workload’s access patterns forces otherwise well-formed SQL to scan or probe data inefficiently.\nNetwork and Connectivity Resource Anomaly: Insufficient or unstable network, listener, authentication, or socket resources limit the rate at which client sessions can connect or exchange result data with the database.\n\nComposite anomaly definition – simultaneous impact: The database is concurrently burdened by sub-optimal physical schema design AND by constrained network/connection resources, so each logical request encounters both inefficient data access inside the engine and delays while entering or leaving the system. Performance degradation is therefore driven by a dual bottleneck: slow server-side execution paths plus impaired client/server data transfer and session management.\n\nCombined anomalous phenomena: • Queries exhibit long total response times that fluctuate widely, with execution plans showing full scans, excessive row fetches, and heavy I/O, followed by prolonged client-read or client-write waits. • Connection pools reach their maximum size as sessions linger in network I/O states, causing new connection attempts to time out or be refused; at the same time, existing sessions consume CPU and I/O on repeated, poorly indexed lookups. • Monitoring shows high logical I/O, segment scans, and index maintenance overhead alongside growing listener backlogs, rising TCP retransmissions, and an accumulation of idle-in-transaction or socket WAITs. • Application retries amplify load, further stressing both the mis-indexed tables and the limited connection slots, leading to cascading slowdowns or outages.\n\nCausal chain and mutual amplification: Poor schema/index design lengthens statement runtimes, which in turn prolongs the lifespan of each client session and the volume of data transmitted. Longer-lived sessions consume more network buffers and keep sockets open, accelerating exhaustion of connection slots and listener queues. Conversely, network congestion or handshake delay stretches the end-to-end time of every query, magnifying the impact of inefficient access paths by extending their blocking window on locks, latches, and cache structures. The feedback loop—slow execution inflating session counts and network waits, while network stalls inflate per-query wall-clock time—produces a compound performance collapse that is more severe and harder to diagnose than either anomaly in isolation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.7227870018341165,
+            "bm25_score": 34.183374266652415,
+            "lexical_score": 0.18638107416879796,
+            "matched_terms": [
+                "an",
+                "and",
+                "be",
+                "blocking",
+                "client",
+                "connection",
+                "delay",
+                "is",
+                "longer",
+                "network",
+                "of",
+                "or",
+                "schema",
+                "server",
+                "session",
+                "sessions",
+                "statement",
+                "than",
+                "the",
+                "to",
+                "transaction",
+                "waits",
+                "while",
+                "window",
+                "write"
+            ],
+            "match_count": 102,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

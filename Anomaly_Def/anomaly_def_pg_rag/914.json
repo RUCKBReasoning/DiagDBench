@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Replication Synchronization Anomaly + Storage I/O Throughput Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Replication Synchronization Anomaly: Standbys, read replicas, or downstream consumers cannot receive, persist, or apply WAL/redo records as fast as the primary emits them, causing widening log-position gaps and replication lag.\nStorage I/O Throughput Anomaly: The physical volumes that host data, log, temp, or backup files are saturated for bandwidth, IOPS, or latency, inflating I/O wait times and slowing every component that depends on disk access.\nOperating System Resource Limit Anomaly: Kernel-enforced ceilings on file descriptors, AIO contexts, shared memory, semaphores, or process/thread counts block the database from opening more files, issuing I/O, or spawning workers, even though engine-level limits have not been reached.\n\nWhen all three anomalies emerge concurrently, the database exhibits a mixture of symptoms that mask one another: replication lag grows rapidly while primary-side WAL files and replica relay logs pile up because slow, back-pressured storage and blocked I/O contexts prevent both the primary from recycling logs and the replicas from reading or replaying them. Data-file, log-file, and buffer-I/O waits dominate wait profiles, yet administrators also observe sporadic engine errors about \"too many open files,\" \"cannot allocate shared memory,\" \"AIO context limit reached,\" or inability to start new replication workers. CPU utilization appears moderate, but end-user transactions and analytical queries stall on commit confirmation, stale replica reads, or buffer latch acquisition. Failover readiness deteriorates as replicas become hours behind, and disk-space alarms trigger due to retained WAL segments.\n\nCausally, storage throughput saturation slows both the primary’s WAL flushes and the replicas’ read/replay pipelines. The longer each operation waits on disk, the more worker threads, file handles, AIO slots, and shared-memory objects remain in use. This steadily drives the database toward OS-level resource ceilings. Once those limits are hit, new I/O submissions fail or queue lengths collapse, further degrading storage performance and intensifying replication lag. Conversely, the escalating backlog of unapplied WAL produced by the replication anomaly forces more concurrent I/O and open files, accelerating consumption of kernel resources and aggravating the storage bottleneck. The feedback loop among slow storage, exhausted kernel resources, and widening replication gaps can rapidly push the system into a cascading performance and availability crisis.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.555200295198322,
+            "bm25_score": 19.055345068259566,
+            "lexical_score": 0.14366493523571566,
+            "matched_terms": [
+                "about",
+                "and",
+                "are",
+                "been",
+                "but",
+                "context",
+                "for",
+                "latency",
+                "longer",
+                "not",
+                "of",
+                "open",
+                "or",
+                "stale",
+                "that",
+                "the",
+                "this",
+                "user",
+                "when"
+            ],
+            "match_count": 205,
+            "entry": {
+                "timeout_id": "pg16_idle_session_timeout",
+                "parameter_name": "idle_session_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle, but not within an open transaction, for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle and not inside an open transaction longer than the configured threshold.",
+                "workload_impact": "The session is terminated; the documentation warns about using this with connection pools or middleware.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

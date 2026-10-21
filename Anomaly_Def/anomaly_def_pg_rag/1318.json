@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Transaction Log Subsystem Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Transaction Lock Contention Anomaly: Concurrent transactions contend for mutually incompatible locks on the same rows, pages, or metadata, leading to wait chains or deadlocks that stall forward progress.\nTransaction Log Subsystem Anomaly: The write-ahead logging pipeline (log buffer, log file, archiver, replication retention) cannot keep pace with redo generation, inflating commit latency and pausing writers.\nData Block and Index Integrity Anomaly: On-disk pages or index structures are physically or logically corrupt, so look-ups, scans, or modifications encounter checksum, linkage, or key-order violations.\n\nWhen these three root causes strike at once, the database experiences a multilayered slowdown and instability: lock wait times and deadlock victim errors rise while commits stall on log flushes, stretching the duration that locks are held and enlarging blocking trees. Corrupted pages or indexes trigger automatic verification retries, forced page rereads, or error-driven transaction rollbacks, further prolonging lock holds and generating bursts of redo that exacerbate log-flush congestion. Applications observe erratic response times, timeouts, and repeated failures; monitoring shows simultaneous spikes in lock waits, log-related waits, deadlock detections, and corruption or checksum error reports. Performance tuning in one layer appears ineffective because pressure simply resurfaces in another, masking the true intertwined nature of the outage.\n\nCausally, page or index corruption can provoke long-running consistency checks, table scans, or error-handling rollbacks that hold locks far longer than usual, amplifying lock contention. These extended transactions in turn generate excessive undo/redo as they are retried or rolled back, driving up log volume and stressing the log subsystem. Conversely, a saturated log device delays commit processing, lengthening the period that locks remain acquired and increasing the likelihood of deadlock cycles. Prolonged recovery or repeated crash restarts initiated by corruption can also intensify log traffic and re-acquire locks, while log backlog may postpone the writing of page images needed to repair corruption. The feedback loop among corrupted structures, lock retention, and log flush bottlenecks deepens the outage and complicates diagnosis, as symptoms from each layer propagate and obscure the original triggers.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.36149184922150346,
+            "bm25_score": 21.708683481271358,
+            "lexical_score": 0.12697687696260346,
+            "matched_terms": [
+                "and",
+                "are",
+                "by",
+                "data",
+                "handling",
+                "latency",
+                "long",
+                "longer",
+                "may",
+                "on",
+                "or",
+                "progress",
+                "remain",
+                "than",
+                "the",
+                "when"
+            ],
+            "match_count": 226,
+            "entry": {
+                "timeout_id": "pg16_tcp_user_timeout",
+                "parameter_name": "tcp_user_timeout",
+                "timeout_category": "network_unacknowledged_data_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies how long transmitted data may remain unacknowledged before the TCP connection is forcibly closed.",
+                "trigger_condition": "TCP data sent by PostgreSQL remains unacknowledged longer than tcp_user_timeout on systems supporting TCP_USER_TIMEOUT.",
+                "workload_impact": "The TCP connection is forcibly closed.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

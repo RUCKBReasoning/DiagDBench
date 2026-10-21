@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Buffer Cache and Latch Contention Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level statement or transaction design that forces the engine to touch more rows, pages, or time than the business need requires.\nBuffer Cache and Latch Contention Anomaly : Hot pages or undersized cache cause sessions to serialize on buffer-pool latches and page pins rather than progress in parallel.\nTransaction Log Subsystem Anomaly : The log buffer, log files, or archiver cannot keep pace with redo generation, so commits stall waiting for log I/O or space.\n\nComposite definition: The database is concurrently stressed by chatty or over-broad SQL, by latch congestion inside the buffer pool, and by an overloaded transaction-log path. All three root causes manifest at the same time, producing a multi-layer bottleneck chain that spans application logic, in-memory page access, and durable write-ahead logging.\n\nCombined anomalous phenomena:  • End-user calls experience highly variable latency, with both statement execution time and commit time spiking.  • Engine wait views show a mixed profile of buffer-busy waits, page-latch spins, and log-flush or log-sync waits.  • CPU utilisation oscillates between spin-loops on hot latches and idle periods while sessions sleep on log-related events.  • Slow-query logs are flooded with the same wide-scan or chatty statements, and those statements frequently appear at the top of latch-contention reports.  • Checkpoints and archive processes run more often as the log grows rapidly, amplifying I/O pressure and extending latch hold times on dirty pages.  • Overall throughput collapses earlier than expected as concurrency rises because each layer feeds back into the others.\n\nCausal interaction: Verbose or non-set-oriented SQL produces excess logical reads and redo; the surplus page touches concentrate access on a limited set of index roots and data hotspots, escalating latch contention. While sessions wait or spin on those latches, they continue to generate redo for partial work, further increasing the log generation rate. The congested log subsystem then delays commit acknowledgement, lengthening transaction duration and keeping buffers and latches pinned for longer, which intensifies buffer-cache pressure and widens the latch hotspot window. This feedback loop—over-broad SQL → latch contention → prolonged commit → extended latch hold—propagates across many sessions, causing a systemic throughput cliff and severe tail latency even though no single resource is fully exhausted in isolation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.3439004523876924,
+            "bm25_score": 16.813182431901296,
+            "lexical_score": 0.12585470085470085,
+            "matched_terms": [
+                "and",
+                "are",
+                "at",
+                "between",
+                "idle",
+                "is",
+                "latency",
+                "or",
+                "progress",
+                "query",
+                "reports",
+                "sessions",
+                "that",
+                "the",
+                "this",
+                "time",
+                "while"
+            ],
+            "match_count": 259,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Storage Space Capacity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Stale, absent, or insufficient optimizer statistics cause systematic cardinality misestimation that misguides the cost-based optimizer.\nStorage Space Capacity Anomaly : The database or supporting filesystems run out of allocatable free space, leading to allocation failures for data, logs, or temporary work areas.\nOperating System Resource Limit Anomaly : Kernel-enforced quotas on file handles, shared memory, semaphores, threads, or related objects are exhausted, preventing the database from obtaining required OS resources.\n\nWhen all three root causes coexist, symptoms overlap and amplify: execution plans already mis-estimated by stale statistics choose hash joins, large sorts, or spill-to-temp operations that inflate temporary segments and redo volume, accelerating space consumption. As free space dwindles, auto-extension or archive-log operations fail, producing \"cannot allocate extent\", \"out of space\", or \"archiving paused\" messages alongside severe performance drops. Concurrently, the engine attempts more re-compilations and worker spawns to find alternative plans or perform emergency space management, but hits kernel limits on file descriptors, shared memory, or threads. The cluster therefore exhibits erratic slowdowns, frequent plan invalidations, aborted DML, failed new connections, and a mixture of database-level and OS-level errors that are hard to disentangle.\n\nCausal chain: Stale statistics first generate bloated or spill-heavy plans that create excess temporary I/O and log output, rapidly consuming free space. Imminent space exhaustion forces the engine into frequent file opens, auto-extend attempts, and log switches, multiplying the demand for file handles and other kernel objects. Simultaneously, failed space allocations block normal maintenance tasks such as statistics refresh jobs, further prolonging statistics staleness and reinforcing poor plan choices. As space and temp usage surge, each additional session or background process needed for recovery or parallelism contends for shrinking OS quotas, eventually breaching per-process or cgroup limits. The three anomalies thus form a feedback loop: bad statistics → space pressure → OS resource pressure → inability to gather new statistics or free space, culminating in widespread contention, partial outages, and unpredictable query behavior.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5019,
+            "score": 0.41445166000736056,
+            "bm25_score": 41.686525540845444,
+            "lexical_score": 0.13883720930232557,
+            "matched_terms": [
+                "and",
+                "are",
+                "capacity",
+                "data",
+                "engine",
+                "failures",
+                "file",
+                "find",
+                "log",
+                "management",
+                "or",
+                "os",
+                "pressure",
+                "storage",
+                "the"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013136",
+                "error_name": "ER_SERVER_FILE_NOT_FOUND",
+                "official_description": "Can't find file: '%-.200s' (OS errno: %d - %s)",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

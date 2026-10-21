@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Storage I/O Throughput Anomaly + CPU Resource Anomaly",
+            "Description": "SQL Workload Logic Anomaly: Application-level SQL or transaction design forces the engine to touch far more rows, columns, or pages than business logic requires.\nStorage I/O Throughput Anomaly: The physical or virtual storage layer is saturated, so read/write latency, IOPS, or bandwidth no longer meet engine demand.\nCPU Resource Anomaly: Database processes consume nearly all available CPU cycles, driving run-queue pressure and broad latency inflation.\n\nWhen these three root causes coexist, the database experiences a compound failure mode in which overly chatty or bloated SQL drives a flood of physical reads, large writes, and long-running transactions. The excessive I/O demand collides with a storage subsystem already at or beyond its throughput limits, generating steep I/O wait times, deep device queues, and stalled checkpoints or redo flushes. Simultaneously, CPU cores become saturated by the sheer volume of data processing, predicate evaluation, and context switching spawned by the inefficient workload and by threads waiting and retrying after I/O stalls. The mixed wait profile alternates between high CPU usage and prolonged I/O waits, producing erratic yet persistently high statement latencies, lock hold times, application timeouts, and unpredictable throughput that can cascade into connection pool exhaustion and node failovers.\n\nCausally, sub-optimal SQL logic is the ignition point: wide scans, Cartesian joins, and long transactions amplify both I/O and CPU demand. This surplus demand overwhelms the storage layer first; as I/O slows, worker threads stay active longer, consuming additional CPU for predicate re-evaluation, buffer management, and lock maintenance. The resulting CPU saturation prevents the engine from efficiently issuing asynchronous I/O or processing completed I/O interrupts, which in turn further depresses effective I/O throughput. The feedback loop between bad SQL, clogged storage, and starved CPU resources escalates resource contention across all tiers, making each individual anomaly more severe and masking the original source of the problem.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.31565777130531586,
+            "bm25_score": 12.402123997598327,
+            "lexical_score": 0.1132486388384755,
+            "matched_terms": [
+                "and",
+                "connection",
+                "for",
+                "in",
+                "is",
+                "latency",
+                "of",
+                "or",
+                "the",
+                "this",
+                "wait",
+                "waiting",
+                "when"
+            ],
+            "match_count": 146,
+            "entry": {
+                "timeout_id": "pg16_libpq_connection_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "client_connection_establishment_timeout",
+                "scope": "libpq/client connection parameter",
+                "official_definition": "Maximum wait for connection, in seconds; zero or not specified means wait indefinitely.",
+                "trigger_condition": "A libpq client connection attempt exceeds connect_timeout seconds.",
+                "workload_impact": "The client connection attempt fails instead of waiting indefinitely.",
+                "default_behavior": "Zero or absent value means wait indefinitely.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

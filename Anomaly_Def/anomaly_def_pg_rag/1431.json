@@ -1,0 +1,62 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Storage Space Capacity Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level statements or transaction patterns that force the database to process more data, rows, or time than the business demand actually requires.\nStorage Space Capacity Anomaly : Exhaustion or near-exhaustion of physical or logical free space in data, log, temp, or backup areas, leading to allocation failures and stalled database operations.\nNetwork and Connectivity Resource Anomaly : Insufficient network bandwidth, socket resources, or listener/connection slots causing connection establishment failures or slow data transfer between clients and the database.\n\nWhen these three root causes strike simultaneously, the database experiences a multi-layered failure mode. Inefficient SQL holds locks and produces oversized result sets that must be written to temp and log areas already running out of space, while the same bloated result sets traverse an over-subscribed network and backlog limited connection slots. Observable effects include: runaway query runtimes, escalating temp-space and log-space consumption culminating in ‘out of space’ or ‘cannot allocate extent’ errors, sudden connection drops or authentication stalls, clients timing out during both execution and fetch phases, and an explosion of slow-query, space-allocation, and network-socket warning messages in logs. Because each layer (SQL, storage, network) reports symptoms that can mask or mimic the others, diagnostic signals become noisy and intermittent, complicating root-cause isolation.\n\nCausally, sub-optimal workload logic is the spark: wide scans, large result sets, and long-lived transactions generate excessive data movement and temporary spill. This accelerates space consumption in tablespaces, logs, and temp segments, pushing the system toward capacity limits. As storage nears saturation, auto-extension failures and log reuse stalls elongate commit paths, further prolonging transaction lifetimes and inflating the volume of data queued for network transmission. Concurrently, the oversized result sets and prolonged sessions monopolize network sockets and bandwidth, increasing latency and connection churn; retry storms amplify both network load and transactional pressure, causing additional temp objects and logs to accumulate. The positive feedback loop between chatty or bloated SQL, shrinking free space, and degrading connectivity can cascade into systemic slowdown or outage unless all three layers are addressed in concert.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.7599257833974711,
+            "bm25_score": 33.58018392556395,
+            "lexical_score": 0.19975261132490377,
+            "matched_terms": [
+                "and",
+                "are",
+                "authentication",
+                "be",
+                "between",
+                "can",
+                "connection",
+                "during",
+                "establishment",
+                "is",
+                "latency",
+                "long",
+                "or",
+                "query",
+                "reports",
+                "running",
+                "sessions",
+                "sets",
+                "socket",
+                "system",
+                "that",
+                "the",
+                "this",
+                "time",
+                "when",
+                "while"
+            ],
+            "match_count": 233,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

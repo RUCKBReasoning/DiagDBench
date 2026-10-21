@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Buffer Cache and Latch Contention Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Costing metadata is stale or incomplete, causing systematic cardinality misestimation and sub-optimal plan choices.\nBuffer Cache and Latch Contention Anomaly : Hot pages or undersized cache force heavy latch and pin competition, stalling sessions at the buffer-manager layer.\nStorage Space Capacity Anomaly : Data, log, or temp areas run out of free space, leading to allocation failures, forced checkpoints, and I/O back-pressure.\n\nWhen all three root causes strike together, the workload exhibits a confusing mix of symptoms: execution plans flip unpredictably after every load or purge, yet even \"good\" plans run slowly because they spin on buffer latches; wait-event dashboards show a tug-of-war between PAGE-LATCH and space-allocation waits; sudden space-full errors, long-running auto-extend operations, or emergency checkpoints magnify latency spikes; CPU usage oscillates between idle (sessions sleeping on space waits) and near-100 % (sessions spinning on latches), while query elapsed times balloon and throughput collapses.\n\nCausal chain: stale or missing statistics mislead the optimizer into choosing access paths that hammer a small subset of pages (e.g., full table scans on narrow but very hot tables or nested-loop joins against skewed predicates). These hot pages saturate the buffer cache and amplify latch contention. The extra physical reads and dirty-page churn accelerate growth of data files, temp segments, and redo logs. Because free space is already low—or grows low due to the inflated I/O volume—auto-extends, checkpoints, or archive operations pause foreground work, further stretching execution times. The prolonged runtimes, in turn, keep the same hot pages busy longer, intensifying latch pressure and generating even more redo, which consumes the remaining space faster. The three anomalies therefore form a reinforcing feedback loop that degrades performance, exhausts storage, and obscures root-cause diagnosis.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.41218094125876925,
+            "bm25_score": 15.628421875898189,
+            "lexical_score": 0.1368527918781726,
+            "matched_terms": [
+                "and",
+                "data",
+                "idle",
+                "is",
+                "latency",
+                "longer",
+                "more",
+                "of",
+                "or",
+                "sessions",
+                "stale",
+                "the",
+                "to",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 85,
+            "entry": {
+                "timeout_id": "mysql84_network_read_timeout",
+                "parameter_name": "net_read_timeout",
+                "timeout_category": "network_read_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for more data from a connection before aborting the read.",
+                "trigger_condition": "The server waits for additional data from a connection longer than net_read_timeout.",
+                "workload_impact": "The network read is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

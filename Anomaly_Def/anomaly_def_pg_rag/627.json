@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Storage Space Capacity Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Accumulation of obsolete row versions and rollback records outpaces background cleanup, causing version-store growth and visibility-check overhead.\nStorage Space Capacity Anomaly : Physical or logical free space for data files, logs, or temp areas is exhausted, producing allocation failures and write stalls.\n\nWhen these two root causes strike simultaneously, the database shows an explosive rise in disk usage, steep declines in live-row density, and a shrinking pool of free blocks. Autovacuum or purge workers run constantly yet make no headway; at the same time their I/O requests contend with data-file auto-extension and log archiving that are repeatedly failing due to lack of space. Transactions may begin to receive no-space-left or cannot-extend errors, large scans slow dramatically because they wade through bloated heaps, and the planner misestimates both row counts and cost. Checkpoint, archive, or temp-space operations start to stall, and engine alerts escalate from version-store wraparound warnings to imminent tablespace exhaustion.\n\nCausal interaction: heavy update/delete churn creates surging MVCC garbage, inflating tables and indexes until they consume the remaining free extents; the resulting space pressure prevents cleanup workers from allocating new pages they need for rewriting pages or writing index-cleanup batches, so version reclamation slows further. Meanwhile out-of-space conditions can pause WAL recycling and force longer retention of old segments, which in turn widens the snapshot horizon and keeps old row versions alive. This feedback loop makes each anomaly reinforce the other, quickly degrading performance and threatening database availability.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.6037325878126895,
+            "bm25_score": 18.743645696020437,
+            "lexical_score": 0.13485576923076922,
+            "matched_terms": [
+                "an",
+                "and",
+                "because",
+                "cannot",
+                "cleanup",
+                "for",
+                "from",
+                "is",
+                "longer",
+                "of",
+                "or",
+                "prevents",
+                "that",
+                "the",
+                "this",
+                "time",
+                "transactions",
+                "when"
+            ],
+            "match_count": 194,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

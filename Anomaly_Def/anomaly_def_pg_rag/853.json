@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Database Memory Allocation Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer chooses a markedly sub-optimal execution plan even though statistics are adequate.\nDatabase Memory Allocation Anomaly: Overall engine memory consumption grows beyond the safe capacity of the host, triggering OS or engine-level memory pressure.\nBuffer Cache and Latch Contention Anomaly: Sessions serialize on hot buffer pages and their associated latches, stalling on low-level synchronization primitives.\n\nWhen all three anomalies surface together, operators observe a volatile mix of plan instability, memory stress, and internal buffer contention. A single statement may oscillate between index probes and full scans; after each plan flip, rows flood the buffer cache, inflating working-set size, evicting other pages, and expanding per-query work areas. Resident-set bloat pushes the host into paging or swap storms, while the shrinking effective cache intensifies latch waits on the remaining hot pages. Execution latency becomes highly jittery: some executions terminate quickly, others stall on page-latch or memory-pressure waits, and overall throughput collapses with CPUs either spin-locking or blocked by the OS memory manager.\n\nCausal chain: poor plan selection can inflate I/O and memory demand (e.g., hash joins that spill or table scans that load large objects), accelerating buffer-pool turnover and forcing the engine to allocate additional work memory. The enlarged footprint worsens host memory pressure, provoking aggressive page evictions and dirty-page flush cycles. These churns create a handful of survivor pages that every session must repeatedly acquire, amplifying latch competition. Conversely, severe latch contention extends query runtimes, keeping sub-optimal plans resident longer and holding work areas open, which further inflates memory usage. The feedback loop between plan mis-choice, memory exhaustion, and hot-page serialization drives the database into a degraded state that is deeper than any of the single anomalies would have caused on their own.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 245,
+            "score": 0.09856771089347263,
+            "bm25_score": 4.72872336480439,
+            "lexical_score": 0.15241163475699557,
+            "matched_terms": [
+                "and",
+                "associated",
+                "by",
+                "engine",
+                "execution",
+                "instability",
+                "is",
+                "level",
+                "must",
+                "or",
+                "pressure",
+                "state",
+                "statement",
+                "the",
+                "to",
+                "together",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "P0004",
+                "error_name": "assert_failure",
+                "official_description": "assert failure",
+                "error_class": "Class P0 - PL/pgSQL Error",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

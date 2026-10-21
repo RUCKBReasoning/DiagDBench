@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Replication Synchronization Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly : The primary instance’s local write-ahead logging path cannot generate, flush, switch, or archive log segments at the rate demanded by the workload.\nReplication Synchronization Anomaly : Downstream replicas or change-data consumers cannot receive, persist, or apply the primary’s log stream fast enough, causing growing replication lag and retention of old log segments.\n\nComposite definition: Both bottlenecks are present at the same time— the primary’s log subsystem is saturated while the replication pipeline is simultaneously stalled—creating a feedback loop in which neither side can progress at the required throughput.\n\nCombined observable phenomena: Commit latency, log-flush and log-sync waits rise sharply; checkpoints and log-file switches occur more frequently yet still leave log directories expanding. Replication monitoring shows widening send, receive, and replay lags; relay logs or retained primary segments mushroom, and replicas deliver increasingly stale reads or fall out of failover eligibility. The primary may throttle or stall new writes when log space cannot be recycled, while replicas may exhibit backpressure, single-threaded apply saturation, or network congestion. Because both paths are impaired, administrators see mixed symptoms—storage alerts on the primary, network or apply lag warnings on replicas, and cascading slowdowns of foreground user transactions.\n\nCausal interaction: A slow local log subsystem inflates commit durations and extends the time each transaction’s log records occupy active segments, reducing the headroom available for replication retention; concurrently, replication lag prevents those segments from being recycled, further lengthening the primary’s log queue and intensifying the local I/O hotspot. Conversely, replication backpressure keeps log segments pinned, forcing the primary to switch to new segments more rapidly and increasing the write-amplification on an already over-stressed log device. The two anomalies therefore reinforce each other—local log saturation starves the replication feed, and replication lag starves log-space reuse—leading to a vicious cycle that can culminate in full disks, suspended commits, and replica divergence.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.42186658687596595,
+            "bm25_score": 15.267343096990773,
+            "lexical_score": 0.1418831168831169,
+            "matched_terms": [
+                "an",
+                "and",
+                "are",
+                "be",
+                "by",
+                "for",
+                "is",
+                "latency",
+                "of",
+                "on",
+                "or",
+                "progress",
+                "stale",
+                "that",
+                "the",
+                "time",
+                "to",
+                "when",
+                "which"
+            ],
+            "match_count": 212,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_interval",
+                "parameter_name": "tcp_keepalives_interval",
+                "timeout_category": "network_keepalive_retry_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time after which a TCP keepalive message that has not been acknowledged by the client should be retransmitted.",
+                "trigger_condition": "A TCP keepalive probe is not acknowledged for tcp_keepalives_interval on systems supporting TCP_KEEPINTVL or an equivalent socket option.",
+                "workload_impact": "Controls retry timing for keepalive probes used to detect unresponsive client connections.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Replication Synchronization Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Hot or churned buffer-cache pages and their associated latches become a serialization point, forcing sessions to spin or wait while trying to pin, read, or modify pages.\nReplication Synchronization Anomaly : Downstream replicas cannot receive, persist, or apply WAL/redo at the rate the primary generates it, leading to growing log gaps and retention of old log segments.\n\nWhen both root causes are active, the primary experiences elevated page-latch waits and CPU spin loops that inflate commit latency and throughput variance, while at the same time replication lag widens because the standby must re-read or re-apply the same hot pages under contention. Observable symptoms include: 1) extreme and uneven latency spikes on the primary for statements that touch hot index root or sequence pages, 2) sustained \"buffer busy\" or \"page latch\" wait events co-occurring with escalating replication receive/replay delay, 3) rapidly growing on-disk log retention because replay cannot advance, and 4) replicas showing intermittent apply stalls coupled with their own buffer-pin or latch waits as large batches of redo hit the same contended pages.\n\nCausal chain: hot-page contention on the primary lengthens transaction commit and increases WAL generation bursts (dirty pages flushed multiple times, frequent full-page images), producing larger or more clustered redo packets that replicas must ship, write, and apply. The replicas in turn encounter the same page-level hot spots during redo, which slows their apply speed, further enlarging the replication gap. The growing gap prevents log recycling on the primary, keeping more dirty and historical pages resident and intensifying buffer churn; meanwhile, backpressure from replication retention can raise checkpoint frequency, putting additional write and latch pressure on the already contended buffer cache. Thus, each anomaly amplifies the other, creating a feedback loop that degrades both local performance and replication health.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.7460968729537389,
+            "bm25_score": 22.03527301454764,
+            "lexical_score": 0.15378612716763004,
+            "matched_terms": [
+                "additional",
+                "and",
+                "are",
+                "for",
+                "from",
+                "latency",
+                "more",
+                "of",
+                "or",
+                "read",
+                "sessions",
+                "the",
+                "time",
+                "to",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 139,
+            "entry": {
+                "timeout_id": "mysql84_network_read_timeout",
+                "parameter_name": "net_read_timeout",
+                "timeout_category": "network_read_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for more data from a connection before aborting the read.",
+                "trigger_condition": "The server waits for additional data from a connection longer than net_read_timeout.",
+                "workload_impact": "The network read is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + MVCC Version Maintenance Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently picks a substantially sub-optimal execution plan even though statistics are reasonably accurate and the query text is unchanged.\nMVCC Version Maintenance Anomaly : Obsolete row versions and logically deleted index entries accumulate faster than background cleanup can reclaim them, inflating storage and visibility-check overhead.\nData Block and Index Integrity Anomaly : On-disk heap pages or index structures become physically or logically corrupted, breaking key order, page links, or heap–index correspondence.\n\nCombined phenomena: 1) Sudden plan flips from index probes to full scans on tables whose physical size has exploded from version bloat or whose indexes have become unreliable, 2) huge gaps between estimated and actual row counts because corruption and bloat distort statistics, 3) escalating I/O, CPU, and memory consumption during long-running OLTP statements, 4) vacuum/cleanup workers stuck or failing on corrupted pages while plan cache thrashes with ever-changing bad plans, 5) user-visible symptoms ranging from intermittent wrong-result sets (duplicate or missing rows) to query-timeouts and engine warnings about both wraparound danger and page checksum errors.\n\nCausal chain: MVCC version bloat enlarges tables and skews visibility statistics, which misleads the optimizer into choosing cost-based plans that look cheaper but are disastrous in practice. Corrupted index or heap pages further undermine the optimizer’s cardinality feedback, triggering even worse plan choices or forcing full scans that magnify the impact of the bloated storage layer. In turn, the poor plans often perform wide scans and high-churn updates that generate yet more row versions and touch damaged pages, hampering cleanup workers whose failure allows both bloat and corruption to deepen. The three faults therefore reinforce one another, driving a feedback loop of growing storage, deteriorating plan quality, rising resource usage, and increasing risk of data-access errors in a live OLTP workload.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1132,
+            "score": 0.4793941190275981,
+            "bm25_score": 40.59986937447672,
+            "lexical_score": 0.15256565656565657,
+            "matched_terms": [
+                "and",
+                "check",
+                "corruption",
+                "data",
+                "duplicate",
+                "failure",
+                "in",
+                "index",
+                "integrity",
+                "is",
+                "key",
+                "or",
+                "storage",
+                "the",
+                "with",
+                "workload"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "3564",
+                "error_name": "ER_DUPLICATE_OPTION_KEY",
+                "official_description": "Duplicate option key '%.192s' in funtion '%.192s'.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "integrity_and_constraints",
+                "cause_analysis": "The failure is typically associated with logical data inconsistency, structural corruption, uniqueness conflicts, or referential-integrity rules being violated by the workload or storage state.",
+                "solution_guidance": "Validate data consistency, inspect constraints and index integrity, and check whether data-cleaning, repair, or workload correction is required before retrying.",
+                "observable_symptoms": [
+                    "constraint failure",
+                    "duplicate data rejection",
+                    "corruption warning"
+                ]
+            }
+        }
+    }
+]

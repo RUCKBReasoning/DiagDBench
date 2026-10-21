@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Replication Synchronization Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Critical optimizer metadata (row counts, histograms, correlation data) is stale or incomplete, producing systematic cardinality errors and sub-optimal execution plans.\nReplication Synchronization Anomaly : The replication channel cannot ship, write, or apply change-stream records as fast as the primary generates them, causing widening log gaps and replay lag.\nNetwork and Connectivity Resource Anomaly : Transport paths, listeners, sockets, or authentication slots are saturated or unstable, throttling client traffic and any database communication that relies on the same network.\n\nWhen all three root causes strike together, the database exhibits a blended symptom set:  • Queries on the primary and on read replicas show severe plan drift, long runtimes, and explosive I/O because misestimated cardinalities choose inefficient join orders or missing indexes. • These bloated queries emit outsized result sets and hold transactions open longer, enlarging write-ahead logs. • Replication views show rapidly increasing send/receive/replay lag, while primary log segments accumulate and disk usage grows because they cannot be recycled. • Concurrently, client sessions and replication transport report connection stalls, timeouts, retransmissions, or \"too many connections\" errors as the network and listener queues saturate. • On read replicas, both stale data (because of lag) and stale statistics (never refreshed due to catch-up backlog) yield even poorer plans, making troubleshooting signals hard to attribute to any single layer.\n\nCausal interaction: Inaccurate statistics produce heavyweight queries that inflate log volume and prolong transaction lifetimes; the surge in redo must traverse the replication channel, stressing apply workers. Network congestion and exhausted connection resources throttle that channel, amplifying replication lag. The growing lag forces the primary to retain more log files, increasing storage pressure and further slowing I/O for already inefficient queries. On replicas, delayed replay postpones statistics refresh jobs, perpetuating optimizer inaccuracy and compounding bad plan generation. The feedback loop between poor plans (from stale statistics), network-induced replication slowdown, and replication-induced resource retention drives a cascading degradation that impacts both OLTP and analytical workloads across the cluster.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 1834,
+            "score": 0.5630058807519486,
+            "bm25_score": 56.11446924024293,
+            "lexical_score": 0.16868217054263565,
+            "matched_terms": [
+                "and",
+                "apply",
+                "between",
+                "channel",
+                "communication",
+                "is",
+                "lag",
+                "log",
+                "network",
+                "on",
+                "or",
+                "replication",
+                "retention",
+                "show",
+                "stale",
+                "the",
+                "to"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "2023",
+                "error_name": "CR_PROBE_REPLICA_HOSTS",
+                "official_description": "Error on SHOW REPLICA HOSTS:",
+                "error_class": null,
+                "severity_type": null,
+                "category": "client_library_error",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Transaction Lock Contention Anomaly + Database Configuration Parameter Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer selects a markedly sub-optimal execution plan despite accurate statistics, often because of faulty cost modeling or unstable plan reuse.\nTransaction Lock Contention Anomaly: Concurrent transactions request incompatible locks on the same resources, leading to long blocking chains or deadlocks that stall throughput.\nDatabase Configuration Parameter Anomaly: Engine-level settings for memory, parallelism, checkpointing, etc., are mis-tuned, so resource management behavior is misaligned with the workload and hardware.\n\nWhen all three root causes coexist, the workload experiences extreme and erratic slowdowns: poorly chosen plans (e.g., full table scans or expansive nested-loop joins) touch far more rows and pages than necessary, inflating the lock footprint and duration per statement. The enlarged critical sections collide under high concurrency, producing deep blocker-waiter chains, frequent deadlocks, and surging lock-wait and retry rates. Meanwhile, mis-configured memory limits, work-memory, or parallelism caps throttle query operators and prolong execution and lock holding times, while aggressive or insufficient checkpoint and log settings amplify I/O spikes that further delay lock acquisition and query progress. Symptoms include sudden plan flips followed by immediate lock pile-ups, CPU and I/O under- or over-utilization that does not correlate with wait events, oscillating throughput, rising application timeouts, and deadlock graphs that implicate statements whose plans recently changed after a configuration tweak.\n\nCausal chain: A mis-tuned configuration (e.g., low work-mem, disabled plan baselines, too high parallelism) nudges the optimizer toward cheaper-on-paper but wider scans or nested-loops, creating a Query Plan Selection Anomaly. The bloated plan expands the number and duration of locks held, which under heavy OLTP concurrency triggers Transaction Lock Contention Anomaly. In turn, lock waits elongate transaction lifetimes, keeping more locks active and feeding back into the optimizer’s cost feedback or adaptive plan mechanisms, potentially causing further plan instability. Simultaneously, the same mis-set parameters (e.g., small buffer pool, aggressive checkpoint) starve running statements of resources, lengthening lock retention and magnifying contention. Thus the three anomalies reinforce each other, creating a compounded performance collapse that is far worse than any single issue alone.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 186,
+            "score": 0.2365317542667561,
+            "bm25_score": 17.536997942347096,
+            "lexical_score": 0.1704944178628389,
+            "matched_terms": [
+                "and",
+                "but",
+                "by",
+                "configuration",
+                "engine",
+                "execution",
+                "in",
+                "instability",
+                "insufficient",
+                "is",
+                "issue",
+                "level",
+                "or",
+                "resource",
+                "resources",
+                "statement",
+                "the",
+                "to",
+                "with",
+                "workload"
+            ],
+            "match_count": 11,
+            "entry": {
+                "error_code": "53000",
+                "error_name": "insufficient_resources",
+                "official_description": "insufficient resources",
+                "error_class": "Class 53 - Insufficient Resources",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

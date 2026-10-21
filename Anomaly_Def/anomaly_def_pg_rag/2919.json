@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Database Memory Allocation Anomaly: Memory regions owned by the database engine grow beyond the safe limits of the host, driving paging, swapping, or OOM events.\nStorage I/O Throughput Anomaly: Underlying storage volumes are unable to deliver the required read/write bandwidth or IOPS, resulting in persistently elevated latency and long device queues.\n\nComposite anomaly definition: The database simultaneously exhausts server memory while the storage subsystem is already throughput-bound. The memory allocator keeps demanding pages that the storage layer cannot supply or flush fast enough, and the storage layer cannot keep pace with the extra traffic induced by memory pressure.\n\nCombined anomalous phenomena: 1) Dramatic oscillation between memory and I/O waits—buffer-cache eviction storms lead to surges of physical reads, while swap activity inflates write traffic. 2) CPU utilization appears sporadic: worker threads stall on both page-in/page-out operations and storage waits, masking the true root causes. 3) Cache-hit ratios plunge despite large cache sizes, checkpoint and log-flush latency spikes, batch windows stretch, and clustered or virtualized nodes face eviction due to compounded memory and I/O SLA violations. 4) Diagnostic views show ballooning resident-set size, high page-fault rates, deep storage queues, and mixed wait events (buffer I/O, memory latch sleep, page flushes) that are hard to attribute to a single layer.\n\nCausal chain and interaction: Excessive memory allocation evicts hot pages prematurely, forcing the engine to issue more physical reads; the already saturated storage cannot satisfy these reads quickly, causing sessions to remain active longer and hold even more memory, which further heightens memory pressure. Conversely, slow storage flushes delay the release of dirty buffers and temp segments, obliging the engine to allocate additional memory to continue processing, inching the system closer to swapping. Each anomaly amplifies the other, creating a feedback loop that degrades throughput, increases latency, and threatens instance stability far more severely than either issue in isolation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.3610456023408698,
+            "bm25_score": 11.57117248856423,
+            "lexical_score": 0.11094155844155844,
+            "matched_terms": [
+                "activity",
+                "and",
+                "are",
+                "by",
+                "is",
+                "latency",
+                "of",
+                "on",
+                "or",
+                "sessions",
+                "system",
+                "that",
+                "the",
+                "to",
+                "which"
+            ],
+            "match_count": 305,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_interval",
+                "parameter_name": "tcp_keepalives_interval",
+                "timeout_category": "network_keepalive_retry_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time after which a TCP keepalive message that has not been acknowledged by the client should be retransmitted.",
+                "trigger_condition": "A TCP keepalive probe is not acknowledged for tcp_keepalives_interval on systems supporting TCP_KEEPINTVL or an equivalent socket option.",
+                "workload_impact": "Controls retry timing for keepalive probes used to detect unresponsive client connections.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

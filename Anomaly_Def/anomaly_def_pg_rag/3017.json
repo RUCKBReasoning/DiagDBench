@@ -1,0 +1,44 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Transaction Lock Contention Anomaly + Replication Synchronization Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer chooses a substantially sub-optimal execution plan even though statistics are adequate.\nTransaction Lock Contention Anomaly : Concurrent transactions request incompatible locks and must wait or deadlock, throttling throughput.\nReplication Synchronization Anomaly : Downstream replicas cannot receive or apply primary log records fast enough, widening replay lag.\n\nWhen all three anomalies strike together, the database simultaneously runs inefficient execution plans, suffers heavy blocking inside the primary, and falls behind on shipping or applying its redo stream. Symptoms compound: badly chosen plans generate large scans or high-fan-out nested loops that touch far more rows than necessary, inflating lock footprints and lock hold times. This magnifies wait-for chains and deadlock frequency, driving up transaction latency, connection-pool exhaustion, and application timeouts. The same bloated work inflates the primary’s redo volume; because replicas are already CPU- or I/O-bound, their apply processes cannot keep up, causing rapidly growing replication lag, swollen log retention on the primary, and endangered failover objectives. Administrators may observe simultaneous plan flip events in the cache, spikes in lock-wait statistics, deadlock reports, and replica replay delays, making it difficult to attribute slowdowns to any single layer.\n\nCausal interaction: a poor plan increases row touches and I/O, which prolongs transaction duration and enlarges the lock scope and hold time, directly intensifying lock contention. Extended blocking inflates commit latency, which in turn bursts redo generation when the blocks finally clear; the resulting log spikes overwhelm replication channels already strained by the same inefficient plans running on secondaries. Conversely, replication lag can delay conflict resolution and apply-side locks, feeding back into longer lock retention on replicas and, in multi-primary or read/write split architectures, propagating contention hot spots back to the primary. Thus each root cause amplifies the others, creating a feedback loop that degrades both local transaction throughput and cross-node consistency guarantees.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 244,
+            "score": 0.1836516660833169,
+            "bm25_score": 11.881537442319793,
+            "lexical_score": 0.09356321839080459,
+            "matched_terms": [
+                "and",
+                "by",
+                "execution",
+                "in",
+                "its",
+                "must",
+                "or",
+                "rows",
+                "the",
+                "to",
+                "together"
+            ],
+            "match_count": 15,
+            "entry": {
+                "error_code": "P0003",
+                "error_name": "too_many_rows",
+                "official_description": "too many rows",
+                "error_class": "Class P0 - PL/pgSQL Error",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

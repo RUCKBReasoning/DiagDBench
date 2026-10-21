@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + MVCC Version Maintenance Anomaly",
+            "Description": "SQL Workload Logic Anomaly: Application-level SQL or transaction design forces the engine to scan or modify far more data, rows, or time than business logic actually requires.\nMVCC Version Maintenance Anomaly: Excessive accumulation of obsolete row versions and undo/rollback segments outpaces background cleanup, inflating on-disk structures and visibility-check cost.\n\nComposite definition: The database simultaneously suffers from poorly written workload logic that drives unnecessary row accesses and prolonged transactions, while MVCC version garbage is not reclaimed fast enough. Together, these conditions form a feedback loop where bloated version stores degrade performance and further magnify the inefficiencies of the SQL workload.\n\nCombined observable phenomena:  • Sharp and erratic tail latencies, frequent application timeouts, and growing slow-query logs.  • Rapid growth of table and index size despite stable business data volume; rising dead-to-live row ratios and increasing checkpoint or vacuum runtimes.  • Long-running transactions that pin old snapshots, causing vacuum freezes, and in turn exacerbate bloat.  • Escalating I/O and memory consumption as wide scans touch many stale pages, leading to cache churn, higher CPU spent on visibility checks, and potential autovacuum saturation.  • Optimizer misestimates due to inflated statistics, yielding even less efficient plans and reinforcing the original workload inefficiencies.\n\nCausal interaction: Inefficient SQL patterns (e.g., bulk updates without selective predicates, chatty ORM loops, transactions left open across think time) generate high churn of updates/deletes and create extensive undo/version chains. Those same long transactions also hold old snapshots, preventing garbage collection. As background cleaners fall behind, table and index bloat increases, making each subsequent oversized query or scan more expensive, which prolongs execution and transaction lifetimes. The compounded effect is a vicious cycle: bad workload logic produces more MVCC debris, the unreclaimed debris slows queries and elongates transactions, and the prolonged transactions inhibit cleanup, driving the system into progressively degraded throughput and escalating resource consumption.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5776,
+            "score": 0.4960042235141478,
+            "bm25_score": 45.41674290289869,
+            "lexical_score": 0.14214215525712412,
+            "matched_terms": [
+                "and",
+                "engine",
+                "execution",
+                "in",
+                "increasing",
+                "is",
+                "level",
+                "logic",
+                "of",
+                "or",
+                "preventing",
+                "resource",
+                "sql",
+                "subsequent",
+                "the",
+                "to",
+                "together",
+                "which",
+                "workload"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013933",
+                "error_name": "ER_IB_MSG_LOG_WRITER_WAIT_ON_CONSUMER",
+                "official_description": "Redo log writer is waiting for %s redo log consumer which is currently reading LSN=%llu preventing reclamation of subsequent portion of the redo log. Consider increasing innodb_redo_log_capacity.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

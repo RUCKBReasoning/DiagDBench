@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Replication Synchronization Anomaly + Data Block and Index Integrity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Composite definition: The database simultaneously suffers from lagging or stalled replication streams, underlying physical corruption of data or index pages, and exhaustion of kernel-enforced resources (file descriptors, shared-memory segments, thread slots, etc.). The coincidence of these three root causes yields a compound failure state in which recovery, failover, and normal workload processing are all jeopardized.\n\nReplication Synchronization Anomaly: Standbys or downstream consumers cannot receive, persist, or apply WAL/redo as fast as the primary produces it.\nData Block and Index Integrity Anomaly: On-disk pages or index structures are physically or logically corrupted, making storage contents unreliable.\nOperating System Resource Limit Anomaly: The DBMS process hits kernel limits on critical resources such as open files, shared memory, semaphores, or threads, impeding normal engine operation.\n\nCombined observable phenomena: \n• Rapidly expanding WAL retention or relay logs on the primary due to replicas falling behind while also being unable to purge corrupted or locked segments.\n• Sudden replication apply errors triggered by corrupted pages reaching replicas, causing frequent replay crashes, cascading replica restarts, and further widening of replication lag metrics.\n• Engine and kernel logs interleaving page-checksum failures with \"too many open files\", \"cannot create thread\", or \"out of shared memory\" messages as background workers and recovery processes fail to allocate kernel objects needed for corruption handling or log shipping.\n• Stale or inconsistent read results from replicas, intermittent query failures, and unexpected full-table scans on the primary as indexes are marked unusable while repair utilities cannot run due to OS resource exhaustion.\n• Escalating storage consumption and degraded throughput on the primary because unrecycled WAL and blocked autovacuum or checkpoint workers contend for the same limited file handles and shared memory.\n\nCausal interaction: Physical corruption in data or index pages often surfaces first on replicas during redo, triggering replication halts that inflate apply lag. The stalled replication, in turn, forces the primary to retain ever-growing log segments, greatly increasing the number of files and shared memory descriptors the engine must keep open. This surge collides with tight operating-system limits, causing worker-spawn failures and further reducing the engine’s capacity to ship, apply, or repair WAL. Meanwhile, OS resource exhaustion can prevent integrity-check utilities, index rebuilds, or page-repair mechanisms from allocating the resources they need, allowing corruption to persist and repeatedly poison the replication stream. The feedback loop between corruption-induced apply failures, replication backlog, and kernel resource starvation amplifies both availability risk and data-consistency exposure, leading to a severe, multi-faceted outage scenario.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.5515055412989611,
+            "bm25_score": 19.922880686666787,
+            "lexical_score": 0.12417355371900826,
+            "matched_terms": [
+                "and",
+                "are",
+                "between",
+                "can",
+                "check",
+                "during",
+                "handling",
+                "kernel",
+                "or",
+                "query",
+                "stale",
+                "system",
+                "that",
+                "the",
+                "this",
+                "triggered",
+                "while"
+            ],
+            "match_count": 204,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

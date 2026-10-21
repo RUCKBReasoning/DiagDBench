@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Schema and Index Design Anomaly",
+            "Description": "SQL Workload Logic Anomaly: Application-level statements or transaction boundaries are written in a way that touches more rows, larger result sets, or longer transactions than business logic truly requires.\nSchema and Index Design Anomaly: The physical table, partition, and index layout does not align with actual access patterns, forcing the optimizer into wide scans, row lookups, or write-amplifying structures.\n\nWhen both root causes coexist, the database engine is simultaneously burdened by over-demanding requests and by structures incapable of serving those requests efficiently. Observable symptoms intensify: the same statements dominate slow-query and wait-event logs with extreme and erratic latency; execution plans show full-table scans or non-covering index probes combined with non-SARGable predicates; buffer pool churn, I/O saturation, and lock wait chains lengthen because transactions hold resources for far longer than expected; retry storms, deadlocks, or replica lag may emerge as write paths are slowed by oversized or redundant indexes that the chatty workload must maintain.\n\nCausally, poorly written predicates, joins, and batch patterns magnify every weakness in the physical design—missing or non-covering indexes turn each excessive predicate or Cartesian join into a full scan, while oversized index sets make every superfluous update or long-running transaction more expensive to log and replicate. Conversely, an inadequate schema masks the true cost of the logic flaw, causing developers to add even larger batches, broader IN lists, or ad-hoc hints that further bloat resource consumption. Together, the two anomalies create a feedback loop in which inefficient code and misaligned structures reinforce each other, exhausting CPU, memory, and I/O bandwidth and degrading both transactional and analytical workload performance.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.5195000095952647,
+            "bm25_score": 25.855149977472063,
+            "lexical_score": 0.1506072874493927,
+            "matched_terms": [
+                "an",
+                "and",
+                "because",
+                "for",
+                "is",
+                "lock",
+                "long",
+                "longer",
+                "of",
+                "or",
+                "query",
+                "retry",
+                "schema",
+                "than",
+                "that",
+                "the",
+                "transaction",
+                "transactions",
+                "when",
+                "while"
+            ],
+            "match_count": 266,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

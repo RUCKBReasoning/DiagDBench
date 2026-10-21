@@ -1,0 +1,59 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Transaction Log Subsystem Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "SQL Workload Logic Anomaly : The submitted SQL or transaction design forces the engine to read, write, or lock far more data and for longer intervals than the business case requires.\nTransaction Log Subsystem Anomaly : The write-ahead logging path—log buffer, log files, archiver, or replication retention—cannot keep pace with redo generation, throttling commit throughput.\nOperating System Resource Limit Anomaly : Kernel-enforced ceilings on file descriptors, shared memory, semaphores, threads, or cgroup quotas prevent the database from allocating the resources it needs.\n\nWhen these three root causes coincide, the system exhibits compounded symptoms: application statements show extreme and highly variable response times; commit latency spikes and fluctuates as log flushes back up; slow-query logs fill with the same chatty or scan-heavy statements; background error logs reveal \"unable to open file\", \"cannot allocate shared memory\", or thread-creation failures; checkpoints and log-switch storms occur more frequently; sessions intermittently fail to start or hang during commit; and archival/replication lag balloons, causing retention directories to overflow. Performance degradations appear erratic because even minor workload surges exacerbate both log contention and operating-system denial events, while the bloated, long-running transactions keep locks and resources held, amplifying blocking chains.\n\nCausal chain: inefficient SQL or over-long transactions inflate redo generation and hold resources for extended periods, driving the transaction log subsystem to its limits. As log buffers and files saturate, the database requests more file handles, I/O contexts, shared memory, and background threads to flush, switch, or archive logs. Simultaneously, OS-level limits on these kernel objects cap the database’s ability to relieve log pressure. The stalled log subsystem lengthens commit times, which further prolongs the already excessive transactions produced by the workload logic anomaly, creating larger bursts of redo and compounding lock contention. This feedback loop accelerates consumption of kernel resources until limits are hit, after which both new sessions and log-handling processes fail, precipitating a cascading slowdown or partial outage of the transactional workload.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.6247179014906177,
+            "bm25_score": 32.23091644350028,
+            "lexical_score": 0.15865384615384615,
+            "matched_terms": [
+                "and",
+                "because",
+                "blocking",
+                "cannot",
+                "for",
+                "from",
+                "lock",
+                "locks",
+                "long",
+                "longer",
+                "of",
+                "open",
+                "or",
+                "query",
+                "sessions",
+                "than",
+                "the",
+                "this",
+                "transaction",
+                "transactions",
+                "when",
+                "while"
+            ],
+            "match_count": 205,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

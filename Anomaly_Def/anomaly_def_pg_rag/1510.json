@@ -1,0 +1,62 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Storage Space Capacity Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same resources, producing blocking chains or deadlocks that stall statement execution until locks are granted or victims are aborted.\nStorage Space Capacity Anomaly : Physical or logical free space for data, logs, temp, or backup destinations is exhausted or cannot grow, causing allocation failures and halting write-ahead logging, sorting, or DDL.\nNetwork and Connectivity Resource Anomaly : Client-server transport, listener, authentication, or socket resources become saturated or unstable, yielding connection refusals, timeouts, and stalled result transmission.\n\nWhen these three root causes co-exist, the system exhibits a multilayered slowdown: blocked or deadlocked transactions accumulate while their sessions hold locks and remain connected; meanwhile log writes, temp spills, or data-file extensions fail as space runs out, turning brief lock waits into indefinite hangs. Clients experience both long-running statements waiting on locks and sporadic connection failures or broken sockets; retry storms amplify the active session count, deepening the lock queues and further taxing limited network endpoints. Engine and OS monitoring show soaring lock-wait time, growing wait-for graphs, space-allocation errors, suspended checkpoints, and spikes in refused or half-open connections. Application tiers face cascading timeouts, backlog growth, and possible data-consistency anomalies due to repeated transaction aborts.\n\nCausally, lock contention keeps transactions open longer, inflating UNDO, REDO, and temp usage and accelerating space consumption; once space boundaries are hit, log writes or temp allocations stall, freezing transactions mid-commit and holding locks even longer. These prolonged stalls tie up server processes and sockets, exhausting connection pools and listener backlogs; clients retry, increasing connection churn and network load, which in turn raises authentication and handshake latency, delaying the release or acquisition of new locks. The positive feedback loop between lock retention, space exhaustion, and connection saturation drives the database into a state where progress halts across multiple resource planes until at least one constraint is relieved.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.5126680678258362,
+            "bm25_score": 27.207611370131772,
+            "lexical_score": 0.19668786433492313,
+            "matched_terms": [
+                "aborted",
+                "and",
+                "are",
+                "at",
+                "authentication",
+                "between",
+                "client",
+                "connected",
+                "connection",
+                "holding",
+                "is",
+                "latency",
+                "long",
+                "or",
+                "pools",
+                "progress",
+                "running",
+                "session",
+                "sessions",
+                "socket",
+                "system",
+                "that",
+                "the",
+                "time",
+                "when",
+                "while"
+            ],
+            "match_count": 236,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

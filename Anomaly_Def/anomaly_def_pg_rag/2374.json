@@ -1,0 +1,59 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Operating System Resource Limit Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer selects or reuses an execution plan that is materially sub-optimal even though statistics are adequate.\nOperating System Resource Limit Anomaly : Database processes hit kernel-enforced ceilings such as file-handle, shared-memory, or thread quotas, causing allocation failures outside the engine’s direct control.\nNetwork and Connectivity Resource Anomaly : Client-server communication or connection-handling resources (sockets, listener queues, authentication slots) become saturated, leading to refused, stalled, or aborted connections.\n\nWhen all three conditions manifest together, the workload exhibits a mix of erratic query latencies, intermittent connection failures, and partial service stalls. Poor plans drive excessive I/O, memory, and CPU consumption, lengthening query execution times and keeping back-end sessions open longer. The prolonged sessions inflate the number of simultaneously active worker processes and file descriptors, hastening exhaustion of kernel resource limits. As resource ceilings are hit, new back-end or parallel worker creation fails, prompting connection rejections and spikes in client timeouts. The backlog of half-open sockets and retries further stresses the network stack, while existing sessions running bad plans accumulate large result sets that trickle over congested or throttled network paths, amplifying TCP retransmissions and client-wait events. Observers may see oscillating plan flips, sudden drops in parallelism, error messages about failing to fork or open files, and surges in \"too many connections\" or \"could not accept connection\" errors, making it difficult to attribute the slowdown to any single layer.\n\nCausally, a sub-optimal plan (e.g., unexpected full table scan) magnifies resource consumption per query, pushing the database toward OS limits on memory areas, file handles, and worker threads. Hitting those limits prevents new sessions or parallel workers, which in turn causes connection backlog growth at the listener and an increase in half-open sockets—triggering the network/connectivity anomaly. Conversely, network saturation or authentication stalls prolong session lifetimes, inflating active back-end counts and accelerating exhaustion of OS resources, which feeds back into the optimizer by forcing plan re-compilations without available workers, increasing the likelihood of unstable or downgraded plans. The intertwined feedback loops between inefficient plans, kernel resource exhaustion, and connectivity constraints can degrade both throughput and availability, creating a complex, self-reinforcing performance collapse.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.5873610229988656,
+            "bm25_score": 22.95945796275377,
+            "lexical_score": 0.17086713995943204,
+            "matched_terms": [
+                "and",
+                "are",
+                "authentication",
+                "can",
+                "client",
+                "connection",
+                "handling",
+                "is",
+                "messages",
+                "not",
+                "number",
+                "of",
+                "on",
+                "or",
+                "server",
+                "session",
+                "sessions",
+                "system",
+                "tcp",
+                "that",
+                "the",
+                "to",
+                "when"
+            ],
+            "match_count": 277,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_count",
+                "parameter_name": "tcp_keepalives_count",
+                "timeout_category": "network_keepalive_failure_threshold",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the number of TCP keepalive messages that can be lost before the server connection to the client is considered dead.",
+                "trigger_condition": "The number of lost TCP keepalive probes reaches tcp_keepalives_count on systems supporting TCP_KEEPCNT.",
+                "workload_impact": "The server can consider the client connection dead after the configured keepalive failure threshold.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Replication Synchronization Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Composite Definition: The database simultaneously suffers from hot-page/latch contention inside the buffer manager, a stalled replication pipeline that cannot keep up with primary log generation, and approaching or reached exhaustion of physical or logical storage space. Each problem alone can degrade performance, but their coexistence creates a tightly-coupled failure scenario that endangers both throughput and data safety.\n\nCombined Observable Phenomena: Users notice sharp and erratic response-time spikes as sessions spin on buffer latches while dirty pages linger in memory. Checkpoints and background flushers run more aggressively yet free space continues to shrink because archived or shipped log segments accumulate—replicas lag behind, preventing log recycling. Monitoring dashboards show simultaneously high buffer-busy and page-latch wait events, widening replication lag metrics, rapidly declining free-space alarms, and possibly \"cannot extend\" or \"out-of-space\" errors. CPU usage is elevated without proportional throughput; I/O queues deepen from forced flushes; and replica read consistency deteriorates as standby snapshots fall minutes or hours behind.\n\nCausal Interaction: 1) Buffer and latch contention slows transaction completion, lengthening the time dirty pages and unflushed log records stay active. 2) The replication subsystem, already unable to consume WAL/redo fast enough, leaves log files retained on the primary, inflating disk usage. 3) Growing log retention and churn consume the remaining free space; once space becomes scarce, data-file or log auto-extension fails, causing emergency checkpoints that intensify buffer flushing and further magnify latch contention. Conversely, space pressure can throttle background writers and archivers, making dirty-page eviction slower and keeping hot pages pinned longer, which heightens buffer contention. The feedback loop between clogged replication, latch hot spots, and space exhaustion accelerates degradation, potentially culminating in system-wide stalls or forced shutdown.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.7367321288295365,
+            "bm25_score": 27.303961328850637,
+            "lexical_score": 0.12244042943178843,
+            "matched_terms": [
+                "and",
+                "causing",
+                "data",
+                "is",
+                "lag",
+                "longer",
+                "or",
+                "out",
+                "preventing",
+                "replica",
+                "replication",
+                "stalled",
+                "the",
+                "to"
+            ],
+            "match_count": 134,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

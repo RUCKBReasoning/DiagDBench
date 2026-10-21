@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Excessive or poorly-written application statements and transaction demarcations that drive the engine to touch more rows, return larger result sets, or keep transactions open longer than the true business need.\nOperating System Resource Limit Anomaly : Exhaustion of kernel-enforced objects such as file handles, shared-memory segments, semaphores, threads, or cgroup quotas, preventing the database process from acquiring the operating-system resources it requests.\n\nWhen these two root causes strike simultaneously, users observe an extreme long-tail of statement latencies, frequent timeouts, and sporadic \"cannot allocate resource\" or \"too many open files\" errors. Queries that already scan or lock large data ranges because of sub-optimal SQL now stall mid-execution when the engine cannot obtain additional file descriptors, worker threads, or shared memory. Connection storms triggered by application-level retries further deplete process or thread quotas, leading to partial outages where existing sessions hang in uninterruptible I/O or lock-wait states while new sessions are refused. Monitoring shows CPU and I/O utilisation well below capacity, yet wait-time histograms are dominated by OS-level resource acquisition waits and user-level lock/latch contention amplified by the prolonged transactions.\n\nCausally, poorly tuned SQL inflates the demand for kernel resources—longer scans keep file handles, buffers, locks, and threads alive, while batched or Cartesian operations require more temporary files and memory mappings. This pushes the database process toward the fixed OS limits faster than anticipated. Once limits are hit, the kernel denies new allocations, which in turn causes the database to pause or retry internal operations, lengthening execution time and holding application locks even longer. The extended lock holds and session backlogs feed a positive feedback loop, aggravating both the workload-logic inefficiency and the OS resource scarcity, eventually cascading into widespread performance degradation and intermittent service outages.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.7103189780021657,
+            "bm25_score": 34.65868762867878,
+            "lexical_score": 0.17677868852459017,
+            "matched_terms": [
+                "and",
+                "because",
+                "by",
+                "contention",
+                "engine",
+                "execution",
+                "for",
+                "limit",
+                "long",
+                "operations",
+                "or",
+                "resource",
+                "session",
+                "statement",
+                "the",
+                "this",
+                "time",
+                "too",
+                "triggered",
+                "when",
+                "workload"
+            ],
+            "match_count": 103,
+            "entry": {
+                "timeout_id": "mysql84_regular_expression_time_limit",
+                "parameter_name": "regexp_time_limit",
+                "timeout_category": "expression_evaluation_time_limit",
+                "scope": "global/session",
+                "official_definition": "The time limit for regular expression matching operations performed by the regular expression engine.",
+                "trigger_condition": "A regular expression match operation exceeds regexp_time_limit.",
+                "workload_impact": "The regular expression operation is constrained by the configured time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

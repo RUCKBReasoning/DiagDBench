@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Excessive or poorly-written application statements and transaction demarcations that drive the engine to touch more rows, return larger result sets, or keep transactions open longer than the true business need.\nOperating System Resource Limit Anomaly : Exhaustion of kernel-enforced objects such as file handles, shared-memory segments, semaphores, threads, or cgroup quotas, preventing the database process from acquiring the operating-system resources it requests.\n\nWhen these two root causes strike simultaneously, users observe an extreme long-tail of statement latencies, frequent timeouts, and sporadic \"cannot allocate resource\" or \"too many open files\" errors. Queries that already scan or lock large data ranges because of sub-optimal SQL now stall mid-execution when the engine cannot obtain additional file descriptors, worker threads, or shared memory. Connection storms triggered by application-level retries further deplete process or thread quotas, leading to partial outages where existing sessions hang in uninterruptible I/O or lock-wait states while new sessions are refused. Monitoring shows CPU and I/O utilisation well below capacity, yet wait-time histograms are dominated by OS-level resource acquisition waits and user-level lock/latch contention amplified by the prolonged transactions.\n\nCausally, poorly tuned SQL inflates the demand for kernel resources—longer scans keep file handles, buffers, locks, and threads alive, while batched or Cartesian operations require more temporary files and memory mappings. This pushes the database process toward the fixed OS limits faster than anticipated. Once limits are hit, the kernel denies new allocations, which in turn causes the database to pause or retry internal operations, lengthening execution time and holding application locks even longer. The extended lock holds and session backlogs feed a positive feedback loop, aggravating both the workload-logic inefficiency and the OS resource scarcity, eventually cascading into widespread performance degradation and intermittent service outages.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.36577866332619413,
+            "bm25_score": 18.186326056352804,
+            "lexical_score": 0.1503235294117647,
+            "matched_terms": [
+                "and",
+                "are",
+                "connection",
+                "holding",
+                "kernel",
+                "long",
+                "or",
+                "queries",
+                "session",
+                "sessions",
+                "sets",
+                "system",
+                "that",
+                "the",
+                "this",
+                "time",
+                "triggered",
+                "when",
+                "while"
+            ],
+            "match_count": 269,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

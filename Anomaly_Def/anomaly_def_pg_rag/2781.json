@@ -1,0 +1,45 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + MVCC Version Maintenance Anomaly + Database Configuration Parameter Anomaly",
+            "Description": "Schema and Index Design Anomaly: The physical table, index, datatype, or partition design mismatches workload access patterns, forcing inefficient scans and excessive index maintenance work.\nMVCC Version Maintenance Anomaly: Obsolete row versions, rollback records, and dead index entries accumulate faster than background cleanup processes can purge them, inflating storage and visibility-check cost.\nDatabase Configuration Parameter Anomaly: Memory, background-worker, checkpoint, and parallelism settings are mis-tuned for the hardware and workload, so internal subsystems receive too few or too many resources at the wrong moments.\n\nWhen these three root causes coexist, the database experiences a feedback loop of bloat, latency spikes, and erratic resource utilisation. Poorly chosen or missing indexes drive large table and index scans that touch every page, but those pages are swollen with dead tuples because vacuum/garbage-collection cannot keep up. Each scan therefore reads more data than expected, further extending execution times and holding snapshots open longer, which in turn slows or blocks version reclamation. Misconfigured memory and worker-pool parameters exacerbate the situation: undersized buffer pools cause constant cache churn of the bloated objects, while too-small or too-aggressive maintenance-worker, checkpoint, or autovacuum settings alternately starve or overload I/O, producing bursts of write amplification and log-write waits even when the underlying disks are not fully utilised. Statistics become stale quickly, so the optimizer keeps choosing full scans over non-covering or missing indexes, reinforcing the cycle.\n\nCausally, the deficient schema design raises the baseline I/O and write-amplification costs, generating more dead tuples per transaction (e.g., non-covering indexes force extra lookups and updates). The surging update/delete churn feeds the MVCC version store; if configuration parameters throttle cleanup workers or limit maintenance memory, reclamation lags behind growth. The swelling heap and indexes then consume buffer cache and elongate checkpoints, which, when ill-tuned, intensify I/O storms that pre-empt regular queries. Longer-running queries hold old snapshots, delaying version reuse and causing still more bloat. Thus, each anomaly magnifies the others, pushing the system into a degrading spiral of increasing storage, CPU, and latency costs under transactional workloads.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 153,
+            "score": 0.28930375660992713,
+            "bm25_score": 17.649211671012964,
+            "lexical_score": 0.1049287856071964,
+            "matched_terms": [
+                "access",
+                "and",
+                "cannot",
+                "datatype",
+                "execution",
+                "or",
+                "that",
+                "the",
+                "under",
+                "version",
+                "with"
+            ],
+            "match_count": 14,
+            "entry": {
+                "error_code": "42P18",
+                "error_name": "indeterminate_datatype",
+                "official_description": "indeterminate datatype",
+                "error_class": "Class 42 - Syntax Error or Access Rule Violation",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "sql_and_parser",
+                "cause_analysis": "The failure is typically associated with unsupported syntax, invalid statement structure, or feature usage that the target engine version cannot execute as written.",
+                "solution_guidance": "Validate SQL syntax, target-engine compatibility, statement shape, and whether the feature is supported under the current engine version or execution context.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "syntax error",
+                    "feature rejection"
+                ]
+            }
+        }
+    }
+]

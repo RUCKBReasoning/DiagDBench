@@ -1,0 +1,59 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + MVCC Version Maintenance Anomaly + Replication Synchronization Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently chooses or reuses an execution plan that is substantially sub-optimal even though statistics are reasonably accurate.\nMVCC Version Maintenance Anomaly : Obsolete row versions and logically deleted index entries accumulate faster than background cleanup can reclaim them, inflating table size and visibility-check cost.\nReplication Synchronization Anomaly : Downstream replicas cannot receive, persist, or apply transaction-log records as fast as the primary generates them, causing replay lag and log-retention growth.\n\nWhen these three root causes strike together, the system shows a blend of symptoms: 1) query plans alternate between index probes and full scans or stick to a poor plan, yet execution times lengthen regardless because heaps and indexes are bloated with dead rows; 2) long-running or repeatedly re-planned queries emit far more I/O and WAL, which rapidly widens replica write/flush/replay lag; 3) replication lag, in turn, keeps old snapshots open on standbys, preventing garbage collection on the primary, so the version store and table bloat swell further; 4) statistics collected on the enlarged tables exaggerate row counts, confusing the optimizer and prompting additional mis-plans; 5) the primary’s pg_wal / redo or archive area grows because segments cannot be recycled until replicas catch up, exacerbating storage pressure already heightened by MVCC bloat.\n\nCausal chain: heavy OLTP churn creates many dead versions; delayed vacuum leads to bloated relations and skewed cost estimates, encouraging the optimizer to switch to full table scans or poorly chosen join orders, which inflate execution time and emit more WAL. The surge in WAL overwhelms replicas whose apply threads are already slowed by replaying large, poorly batched updates, so replication lag increases. That lag holds replication snapshots open, preventing further vacuum progress on the primary and locking in the version bloat that triggered the plan regression. This feedback loop steadily degrades query performance, bloats storage, and erodes recovery point objectives, making the composite anomaly significantly more damaging than any individual root cause alone.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.7059558312977581,
+            "bm25_score": 26.606088785173103,
+            "lexical_score": 0.1569158540989527,
+            "matched_terms": [
+                "an",
+                "and",
+                "any",
+                "because",
+                "cannot",
+                "cleanup",
+                "is",
+                "long",
+                "of",
+                "open",
+                "or",
+                "preventing",
+                "query",
+                "than",
+                "that",
+                "the",
+                "this",
+                "time",
+                "transaction",
+                "triggered",
+                "vacuum",
+                "when"
+            ],
+            "match_count": 189,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Buffer Cache and Latch Contention Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Database Configuration Parameter Anomaly: Engine-level runtime parameters are mis-tuned relative to hardware capacity and workload, leading to behavior that is sub-optimal even though the underlying resources themselves are not yet saturated.\nBuffer Cache and Latch Contention Anomaly: Sessions serialize on hot buffer pages, latches, or I/O slots, producing buffer-busy and page-latch waits that inflate latency while CPUs appear either under-utilised or spinning.\nStorage Space Capacity Anomaly: The database or log storage layer runs out of allocatable space, provoking allocation failures, forced checkpoints, and write stalls.\n\nCombined anomalous phenomena: When all three root causes coexist, the instance exhibits pronounced and intertwined symptoms. Mis-sized buffer-pool, checkpoint, and log-size parameters cause aggressive page eviction and frequent checkpoints that amplify latch waits on hot pages. The extra dirty-page flushes and log switches rapidly consume the already limited free space, leading to intermittent \"out-of-space\" or \"cannot extend\" errors. As space nears exhaustion, background writers and checkpoint processes throttle foreground work, holding critical latches longer and causing latch wait and CPU spin spikes. Performance monitoring shows a perplexing mix of buffer-busy waits, log-write stalls, and space-allocation errors, while hardware I/O and CPU utilisation fluctuate between idle gaps and short saturation bursts.\n\nCausal chain and interaction: Sub-optimal configuration (e.g., undersized buffer pool, small log files, overly aggressive checkpoint interval) increases the churn of dirty pages and log segments. This churn heightens buffer-cache turnover and concentrates access on a reduced set of hot pages, elevating latch contention. Simultaneously, the frequent checkpoints and log switches allocate space at an accelerated pace, depleting the already constrained storage. As free space shrinks, write operations block on space availability, prolonging the duration that pages remain pinned and latches are held, which in turn worsens contention. The stalled writes force additional checkpoints and emergency autovacuum or purge activity, each governed by the same poor parameter settings, creating a feedback loop that propagates latency, raises the risk of transaction timeouts, and can ultimately push the database into read-only or shutdown states.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.6696077286373912,
+            "bm25_score": 18.24606465226578,
+            "lexical_score": 0.14745989304812834,
+            "matched_terms": [
+                "activity",
+                "and",
+                "are",
+                "at",
+                "between",
+                "can",
+                "holding",
+                "idle",
+                "interval",
+                "is",
+                "latency",
+                "not",
+                "or",
+                "sessions",
+                "that",
+                "the",
+                "this",
+                "when",
+                "while"
+            ],
+            "match_count": 254,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

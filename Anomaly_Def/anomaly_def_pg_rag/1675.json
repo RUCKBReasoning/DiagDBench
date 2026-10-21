@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Replication Synchronization Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Replication Synchronization Anomaly : Standbys or downstream consumers cannot receive, store, or replay transaction-log records as fast as the primary generates them, causing sustained replication lag.\nStorage Space Capacity Anomaly : Allocated disk or logical free space for datafiles, logs, archives, temp areas, or backups is exhausted, leading to allocation failures and stalled database operations.\n\nComposite definition: Both anomalies manifest concurrently—the replication pipeline is backlogged while one or more nodes (primary or replicas) are simultaneously running out of space needed to write or retain log and data blocks.\n\nCombined phenomena: 1) Rapidly widening replication-position gaps alongside shrinking free space on primary and/or replica volumes. 2) Retained WAL/redo or relay-log files piling up because they cannot be recycled until replicas catch up, hastening space exhaustion on the primary. 3) On replicas, full disks prevent new relay logs from being written, which in turn halts apply threads and pushes lag even higher. 4) Error messages such as \"no space left on device,\" \"cannot allocate WAL segment,\" or \"replication receiver stalled\" appear together, and failover readiness metrics degrade sharply. 5) User transactions may start failing when the primary can no longer allocate new log segments or when temporary-space shortages collide with long-running queries.\n\nCausal chain: Replication lag forces the primary to retain extra log segments; these retained files consume space that would normally be reclaimed, accelerating space depletion. Once storage reaches critical thresholds, archive, backup, or checkpoint processes fail, further preventing log recycling and deepening the lag. Conversely, initial space pressure on a replica (e.g., from unchecked data growth or oversized temp usage) can block the writing of incoming relay logs, which stalls replay and propagates back to the primary, increasing file retention there. The two root causes thus reinforce each other in a feedback loop that escalates from mild lag or moderate disk usage into a compound failure affecting durability, availability, and recovery objectives.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.5056039432108078,
+            "bm25_score": 20.99405224102245,
+            "lexical_score": 0.13069418386491558,
+            "matched_terms": [
+                "and",
+                "because",
+                "cannot",
+                "for",
+                "from",
+                "is",
+                "long",
+                "longer",
+                "of",
+                "or",
+                "preventing",
+                "that",
+                "the",
+                "transaction",
+                "transactions",
+                "user",
+                "when",
+                "while"
+            ],
+            "match_count": 244,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

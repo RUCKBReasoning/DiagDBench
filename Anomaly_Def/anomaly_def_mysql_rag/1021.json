@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Transaction Lock Contention Anomaly + MVCC Version Maintenance Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Costing metadata (row counts, histograms, correlations) is stale or incomplete, driving systematic cardinality errors and sub-optimal execution-plan choices.\nTransaction Lock Contention Anomaly : Concurrent transactions compete for incompatible locks, causing long blocking chains or deadlocks that stall or abort workload threads.\nMVCC Version Maintenance Anomaly : Obsolete row versions accumulate faster than background cleanup can reclaim them, inflating table size and adding visibility-check overhead.\n\nWhen all three root causes coincide, the system exhibits a mixture of planning errors, long-running and frequently killed queries, swelling table and index footprints, and sharply rising response-time variance. Cardinality misestimates lead the optimizer to prefer plans that scan or update far more rows than necessary; these over-wide scans touch many pages, hold locks for longer intervals, and create large numbers of new or updated row versions. The inflated I/O and extended lock hold times intensify blocking, lengthen deadlock cycles, and cause more frequent victim rollbacks, which in turn spawn even more dead tuples and rollback records. Cleanup workers, already lagging behind, fall further behind due to persistent lock waits on hot pages, so version bloat and statistics staleness both worsen. Monitoring views show simultaneously exploding lock-wait seconds, growing version-store or autovacuum backlogs, and widening gaps between estimated and actual row counts in execution plans.\n\nCausally, stale or missing statistics first misguide the optimizer into choosing lock-heavy or scan-heavy plans, expanding the lock footprint and prolonging transaction duration. The resulting lock contention not only slows foreground work but also blocks background statistics refreshes and version-cleanup tasks, allowing both statistics staleness and version bloat to reinforce themselves. Accumulated dead tuples distort future statistics, further degrading plan quality, while the swollen heap forces longer scans that keep locks active, fueling a feedback loop that degrades throughput and risks transaction-ID or version-store exhaustion.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2168,
+            "score": 0.42145021775477287,
+            "bm25_score": 53.90172335964804,
+            "lexical_score": 0.12188995215311005,
+            "matched_terms": [
+                "and",
+                "blocking",
+                "chains",
+                "concurrent",
+                "for",
+                "incompatible",
+                "is",
+                "lock",
+                "not",
+                "or",
+                "rollback",
+                "the",
+                "transaction",
+                "transactions"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010281",
+                "error_name": "ER_CONN_UNIX_LOCK_FILE_CANT_CLOSE",
+                "official_description": "Could not close unix socket lock file %s errno %d.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "concurrency_and_transaction",
+                "cause_analysis": "The failure is typically associated with concurrent transactions contending for the same logical resources, incompatible lock acquisition order, or transaction-state conflicts surfaced by the engine.",
+                "solution_guidance": "Inspect blocking chains, reduce conflicting write overlap, shorten transaction lifetime, review lock acquisition order, and verify whether transaction scheduling or retry logic needs adjustment.",
+                "observable_symptoms": [
+                    "blocking",
+                    "rollback",
+                    "retry",
+                    "stalled transaction"
+                ]
+            }
+        }
+    }
+]

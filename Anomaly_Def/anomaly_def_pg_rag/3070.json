@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Transaction Log Subsystem Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Schema and Index Design Anomaly : Tables, partitions, and indexes are not aligned with access patterns, forcing the optimizer into inefficient full scans, non-covering look-ups, and excessive maintenance work.\nTransaction Log Subsystem Anomaly : Generation, flushing, or archiving of write-ahead logs cannot keep up with the commit rate, causing commit stalls and log-related wait events.\nNetwork and Connectivity Resource Anomaly : Transport paths, listeners, or connection slots are saturated or unreliable, delaying session establishment and result transmission.\n\nWhen all three root causes strike together, the database exhibits a mixed pattern of symptoms: 1) queries perform unnecessary full scans that inflate I/O and redo volume, 2) the oversized redo stream accumulates in the log buffer and waits for slow log flushes, lengthening commit latency, and 3) clients waiting on congested network channels or exhausted back-end slots experience timeouts and retry storms. End-to-end response times fluctuate wildly; small write transactions intermittently block behind log-sync waits, while read requests pile up inside the engine because client sockets cannot drain result sets quickly enough. Monitoring shows simultaneous spikes in logical and physical I/O, LOG_WRITE or LOG_FLUSH waits, and CLIENT_READ/CLIENT_WRITE waits, making it hard to attribute delays to a single layer.\n\nCausally, the poor schema and index design amplifies redo production and buffer-cache churn, putting sustained pressure on the transaction log subsystem. The log subsystem, already tuned too tightly for peak throughput, elongates commit cycles; longer commits hold latches and row locks for extra time, which in turn stretches the duration that back-end processes occupy network sockets. As network resources saturate, new sessions and retries further raise concurrency, driving even more ad-hoc queries through sub-optimal access paths and accelerating redo generation. This positive feedback loop—inefficient data access → excess redo → log-flush bottleneck → prolonged transactions → connection pile-ups → higher concurrency → more inefficient work—creates a cascading performance collapse that is far more severe than any individual anomaly would cause.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.31296239409110355,
+            "bm25_score": 14.317584339737152,
+            "lexical_score": 0.16919009853400624,
+            "matched_terms": [
+                "and",
+                "are",
+                "client",
+                "connection",
+                "establishment",
+                "for",
+                "in",
+                "is",
+                "latency",
+                "not",
+                "of",
+                "or",
+                "session",
+                "sessions",
+                "the",
+                "this",
+                "time",
+                "wait",
+                "waiting",
+                "when"
+            ],
+            "match_count": 210,
+            "entry": {
+                "timeout_id": "pg16_libpq_connection_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "client_connection_establishment_timeout",
+                "scope": "libpq/client connection parameter",
+                "official_definition": "Maximum wait for connection, in seconds; zero or not specified means wait indefinitely.",
+                "trigger_condition": "A libpq client connection attempt exceeds connect_timeout seconds.",
+                "workload_impact": "The client connection attempt fails instead of waiting indefinitely.",
+                "default_behavior": "Zero or absent value means wait indefinitely.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

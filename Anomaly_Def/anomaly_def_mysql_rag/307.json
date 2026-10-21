@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Database Memory Allocation Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Schema and Index Design Anomaly : Table, index, partition, and data-type choices do not match workload access patterns, forcing queries into inefficient and excessively large data access paths.\nDatabase Memory Allocation Anomaly : Cumulative buffer cache, work-area, plan cache, and background allocations grow beyond the host’s physical memory envelope, triggering paging, allocation churn, and OOM events.\nTransaction Log Subsystem Anomaly : Generation, flush, switching, or archival of write-ahead logs cannot keep pace with redo production, inflating commit latency and stalling write activity.\n\nWhen these three root causes coexist, the database exhibits a compounded failure pattern: 1) poorly indexed tables drive full-table scans, wide nested-loop lookups, and large batch modifications that explode redo volume; 2) the oversized intermediate result sets and hash/sort operations inflate per-session work memory and thrash the buffer cache, pushing the server into sustained memory pressure; 3) under pressure, the log buffer flushes more frequently yet still backs up behind a saturated log device or slow archiver, so commits stall and sessions linger while still hoarding memory and latches. Observable symptoms include dramatic and erratic response times, simultaneous spikes in physical I/O, paging, and log-flush waits, sudden drops in cache hit ratios, frequent checkpoint storms, and cascaded connection timeouts or node evictions.\n\nCausal chain: Inefficient schema and indexing multiply the amount of data each write or read touches, inflating both memory demand and redo generation. The bloated working set competes for limited RAM, causing cache churn and forcing dirty buffers to be flushed more aggressively—actions that funnel yet more traffic into the already stressed transaction-log subsystem. As log flushes lag, commit latency rises; longer-running transactions accumulate and hold even more memory, further intensifying allocation pressure. Meanwhile, memory pressure can shrink log buffers and increase write fragmentation, worsening log I/O throughput. The feedback loop between design-induced workload amplification, runaway memory usage, and log subsystem saturation quickly degrades overall system stability and throughput in write-intensive OLTP workloads.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.5137007285573775,
+            "bm25_score": 17.38161273934099,
+            "lexical_score": 0.1261826024442847,
+            "matched_terms": [
+                "and",
+                "cannot",
+                "for",
+                "in",
+                "longer",
+                "not",
+                "or",
+                "schema",
+                "session",
+                "sessions",
+                "the",
+                "to",
+                "transaction",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 15,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

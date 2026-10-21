@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Optimizer Statistics Anomaly + Query Plan Selection Anomaly",
+            "Description": "Schema and Index Design Anomaly : The physical data model and indexing strategy do not align with actual access patterns, forcing otherwise well-written SQL into inherently inefficient access paths.\nOptimizer Statistics Anomaly : Catalog statistics are stale, incomplete, or missing, causing systematic cardinality misestimation that misleads the cost model.\nQuery Plan Selection Anomaly : Even with acceptable statistics in many areas, the optimizer’s decision logic or plan-reuse mechanism chooses sub-optimal execution plans.\n\nWhen all three root causes surface at the same time, the workload experiences a compound performance collapse: 1) poorly aligned schema objects make selective predicates appear non-selective, 2) stale or skew-blind statistics magnify those misconceptions, and 3) the optimizer, relying on bad metadata and limited by inadequate index alternatives, locks in or reuses extremely inefficient plans. Observable symptoms include erratic but consistently high latency, extreme plan variability for the same statement text, full scans on very large tables despite highly selective predicates, sudden explosions in I/O or memory spills after data loads, write slow-downs from oversized or redundant indexes, and innumerable recompilations that nevertheless keep producing bad plans. Because each root cause masks or mimics the symptoms of the others, isolating any single factor through normal troubleshooting becomes difficult.\n\nCausally, the mis-designed schema creates access paths that are intrinsically expensive; stale statistics then hide just how expensive those paths have become, feeding faulty cardinality estimates into the optimizer; finally, the optimizer cements these misperceptions by choosing or reusing plans that amplify I/O and contention. The feedback loop is vicious: inefficient plans trigger more data movement and skew, further invalidating statistics; slow index maintenance delays statistics updates even more; and every fresh plan compilation is biased toward the limited, ill-fitting index set, ensuring that each component perpetuates and intensifies the next, leading to sustained and escalating degradation across both OLTP and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.5381816787872571,
+            "bm25_score": 18.686112756177803,
+            "lexical_score": 0.11150533676849467,
+            "matched_terms": [
+                "and",
+                "because",
+                "for",
+                "in",
+                "is",
+                "locks",
+                "metadata",
+                "not",
+                "or",
+                "schema",
+                "statement",
+                "the",
+                "to",
+                "when"
+            ],
+            "match_count": 151,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

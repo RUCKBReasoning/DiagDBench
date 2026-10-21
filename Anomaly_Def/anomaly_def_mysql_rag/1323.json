@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Data Block and Index Integrity Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Composite definition: The database is simultaneously limited by a saturated transaction-log subsystem, suffering from on-disk data/index corruption, while the underlying storage layer is unable to supply adequate read/write throughput. All three conditions are active at the same time, forming a multi-layer fault that degrades durability, consistency, and performance, and greatly complicates recovery and diagnosis.\n\nObserved phenomena: 1) Commit operations stall behind escalating log-flush, log-write, and log-sync waits; archive or replication pipelines fall behind and trigger checkpoint storms. 2) Queries intermittently return missing or duplicate rows, integrity-check utilities report page-checksum, key-order, or pointer errors, and execution plans degrade to full scans. 3) Device metrics show queue depths pegged, soaring read/write latencies, and prolonged data-file, temp-file, and log-file I/O waits. When these symptoms overlap, end-user sessions may see timeouts, deadlocks on allocation pages, repeated crash-recovery cycles, or sudden read-only failovers as the engine attempts to protect itself from further corruption.\n\nCausal interaction: Sustained storage I/O saturation throttles both data-page and redo-log traffic, directly slowing log flushes and amplifying the transaction-log bottleneck. The resulting backlog forces larger checkpoints and keeps dirty pages and un-archived log segments on disk longer, increasing the window in which any latent media error can corrupt data or index pages. In turn, corrupted pages provoke repeated read retries, verification scans, and failed recovery attempts that generate additional I/O and log activity, pushing the already overloaded storage further past its limits. This feedback loop deepens commit latency, broadens corruption scope, and can ultimately exhaust log space or crash the instance, making the three anomalies mutually reinforcing and highly disruptive to OLTP workloads.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.694320487570547,
+            "bm25_score": 19.72315768903917,
+            "lexical_score": 0.16285714285714284,
+            "matched_terms": [
+                "activity",
+                "additional",
+                "and",
+                "are",
+                "check",
+                "data",
+                "from",
+                "is",
+                "latency",
+                "longer",
+                "or",
+                "read",
+                "sessions",
+                "the",
+                "this",
+                "time",
+                "to",
+                "waits",
+                "when"
+            ],
+            "match_count": 63,
+            "entry": {
+                "timeout_id": "mysql84_network_read_timeout",
+                "parameter_name": "net_read_timeout",
+                "timeout_category": "network_read_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for more data from a connection before aborting the read.",
+                "trigger_condition": "The server waits for additional data from a connection longer than net_read_timeout.",
+                "workload_impact": "The network read is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

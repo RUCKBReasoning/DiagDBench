@@ -1,0 +1,44 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Transaction Log Subsystem Anomaly + Replication Synchronization Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Excessive accumulation of obsolete row versions and index entries outpaces background cleanup, enlarging the version store and degrading visibility checks.\nTransaction Log Subsystem Anomaly : The write-ahead logging path (log buffer, file, flush, switch, archive) becomes the primary bottleneck, inflating commit latency and preventing timely log recycling.\nReplication Synchronization Anomaly : Downstream replicas cannot receive or apply the primary’s log stream fast enough, causing ever-growing replay lag and retention of old log segments on the primary.\n\nWhen all three conditions co-exist, the database exhibits a compound failure pattern: commits stall under prolonged log-flush and sync waits while log directories and version stores balloon simultaneously. Table and index sizes grow due to unreclaimed dead tuples, increasing scan times and skewing optimizer statistics. Replication lag widens, replicas fall minutes or hours behind, and primary-side log segments pile up because they cannot be recycled until both MVCC cleanup and replica replay advance the retention horizon. Background vacuum/cleanup, log archiver, and replication sender processes run constantly yet remain backlogged, leading to checkpoint storms, disk-space exhaustion warnings, and potential forced shutdowns or replica cascades.\n\nCausally, heavy update/delete churn amplifies MVCC bloat, which in turn accelerates redo generation and stresses the transaction-log subsystem. As log write and flush latency increase, commit throughput drops, lengthening transaction lifetimes and further delaying version cleanup. Simultaneously, the replication slowdown prevents log truncation, locking old log segments in place; the enlarged log volume exacerbates I/O pressure on the log device and archiver, feeding back into higher commit latency. The expanding version store and retained logs both inflate disk usage, while each subsystem’s backlog deprives the others of progress, creating a reinforcing loop that degrades overall OLTP performance and threatens system availability.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 175,
+            "score": 0.2708832055207077,
+            "bm25_score": 12.089194751812544,
+            "lexical_score": 0.1014868213561613,
+            "matched_terms": [
+                "and",
+                "as",
+                "cannot",
+                "failure",
+                "or",
+                "that",
+                "the",
+                "under",
+                "usage",
+                "version"
+            ],
+            "match_count": 11,
+            "entry": {
+                "error_code": "42P09",
+                "error_name": "ambiguous_alias",
+                "official_description": "ambiguous alias",
+                "error_class": "Class 42 - Syntax Error or Access Rule Violation",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "sql_and_parser",
+                "cause_analysis": "The failure is typically associated with unsupported syntax, invalid statement structure, or feature usage that the target engine version cannot execute as written.",
+                "solution_guidance": "Validate SQL syntax, target-engine compatibility, statement shape, and whether the feature is supported under the current engine version or execution context.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "syntax error",
+                    "feature rejection"
+                ]
+            }
+        }
+    }
+]

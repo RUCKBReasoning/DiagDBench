@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Replication Synchronization Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Excessive accumulation of obsolete row versions and rollback data because background cleanup cannot keep pace with update-/delete-driven churn.\nReplication Synchronization Anomaly : Standby or subscriber nodes fall behind because they cannot receive, write, or apply the primary’s WAL/redo stream at its production rate.\nStorage I/O Throughput Anomaly : The physical storage layer is saturated, driving up read/write latency and queue depth for data, log, and temporary files.\n\nWhen all three faults are active, the system exhibits a compound symptom set: version stores, rollback segments, and table bloat expand rapidly while replica lag grows and primary log segments pile up, inflating disk-space usage. Autovacuum or purge workers and replica apply threads contend for the same over-burdened I/O subsystem, so both visibility-map scans and redo replays slow sharply. Checkpoints, sequential scans, and large deletes stretch far longer; replica read freshness degrades from seconds to minutes or hours; failovers risk data loss because the replica’s recovery point trails the primary’s transaction-ID horizon; meanwhile the primary warns of imminent wraparound yet cannot recycle WAL because lagging replicas still need it. Global performance shows high I/O wait, moderate CPU, swollen disk queues, and an accelerating feedback loop of bloat → more I/O → deeper lag.\n\nCausally, heavy update/delete activity inflates the version store, forcing more page writes and generating extra WAL. The surge in log volume must traverse the replication channel, but limited network, CPU, or single-threaded apply logic on the replica slows consumption, so WAL accumulates on the primary. Retention of these log segments and the growing on-disk tables/indexes both expand the storage footprint, pushing the underlying disk array to its throughput limit. Elevated I/O latency then throttles autovacuum/purge and replica apply even further, allowing yet more dead tuples and WAL to gather. This positive feedback loop ties together MVCC cleanup debt, replication backlog, and storage saturation, creating a self-reinforcing degradation that can culminate in transaction-ID exhaustion, replica desynchronization, and service-level breaches.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1596,
+            "score": 0.45586963210799547,
+            "bm25_score": 55.93278199053636,
+            "lexical_score": 0.16855634412324735,
+            "matched_terms": [
+                "and",
+                "apply",
+                "cannot",
+                "channel",
+                "for",
+                "is",
+                "keep",
+                "lag",
+                "log",
+                "need",
+                "network",
+                "on",
+                "or",
+                "replica",
+                "replication",
+                "retention",
+                "the",
+                "to",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "4062",
+                "error_name": "ER_CHANGE_REPLICATION_SOURCE_NO_OPTIONS_FOR_GTID_ONLY",
+                "official_description": "GTID_ONLY cannot be enabled for replication channel '%.192s'. You need GTID_MODE = ON, SOURCE_AUTO_POSITION = 1 and REQUIRE_ROW_FORMAT = 1.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

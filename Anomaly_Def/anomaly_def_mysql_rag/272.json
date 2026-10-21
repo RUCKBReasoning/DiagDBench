@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Transaction Lock Contention Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer reuses or picks a markedly sub-optimal execution plan even though statistics are adequate.\nTransaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same resources, leading to long blocking chains or deadlocks.\nNetwork and Connectivity Resource Anomaly : Network, listener, authentication, or socket resources between clients and the database are saturated, delayed, or exhausted.\n\nWhen all three anomalies strike together, the system exhibits a multi-layer performance collapse: 1) poor plans inflate statement runtimes and touch far more rows or pages than necessary, 2) the prolonged execution holds locks for longer periods, creating extensive blocker–waiter trees and frequent deadlocks, and 3) stalled or retried client connections accumulate, exhausting connection slots and further delaying both new sessions and network I/O for running ones. Operators may observe rapidly oscillating or contradictory symptoms—e.g., alternating spikes of CPU, lock-wait time, and client-read waits; sudden bursts of deadlock victim errors followed by connection-timeout errors; and highly variable execution plans in the cache that correlate with rising network retransmissions.\n\nCausal chain: a sub-optimal plan increases execution time and result-set size, which keeps locks and sockets open longer. The extended lock hold causes other sessions to queue, swelling the active session count and driving up connection demand exactly when the listener or socket queues are already saturated. Simultaneously, network slowdowns delay result delivery, further prolonging transaction lifetimes and amplifying lock contention; the backlog of waiting sessions provokes more hard-parses, heightening the risk of the optimizer selecting yet another bad plan under different parameter bindings. Each layer therefore reinforces the next, producing a feedback loop that degrades throughput far more severely than any single anomaly would.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1011,
+            "score": 0.7622654047523157,
+            "bm25_score": 106.560294933127,
+            "lexical_score": 0.2075513491743858,
+            "matched_terms": [
+                "and",
+                "blocking",
+                "chains",
+                "client",
+                "contention",
+                "extended",
+                "for",
+                "holds",
+                "network",
+                "of",
+                "or",
+                "prolonged",
+                "prolonging",
+                "queues",
+                "resource",
+                "the",
+                "therefore",
+                "time",
+                "timeout",
+                "wait",
+                "waiting",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "3173",
+                "error_name": "ER_CANT_WAIT_FOR_EXECUTED_GTID_SET_WHILE_OWNING_A_GTID",
+                "official_description": "The client holds ownership of the GTID %s. Therefore, WAIT_FOR_EXECUTED_GTID_SET cannot wait for this GTID.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "timeout_and_waiting",
+                "cause_analysis": "The failure is typically associated with extended waiting, resource queues, unresponsive peers, or configured time limits being exceeded before the requested operation completes.",
+                "solution_guidance": "Check wait sources, blocking chains, network responsiveness, timeout settings, and whether resource contention is prolonging operation completion.",
+                "observable_symptoms": [
+                    "timeout",
+                    "prolonged waiting",
+                    "interrupted operation"
+                ]
+            }
+        }
+    }
+]

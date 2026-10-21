@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Operating System Resource Limit Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Inaccurate, missing, or stale optimizer statistics cause systematic cardinality misestimation and mis-costing, leading the optimizer to select sub-optimal execution plans. \nOperating System Resource Limit Anomaly : Kernel-enforced caps on file handles, shared memory, threads, or other OS resources are exhausted, preventing the database from allocating processes, memory, or I/O contexts that it logically requires. \nNetwork and Connectivity Resource Anomaly : Listener, socket, or network-path capacity is insufficient or unstable, producing connection refusals, timeouts, and slow or stalled client/server data transfer.\n\nWhen all three root causes manifest concurrently, the database exhibits multilayer symptoms: 1) query plans flip unpredictably or lock into inefficient full scans or serial plans due to wrong row-count estimates; 2) those inefficient plans inflate memory, file-descriptor, worker, and I/O demands, accelerating exhaustion of the already tight OS resource limits and triggering \"cannot fork\", \"too many open files\", or \"cannot allocate shared memory\" errors; 3) as backend and listener resources saturate, new client connections back up, causing rising TCP SYN backlog, authentication stalls, mid-stream socket disconnects, and application-side timeouts. Performance telemetry shows extreme variance—some sessions hang on client read/write waits, others are terminated by internal errors, while surviving sessions run with degraded plans and long runtimes. Diagnosis is complicated because plan misestimates, kernel denials, and network failures surface in overlapping time windows, obscuring singular blame.\n\nCausal chain: Stale or incomplete statistics steer the optimizer toward plan shapes that open many files, allocate large temp segments, or request numerous parallel workers. These bloated resource requests collide with low or already near-exhausted OS limits, causing allocation failures that leave partially initialized backends, leaked file descriptors, and half-open sockets. The accumulation of such orphaned kernel objects further shrinks available OS quotas, amplifying the resource-limit anomaly. Meanwhile, aborted sessions and retrying application pools inflate connection churn, deepening the network and listener overload. Conversely, network-level slowdowns prolong transaction lifetimes, delaying statistic-gathering jobs and prolonging locks on objects, which keeps statistics stale and perpetuates misestimation. The feedback loop among poor statistics, OS-level exhaustion, and network saturation thus cascades, driving widespread performance collapse across both OLTP and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2485,
+            "score": 0.5565622792111359,
+            "bm25_score": 54.894595622568026,
+            "lexical_score": 0.15651822457378012,
+            "matched_terms": [
+                "and",
+                "are",
+                "authentication",
+                "cannot",
+                "client",
+                "connection",
+                "file",
+                "from",
+                "is",
+                "limits",
+                "network",
+                "new",
+                "of",
+                "or",
+                "server",
+                "the",
+                "to",
+                "when",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010598",
+                "error_name": "ER_RPL_REPLICA_NEW_C_M_NEEDS_REPOS_TYPE_OTHER_THAN_FILE",
+                "official_description": "Replica: Cannot create new connection metadata structure when repositories are of type FILE. Convert replica repositories to TABLE to replicate from multiple sources.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "connection_and_network",
+                "cause_analysis": "The failure is typically associated with connection establishment, authentication exchange, protocol correctness, network reachability, or client/server communication stability.",
+                "solution_guidance": "Check endpoint reachability, authentication flow, connection limits, protocol compatibility, transport stability, and client connection lifecycle management.",
+                "observable_symptoms": [
+                    "connection failure",
+                    "disconnect",
+                    "handshake failure",
+                    "unreachable session"
+                ]
+            }
+        }
+    }
+]

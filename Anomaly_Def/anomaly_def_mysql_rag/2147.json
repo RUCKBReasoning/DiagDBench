@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Replication Synchronization Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "SQL Workload Logic Anomaly: Application-layer statement or transaction design forces the engine to process or return more data than business logic requires.\nReplication Synchronization Anomaly: Downstream replicas cannot receive or apply primary WAL/redo at production rate, creating widening replay lag.\nOperating System Resource Limit Anomaly: Kernel-enforced limits on handles, threads, shared memory, or similar objects choke database and auxiliary processes.\n\nWhen these three root causes strike together, the system shows an extreme mix of symptoms: end-user statements experience long-tail latency and timeouts; primary-side WAL files and replica relay logs accumulate rapidly; replica read staleness and failover RPO/RTO violations grow; and both primary and replica emit errors about failing to open files, fork workers, allocate shmem, or schedule async I/O. Monitoring may reveal surging transaction durations, massive unresolved replication backlogs, sudden pauses in apply threads, and spurious partial outages where established sessions limp on while new sessions, background writers, or logical decoding workers fail to start.\n\nCausally, inefficient SQL inflates row scans, I/O, and transaction sizes, driving up WAL generation. The heavier WAL stream must traverse the replication channel; apply workers already slowed by CPU or I/O contention now meet even steeper backlogs. As lag balloons, the server retains more WAL segments and spawns extra sender, receiver, and apply processes to catch up, sharply increasing demands for file handles, shmem, semaphores, threads, and AIO contexts. If OS limits are low or already close to saturation, these extra processes hit hard caps, causing replication workers to crash or stall, further delaying apply and magnifying backlog. The vicious circle tightens: larger backlog leads to more retained WAL, which consumes more descriptors and disk, while application logic continues to generate oversized transactions. Ultimately the interplay of excessive workload, replication stress, and kernel resource exhaustion destabilizes both primary and replicas, complicating diagnosis because each layer manifests errors that mask the others.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.5423808057519512,
+            "bm25_score": 27.239889508575533,
+            "lexical_score": 0.12618217054263564,
+            "matched_terms": [
+                "an",
+                "and",
+                "because",
+                "by",
+                "cannot",
+                "for",
+                "in",
+                "of",
+                "or",
+                "row",
+                "sessions",
+                "statement",
+                "than",
+                "the",
+                "transaction",
+                "up",
+                "when"
+            ],
+            "match_count": 101,
+            "entry": {
+                "timeout_id": "mysql84_innodb_row_lock_wait_timeout",
+                "parameter_name": "innodb_lock_wait_timeout",
+                "timeout_category": "innodb_row_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "The length of time in seconds an InnoDB transaction waits for a row lock before giving up.",
+                "trigger_condition": "An InnoDB transaction waits longer than innodb_lock_wait_timeout for a row lock.",
+                "workload_impact": "The lock wait gives up; by default only the current statement is rolled back unless innodb_rollback_on_timeout is enabled.",
+                "default_behavior": "Defined as an InnoDB system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

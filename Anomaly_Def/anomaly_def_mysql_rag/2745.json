@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Buffer Cache and Latch Contention Anomaly + CPU Resource Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Costing inputs (row counts, histograms, correlations) are stale or absent, driving systematic cardinality misestimation and sub-optimal plan selection.\nBuffer Cache and Latch Contention Anomaly : Access to popular buffer pages is serialized by heavy latch or pin waits, causing sessions to stall or spin while competing for the same in-memory blocks.\nCPU Resource Anomaly : Database processes saturate host CPU, exhausting scheduler capacity and inflating run-queue and context-switch overhead regardless of the logical origin of the demand.\n\nWhen these three root causes strike concurrently, the workload exhibits a mixture of misleading estimates, acute page-level hot spots, and full CPU saturation. Queries whose plans were already risky because of wrong statistics may choose nested-loop joins on underestimated result sets or full scans on underestimated large tables; both inflate logical I/O, repeatedly touch a small set of root or bitmap pages, and amplify latch waits. Sessions spin on buffer latches, inflating CPU consumption without progressing work, driving overall host utilization to 100 %. As CPU headroom disappears, latency balloons across the instance, autovacuum or automatic-statistics jobs fall further behind, and wait-event dashboards show alternating bursts of “latch: buffer busy”, “CPU run queue”, and “cardinality feedback” events, making the true culprit hard to pinpoint.\n\nCausally, stale or missing statistics (1) misdirect the optimizer into plans that concentrate reads or writes on a few pages. This creates artificial hot pages that (2) trigger buffer-cache latch contention; the spin-loop behavior of those latches (3) burns CPU cycles, escalating the CPU Resource Anomaly. In turn, CPU starvation delays background I/O writers and statistics jobs, allowing statistics to grow even staler and hot pages to stay longer in cache, which perpetuates the latch conflict. Thus all three anomalies form a reinforcing feedback loop that degrades throughput far more severely than any single anomaly in isolation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5605,
+            "score": 0.3894649332938214,
+            "bm25_score": 31.0511269760271,
+            "lexical_score": 0.13714285714285712,
+            "matched_terms": [
+                "and",
+                "as",
+                "automatic",
+                "by",
+                "context",
+                "in",
+                "is",
+                "level",
+                "or",
+                "resource",
+                "same",
+                "the",
+                "to",
+                "trigger",
+                "which",
+                "workload"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013749",
+                "error_name": "ER_GRP_RPL_GROUP_NAME_SAME_AS_VIEW_CHANGE_UUID",
+                "official_description": "group_replication_group_name '%s', which is the same as group_replication_view_change_uuid. Please change group_replication_view_change_uuid to AUTOMATIC",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Replication Synchronization Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Obsolete row versions, rollback records, and dead index entries accumulate faster than background cleanup can reclaim them, inflating the heap and version store.\nReplication Synchronization Anomaly : Standbys or downstream consumers cannot receive, persist, or apply transaction-log records at the rate the primary generates them, leading to widening replication lag and retention of extra log segments.\n\nWhen both root causes are active, the system shows a compound pattern: dead‐row ratios, table and index sizes, and version-store length rise sharply while, at the same time, replica-side receive/flush/replay positions drift further behind the primary. Autovacuum or equivalent cleaners remain busy yet ineffective because replication-held snapshots prevent pruning; primary log-segment archives grow because neither cleanup nor replica acknowledgment frees them. Application sessions may see slower reads due to bloated pages, delayed failover readiness, and inconsistent read staleness on replicas. Monitoring views report simultaneously high \"dead tuples\" and escalating \"replication lag\", with disk pressure mounting on both primary (unrecycled WAL) and replicas (backlog of unapplied redo).\n\nCausally, replication lag lengthens the global xmin or equivalent transaction-age horizon, freezing the visibility of old row versions and blocking their removal. The stalled cleanup enlarges the heap and forces the primary to emit more full-page images and update records, which in turn amplifies WAL volume and further overloads the already lagging replicas. The positive feedback loop—replica lag preventing cleanup, and unchecked version churn inflating WAL traffic—creates a self-reinforcing degradation that can exhaust storage, throttle throughput, and endanger recovery objectives.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.7387154326494201,
+            "bm25_score": 25.552292702821234,
+            "lexical_score": 0.12905144216473385,
+            "matched_terms": [
+                "and",
+                "apply",
+                "downstream",
+                "global",
+                "lag",
+                "or",
+                "preventing",
+                "replica",
+                "replication",
+                "stalled",
+                "than",
+                "the",
+                "to",
+                "when"
+            ],
+            "match_count": 106,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

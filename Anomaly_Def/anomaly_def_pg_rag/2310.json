@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Transaction Lock Contention Anomaly + Database Configuration Parameter Anomaly",
+            "Description": "Schema and Index Design Anomaly : The physical table, index, partition, datatype, and constraint layout does not match workload access patterns, forcing queries into broad or row-by-row access paths independent of statistics or plan choice.\nTransaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on overlapping data or metadata, creating long blocking chains or deadlocks that stall throughput and trigger rollbacks.\nDatabase Configuration Parameter Anomaly : Engine-level memory, checkpoint, log, parallelism, and worker settings are mis-tuned relative to hardware and workload, so internal subsystems operate with sub-optimal capacity or cadence.\n\nWhen these three root causes coexist, the database exhibits a compound symptom set: queries already slowed by table scans or non-covering index probes hold locks longer, magnifying blocking chains; lock waits accumulate inside connections whose work memories, lock-hash buckets, or log buffers are under-sized by configuration, causing CPU spin or flush storms even while hardware is under-utilised; deadlock victims trigger retries that re-enter the same poorly indexed code paths, amplifying I/O and lock traffic; checkpoints or background writers start unexpectedly because mis-sized log or buffer pools fill quickly after each retried modification burst, adding more I/O latency that further prolongs lock holding time.\n\nCausally, a bad schema and index design inflates the row set any modification must touch, expanding the lock footprint and extending the duration each lock is held; this enlarged contention surface raises the probability and depth of blocking chains. Simultaneously, mis-set configuration parameters (e.g., too small lock memory, aggressive checkpoint frequency, inadequate work memory) throttle the lock manager’s ability to grant or clean up locks and push additional latency into every statement. The added delays feed back into even longer hold times on the already bloated locks coming from the design flaw, while the surging lock queues trigger further background work (flush, checkpoint, deadlock detection) that contends for CPU and I/O, creating a positive feedback loop that degrades OLTP throughput sharply.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.2795116206774186,
+            "bm25_score": 15.859490208965369,
+            "lexical_score": 0.16047156726768375,
+            "matched_terms": [
+                "after",
+                "and",
+                "are",
+                "by",
+                "connections",
+                "does",
+                "for",
+                "holding",
+                "is",
+                "latency",
+                "not",
+                "of",
+                "on",
+                "or",
+                "pools",
+                "probes",
+                "that",
+                "the",
+                "this",
+                "time",
+                "to",
+                "when"
+            ],
+            "match_count": 274,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_interval",
+                "parameter_name": "tcp_keepalives_interval",
+                "timeout_category": "network_keepalive_retry_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time after which a TCP keepalive message that has not been acknowledged by the client should be retransmitted.",
+                "trigger_condition": "A TCP keepalive probe is not acknowledged for tcp_keepalives_interval on systems supporting TCP_KEEPINTVL or an equivalent socket option.",
+                "workload_impact": "Controls retry timing for keepalive probes used to detect unresponsive client connections.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

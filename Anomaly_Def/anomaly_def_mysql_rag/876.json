@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Replication Synchronization Anomaly + Storage Space Capacity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Replication Synchronization Anomaly : Standbys or downstream consumers cannot receive or apply WAL/redo fast enough to keep up with the primary, widening the log-position gap.\nStorage Space Capacity Anomaly : Physical or logical free space in data, log, archive, temp, or backup areas is exhausted, causing allocation failures and stalls.\nOperating System Resource Limit Anomaly : Kernel-enforced limits on file handles, shared memory, semaphores, threads, or similar objects are reached, preventing the database from creating or accessing required resources.\n\nWhen all three conditions arise together, the database estate experiences a spiraling failure mode: replication lag grows, retained WAL or relay logs accumulate, and the resulting surge in on-disk log volume drives the underlying storage toward full. At the same time, exhausted OS limits prevent archiver, cleanup, or apply processes from opening additional files, allocating shared memory, or spawning workers, so neither the primary nor the replicas can reclaim space or accelerate catch-up. Symptoms include rapidly inflating disk usage on primaries and standbys, replica replay lag jumping while apply workers crash or refuse to start, repeated \"no space\" or \"too many open files\" errors in both database and system logs, stalled checkpoints, disabled autovacuum or compaction tasks, and an increasing number of read-only queries served stale data from far-behind replicas.\n\nCausal chain and reinforcement: (1) Initial OS resource exhaustion (e.g., file-descriptor limits) throttles replication apply processes and archive writers; (2) slowed apply causes WAL retention on the primary, inflating log volume; (3) the sudden consumption of disk space triggers storage-capacity breaches that further block WAL archiving and temp-space operations; (4) with storage full, retry storms and additional worker spawns push the system even harder against the same OS limits, causing more process failures; (5) the feedback loop leaves both primary and replicas unable to advance, risking total outage or data-loss exposure if the primary crashes before replicas catch up.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2491,
+            "score": 0.7066293370590774,
+            "bm25_score": 74.87966515248671,
+            "lexical_score": 0.17230769230769233,
+            "matched_terms": [
+                "and",
+                "apply",
+                "downstream",
+                "failure",
+                "is",
+                "keep",
+                "lag",
+                "log",
+                "neither",
+                "nor",
+                "or",
+                "relay",
+                "replica",
+                "replication",
+                "retention",
+                "so",
+                "stale",
+                "the",
+                "to",
+                "when",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010604",
+                "error_name": "ER_RPL_PLEASE_USE_OPTION_RELAY_LOG",
+                "official_description": "Neither --relay-log nor --relay-log-index were used; so replication may break when this MySQL server acts as a replica and has his hostname changed!! Please use '--relay-log=%s' to avoid this problem.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

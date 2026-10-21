@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Replication Synchronization Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Multiple sessions serialize on hot buffer-cache pages or latches, stalling while trying to pin or modify pages held by others.\nReplication Synchronization Anomaly : Standby or subscriber nodes cannot receive, persist, or apply WAL/redo fast enough, producing widening log-position gaps and retained primary logs.\nStorage I/O Throughput Anomaly : The underlying volumes hit their physical IOPS/throughput ceiling, driving up read/write latency and I/O wait time.\n\nWhen all three root causes are active, the database exhibits a compounded failure pattern: 1) CPU spin and prolonged page-latch waits on the primary, 2) storage queues and device latency spiking on both primary and replicas, 3) rapidly expanding write-ahead logs, relay logs, or retained segments, 4) replication lag that grows despite normal network health, 5) checkpoint and background-writer activity that cannot drain dirty pages, and 6) cascading response-time and throughput degradation that is hard to attribute to a single tier because buffer, storage, and replication metrics all show distress.\n\nCausal chain: Hot pages and latch contention generate bursts of physical I/O (dirty-page flushes and replacement reads); this extra traffic pushes the storage subsystem past its throughput limit, further lengthening flush times and keeping pages pinned longer, which in turn intensifies latch contention. The same saturated storage slows WAL writes and replay on replicas, so replay lags behind, preventing log recycling on the primary. The growing retained log set increases storage usage and write volume, feeding back into the storage bottleneck and extending latch hold times. Thus each anomaly reinforces the others, producing a feedback loop that degrades buffer concurrency, disk service levels, and replication freshness simultaneously.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.7020003226932238,
+            "bm25_score": 20.52460323479682,
+            "lexical_score": 0.1478323699421965,
+            "matched_terms": [
+                "and",
+                "back",
+                "because",
+                "by",
+                "cannot",
+                "in",
+                "is",
+                "longer",
+                "of",
+                "or",
+                "sessions",
+                "the",
+                "this",
+                "time",
+                "up",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 109,
+            "entry": {
+                "timeout_id": "mysql84_innodb_row_lock_wait_timeout",
+                "parameter_name": "innodb_lock_wait_timeout",
+                "timeout_category": "innodb_row_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "The length of time in seconds an InnoDB transaction waits for a row lock before giving up.",
+                "trigger_condition": "An InnoDB transaction waits longer than innodb_lock_wait_timeout for a row lock.",
+                "workload_impact": "The lock wait gives up; by default only the current statement is rolled back unless innodb_rollback_on_timeout is enabled.",
+                "default_behavior": "Defined as an InnoDB system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

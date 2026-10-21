@@ -1,0 +1,59 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + MVCC Version Maintenance Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Composite definition: The database simultaneously suffers from (1) a physical data-model and indexing layout that does not fit the workload, (2) an over-accumulation of obsolete MVCC row versions that background cleaners cannot reclaim in time, and (3) saturation of the underlying storage subsystem’s throughput or IOPS budget. Together these three root causes create a self-reinforcing performance collapse that affects all foreground operations.\n\nCombined observable phenomena: Queries that should be selective are forced into full scans because of missing or non-covering indexes; those scans traverse bloated tables and indexes swollen by unreclaimed row versions, causing many more pages to be read. Update- and delete-heavy transactions generate large amounts of new versions while every write waits on busy storage queues, inflating commit latency. Autovacuum / purge workers run continuously yet make little progress because their own I/O is throttled; monitoring shows high I/O wait time, deep device queues, rising table and index sizes, misestimated row counts, escalating buffer churn, and sudden spikes in response-time variance. Application sessions may experience both read latency (from scan expansion and I/O stalls) and write latency (from version logging and log-flush bottlenecks), with dead-tuple ratios and storage-level alerts increasing in parallel.\n\nCausal interaction: Poor schema and index design forces the engine to touch far more pages per statement, multiplying physical reads and writes. The extra I/O load accelerates MVCC version churn, because non-covering updates and unnecessary full-row rewrites generate additional row versions and index entries. As obsolete versions pile up, cleanup workers must process larger heaps and indexes; however, their work is throttled by the same saturated storage layer, allowing bloat to grow unchecked. The expanding data footprint further degrades cache efficiency and amplifies I/O demand, pushing the storage subsystem deeper into saturation. This vicious cycle—design inefficiencies → excess version generation → storage bloat → I/O overload → slower cleanup → further bloat—causes a compounded degradation in throughput and latency that is far more severe than any single anomaly would produce in isolation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.7256807762744306,
+            "bm25_score": 27.177351360331507,
+            "lexical_score": 0.186875,
+            "matched_terms": [
+                "additional",
+                "and",
+                "are",
+                "budget",
+                "data",
+                "does",
+                "from",
+                "is",
+                "latency",
+                "more",
+                "not",
+                "of",
+                "or",
+                "progress",
+                "read",
+                "sessions",
+                "than",
+                "the",
+                "this",
+                "time",
+                "to",
+                "wait",
+                "waits"
+            ],
+            "match_count": 88,
+            "entry": {
+                "timeout_id": "mysql84_network_read_timeout",
+                "parameter_name": "net_read_timeout",
+                "timeout_category": "network_read_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for more data from a connection before aborting the read.",
+                "trigger_condition": "The server waits for additional data from a connection longer than net_read_timeout.",
+                "workload_impact": "The network read is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

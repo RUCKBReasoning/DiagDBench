@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Replication Synchronization Anomaly + Data Block and Index Integrity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Composite definition: The database simultaneously suffers from lagging or stalled replication streams, underlying physical corruption of data or index pages, and exhaustion of kernel-enforced resources (file descriptors, shared-memory segments, thread slots, etc.). The coincidence of these three root causes yields a compound failure state in which recovery, failover, and normal workload processing are all jeopardized.\n\nReplication Synchronization Anomaly: Standbys or downstream consumers cannot receive, persist, or apply WAL/redo as fast as the primary produces it.\nData Block and Index Integrity Anomaly: On-disk pages or index structures are physically or logically corrupted, making storage contents unreliable.\nOperating System Resource Limit Anomaly: The DBMS process hits kernel limits on critical resources such as open files, shared memory, semaphores, or threads, impeding normal engine operation.\n\nCombined observable phenomena: \n• Rapidly expanding WAL retention or relay logs on the primary due to replicas falling behind while also being unable to purge corrupted or locked segments.\n• Sudden replication apply errors triggered by corrupted pages reaching replicas, causing frequent replay crashes, cascading replica restarts, and further widening of replication lag metrics.\n• Engine and kernel logs interleaving page-checksum failures with \"too many open files\", \"cannot create thread\", or \"out of shared memory\" messages as background workers and recovery processes fail to allocate kernel objects needed for corruption handling or log shipping.\n• Stale or inconsistent read results from replicas, intermittent query failures, and unexpected full-table scans on the primary as indexes are marked unusable while repair utilities cannot run due to OS resource exhaustion.\n• Escalating storage consumption and degraded throughput on the primary because unrecycled WAL and blocked autovacuum or checkpoint workers contend for the same limited file handles and shared memory.\n\nCausal interaction: Physical corruption in data or index pages often surfaces first on replicas during redo, triggering replication halts that inflate apply lag. The stalled replication, in turn, forces the primary to retain ever-growing log segments, greatly increasing the number of files and shared memory descriptors the engine must keep open. This surge collides with tight operating-system limits, causing worker-spawn failures and further reducing the engine’s capacity to ship, apply, or repair WAL. Meanwhile, OS resource exhaustion can prevent integrity-check utilities, index rebuilds, or page-repair mechanisms from allocating the resources they need, allowing corruption to persist and repeatedly poison the replication stream. The feedback loop between corruption-induced apply failures, replication backlog, and kernel resource starvation amplifies both availability risk and data-consistency exposure, leading to a severe, multi-faceted outage scenario.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.7303914921614506,
+            "bm25_score": 30.423597918096675,
+            "lexical_score": 0.13049151805132667,
+            "matched_terms": [
+                "and",
+                "apply",
+                "causing",
+                "data",
+                "downstream",
+                "lag",
+                "operation",
+                "or",
+                "out",
+                "replica",
+                "replication",
+                "stalled",
+                "the",
+                "this",
+                "to",
+                "triggered"
+            ],
+            "match_count": 41,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

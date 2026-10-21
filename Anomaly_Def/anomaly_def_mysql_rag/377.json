@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + CPU Resource Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer repeatedly chooses a substantially sub-optimal execution plan even though statistics are adequate.\nCPU Resource Anomaly : Database processes consume nearly all available CPU cycles, creating system-wide compute saturation.\n\nComposite definition: The database simultaneously suffers from poor plan selection that drives excessive instruction work and a host-level CPU bottleneck that throttles every session. \n\nCombined phenomena: 1) Identical statements oscillate between index and full-scan plans, or lock into an inefficient nested-loop plan, while overall CPU usage stays pegged near 100 %. 2) Top SQL lists are dominated by the mis-planned statements, but even unrelated workloads show rising latency because runnable queues grow and OS context switches spike. 3) Wait-event views display a mixture of CPU-scheduler waits and execution-engine waits (e.g., latch or buffer-access) caused by the bad plan, making diagnosis ambiguous. 4) Any plan cache invalidation, statistics refresh, or parameter change can trigger another flip to a different—but still CPU-hungry—plan, producing saw-tooth performance patterns during peak load.\n\nCausal chain: A sub-optimal plan (e.g., non-selective full table scan or parallel-degree overuse) multiplies the required CPU instructions per request. The extra CPU demand quickly exhausts core capacity, pushing the system into saturation. Once CPU queues lengthen, task scheduling delays inflate query runtimes further, feeding back into the optimizer’s adaptive thresholds; this may cause additional plan re-compiles or parallel downgrade/upgrade decisions, perpetuating unstable plan choices. Conversely, chronic CPU pressure can keep apparently cheap but actually expensive plans in cache because re-optimization is deferred, thereby locking the workload into a high-CPU state. The intertwined effects of bad plans producing CPU spikes and CPU starvation masking or reinforcing those plan flaws amplify overall performance degradation and hinder straightforward root-cause isolation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2689,
+            "score": 0.5522931418547693,
+            "bm25_score": 42.62625286966293,
+            "lexical_score": 0.191152005888848,
+            "matched_terms": [
+                "and",
+                "bad",
+                "but",
+                "by",
+                "context",
+                "engine",
+                "event",
+                "execution",
+                "from",
+                "in",
+                "is",
+                "level",
+                "or",
+                "pressure",
+                "resource",
+                "scheduler",
+                "sql",
+                "state",
+                "table",
+                "the",
+                "to",
+                "trigger",
+                "while",
+                "workload"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010804",
+                "error_name": "ER_EVENT_SCHEDULER_GOT_BAD_DATA_FROM_TABLE",
+                "official_description": "Event Scheduler: Error while loading events from mysql.events.The table probably contains bad data or is corrupted",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

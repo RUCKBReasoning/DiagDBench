@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Database Configuration Parameter Anomaly + CPU Resource Anomaly",
+            "Description": "Schema and Index Design Anomaly : Tables, indexes, partitions, constraints, or data types are ill-suited to the workload, forcing the optimizer into systematically inefficient access paths independent of statistics freshness or plan choice.\nDatabase Configuration Parameter Anomaly : Engine-level memory, I/O, parallelism, and background-worker settings are mis-tuned for the hardware and workload mix, so internal subsystems operate outside their optimal envelopes even when the physical resources are not inherently scarce.\nCPU Resource Anomaly : The host’s CPU cores are saturated by database processes, producing run-queue buildup, scheduler waits, and global latency spikes across queries.\n\nWhen these three root causes coincide, the workload experiences cascading and mutually reinforcing symptoms: queries that lack proper indexing fan out into large scans and excessive row lookups, inflating CPU demand; at the same time mis-sized buffer pools, work-memory, and parallelism parameters amplify the CPU pressure by provoking redundant I/O, spill-to-disk operations, and over-parallel execution. The result is chronic CPU saturation, long run-queue delays, and erratic throughput. Execution plans show full table scans and noncovering-index probes, while wait-event histograms alternate between CPU-run, memory-allocation, and I/O-related waits despite overall storage and memory not being fully utilized. Checkpoints or background autovacuum/autopurge tasks may trigger storm-like episodes that momentarily seize all CPU, further degrading foreground query latency and causing timeouts.\n\nCausally, the missing or sub-optimal indexes inflate logical I/O and predicate evaluation work, directly driving up CPU usage. The misconfigured parameters then prevent the engine from absorbing or smoothing this load: undersized buffer pools force repeated physical reads, over-aggressive parallelism multiplies CPU threads per query, and poorly timed checkpoints inject extra compute overhead. The resulting CPU saturation feeds back into longer query runtimes, which in turn sustain higher memory and worker consumption, exhausting the mis-set limits and increasing context switches. Thus, static design flaws, dynamic misconfiguration, and hard CPU exhaustion lock the system into a self-reinforcing performance spiral that is difficult to attribute to any single layer without holistic analysis.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.47292675591330596,
+            "bm25_score": 21.062583769222663,
+            "lexical_score": 0.1399416728716803,
+            "matched_terms": [
+                "and",
+                "are",
+                "at",
+                "between",
+                "is",
+                "latency",
+                "long",
+                "not",
+                "or",
+                "pools",
+                "queries",
+                "query",
+                "system",
+                "that",
+                "the",
+                "this",
+                "time",
+                "when",
+                "while"
+            ],
+            "match_count": 282,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

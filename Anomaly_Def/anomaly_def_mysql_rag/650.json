@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Storage Space Capacity Anomaly + CPU Resource Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Storage Space Capacity Anomaly : Physical or logical free space for data files, logs, or temp areas is exhausted, blocking further allocations and persistence operations.\nCPU Resource Anomaly : Database and host processes saturate available CPU cores, driving run-queue growth and broadly inflating statement latency.\nNetwork and Connectivity Resource Anomaly : Network bandwidth, latency, packet loss, or server-side connection slots become limiting, producing connection failures, socket backlogs, and slow client I/O.\n\nWhen all three conditions arise concurrently, the database exhibits a compound failure pattern: connection attempts time out or are refused; active sessions that do connect experience erratic response times as both CPU run-queues and network socket queues lengthen; DML statements and bulk loads stall on \"out of space\" or \"cannot extend\" errors; commits hang waiting for log flushes that themselves are delayed by full archive destinations; background processes repeatedly retry space-management and network send operations, further consuming CPU; monitoring agents may also fail to report due to network saturation, obscuring real-time visibility.\n\nCausally, each root cause amplifies the others. Space exhaustion triggers aggressive checkpointing, log switching, and catalog cleanup cycles that spike CPU consumption; the resulting CPU saturation slows those very housekeeping tasks, prolonging space shortages. Full data or archive destinations force the database to wait on external copy or purge jobs, which, if they traverse congested networks, are delayed, extending log file occupancy and stalling write activity. Simultaneously, network congestion and connection storms increase process counts and context switches, intensifying CPU pressure. As CPU becomes scarce, connection authentication and I/O threads are starved, inflating socket queues and client wait times, which encourages application-level retries that inflate connection counts and generate additional logs, hastening space depletion. The intertwined feedback loops can rapidly cascade into widespread service unavailability unless all three resource domains are relieved together.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.5788445396051015,
+            "bm25_score": 18.99192343905956,
+            "lexical_score": 0.17422867513611615,
+            "matched_terms": [
+                "activity",
+                "and",
+                "are",
+                "authentication",
+                "cannot",
+                "client",
+                "connect",
+                "connection",
+                "for",
+                "is",
+                "latency",
+                "of",
+                "or",
+                "out",
+                "sessions",
+                "that",
+                "the",
+                "time",
+                "times",
+                "when"
+            ],
+            "match_count": 3,
+            "entry": {
+                "timeout_id": "mysql84_client_connection_timeout_option",
+                "parameter_name": "--connect-timeout",
+                "timeout_category": "client_connection_establishment_timeout",
+                "scope": "client option",
+                "official_definition": "The number of seconds before connection timeout for MySQL client programs that support this option.",
+                "trigger_condition": "A MySQL client program cannot establish a connection before the configured connect timeout.",
+                "workload_impact": "The client connection attempt times out.",
+                "default_behavior": "Defined as a MySQL client connection option.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

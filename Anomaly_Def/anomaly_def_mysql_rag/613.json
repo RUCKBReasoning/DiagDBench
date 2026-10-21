@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Transaction Log Subsystem Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Obsolete row versions, rollback records, and logically deleted index entries accumulate faster than background cleanup can reclaim them, inflating the version store and bloating on-disk structures.\nTransaction Log Subsystem Anomaly : The generation, flushing, switching, or archiving of write-ahead log records becomes the bottleneck on the commit path, inflating commit latency and log storage.\nStorage I/O Throughput Anomaly : The physical storage layer is saturated, so read/write latency, queue depths, and IOPS limits are exceeded across data, temp, and log volumes.\n\nWhen these three root causes occur together, the database exhibits a compound symptom pattern: 1) rapidly expanding tables, indexes, version store, and transaction-log directories; 2) soaring commit and checkpoint latency dominated by log-flush and device-I/O waits; 3) long-running queries and autovacuum/clean-up workers that never catch up; 4) device-level queues pegged, with wait profiles simultaneously showing MVCC visibility checks, log-related waits, and generic data-file I/O stalls; 5) escalating risk of transaction-ID or log-segment wraparound, emergency checkpoints, and sudden write stalls that block both OLTP traffic and background maintenance.\n\nCausally, high update/delete churn inflates the version store, which in turn increases redo generation because every version change must be logged; this heavier log stream stresses the transaction-log subsystem. Frequent log flushes and larger log archives multiply write pressure on the same storage back-end that is already servicing bloated data-file writes and long sequential scans caused by MVCC bloat. As the storage layer saturates, log flush latency rises, stretching transaction completion times and prolonging snapshot retention; the longer snapshots further delay version reclamation, feeding back into MVCC bloat. The intertwined feedback loops—more versions ⇒ more log writes ⇒ more physical I/O ⇒ slower cleanup ⇒ even more versions—can rapidly degrade throughput and threaten database availability.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1766,
+            "score": 0.596025431196696,
+            "bm25_score": 51.34899518568276,
+            "lexical_score": 0.16962872793670114,
+            "matched_terms": [
+                "and",
+                "are",
+                "data",
+                "disk",
+                "file",
+                "is",
+                "larger",
+                "latency",
+                "log",
+                "of",
+                "or",
+                "pressure",
+                "row",
+                "storage",
+                "than",
+                "the",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "6089",
+                "error_name": "ER_LH_PARQUET_ROW_GROUP_SIZE_EXCEEDS_MAX",
+                "official_description": "File %s: Size of row group %ld is larger than maximum allowed size (%d).",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

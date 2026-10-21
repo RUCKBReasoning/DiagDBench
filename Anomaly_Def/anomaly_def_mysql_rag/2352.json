@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Database Configuration Parameter Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Composite Definition: The database concurrently suffers from a sub-optimal execution-plan selection by the optimizer, mis-tuned engine configuration parameters, and restrictive operating-system resource limits. Although each factor alone can cause performance degradation, their simultaneous presence creates a multifaceted failure in which query plans are poor, engine subsystems are ill-provisioned, and the host kernel blocks further resource allocation.\n\nCombined Observable Phenomena: Workloads exhibit erratic performance with the same SQL sometimes using efficient index probes and other times reverting to table scans or serial plans. CPU and I/O utilization metrics look inconsistent with wait-event reports—sessions show long log-write or memory allocation waits while disks and CPUs are under-utilized. Sudden bursts of checkpoints or background-writer activity coincide with spikes of \"cannot allocate shared memory,\" \"too many open files,\" or \"failed to create thread\" errors coming from the OS. Parallel queries intermittently fall back to single-threaded execution because worker pools cannot grow, causing unpredictable query runtimes. Plan cache churn grows as failed worker creation or memory shortages force frequent recompilations, and overall throughput collapses in waves rather than gradually.\n\nCausal Chain and Interaction: Mis-set database parameters (e.g., undersized buffer pool, aggressive work-memory limits, or overly frequent checkpoints) inflate true execution costs, but the optimizer—already prone to selecting borderline plans—may overestimate or underestimate those costs and choose plans that rely on resources the engine cannot effectively supply. When such a plan attempts to allocate additional memory, workers, or I/O contexts, it collides with tight operating-system limits on file handles, shared memory, or threads, resulting in run-time errors or implicit plan downgrades. These failures invalidate or evict plans, prompting fresh compilations that again suffer from the same flawed cost model and parameter landscape, creating a feedback loop. Meanwhile, engine background tasks triggered by the mis-configuration (e.g., checkpoint storms) consume the very kernel resources that user queries lack, amplifying contention and making the overall performance regression sharper and harder to diagnose.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 4272,
+            "score": 0.3975185728985528,
+            "bm25_score": 37.678123634003256,
+            "lexical_score": 0.1377971858321203,
+            "matched_terms": [
+                "and",
+                "are",
+                "because",
+                "cannot",
+                "create",
+                "creation",
+                "engine",
+                "failure",
+                "failures",
+                "file",
+                "log",
+                "or",
+                "table",
+                "the",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-012389",
+                "error_name": "ER_IB_MSG_INVALID_LOCATION_FOR_TABLE",
+                "official_description": "Cannot create a tablespace for table %s because the directory is not a valid location. %s",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

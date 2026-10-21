@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Data Block and Index Integrity Anomaly + Storage Space Capacity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Data Block and Index Integrity Anomaly : Physical pages or index structures on disk no longer match their logical contents, leading to corrupted or inconsistent data blocks, page links, or key order. \nStorage Space Capacity Anomaly : The database exhausts or approaches exhaustion of allocated disk or filesystem space for data, logs, temp, or backup areas, resulting in allocation failures and stalled write-ahead activities. \nOperating System Resource Limit Anomaly : Database processes hit kernel-enforced ceilings for file descriptors, shared memory, semaphores, threads, or other OS-managed objects, preventing new allocations or worker creation.\n\nWhen these three conditions arise concurrently, symptoms overlap and amplify: corruption verification errors and checksum failures appear at the same time as data-file growth, redo, or temp writes are being refused because disks are full; error logs alternate between \"out of space\" messages and OS denials to open additional files or map pages; background recovery, checkpoint, or index-rebuild tasks loop or crash for lack of both disk blocks and kernel resources, causing repeated instance restarts; queries that fall back to full table scans due to broken indexes now also fail on temporary-space exhaustion, and new client connections intermittently fail when the engine cannot obtain file handles or shared memory—creating a mixed pattern of logical errors, I/O failures, and session drops that is difficult to attribute to a single layer.\n\nCausally, storage exhaustion and OS resource saturation can precipitate or magnify physical corruption: when space is scarce, data and log writes contend for the last free extents; interrupted or partial writes (e.g., due to ENOSPC or inability to extend files) leave pages half-written, producing integrity faults. Simultaneously, hitting file-descriptor or I/O context limits prevents the engine from opening replacement files, completing checkpoints, or flushing dirty buffers, increasing the window during which torn or inconsistent pages persist. Conversely, corruption inflates error logging and forces emergency reorganization or repair jobs that allocate temp space and extra file handles, accelerating both space consumption and kernel-resource depletion. The intertwined feedback loop degrades availability and risks unrecoverable data loss unless all three underlying constraints—on-disk integrity, free capacity, and OS limits—are addressed together.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.48223948239027303,
+            "bm25_score": 15.84287185667418,
+            "lexical_score": 0.13022421524663677,
+            "matched_terms": [
+                "additional",
+                "and",
+                "are",
+                "client",
+                "data",
+                "for",
+                "from",
+                "is",
+                "longer",
+                "of",
+                "or",
+                "session",
+                "the",
+                "time",
+                "to",
+                "when"
+            ],
+            "match_count": 84,
+            "entry": {
+                "timeout_id": "mysql84_network_read_timeout",
+                "parameter_name": "net_read_timeout",
+                "timeout_category": "network_read_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for more data from a connection before aborting the read.",
+                "trigger_condition": "The server waits for additional data from a connection longer than net_read_timeout.",
+                "workload_impact": "The network read is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

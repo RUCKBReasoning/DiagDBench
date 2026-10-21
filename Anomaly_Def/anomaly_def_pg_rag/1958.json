@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Transaction Lock Contention Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Stale, missing, or insufficient optimizer statistics cause systematic cardinality misestimation and mis-costed execution plans.\nTransaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same resources, forming long blocking chains or deadlocks that stall progress.\nBuffer Cache and Latch Contention Anomaly : Sessions vie for hot buffer pages, latches, or I/O slots, forcing serialization and CPU spin even when logical memory is sufficient.\n\nWhen these three root causes coincide, the database exhibits compounded instability: poorly costed plans may favor full-table scans, unordered index usage, or lock-escalating access paths that touch far more rows and pages than necessary. The inflated footprint magnifies both row/table lock conflicts and the number of buffer pages and latches each transaction must pin. As blocking lengthens, pages stay latched and dirty longer, amplifying buffer-busy, page-latch, and lock-wait events, while deadlock detectors and application timeouts trigger frequent rollbacks and retries. Execution plans show severe row-count misestimates alongside bloated lock and latch wait statistics, checkpoint stalls, and oscillating CPU utilization.\n\nCausally, inaccurate statistics misguide the optimizer into choosing plans that create wide lock scopes (e.g., table scans, range locks) and concentrate traffic on a few hot pages. The resulting lock contention prolongs transaction lifetimes, causing threads to hold latches and buffer pins for extended periods. Extended latch holds throttle page circulation, forcing more sessions to spin or sleep on latch acquisition, which in turn slows data access and keeps locks active even longer. The protracted blocking suppresses or delays statistics refresh operations, allowing data drift to grow and further degrading plan quality—forming a reinforcing loop that steadily degrades throughput and inflates latency in write-heavy transactional workloads.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.25469729181828715,
+            "bm25_score": 10.651088672024507,
+            "lexical_score": 0.11842105263157893,
+            "matched_terms": [
+                "and",
+                "for",
+                "in",
+                "is",
+                "latency",
+                "of",
+                "or",
+                "progress",
+                "sessions",
+                "stale",
+                "the",
+                "wait",
+                "when"
+            ],
+            "match_count": 176,
+            "entry": {
+                "timeout_id": "pg16_libpq_connection_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "client_connection_establishment_timeout",
+                "scope": "libpq/client connection parameter",
+                "official_definition": "Maximum wait for connection, in seconds; zero or not specified means wait indefinitely.",
+                "trigger_condition": "A libpq client connection attempt exceeds connect_timeout seconds.",
+                "workload_impact": "The client connection attempt fails instead of waiting indefinitely.",
+                "default_behavior": "Zero or absent value means wait indefinitely.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

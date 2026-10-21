@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + MVCC Version Maintenance Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Schema and Index Design Anomaly : Static mismatch between the physical data model (tables, indexes, partitions, data types, constraints) and the workload’s access patterns, forcing inefficient access paths irrespective of optimizer or statistics quality.\nMVCC Version Maintenance Anomaly : Excess accumulation of obsolete row versions and rollback records because background cleaners cannot keep pace with update-delete churn, inflating storage footprints and visibility-check cost in high-concurrency OLTP workloads.\nBuffer Cache and Latch Contention Anomaly : Hot or rapidly churning pages cause intense competition for buffer-cache frames, latches, and page pins, leading to CPU spin, wait events, and I/O amplification.\n\nWhen these three root causes coexist, the database exhibits extreme and multifaceted slowdowns: queries repeatedly fall back to full-table or non-covering index scans that must wade through bloated heaps full of dead tuples, inflating I/O volume and populating the buffer cache with cold or soon-to-be-cleaned pages. The oversized working set and hot-page concentration trigger surges in buffer-busy and page-latch waits, while background vacuum/cleanup workers fight for the same buffers to remove stale versions. Application sessions observe erratic response times, sudden latency spikes, and sharp throughput collapse during write bursts or maintenance windows. Disk usage and checkpoint times grow abnormally fast, planner estimates drift, and even simple key lookups can stall behind latch chains or get drowned in multiple visibility checks.\n\nCausal interaction: Poor schema and index design (e.g., missing covering indexes, non-partitioned large tables) forces more full scans and scattered updates, dramatically increasing the number and dispersal of row versions that MVCC must track. The resulting bloat expands the active data footprint, elevating pressure on the buffer pool. As obsolete versions accumulate, both user queries (doing extra visibility checks) and cleanup workers (scanning to reclaim space) touch the same hot pages, intensifying latch and buffer contention. Meanwhile, latch contention and buffer churn slow the very cleanup tasks needed to remove dead tuples, letting version bloat grow unchecked. This feedback loop amplifies I/O, CPU spin, and memory pressure, creating a self-reinforcing degradation that is significantly worse than any of the individual anomalies alone.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1384,
+            "score": 0.6136807643050357,
+            "bm25_score": 59.04848291312204,
+            "lexical_score": 0.18129032258064515,
+            "matched_terms": [
+                "access",
+                "and",
+                "be",
+                "because",
+                "can",
+                "check",
+                "data",
+                "disk",
+                "is",
+                "latency",
+                "of",
+                "on",
+                "or",
+                "paths",
+                "pressure",
+                "schema",
+                "storage",
+                "table",
+                "the",
+                "this",
+                "user",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "3828",
+                "error_name": "ER_TABLESPACE_CANNOT_BE_DECRYPTED",
+                "official_description": "This tablespace can't be decrypted, because one of table's schema has default encryption ON and user doesn't have enough privilege.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Optimizer-input metadata (row counts, histograms, correlations) is stale or incomplete, systematically misguiding the cost model and causing persistent cardinality errors.\nStorage Space Capacity Anomaly : Physical or logical free space in data, log, or temporary areas is exhausted, hitting hard limits and causing allocation failures.\n\nComposite Definition:\nBoth anomalies manifest at the same time—query plans are produced from faulty statistics while the database is simultaneously running out of critical storage space. The engine therefore makes poor plan choices exactly when it has the least margin to absorb the resulting space demand.\n\nCombined Phenomena:\n• Severe plan regressions (e.g., table scans, over-sized hash joins, or massive sort/merge operations) immediately translate into runaway growth of temporary segments, undo, redo, and spill files, pushing remaining space to zero.\n• Auto-extend and auto-stats jobs fail in close succession; executions show wildly inaccurate row-count estimates alongside \"no space left\" or \"cannot allocate extent\" errors.\n• Rapid oscillation between plan recompiles and space errors: each recompile generates a new bad plan, repeated statement retries inflate log volume, and aborted DML/DDL leaves orphaned temporary or rollback segments that further deplete space.\n• Monitoring dashboards show both extreme cardinality-estimation deviation and precipitous free-space depletion, making it hard to attribute performance drops to a single root cause.\n\nCausal Chain Analysis:\n1. Stale/missing statistics drive the optimizer toward space-hungry strategies (full scans, large intermediate result sets, spill-prone joins), accelerating consumption of data, temp, and log space.\n2. As free space vanishes, background statistics-gathering, index-rebuild, and partition-maintenance jobs abort, preventing statistics refresh and keeping the optimizer in a permanently misinformed state.\n3. Space failures trigger rollbacks that generate additional undo/redo, amplifying both anomalies. The mutually reinforcing loop quickly degrades throughput, raises error rates, and can culminate in complete service outage unless both statistics and space issues are remediated together.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2344,
+            "score": 0.4137974781482773,
+            "bm25_score": 39.011616613057576,
+            "lexical_score": 0.14979328165374678,
+            "matched_terms": [
+                "and",
+                "are",
+                "capacity",
+                "data",
+                "engine",
+                "error",
+                "failures",
+                "files",
+                "growth",
+                "has",
+                "in",
+                "is",
+                "it",
+                "log",
+                "or",
+                "storage",
+                "the"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010457",
+                "error_name": "ER_INIT_DATADIR_NOT_EMPTY_WONT_INITIALIZE",
+                "official_description": "--initialize specified but the data directory has files in it. Aborting.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

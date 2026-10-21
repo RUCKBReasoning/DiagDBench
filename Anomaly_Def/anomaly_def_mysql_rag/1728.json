@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Optimizer Statistics Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Schema and Index Design Anomaly : Static mismatch between the physical data model (tables, partitions, indexes, data types, constraints) and the workload’s access patterns, forcing even well-written SQL into inefficient access paths.\nOptimizer Statistics Anomaly : Row-count and data-distribution metadata no longer represent reality, leading the optimizer to choose sub-optimal execution plans because of systematic cardinality errors.\nTransaction Log Subsystem Anomaly : The write-ahead log buffer, files, or archiving pipeline become the primary bottleneck, inflating commit latency and stalling write activity.\n\nWhen all three root causes strike at once, the database shows a wide mix of symptoms: queries that should be index-seek or range-scan operations devolve into full-table scans; the optimizer’s row-count guesses are wildly off, so it sometimes picks nested-loop plans that explode into millions of logical reads, or hash/merge joins that spill to disk. These bloated read workloads generate excessive undo/redo and trigger large batch updates or page splits because the underlying index design is non-covering or poorly aligned with predicates. The extra redo volume quickly saturates the log buffer and forces frequent log flushes, leading to LOG_BUFFER_WAIT, LOG_FILE_SYNC, or similar waits; foreground sessions experience both query CPU spikes and commit stalls. Checkpoint storms, long-running auto-stats jobs, and emergency index rebuilds further amplify log traffic, while stale statistics prevent the optimizer from recognizing the true cost of these maintenance tasks. As a result, performance degradations appear both in read and write paths, and the root causes are easily misattributed to generic I/O or concurrency issues.\n\nCausal chain: Poor schema and index design makes almost every CRUD statement touch more rows or columns than necessary. This inflates I/O and redo generation. Because statistics are stale or inaccurate, the optimizer cannot compensate—it often picks plans that further widen the access path or use memory-hungry operators, compounding data modification volume. The surge in redo overwhelms the transaction log subsystem, which responds with longer flush times and throttled commit throughput. Those commit delays in turn slow DML completion, extending lock lifetimes and causing even more contention and blocking, which invites emergency maintenance (manual stats updates, index rebuilds) that again produces heavy redo. Each anomaly therefore reinforces the others, creating a feedback loop that degrades overall database stability far beyond the impact of any single root cause.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 766,
+            "score": 0.5627830588573138,
+            "bm25_score": 56.667288186973686,
+            "lexical_score": 0.15457013574660633,
+            "matched_terms": [
+                "again",
+                "and",
+                "be",
+                "creating",
+                "execution",
+                "in",
+                "index",
+                "is",
+                "log",
+                "modification",
+                "more",
+                "of",
+                "or",
+                "sql",
+                "statement",
+                "than",
+                "the",
+                "to",
+                "trigger",
+                "with",
+                "workload"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "1792",
+                "error_name": "ER_INNODB_ONLINE_LOG_TOO_BIG",
+                "official_description": "Creating index '%-.192s' required more than 'innodb_online_alter_log_max_size' bytes of modification log. Please try again.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Transaction Log Subsystem Anomaly + CPU Resource Anomaly",
+            "Description": "Schema and Index Design Anomaly : Physical data-model structures, indexes, partitions, and data types do not match workload access patterns, forcing inefficient access paths.\nTransaction Log Subsystem Anomaly : The write-ahead logging pipeline—generation, buffering, flushing, archiving—cannot keep pace with redo volume, causing commit stalls and log-related waits.\nCPU Resource Anomaly : Database processes consume sustained, near-saturation CPU, leaving insufficient cycles for other work and inflating run-queue latency.\n\nWhen all three root causes co-exist, the database exhibits a blended symptom set: queries that already scan whole tables or fetch many rows because of missing or non-covering indexes amplify redo generation, which in turn overwhelms the log buffer and I/O band­width. As commits wait for log flushes, user sessions pile up, yet they remain CPU-hungry while looping on retries or scanning data, driving host utilization to saturation. Observers see mixed wait profiles—log-flush and CPU scheduler waits spike together—alongside escalating query latencies, checkpoint storms, and sharp drops in TPS. Monitoring dashboards may misleadingly attribute the slowdown to any one layer, while in reality lock contention, log stalls, and CPU thrashing are interleaved.\n\nCausally, inefficient schema and index design multiplies the amount of data each DML or SELECT touches, inflating both CPU cycles and redo bytes per transaction. The surplus redo intensifies pressure on the transaction-log subsystem; once log-flush latency lengthens, foreground sessions hold locks longer and re-execute scans, compounding CPU load. Elevated CPU utilization then slows background log writer and archive processes, further delaying flushes and creating a feedback loop. The synergy of these root causes therefore magnifies performance degradation far beyond what each would inflict in isolation, pushing an OLTP system into a cascading slowdown that is difficult to diagnose without recognizing their mutual reinforcement.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.30926783223017007,
+            "bm25_score": 14.507617986105343,
+            "lexical_score": 0.14840796019900496,
+            "matched_terms": [
+                "amount",
+                "an",
+                "and",
+                "any",
+                "are",
+                "for",
+                "is",
+                "latency",
+                "longer",
+                "not",
+                "of",
+                "or",
+                "sessions",
+                "that",
+                "the",
+                "transaction",
+                "user",
+                "when",
+                "with"
+            ],
+            "match_count": 182,
+            "entry": {
+                "timeout_id": "pg16_idle_session_timeout",
+                "parameter_name": "idle_session_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle, but not within an open transaction, for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle and not inside an open transaction longer than the configured threshold.",
+                "workload_impact": "The session is terminated; the documentation warns about using this with connection pools or middleware.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

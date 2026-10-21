@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + MVCC Version Maintenance Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently chooses a sub-optimal execution plan despite reasonably accurate statistics, leading to inefficient access paths, wrong join methods, or unstable plan switches.\nMVCC Version Maintenance Anomaly : Obsolete row versions and rollback records accumulate faster than background cleaners can reclaim them, enlarging the physical tables and indexes and inflating visibility-check overhead.\n\nWhen both conditions coexist, the database exhibits hybrid symptoms: queries intermittently flip to full-table scans or poorly parameterized nested-loop joins that must wade through bloated heaps and indexes packed with dead tuples. Execution times surge non-linearly, buffer-cache churn intensifies, and I/O rises as enlarged objects no longer fit in memory. Autovacuum or cleanup workers run constantly yet fail to catch up, while the optimizer’s mischosen plans multiply the number of pages touched, further extending snapshot-scanning time. Administrators observe wildly varying runtimes for the same statement, rising latency for hot OLTP paths, escalating memory and I/O utilization, and misleading planner cost estimates due to distorted table statistics.\n\nCausally, excessive dead tuples from the MVCC Version Maintenance Anomaly distort table and index statistics, widening the gap between estimated and actual cardinalities just enough to tip the optimizer into Query Plan Selection Anomalies. Once a poor plan (e.g., sequential scans or Cartesian joins) is selected and possibly cached, it exacerbates the bloat problem by reading and rewriting more pages, producing yet more version churn and delaying cleanup progress. The two anomalies therefore form a feedback loop: version bloat misguides the optimizer, and the optimizer’s sub-optimal plans accelerate bloat growth and resource consumption, degrading overall transactional performance until both issues are addressed together.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.6380613608860427,
+            "bm25_score": 19.97804369838477,
+            "lexical_score": 0.1284579918032787,
+            "matched_terms": [
+                "access",
+                "and",
+                "by",
+                "execution",
+                "for",
+                "is",
+                "or",
+                "query",
+                "resource",
+                "statement",
+                "the",
+                "time",
+                "together",
+                "when",
+                "with"
+            ],
+            "match_count": 155,
+            "entry": {
+                "timeout_id": "mysql84_regular_expression_time_limit",
+                "parameter_name": "regexp_time_limit",
+                "timeout_category": "expression_evaluation_time_limit",
+                "scope": "global/session",
+                "official_definition": "The time limit for regular expression matching operations performed by the regular expression engine.",
+                "trigger_condition": "A regular expression match operation exceeds regexp_time_limit.",
+                "workload_impact": "The regular expression operation is constrained by the configured time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

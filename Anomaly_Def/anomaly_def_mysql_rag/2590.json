@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Replication Synchronization Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Database Memory Allocation Anomaly : Excessive or uncontrolled growth of engine and session memory areas pushes the database process and host beyond safe physical- or virtual-memory limits.\nReplication Synchronization Anomaly : Standbys or downstream consumers cannot ingest and apply primary-generated log records fast enough, producing widening replay lag and preventing log truncation.\nStorage I/O Throughput Anomaly : The physical devices or storage layer are unable to sustain the read/write bandwidth, IOPS, or latency demanded by data, temp, and log traffic.\n\nWhen all three conditions materialize together, the system exhibits compound symptoms: rapid growth of cache and work-area memory inflates the working-set size, driving the OS into paging just as storage devices are already saturated, so read/write latencies soar. Swapping and frequent buffer eviction lower cache hit ratios, forcing more physical I/O against an already throttled storage path. The primary’s inability to recycle transaction logs—because replicas lag in receiving or replaying them—causes log volumes to expand, further loading the storage subsystem. Replicas show steeply rising receive, flush, and replay lag; users observe stale read-only replicas, blocked failovers, and escalating disk consumption on both primary and standby nodes. End-user workloads experience elongated response times, elevated I/O wait ratios, intermittent out-of-memory terminations, and possible cluster node evictions.\n\nCausally, aggressive memory allocation on the primary and/or replicas diminishes available RAM, triggering OS paging that redirects pressure onto the storage layer. The resultant surge in random I/O competes with foreground data access and the steady stream of WAL/redo writes needed for replication, pushing the storage subsystem past its throughput ceiling. Elevated storage latency decelerates both local commit processing and remote log shipping, which inflates replication backlogs. Those backlogs, in turn, prevent log file recycling, swelling on-disk log footprints and increasing write load, which further intensifies storage contention and prolongs memory residency of dirty buffers. This feedback loop between memory overcommit, storage exhaustion, and replication lag magnifies each individual anomaly, threatening overall database availability and recovery objectives.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.7356536502546689,
+            "bm25_score": 23.447951204850508,
+            "lexical_score": 0.11884550084889642,
+            "matched_terms": [
+                "and",
+                "apply",
+                "data",
+                "downstream",
+                "lag",
+                "or",
+                "out",
+                "preventing",
+                "replication",
+                "the",
+                "this",
+                "times",
+                "to",
+                "when"
+            ],
+            "match_count": 122,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

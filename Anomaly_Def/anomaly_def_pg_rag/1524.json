@@ -1,0 +1,47 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Replication Synchronization Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly: The database’s local write-ahead logging path is saturated or stalled, so commit processing, log buffering, flushing, or archiving becomes the performance bottleneck.\nReplication Synchronization Anomaly: Downstream replicas or change-data consumers fall behind because they cannot receive, write, or apply log records at the pace the primary generates them, creating widening log-position gaps and retention of old log segments.\nStorage Space Capacity Anomaly: One or more storage areas—data files, log volumes, archive destinations, temp, or backup locations—approach or reach full utilization, resulting in allocation failures and preventing normal growth or recycling.\n\nCombined phenomena: With all three conditions active, the database exhibits escalating commit latency, prolonged log-flush and log-sync waits, and frequent pauses or timeouts for foreground transactions. Replication lag grows rapidly; replicas report increasing receive and replay delay, and failover readiness degrades. Log and archive directories expand uncontrollably until the underlying volume exhausts free space, after which both primary commits and replica apply threads may halt with \"out of space\" or \"cannot allocate log segment\" errors. Checkpoints and archive/relay-log purges trigger more often but complete slowly, leading to checkpoint storms, lock contention, and excessive CPU usage in background processes. Monitoring dashboards show simultaneous spikes in log-related waits, replication delay, and disk-space alerts, making it difficult to attribute the primary symptom to a single layer.\n\nCausal chain and reinforcement: Saturated transaction-log I/O slows commit throughput, which lengthens the queue of unsent log records to replicas. The growing replication backlog forces the primary to retain older log segments, blocking log recycling. This retention, combined with high redo generation, rapidly consumes remaining disk capacity on both primary and replica log or archive volumes, triggering the storage space anomaly. Once space becomes scarce, log switches or archive writes may hang, further increasing commit latency and deepening replication lag. Conversely, if storage fills first, log archiving and replica relay writing stall, which feeds back into the log subsystem by preventing segment reuse and inflating the in-memory log buffer. The intertwined feedback loops among log I/O saturation, replication backlog, and space exhaustion create a self-amplifying failure that can culminate in a total halt of transactional processing and replication.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 102,
+            "score": 0.263282400828736,
+            "bm25_score": 17.77648651780841,
+            "lexical_score": 0.11553033208068103,
+            "matched_terms": [
+                "active",
+                "and",
+                "but",
+                "by",
+                "failure",
+                "for",
+                "in",
+                "is",
+                "or",
+                "the",
+                "to",
+                "transaction",
+                "trigger",
+                "with"
+            ],
+            "match_count": 12,
+            "entry": {
+                "error_code": "25005",
+                "error_name": "no_active_sql_transaction_for_branch_transaction",
+                "official_description": "no active sql transaction for branch transaction",
+                "error_class": "Class 25 - Invalid Transaction State",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

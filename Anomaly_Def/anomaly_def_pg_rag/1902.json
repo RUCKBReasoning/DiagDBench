@@ -1,0 +1,60 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Storage I/O Throughput Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Optimizer Statistics Anomaly: Optimizer metadata (row counts, histograms, correlations) is stale or incomplete, causing systematic cardinality misestimation and poor plan selection.\nStorage I/O Throughput Anomaly: Under-provisioned or degraded storage devices saturate throughput, IOPS, or latency budgets, inflating physical read/write wait time.\nNetwork and Connectivity Resource Anomaly: Network transport or connection-handling resources are exhausted or unstable, delaying session establishment and result transfer.\n\nWhen all three root causes are present, the database may exhibit amplified and intertwined symptoms: execution plans chosen on bad statistics drive excessive random or large-volume I/O, which immediately collides with an already saturated storage layer, inflating physical I/O latency and enlarging buffer cache churn. At the same time, client sessions experience long connection handshakes and slow data streaming; result sets linger in network queues, holding server backends in client-wait states that obscure and interleave with storage waits. Overall response times fluctuate unpredictably, AWR/monitoring views show simultaneous spikes in optimizer re-parse/recompile counts, storage-level wait events, and client/network wait events, making it difficult to attribute the slowdown to a single subsystem.\n\nCausal interaction: stale or missing statistics can select plans that read far more pages than necessary or force non-selective full scans; this inflated I/O demand pushes the storage system beyond its throughput ceiling, further extending statement runtimes and keeping server processes busy. The prolonged runtimes in turn hold open network sockets for longer periods and generate larger in-flight result sets, increasing connection pool occupancy and consuming listener backlog slots, which aggravates the Network and Connectivity Resource Anomaly. Conversely, network stalls delay completion of queries and DML that would trigger automatic statistics refreshes, allowing statistics staleness to persist. The feedback loop between misestimated plans, storage saturation, and network congestion compounds resource contention across all three layers, severely degrading both transactional and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.752462423832092,
+            "bm25_score": 26.792415982596395,
+            "lexical_score": 0.1748747461069736,
+            "matched_terms": [
+                "an",
+                "and",
+                "database",
+                "delay",
+                "for",
+                "holding",
+                "is",
+                "longer",
+                "metadata",
+                "of",
+                "or",
+                "row",
+                "session",
+                "sessions",
+                "statement",
+                "than",
+                "that",
+                "the",
+                "this",
+                "time",
+                "to",
+                "waits",
+                "when"
+            ],
+            "match_count": 256,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

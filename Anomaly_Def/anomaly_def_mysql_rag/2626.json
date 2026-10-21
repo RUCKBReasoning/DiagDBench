@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Row-count and data-distribution metadata are stale or incomplete, causing systematic cardinality misestimation and poor plan choices.\nTransaction Log Subsystem Anomaly : The write-ahead logging path (log buffer, log files, archiver/replicator) is saturated or mis-configured, driving up commit latency and stalling write activity.\n\nWhen these two root causes strike together, the database exhibits a mixture of optimizer-related and log-related symptoms that reinforce each other:  • Execution plans show grossly inaccurate estimates, leading to plan shapes that inflate redo generation (e.g., unnecessary row-by-row updates, wide nested loops, or missing batch merge operations).  • Concurrently, sessions accumulate high LOG* and COMMIT wait events, throughput collapses, and checkpoint or archival backlogs appear.  • Autovacuum/auto-stats or plan recompiles fire more often but finish later because they themselves suffer from log-flush delays.  • Spikes in buffer dirtiness, memory pressure from bloated hash/ sort operations, and lock contention extend transaction lifetimes, further multiplying log volume and commit queuing.  • Administrators may find it difficult to attribute slowdown to either the optimizer or the log subsystem alone because symptoms of one manifest as effects in the other.\n\nCausal interaction: Stale or incomplete statistics mislead the optimizer into choosing row-oriented, non-batch, or overly parallel plans that touch many more rows than necessary, dramatically increasing redo generation and frequency of commits, thereby amplifying pressure on an already constrained log subsystem. The resulting log-write stalls prolong transaction duration and lock retention, preventing automatic statistics jobs from keeping pace with data changes and allowing statistics staleness to deepen. The feedback loop between inaccurate statistics (producing write-heavy, long-running plans) and log bottlenecks (delaying stats refreshes and transactional completion) spirals into severe throughput degradation and unpredictable query latency.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.675073071653055,
+            "bm25_score": 31.234378652432472,
+            "lexical_score": 0.15428571428571428,
+            "matched_terms": [
+                "and",
+                "because",
+                "by",
+                "configured",
+                "contention",
+                "execution",
+                "in",
+                "is",
+                "long",
+                "or",
+                "other",
+                "path",
+                "query",
+                "running",
+                "the",
+                "together",
+                "when",
+                "with"
+            ],
+            "match_count": 125,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

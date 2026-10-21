@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Transaction Log Subsystem Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Sessions serialize on hot or frequently churned buffer-cache pages and their associated latches, causing CPU spin, buffer-busy waits, and page-level access stalls.\nTransaction Log Subsystem Anomaly : Commit processing and redo persistence are throttled by saturated log buffers, files, or archiver components, inflating log-write and log-sync latencies and delaying transactional progress.\nNetwork and Connectivity Resource Anomaly : Client/server communication or connection-handling resources are exhausted or unstable, inflating connection setup time, socket waits, and data-transfer latencies.\n\nWhen these three root causes co-exist, end-to-end response times deteriorate sharply and symptoms overlap:  \n• Application threads pile up in buffer-busy, page-latch, log-flush, and client-write waits simultaneously; CPU usage oscillates between spin-loops on latches and idle periods forced by log-sync or socket back-pressure.  \n• Commit latency becomes highly variable; some transactions hang in prepare/commit while others stall earlier on page access, making it hard to isolate a single choke point.  \n• Connection pools see rising time-to-connect and intermittent \"too many clients\" or timeout errors, while established sessions intermittently report network write waits due to slower commit acknowledgements and prolonged page-latch holding.  \n• Monitoring shows runaway log growth, elevated checkpoint frequency, and surging network retransmissions; yet storage I/O and CPU may appear under-utilized because concurrency collapses behind the compounded bottlenecks.\n\nCausal interaction: Heavy concurrent writes concentrate on a few index or hot-row pages, elevating latch contention and delaying buffer eviction. These stalls stretch transaction lifetimes, inflating in-memory redo that must be flushed at commit time. The already strained transaction-log subsystem now encounters larger, burstier flush requests, exacerbating log-write congestion and prolonging commit latency. Extended commit cycles in turn keep latches held longer and increase the number of active back-end processes waiting for log sync, swelling the pool of connected sessions. As requests queue up, client drivers retry or open new connections, saturating listener backlogs and socket descriptors, which inject additional network waits into the critical path. The network slowdown further delays commit acknowledgements, feeding back into longer latch hold times and higher redo accumulation. The reinforcing loop among hot-page contention, log bottlenecks, and network saturation drives a systemic throughput collapse characteristic of this composite anomaly.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 15,
+            "score": 0.5466552479135434,
+            "bm25_score": 22.713037501212217,
+            "lexical_score": 0.16866537717601546,
+            "matched_terms": [
+                "and",
+                "are",
+                "client",
+                "communication",
+                "data",
+                "delaying",
+                "for",
+                "latency",
+                "level",
+                "network",
+                "or",
+                "progress",
+                "the",
+                "this",
+                "timeout",
+                "times",
+                "unstable",
+                "waiting",
+                "when",
+                "write"
+            ],
+            "match_count": 12,
+            "entry": {
+                "timeout_id": "mysql84_xplugin_read_timeout",
+                "parameter_name": "mysqlx_read_timeout",
+                "timeout_category": "x_protocol_network_read_timeout",
+                "scope": "global/session/X Plugin",
+                "official_definition": "Read timeout for X Plugin network communication.",
+                "trigger_condition": "A MySQL X Protocol read operation exceeds mysqlx_read_timeout.",
+                "workload_impact": "The X Protocol network read operation times out.",
+                "default_behavior": "Defined as a MySQL X Plugin system variable.",
+                "system_domain": "network_transport",
+                "cause_analysis": "This timeout is usually triggered when network data is not acknowledged, received, or written within the configured transport-level waiting window.",
+                "solution_guidance": "Inspect packet loss, transport latency, client responsiveness, proxy behavior, and whether slow consumers or unstable links are delaying network progress.",
+                "observable_symptoms": [
+                    "network timeout",
+                    "disconnect",
+                    "read/write interruption"
+                ]
+            }
+        }
+    }
+]

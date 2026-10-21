@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Data Block and Index Integrity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Sessions serialize on hot or churn-heavy buffer pages, latches, or page-pin slots, spending CPU cycles on spin loops or waiting on buffer-busy / page-latch events.\nData Block and Index Integrity Anomaly : On-disk table or index pages are physically or logically corrupt, causing mismatched keys, broken links, or checksum failures that render storage structures unreliable.\nOperating System Resource Limit Anomaly : The database engine hits kernel-enforced ceilings on file descriptors, shared memory, semaphores, threads, or AIO contexts, blocking new I/O or background tasks even though database-level resources remain.\n\nWhen these three root causes strike at once, the workload encounters a tangled failure signature: 1) queries intermittently stall on buffer-busy and latch waits that grow longer as corrupted pages force repeated rereads, retries, or full-table scans; 2) integrity check errors, checksum failures, or sudden plan shifts to full scans appear in logs, yet attempts to rebuild or validate objects are throttled by OS resource denials; 3) background writers, checkpointers, and recovery or validation workers fail to obtain kernel handles or shared-memory slots, leaving dirty or suspect pages in cache longer, which in turn amplifies latch contention and elevates CPU spin; 4) sessions already holding scarce latches may be unable to spawn helper threads, so foreground statement latency spikes and throughput collapses in both transactional and analytical paths while the instance remains partially alive.\n\nCausally, physical corruption (Data Block and Index Integrity) triggers extra I/O and page replacement as the engine retries reads or forces page eviction, concentrating demand on specific buffer frames. This magnifies Buffer Cache and Latch Contention, extending latch-hold times and multiplying concurrent waiters. Prolonged contention keeps pages and I/O slots occupied, inflating the number of open file handles, AIO requests, and background tasks. These surges drive the system past Operating System Resource Limits, which then block new buffers, threads, or I/O contexts, preventing timely page flushes and integrity-repair operations. The OS denials further lengthen latch hold durations and impede corrective actions, while unresolved corruption perpetuates reaccess of the same hot pages—creating a feedback loop that steadily degrades performance, increases error rates, and risks a cascading partial outage or crash recovery failure.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 1652,
+            "score": 0.4334460680439325,
+            "bm25_score": 37.85731811464501,
+            "lexical_score": 0.16874999999999998,
+            "matched_terms": [
+                "and",
+                "are",
+                "check",
+                "data",
+                "disk",
+                "engine",
+                "error",
+                "failure",
+                "failures",
+                "file",
+                "in",
+                "latency",
+                "or",
+                "paths",
+                "shared",
+                "storage",
+                "table",
+                "the"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "4128",
+                "error_name": "ER_TABLE_IN_SHARED_TABLESPACE",
+                "official_description": "Table '%-.192s' is in a shared tablespace.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Database Memory Allocation Anomaly : Excessive growth of engine buffer caches, work areas, and ancillary heaps drives the database process beyond the safe physical-memory or swap envelope of the host.\nOperating System Resource Limit Anomaly : Database processes hit kernel-enforced ceilings for objects such as file descriptors, shared-memory segments, semaphores, threads, or cgroup quotas, independent of database-level quotas.\n\nWhen both conditions surface concurrently, the system exhibits a blended failure pattern: resident-set size balloons until the kernel begins paging, while at the same time new threads, shared-memory extents, or file handles cannot be granted. Administrators observe escalating swap usage, cache-hit degradation, and memory-pressure-induced CPU stalls alongside erratic \"cannot allocate memory / resource temporarily unavailable\" errors, inability to spawn parallel workers, and partial service where existing sessions limp on but new logins, sorts, or I/O requests fail. Restart storms may occur because an out-of-memory killer terminates the process just as unreleased kernel objects accumulate, causing the next startup to inherit or exceed tight resource caps.\n\nCausally, aggressive memory allocation magnifies the likelihood of breaching kernel limits: each session or parallel worker spawned to service the enlarged workload reserves its own stack, file handles, and asynchronous I/O contexts, accelerating exhaustion of per-process quotas. In turn, once the kernel refuses additional handles or threads, the database engine cannot offload or flush memory through background tasks, so buffers remain pinned and continue to grow, intensifying host memory pressure. This feedback loop turns two individually manageable issues into a compound outage where memory bloat feeds kernel-resource starvation and vice versa, rapidly degrading overall database stability.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.7418674269422665,
+            "bm25_score": 20.67631699443039,
+            "lexical_score": 0.13955808980755524,
+            "matched_terms": [
+                "and",
+                "be",
+                "because",
+                "engine",
+                "for",
+                "limit",
+                "or",
+                "pattern",
+                "resource",
+                "session",
+                "the",
+                "this",
+                "time",
+                "when",
+                "work",
+                "workload"
+            ],
+            "match_count": 52,
+            "entry": {
+                "timeout_id": "mysql84_regular_expression_time_limit",
+                "parameter_name": "regexp_time_limit",
+                "timeout_category": "expression_evaluation_time_limit",
+                "scope": "global/session",
+                "official_definition": "The time limit for regular expression matching operations performed by the regular expression engine.",
+                "trigger_condition": "A regular expression match operation exceeds regexp_time_limit.",
+                "workload_impact": "The regular expression operation is constrained by the configured time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Composite definition: The database is simultaneously affected by unchecked growth of obsolete MVCC row versions/rollback records and by depletion of available disk or tablespace capacity; the version store inflates faster than it can be cleaned while free space shrinks toward a hard boundary.\n\nCombined observable phenomena: free-space monitoring shows a steep, unexplained drop that coincides with sharply rising counts of dead tuples and rollback segments; data-file auto-extension or tablespace growth requests begin to fail, while VACUUM/PURGE workers run constantly yet report little progress. Sequential scans, index range scans, and visibility checks take longer because of page bloat, and the query planner misestimates row counts. Users may first see \"no space left\" or \"cannot allocate version record\" errors, stalled DML statements waiting for space, log-archive back-pressure, and emergency wraparound warnings all at once, making the root cause appear as a generalized outage rather than two specific issues.\n\nCausal interaction: heavy update/delete churn produces a flood of obsolete versions that inflate heap and index pages; this ballooning rapidly consumes remaining disk space and pushes the system into a storage-capacity crisis. Conversely, once free space is scarce, background cleanup cannot allocate the working space it needs to rewrite pages or extend rollback areas, so it falls further behind, allowing even more obsolete versions to accumulate. As space approaches exhaustion, checkpoints and log archiving stall, which in turn prolongs active snapshots and prevents version pruning—creating a positive feedback loop that amplifies both anomalies and accelerates system degradation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.5607229168219818,
+            "bm25_score": 19.617687904195535,
+            "lexical_score": 0.12738636363636363,
+            "matched_terms": [
+                "and",
+                "can",
+                "dead",
+                "for",
+                "is",
+                "longer",
+                "no",
+                "of",
+                "or",
+                "progress",
+                "system",
+                "than",
+                "the",
+                "this",
+                "to",
+                "which",
+                "with"
+            ],
+            "match_count": 172,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_idle",
+                "parameter_name": "tcp_keepalives_idle",
+                "timeout_category": "network_idle_keepalive_probe_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time with no network activity after which the operating system should send a TCP keepalive message to the client.",
+                "trigger_condition": "A TCP client connection has no network activity longer than tcp_keepalives_idle on systems supporting TCP_KEEPIDLE or an equivalent socket option.",
+                "workload_impact": "Starts TCP keepalive probing for an otherwise idle client connection; together with interval and count settings this can lead to dead connection detection.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

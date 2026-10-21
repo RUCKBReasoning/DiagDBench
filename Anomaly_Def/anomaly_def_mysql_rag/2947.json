@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions acquire mutually incompatible locks that block or deadlock each other, stalling task execution at the lock-manager layer.\nTransaction Log Subsystem Anomaly : The write-ahead log path (buffer, flush, file, archiver, or replication retention) becomes the bottleneck, inflating commit latency and stalling further modifications.\n\nWhen both root causes strike simultaneously, the database experiences intertwined blocking and durability delays: sessions queue for locks that cannot be granted, yet even once a lock holder reaches commit, it remains stuck on slow log flushes, prolonging its lock tenure and expanding blocking or deadlock windows. Observable symptoms therefore include exploding lock-wait chains with victims rolled back, surges in both lock and log-write wait events, escalating transaction response times, shrinking throughput, connection pool exhaustion, and application timeouts. Monitoring will show growing numbers of ungranted locks, repeated deadlock detections, high log flush/sync latency, log file switch storms, and possibly archiver or replication backlog—all occurring together, making diagnosis non-trivial.\n\nCausally, log subsystem saturation lengthens commit processing, so transactions hold critical locks far longer, amplifying contention and elevating the probability of deep blocker trees and deadlocks. In turn, the resulting lock waits inflate the volume of concurrent open transactions, accelerating redo generation (due to rollbacks, retries, and longer-lived transactions) and further pressuring the log subsystem. This positive feedback loop can push the system into a severe throughput collapse, where neither additional log capacity nor lock tuning alone resolves the issue; both dimensions must be addressed concurrently.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.35462841211461343,
+            "bm25_score": 14.141200316632931,
+            "lexical_score": 0.1382694023193577,
+            "matched_terms": [
+                "and",
+                "connection",
+                "for",
+                "it",
+                "latency",
+                "longer",
+                "of",
+                "on",
+                "or",
+                "remains",
+                "sessions",
+                "the",
+                "this",
+                "waits",
+                "when"
+            ],
+            "match_count": 48,
+            "entry": {
+                "timeout_id": "mysql84_idle_interactive_session_timeout",
+                "parameter_name": "interactive_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds the server waits for activity on an interactive connection before closing it.",
+                "trigger_condition": "An interactive session remains idle longer than interactive_timeout.",
+                "workload_impact": "The server closes the idle interactive connection.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

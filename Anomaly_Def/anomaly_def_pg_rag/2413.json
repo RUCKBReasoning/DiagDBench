@@ -1,0 +1,46 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + MVCC Version Maintenance Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same rows, pages, or metadata, producing long blocker-waiter chains or deadlocks and throttling throughput.\nMVCC Version Maintenance Anomaly : Obsolete row versions, undo records, and deleted index entries pile up faster than background cleaners can reclaim them, inflating storage and visibility-check overhead.\nData Block and Index Integrity Anomaly : On-disk pages, index structures, or page links become physically or logically inconsistent, making access paths unreliable and raising corruption errors.\n\nWhen all three conditions co-exist, the database experiences an intertwined failure mode: corruption in data or index pages forces the optimizer to abandon efficient index probes in favor of wide scans over bloated heaps swollen by unreclaimed MVCC debris. These scans hold locks far longer than normal, intensifying lock queues, deadlock frequency, and application time-outs. Simultaneously, pervasive blocking stalls vacuum/cleanup workers exactly when the version store is already expanding, while the corrupted pages they must touch repeatedly abort or skip their passes, letting dead versions accumulate still further. The runaway bloat amplifies I/O and buffer-cache pressure, prolonging lock hold times and increasing the chance that recovery or page-verification reads will surface additional integrity faults. Corruption in index or heap pages can also cause spurious lock retention by orphaned transactions, exacerbating contention.\n\nCausally, each root cause reinforces the others: (1) integrity faults trigger plan shifts and retries that lengthen transactions and widen their lock footprint; (2) the resulting lock contention delays snapshot-advancing commits and blocks autovacuum or purge tasks, accelerating version buildup; (3) excessive version chains enlarge tables and indexes, driving more page splits and writes that raise the probability of further physical corruption on stressed storage; and (4) repeated corruption-induced rollbacks inject yet more undo records, feeding the MVCC store. The feedback loop degrades concurrency, inflates storage, and threatens data correctness, making recovery increasingly difficult without coordinated intervention.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 93,
+            "score": 0.4061301280096288,
+            "bm25_score": 24.93970733160477,
+            "lexical_score": 0.11388888888888887,
+            "matched_terms": [
+                "and",
+                "by",
+                "check",
+                "corruption",
+                "data",
+                "failure",
+                "index",
+                "integrity",
+                "is",
+                "or",
+                "storage",
+                "the"
+            ],
+            "match_count": 14,
+            "entry": {
+                "error_code": "23514",
+                "error_name": "check_violation",
+                "official_description": "check violation",
+                "error_class": "Class 23 - Integrity Constraint Violation",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "integrity_and_constraints",
+                "cause_analysis": "The failure is typically associated with logical data inconsistency, structural corruption, uniqueness conflicts, or referential-integrity rules being violated by the workload or storage state.",
+                "solution_guidance": "Validate data consistency, inspect constraints and index integrity, and check whether data-cleaning, repair, or workload correction is required before retrying.",
+                "observable_symptoms": [
+                    "constraint failure",
+                    "duplicate data rejection",
+                    "corruption warning"
+                ]
+            }
+        }
+    }
+]

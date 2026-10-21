@@ -1,0 +1,62 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Storage I/O Throughput Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly: Hot or rapidly churning pages force sessions to serialize on buffer-cache latches or pins, inflating latch wait time and CPU spin without delivering useful work.\nStorage I/O Throughput Anomaly: Physical devices or virtualization layers reach their IOPS / bandwidth limits, causing read- and write-latencies to climb and driving database I/O waits while CPU is under-utilized.\nStorage Space Capacity Anomaly: Allocated disk or file-system space for data, temp, or log areas is exhausted, halting extensions, allocations, or log archiving and provoking \"no space\" errors.\n\nWhen these three root causes strike together, the database exhibits an interlocking failure pattern: 1) foreground sessions queue on hot buffer pages and latches, 2) their eventual I/O requests pile up behind saturated storage controllers, and 3) once space ceilings are hit, new page allocations, log writes, and checkpoints stall completely. Observable symptoms include extreme and oscillating wait profiles that alternate between buffer-busy/latch waits, storage read/write/io_wait events, and space-allocation or log-switch pauses; runaway CPU spin and yet low useful throughput; sudden spikes in response time for both random OLTP queries and large batch jobs; and a flood of error messages about failed extensions, full log/archive destinations, and timeouts on page reads or dirty-page flushes.\n\nCausal chain: Hotspot pages generate high churn in the buffer pool, which drives more physical I/O as pages are repeatedly read and flushed. This heightened I/O demand collides with an already saturated storage subsystem, lengthening flush cycles and prolonging buffer pin holding times, thereby intensifying latch contention. Simultaneously, sustained write pressure and prolonged checkpoints accelerate space consumption; once free space is depleted, data-file growth, temp usage, or log archiving fail, freezing further writes and forcing even more sessions to spin on latches waiting for buffers that can never be written out. The shortage of throughput prevents timely space-reclamation tasks (e.g., log archiver, cleaner, or auto-vacuum) from completing, while the space exhaustion prevents buffer eviction and I/O queues from draining, creating a feedback loop that degrades the database to near standstill.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 1963,
+            "score": 0.660916632474761,
+            "bm25_score": 70.9126825173448,
+            "lexical_score": 0.21063424947145876,
+            "matched_terms": [
+                "and",
+                "are",
+                "auto",
+                "be",
+                "capacity",
+                "data",
+                "disk",
+                "error",
+                "failed",
+                "failure",
+                "file",
+                "from",
+                "generate",
+                "growth",
+                "is",
+                "log",
+                "new",
+                "of",
+                "or",
+                "pressure",
+                "read",
+                "storage",
+                "the",
+                "this",
+                "to",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010076",
+                "error_name": "ER_CANT_CREATE_UUID",
+                "official_description": "Initialization of the server's UUID failed because it could not be read from the auto.cnf file. If this is a new server, the initialization failed because it was not possible to generate a new UUID.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

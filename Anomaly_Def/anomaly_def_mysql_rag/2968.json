@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Replication Synchronization Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Composite Definition: The database concurrently suffers from stale or incomplete optimizer statistics, a replication pipeline that cannot keep up with primary redo generation, and impending or actual exhaustion of allocated storage space. The intersection of these three root causes causes a compound failure mode where poor cardinality estimates drive inefficient execution plans that inflate write-amplification, which in turn overwhelms both replication apply capacity and on-disk free space, precipitating log-retention and allocation failures across the cluster.\n\nOptimizer Statistics Anomaly: Critical metadata about row counts, value distributions, and correlations is outdated or missing, leading the optimizer to systematically misestimate cardinalities and choose sub-optimal plans.\nReplication Synchronization Anomaly: Standby or subscriber nodes lag in receiving or applying WAL/redo, widening log position gaps and preventing timely log recycling on the primary.\nStorage Space Capacity Anomaly: Physical or logical free space in data, temp, or log areas approaches exhaustion, threatening allocation failures and halting workload progress.\n\nCombined Phenomena:  • Query plans suddenly shift to full scans, large hash joins, or bloated sort/hash spill operations, driving up data-file growth, temp usage, and redo volume.  • Replication lag accelerates; relay logs or retained primary log segments balloon because space-starved replicas replay changes ever more slowly.  • Free space drops in multiple segments (data, temp, WAL, archive) leading to auto-extend failures, checkpoint stalls, and \"disk full\" errors that propagate to both primary and replicas.  • Monitoring shows simultaneous spikes in buffer cache churn, background statistics auto-update retries, replication retransmissions, and space-management alarms, making it hard to pinpoint a single culprit.\n\nCausal Chain: Stale or absent statistics trigger inefficient, I/O-heavy execution plans that inflate the volume of modified pages and generated redo. The surge in redo must traverse the replication channel; limited apply throughput on replicas widens lag windows and forces the primary to retain log segments longer, consuming additional disk space. As data and log files grow, storage free space dwindles; once thresholds are crossed, auto-stats jobs may be skipped, temp spills fail to allocate space, and replication may halt when it cannot write relay or archive logs—each feedback loop worsening the others. Ultimately, the trio of misestimation, replication backlog, and space exhaustion creates a self-amplifying degradation that threatens both performance and availability across the database ecosystem.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 1582,
+            "score": 0.5288025556811999,
+            "bm25_score": 51.04369632426034,
+            "lexical_score": 0.15242290748898676,
+            "matched_terms": [
+                "and",
+                "apply",
+                "channel",
+                "failure",
+                "is",
+                "keep",
+                "lag",
+                "log",
+                "or",
+                "propagate",
+                "replication",
+                "retention",
+                "stale",
+                "the",
+                "to",
+                "value",
+                "with"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "4047",
+                "error_name": "ER_GRP_RPL_FAILOVER_CHANNEL_STATUS_PROPAGATION",
+                "official_description": "Unable to propagate the SOURCE_CONNECTION_AUTO_FAILOVER value for channel '%s' to group replication members. Please retry the operation.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

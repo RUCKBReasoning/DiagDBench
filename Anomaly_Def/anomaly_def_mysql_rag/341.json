@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Database Configuration Parameter Anomaly + Database Memory Allocation Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same objects, producing long blocking chains or deadlocks that stall commit progress.\nDatabase Configuration Parameter Anomaly : Engine-level settings for memory, background activity, or concurrency are mis-tuned for the hardware or workload, so internal resources are throttled or over-committed in ways unrelated to true capacity limits.\nDatabase Memory Allocation Anomaly : Aggregate memory consumed by buffer caches, work areas, parallel workers, and other heaps grows beyond safe physical limits, provoking OS pressure, paging, or OOM terminations.\n\nWhen these three root causes strike together, the system experiences extreme and often confusing stress signals: lock-wait and deadlock events surge while overall throughput collapses; wait statistics show both prolonged lock waits and memory-pressure induced CPU stalls; background check-pointers, vacuum/cleaner, or lock-monitor threads contend for CPU cycles already inflated by mis-sized work-memory and excessive parallelism; sudden paging amplifies the latency of lock acquisition, causing lock queues to snowball and triggering deadlock detectors more frequently. Application sessions pile up in connection pools, retries multiply redo generation, and after each inevitable OOM or forced restart, recovery replays the same bloated, lock-heavy workload, lengthening downtime windows.\n\nCausally, poorly chosen configuration parameters (e.g., oversized per-session work memory, unchecked parallel workers, or minimal lock-manager hash buckets) allow individual transactions to reserve large private arenas while encouraging high concurrency. This accelerates total memory consumption until the host comes under OS memory pressure, where swapping and CPU thrashing lengthen critical sections inside transactions. The longer each transaction remains active, the longer it holds its locks, raising the probability of collisions and deadlocks. In turn, escalating lock contention causes sessions to accumulate in wait queues, increasing the number of simultaneously connected back-end processes and their memory footprints, which further exacerbates the memory shortfall. The feedback loop between mis-tuned parameters, runaway memory growth, and prolonged lock holding produces a self-reinforcing spiral that cripples OLTP responsiveness and stability.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1004,
+            "score": 0.5723500970123069,
+            "bm25_score": 79.54683973306375,
+            "lexical_score": 0.20564159292035394,
+            "matched_terms": [
+                "allocation",
+                "already",
+                "and",
+                "buffer",
+                "check",
+                "concurrency",
+                "consumption",
+                "engine",
+                "in",
+                "inside",
+                "large",
+                "latency",
+                "memory",
+                "or",
+                "oversized",
+                "per",
+                "pressure",
+                "progress",
+                "session",
+                "settings",
+                "the",
+                "workload"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "3166",
+                "error_name": "ER_BUFPOOL_RESIZE_INPROGRESS",
+                "official_description": "Another buffer pool resize is already in progress.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "memory_and_buffer",
+                "cause_analysis": "The failure is typically associated with insufficient memory headroom, buffer pressure, oversized intermediate state, or memory-allocation constraints inside the engine or client library.",
+                "solution_guidance": "Check memory availability, per-session memory settings, large sorts or hashes, and whether workload concurrency is amplifying memory consumption.",
+                "observable_symptoms": [
+                    "memory pressure",
+                    "allocation failure",
+                    "spill",
+                    "unstable latency"
+                ]
+            }
+        }
+    }
+]

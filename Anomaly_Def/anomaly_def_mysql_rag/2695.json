@@ -1,0 +1,61 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Operating System Resource Limit Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Composite definition: This anomaly occurs when the transaction-log subsystem is saturated at the same time that the database is hitting operating-system resource ceilings and running out of network or listener capacity, so that commit processing, kernel object allocation, and client connectivity are all simultaneously constrained.\n\nCombined anomalous phenomena: Users observe sharp increases in commit and connection-establishment latency, frequent time-outs, and sporadic \"cannot allocate file descriptor / shared memory / thread\" errors in both database and system logs. Log-flush and log-sync waits surge while archiver or replication processes stall because they cannot open new log files or spawn workers. The number of half-open or TIME_WAIT sockets and refused connections rises, yet existing sessions linger in client-read or client-write waits because log flushes are delayed. Checkpoints and log-file switches bunch together, archive directories balloon, and retry storms from application tiers further inflate listener backlogs. Overall, the instance drifts into a state where it serves some in-flight work slowly, rejects new sessions, and risks an abrupt halt if undo or log space is fully exhausted.\n\nCausal chain and interaction: A bursty OLTP workload generates redo faster than the storage or archiver can absorb, elongating commit paths and increasing the residence time of every session. The longer sessions stay connected, the more cumulative file handles, threads, async-I/O contexts, and sockets the engine must keep open, accelerating depletion of kernel-enforced limits. Once those limits are crossed, attempts to create new log segments, start archiver jobs, or accept incoming connections fail, which further blocks log switches and propagates commit stalls. Meanwhile, clients experiencing time-outs aggressively retry, inflating connection rates and network traffic, which magnifies socket-queue pressure and compounds handle exhaustion. Each root cause therefore feeds the others in a positive feedback loop, rapidly degrading both write throughput and service availability.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.723062282463548,
+            "bm25_score": 25.72791978208413,
+            "lexical_score": 0.2008233199821985,
+            "matched_terms": [
+                "and",
+                "are",
+                "client",
+                "connection",
+                "establishment",
+                "from",
+                "is",
+                "latency",
+                "longer",
+                "more",
+                "network",
+                "number",
+                "of",
+                "or",
+                "read",
+                "replication",
+                "session",
+                "sessions",
+                "than",
+                "the",
+                "this",
+                "time",
+                "to",
+                "waits",
+                "when"
+            ],
+            "match_count": 128,
+            "entry": {
+                "timeout_id": "mysql84_replica_network_timeout",
+                "parameter_name": "replica_net_timeout",
+                "timeout_category": "replication_network_timeout",
+                "scope": "global/replication",
+                "official_definition": "The number of seconds to wait for more data from a source/replica connection before aborting the read.",
+                "trigger_condition": "A replica waits longer than replica_net_timeout for more data from the source connection.",
+                "workload_impact": "The replication network read is aborted and the replica considers the connection interrupted.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

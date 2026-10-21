@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + CPU Resource Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Page-level serialization inside the buffer manager forces sessions to wait or spin on buffer pins, latches, and I/O slots, throttling access to hot data pages.\nCPU Resource Anomaly : Database processes collectively saturate host CPU cycles, inflating run-queue length, context switches, and statement latency across the workload.\nOperating System Resource Limit Anomaly : Kernel-enforced ceilings on file handles, threads, shared memory, or other OS objects are reached, preventing the database from allocating additional kernel resources.\n\nWhen these three issues strike together, the system exhibits an interleaved symptom set: extreme CPU utilisation with sizable spin-loop time on buffer latches, elevated buffer-busy and scheduler wait events, sudden spikes in failed thread or file-descriptor creations, and uneven but rising transaction latencies. Hot pages trapped in the buffer cache cause worker threads to spin, inflating CPU usage; simultaneous OS resource exhaustion stops new workers or I/O contexts from being created, so existing threads queue longer, amplifying latch contention. Performance views show both CPU-bound statements and waits for latches and kernel resources; error logs report \"too many open files\", \"cannot create thread\", or shared-memory allocation failures, while throughput plummets despite all CPUs appearing fully utilised.\n\nCausally, heavy latch spinning drives persistent CPU saturation. The high CPU load lengthens the time threads hold latches, further deepening buffer contention. Meanwhile, the large number of active threads created by the database to cope with queuing pushes the process toward OS limits on threads, file handles, or AIO contexts; once reached, new worker or I/O requests fail, forcing more work onto existing threads. This feedback loop—hot-page contention → CPU burn → thread proliferation → OS limit breaches → reduced parallelism → longer latch holds—causes a cascading degradation that is markedly worse than any single anomaly alone, culminating in widespread stalls, errors, and potential partial outage.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 1940,
+            "score": 0.3577743763578416,
+            "bm25_score": 34.05769060327359,
+            "lexical_score": 0.1648898365316276,
+            "matched_terms": [
+                "and",
+                "but",
+                "by",
+                "context",
+                "create",
+                "error",
+                "in",
+                "is",
+                "level",
+                "or",
+                "resource",
+                "scheduler",
+                "statement",
+                "the",
+                "thread",
+                "to",
+                "together",
+                "with",
+                "worker",
+                "workload"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010053",
+                "error_name": "ER_SCHEDULER_STOPPING_FAILED_TO_CREATE_WORKER",
+                "official_description": "Event_scheduler::execute_top: Can not create event worker thread (errno=%d). Stopping event scheduler",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + CPU Resource Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently chooses sub-optimal execution plans despite having reasonably accurate statistics, causing unnecessary work or wrong join/scan strategies.\nCPU Resource Anomaly : Database and related processes saturate host CPU, driving run-queue and context-switch pressure and inflating response times across the workload.\nOperating System Resource Limit Anomaly : Database processes exhaust kernel-enforced limits (file descriptors, threads, shared-memory segments, AIO contexts, cgroup quotas, etc.), preventing creation or use of required OS resources.\n\nWhen these three issues coincide, the system shows a tangled symptom set: plans suddenly oscillate between different shapes, often favoring CPU-hungry scans or over-parallelized executions; overall CPU utilization sticks at or near 100 %, with long scheduler waits and rising load averages; at peak times new worker threads, parallel execution servers, or file handles fail to allocate, triggering engine errors, session drops, or silent plan de-parallelization. Latency spikes and throughput collapse propagate across both transactional and analytical statements, and troubleshooting is complicated because each layer (optimizer, database engine, kernel) reports its own errors that appear unrelated but stem from the same intertwined crisis.\n\nCausally, a poor plan may multiply CPU instructions per row, immediately driving processor saturation. As CPUs max out, thread scheduling delays lengthen, which stretches query runtimes, prolongs lock holds, and amplifies the impact of the bad plan. The prolonged high concurrency keeps spawning or retaining additional workers, consuming file handles, threads, and AIO slots until kernel limits are breached. Once those limits are hit, the engine cannot create new execution or I/O contexts, forcing further plan changes (e.g., abandoning parallelism or spilling to disk) that again increase CPU demand. Conversely, initial OS-level denials of resources can cause the optimizer to discard preferred plans, selecting fallback plans that are far more CPU intensive. The feedback loop between sub-optimal plans, CPU exhaustion, and kernel limit violations rapidly degrades performance and can escalate to partial or full service outages.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.7449678533158709,
+            "bm25_score": 33.965575484193806,
+            "lexical_score": 0.14989284438623646,
+            "matched_terms": [
+                "and",
+                "because",
+                "context",
+                "execution",
+                "from",
+                "is",
+                "long",
+                "more",
+                "of",
+                "or",
+                "out",
+                "query",
+                "resource",
+                "session",
+                "that",
+                "the",
+                "until",
+                "when",
+                "with",
+                "work",
+                "workload"
+            ],
+            "match_count": 219,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

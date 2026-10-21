@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Data Block and Index Integrity Anomaly + CPU Resource Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions compete for mutually incompatible locks, producing long blocking chains or deadlocks that stall forward progress.\nData Block and Index Integrity Anomaly : On-disk pages or index structures are physically or logically corrupted, so read or write operations encounter checksum, linkage, or key-order errors.\nCPU Resource Anomaly : Database processes consume nearly all available CPU cycles, leaving little headroom for other sessions or background tasks.\n\nWhen these three root causes coincide, the system exhibits a multi-layer crisis: 1) sessions accumulate in lock wait queues and deadlock detectors fire; 2) queries that finally obtain a lock may fail with corruption or page-verification errors, triggering repeated retries and rollbacks; 3) the surge of retries, deadlock detection sweeps, and corruption checks drives sustained CPU saturation. Observable symptoms therefore span long transaction latency, victim-abort errors, corruption messages in logs, spikes in lock-wait and CPU wait events, runaway run-queue length at the OS level, and rapidly shrinking throughput despite high thread activity.\n\nCausal chain: corrupted pages or mis-linked index nodes can force the optimizer or storage engine to abandon efficient index probes and fall back to broader scans or page-level recovery logic, greatly extending the time each transaction holds locks. Prolonged lock tenure intensifies blocking, deadlocks, and exponential retry storms. Every retry, deadlock cycle, or corruption re-read translates into additional CPU work—deadlock detection graph walks, lock hash-table manipulation, checksum recalculations, and error-handling logic—that further consumes CPU. CPU saturation in turn slows lock acquisition and flush pacing, lengthening critical sections and making it even harder for waiting transactions to progress, while the persisting corruption continually re-injects failures. The three anomalies therefore reinforce one another to create a self-amplifying degradation that can cripple an OLTP system until corruption is repaired, contention relieved, or compute resources expanded.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.3118057914846082,
+            "bm25_score": 14.409276194116266,
+            "lexical_score": 0.1464114832535885,
+            "matched_terms": [
+                "activity",
+                "an",
+                "and",
+                "are",
+                "for",
+                "handling",
+                "is",
+                "it",
+                "latency",
+                "of",
+                "on",
+                "or",
+                "progress",
+                "sessions",
+                "the",
+                "time",
+                "when"
+            ],
+            "match_count": 45,
+            "entry": {
+                "timeout_id": "mysql84_idle_interactive_session_timeout",
+                "parameter_name": "interactive_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds the server waits for activity on an interactive connection before closing it.",
+                "trigger_condition": "An interactive session remains idle longer than interactive_timeout.",
+                "workload_impact": "The server closes the idle interactive connection.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

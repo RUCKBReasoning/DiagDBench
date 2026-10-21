@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Query Plan Selection Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "SQL Workload Logic Anomaly: Application-level statement or transaction design forces the engine to touch far more data, rows, or time than the true business request requires.\nQuery Plan Selection Anomaly: The optimizer selects or reuses an execution plan whose cost model decision is sub-optimal despite having reasonably accurate statistics.\nData Block and Index Integrity Anomaly: Physical pages or index structures on disk have become corrupted or internally inconsistent, making their logical contents unreliable.\n\nWhen all three conditions coexist, the workload experiences extreme and erratic latency spikes, wide resource excursions, and unpredictable result-set correctness. Over-broad or poorly parameterized SQL keeps transactions open and touches large data ranges; the optimizer, already mis-choosing plans, may oscillate between full scans and inefficient nested loops; corrupted pages or mis-linked index structures further inflate I/O, cause repeated retries, checksum failures, or silent row omissions/duplications. Symptoms manifest as the same queries repeatedly entering slow-query logs with varying plans and row counts, sudden floods of checksum or logical-consistency errors, lock escalation or deadlocks due to long-running transactions stuck on corrupt pages, and application-side timeouts followed by inconsistent business results.\n\nCausally, excessive and ill-scoped SQL amplifies the surface area that the optimizer must reason about and the storage engine must read, raising the probability of touching corrupted pages. Once such pages are accessed, error handling or silent corruption skews runtime statistics, which in turn feeds back into the plan cache and encourages the optimizer to pick even poorer plans on subsequent executions. Conversely, a bad plan that chooses an unnecessary full scan or hot spot index walk is more likely to hit corrupted structures, provoking retries, forced plan invalidations, or emergency fallbacks to slower scans. The interaction forms a vicious cycle: workload inefficiency increases I/O and execution time, the optimizer’s misjudgments magnify that cost, and underlying corruption injects further unpredictability, leading to cascading performance collapse and potential data-consistency exposure across both transactional and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.3892572799421797,
+            "bm25_score": 16.51393943392736,
+            "lexical_score": 0.09339366515837104,
+            "matched_terms": [
+                "an",
+                "and",
+                "in",
+                "is",
+                "lock",
+                "or",
+                "statement",
+                "than",
+                "the",
+                "to",
+                "transaction",
+                "when"
+            ],
+            "match_count": 44,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Buffer Cache and Latch Contention Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Database Memory Allocation Anomaly : Engine and background components consume more physical memory and swap than the host can safely provide, causing OS-level memory pressure and database OOM or eviction events.\nBuffer Cache and Latch Contention Anomaly : Sessions serialize on hot buffer pages, latches, or I/O slots, leading to excessive buffer-busy waits, CPU spin, and stalled page access.\nNetwork and Connectivity Resource Anomaly : Client-to-server transport, listener, socket, or connection-pool resources saturate, producing slow or failed connects and prolonged client I/O waits.\n\nWhen these three root causes strike simultaneously, the database shows a convoluted mix of symptoms: resident-set size and swap continually rise while CPU usage swings between spin waits on buffer latches and idle time caused by blocked or disconnected clients. Wait-event dashboards light up with alternating memory-pressure stalls, buffer latch waits, and client read/write or connection establishment waits. Checkpoint and dirty-page flush latency grows because hot pages linger in memory under contention, further bloating memory with dirty buffers. Meanwhile, clients experience erratic query latencies, intermittent \"too many connections\" or timeout errors, and retransmissions on the network as over-subscribed back-ends struggle to send or receive data that must first be fetched from an overcommitted, latch-contended buffer pool.\n\nCausal chain: memory over-allocation inflates each backend’s footprint and shrinks effective buffer cache, forcing heavier churn and making individual pages hotter; this magnifies latch contention and CPU spin. The prolonged execution times that result keep sessions and their sockets open longer, which raises connection counts and floods listener backlogs, pushing the system toward the network/connectivity limit. Conversely, slow or reset network links leave server backends blocked in client I/O, holding buffer pins and memory allocations alive, which further tightens memory pressure and extends latch hold times. The reinforcing loop among memory exhaustion, buffer-level serialization, and stalled network endpoints amplifies resource starvation across all tiers, threatening systemic throughput collapse and potential node eviction or crash.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.5797779842594958,
+            "bm25_score": 25.076458775435345,
+            "lexical_score": 0.15502392344497606,
+            "matched_terms": [
+                "and",
+                "be",
+                "causing",
+                "connectivity",
+                "data",
+                "endpoints",
+                "longer",
+                "or",
+                "reset",
+                "stalled",
+                "than",
+                "the",
+                "this",
+                "timeout",
+                "times",
+                "to",
+                "waits",
+                "when"
+            ],
+            "match_count": 2,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

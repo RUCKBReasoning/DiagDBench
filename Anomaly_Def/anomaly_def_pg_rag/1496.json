@@ -1,0 +1,46 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Replication Synchronization Anomaly + CPU Resource Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly : The log-writing, flushing, switching, or archiving path on the primary instance becomes the bottleneck, throttling commit progress and preventing timely log recycling.\nReplication Synchronization Anomaly : Downstream replicas or subscribers cannot receive, persist, or apply the primary’s log stream fast enough, causing widening apply and retention lags.\nCPU Resource Anomaly : Database-related processes collectively oversubscribe host CPU cycles, driving sustained saturation and scheduler contention.\n\nWhen all three root causes strike together the system exhibits compound symptoms: commit latency and log-flush wait times rise sharply; log file switches and checkpoints pile up but archive and replication queues keep growing because replicas fall further behind; monitoring shows ballooning retained WAL/redo segments on the primary, swollen relay logs on replicas, and replication apply delay measured in minutes or hours. Meanwhile, hosts on both primary and replicas run at or near 100 % CPU, with long run queues and frequent context switches. Application threads stall behind log-sync and scheduler wait events, while read-only replicas deliver increasingly stale data and may become unavailable for failover due to excessive replay lag.\n\nCausally, a saturated CPU starves critical background threads—log flusher, archiver, and replication sender/receiver—reducing their throughput and amplifying the inherent bottleneck in the transaction-log subsystem. Slower log writes lengthen commit paths and defer log file recycling, which in turn forces the primary to retain more segments for lagging replicas. The replication backlog grows because replicas, themselves CPU-constrained, cannot parse and apply incoming redo quickly enough, further delaying acknowledgment to the primary. This feedback loop increases disk pressure in the log area, heightens checkpoint frequency, and propagates latency spikes across all transactional workloads, ultimately risking forced shutdowns or failovers when log space is exhausted.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 114,
+            "score": 0.1910551673281656,
+            "bm25_score": 7.576817376420186,
+            "lexical_score": 0.11753759398496241,
+            "matched_terms": [
+                "and",
+                "but",
+                "context",
+                "in",
+                "is",
+                "or",
+                "pressure",
+                "resource",
+                "the",
+                "to",
+                "together",
+                "transaction",
+                "with"
+            ],
+            "match_count": 11,
+            "entry": {
+                "error_code": "2D000",
+                "error_name": "invalid_transaction_termination",
+                "official_description": "invalid transaction termination",
+                "error_class": "Class 2D - Invalid Transaction Termination",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

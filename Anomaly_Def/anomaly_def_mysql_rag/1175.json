@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Query Plan Selection Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Composite definition: The database is simultaneously affected by (1) inefficient or over-broad SQL issued by the application, (2) the optimizer selecting sub-optimal execution plans for those statements, and (3) the operating-system denying additional kernel-level resources required by the database processes. The co-existence of these three layers of faults forms a single composite anomaly that magnifies latency, resource contention, and outright failures far beyond what any individual anomaly would cause in isolation.\n\nCombined anomalous phenomena: End-user requests frequently time out or are retried; slow-query logs and statement-statistics views show the same statements with wildly fluctuating execution times and alternating plans (e.g., index seeks vs. full scans). Transactions stay open longer, holding locks and blocking others, while parallel workers or new sessions sporadically fail to start with kernel error messages about exhausted file descriptors, shared-memory segments, or thread quotas. Monitoring shows escalating CPU and I/O demand from bad plans, but throughput plateaus as the engine hits OS-imposed limits, leading to queue build-up, lock waits, and partial service outages. Plan changes intended to alleviate workload pressure appear ineffective or revert unpredictably because the plan cache is being continuously invalidated by resource-related errors.\n\nCausal chain and interaction: Poorly written SQL forces the optimizer to consider large search spaces and high-cost alternatives; when the optimizer misjudges this workload, the resulting plans amplify row and page touch counts, inflating CPU, memory, and parallel-worker demand. The inflated demand accelerates consumption of kernel objects (file handles, threads, AIO contexts, shared memory), pushing the system over OS resource ceilings. Once those ceilings are reached, the operating system rejects new allocations, causing the database engine to drop or retry workers, invalidate plans, and reparse statements, which in turn increases parse and planning overhead. The feedback loop intensifies: every OS denial forces more plan churn and longer transactional hold times, which exacerbate lock contention and widen the performance tail. Thus the three root causes reinforce each other, producing a complex, self-perpetuating performance and stability degradation that is harder to diagnose than any single anomaly alone.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.6843885002620944,
+            "bm25_score": 35.57642949896161,
+            "lexical_score": 0.1642745391469968,
+            "matched_terms": [
+                "and",
+                "because",
+                "by",
+                "contention",
+                "engine",
+                "error",
+                "execution",
+                "for",
+                "is",
+                "limit",
+                "or",
+                "other",
+                "query",
+                "resource",
+                "statement",
+                "the",
+                "this",
+                "time",
+                "when",
+                "with",
+                "workload"
+            ],
+            "match_count": 57,
+            "entry": {
+                "timeout_id": "mysql84_regular_expression_time_limit",
+                "parameter_name": "regexp_time_limit",
+                "timeout_category": "expression_evaluation_time_limit",
+                "scope": "global/session",
+                "official_definition": "The time limit for regular expression matching operations performed by the regular expression engine.",
+                "trigger_condition": "A regular expression match operation exceeds regexp_time_limit.",
+                "workload_impact": "The regular expression operation is constrained by the configured time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

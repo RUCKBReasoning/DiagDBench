@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Operating System Resource Limit Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level statement or transaction design forces the database to scan, lock, or return more data than business logic requires, inflating execution time, resource demand, and result-set size.\nOperating System Resource Limit Anomaly : Database processes hit kernel-enforced ceilings for file handles, shared memory, threads, or other per-process / cgroup quotas, leading to failures in allocating required operating-system resources.\nNetwork and Connectivity Resource Anomaly : Transport paths, listener sockets, authentication handshakes, or connection slots become saturated or throttled, causing delays, refusals, and dropped or stalled client connections.\n\nWhen all three anomalies are present, the system exhibits an intertwined failure pattern: long-running or chatty SQL inflates the number and lifetime of sessions, each retaining open files, sockets, and memory segments until OS limits are exhausted. As limits are reached, the database intermittently fails to create back-end threads, accept new connections, or perform I/O, producing kernel “too many open files,” “cannot allocate memory,” or “cannot create thread” errors while simultaneous client-side timeouts, handshake failures, and rising retransmissions appear. Slow, data-heavy queries hold network sockets open for extended periods, clogging listener backlogs and leading to a surge of half-open or idle sockets. Application retries, triggered by connection failures, further lengthen transaction queues and exacerbate slow-query tails, making symptoms difficult to attribute to any single layer.\n\nCausally, inefficient SQL amplifies resource consumption per session—larger scans demand more file descriptors and shared memory, while bulky result sets and extended transaction windows monopolize sockets and keep network buffers full. This elevated baseline drives the system toward kernel limits; once those limits are crossed, the OS blocks new threads or I/O, which in turn forces the database to reject or stall additional work. Rejected or slow connections provoke client-side retry storms that inflate connection counts, magnify socket and authentication pressure, and deepen OS resource exhaustion. The feedback loop of heavy SQL, kernel-level denials, and network congestion accelerates degradation, potentially progressing from sporadic slowdowns to partial outages and, ultimately, complete service unavailability.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2146,
+            "score": 0.523080586794728,
+            "bm25_score": 56.46910879141495,
+            "lexical_score": 0.15088383838383837,
+            "matched_terms": [
+                "and",
+                "authentication",
+                "client",
+                "connection",
+                "failure",
+                "file",
+                "handshake",
+                "limits",
+                "network",
+                "or",
+                "process",
+                "session",
+                "socket",
+                "the",
+                "transport"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010259",
+                "error_name": "ER_CONN_UNIX_PID_CLAIMED_SOCKET_FILE",
+                "official_description": "Another process with pid %d is using unix socket file.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "connection_and_network",
+                "cause_analysis": "The failure is typically associated with connection establishment, authentication exchange, protocol correctness, network reachability, or client/server communication stability.",
+                "solution_guidance": "Check endpoint reachability, authentication flow, connection limits, protocol compatibility, transport stability, and client connection lifecycle management.",
+                "observable_symptoms": [
+                    "connection failure",
+                    "disconnect",
+                    "handshake failure",
+                    "unreachable session"
+                ]
+            }
+        }
+    }
+]

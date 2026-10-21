@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + CPU Resource Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Mis-tuned engine parameters (memory, parallelism, checkpoints, etc.) that distort resource usage patterns and introduce artificial bottlenecks independent of true hardware limits.\nCPU Resource Anomaly : Host CPU cores are genuinely saturated or oversubscribed by database processes, causing elevated run-queue delays and system-wide latency.\n\nWhen both root causes coexist the system presents a confusing mixture of symptoms: CPU utilisation hovers at or near 100 %, yet individual sessions may simultaneously report waits that suggest they are \"spinning\" or throttled by configuration limits (e.g., small work-memory forcing excessive batch-loop processing, aggressive parallel-worker allocation leading to context-switch storms, or checkpoint storms producing bursts of log-flush CPU). Wait-event histograms show an interleaving of CPU-bound activity (CPU time, scheduler waits) and configuration-induced waits (buffer-pin, log-write, flush-queue), and performance counters may oscillate as background processes kick in late due to CPU starvation. Response-time spikes appear across both read and write paths; even after workload subsides, recovery and autovacuum/cleanup tasks lag because mis-sized maintenance workers cannot acquire CPU.\n\nCausally, sub-optimal configuration settings inflate the amount of CPU work per transaction (e.g., too-small caches trigger extra page decompression and checksum verification, over-parallel plans multiply worker threads, tight checkpoint intervals force frequent flush bookkeeping). This artificial demand pushes the host CPU past sustainable limits, producing a true CPU Resource Anomaly. In turn, sustained CPU saturation amplifies the negative impact of the bad settings: background writers miss their cadence, causing larger and more expensive checkpoints, while worker shortages lead the optimizer to fall back to inefficient serial plans that again raise per-query CPU cost. The feedback loop between poor configuration and CPU exhaustion deepens latency, obscures which layer is primary, and can ultimately stall throughput or trigger failover mechanisms.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.5298357257787734,
+            "bm25_score": 18.704489703975554,
+            "lexical_score": 0.14942307692307694,
+            "matched_terms": [
+                "activity",
+                "after",
+                "amount",
+                "an",
+                "and",
+                "are",
+                "can",
+                "is",
+                "latency",
+                "lead",
+                "of",
+                "or",
+                "sessions",
+                "settings",
+                "system",
+                "the",
+                "this",
+                "time",
+                "to",
+                "when",
+                "which"
+            ],
+            "match_count": 217,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_idle",
+                "parameter_name": "tcp_keepalives_idle",
+                "timeout_category": "network_idle_keepalive_probe_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time with no network activity after which the operating system should send a TCP keepalive message to the client.",
+                "trigger_condition": "A TCP client connection has no network activity longer than tcp_keepalives_idle on systems supporting TCP_KEEPIDLE or an equivalent socket option.",
+                "workload_impact": "Starts TCP keepalive probing for an otherwise idle client connection; together with interval and count settings this can lead to dead connection detection.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

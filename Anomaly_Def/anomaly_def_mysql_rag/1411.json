@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Optimizer Statistics Anomaly + Query Plan Selection Anomaly",
+            "Description": "SQL Workload Logic Anomaly: Application-level SQL or transaction design forces the engine to touch more rows, more columns, or hold locks longer than the business case requires.\nOptimizer Statistics Anomaly: Row-count, histogram, or correlation metadata is stale or incomplete, leading the optimizer to mis-estimate cardinalities.\nQuery Plan Selection Anomaly: The optimizer’s decision logic or plan-reuse policy picks a plan that is far from optimal even when acceptable alternatives exist.\n\nComposite definition: The database simultaneously suffers from inefficient SQL semantics, inaccurate optimizer statistics, and a poor plan choice. Together they create a feedback loop in which the workload asks for too much work, the optimizer sees the data incorrectly, and then chooses an even worse way to execute it.\n\nCombined observable phenomena: 1) Extreme and highly variable statement latencies that defy normal tuning; 2) Identical queries alternating between different bad plans, with some executions exploding into full table scans, hash or nested-loop storms, massive temp-space spills, or runaway parallelism; 3) Sudden performance collapses after data loads or schema changes, followed by prolonged lock holds and blocking chains because long-running, over-wide transactions collide; 4) Chronic appearance of the same SQL in slow-query logs even after index tuning, and persistent discrepancies between estimated and actual rows in execution plans; 5) Frequent plan recompiles, memory-grant overallocations, and exhausted CPU/IO capacity leading to application timeouts and retries.\n\nCausal chain and interaction: Inefficient application SQL increases data volume scanned and accentuates any small cardinality errors. The resulting large data modifications quickly render existing statistics obsolete, widening the estimate–actual gap. Stale or missing statistics, in turn, mislead the optimizer, which may already be prone to volatile or skew-sensitive plan selection. The optimizer therefore locks onto or oscillates between sub-optimal plans that amplify the workload’s excess data access, driving up resource consumption. The heavier execution footprint further delays automatic statistics refresh and enlarges plan-cache churn, reinforcing both the statistics and plan-selection problems. The intertwined effects create a self-perpetuating degradation cycle that is harder to diagnose because each individual anomaly masks and exacerbates the others.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.3057295293155279,
+            "bm25_score": 15.48161477873571,
+            "lexical_score": 0.1089080459770115,
+            "matched_terms": [
+                "and",
+                "data",
+                "for",
+                "from",
+                "is",
+                "longer",
+                "more",
+                "of",
+                "or",
+                "stale",
+                "than",
+                "the",
+                "to",
+                "when"
+            ],
+            "match_count": 67,
+            "entry": {
+                "timeout_id": "mysql84_replica_network_timeout",
+                "parameter_name": "replica_net_timeout",
+                "timeout_category": "replication_network_timeout",
+                "scope": "global/replication",
+                "official_definition": "The number of seconds to wait for more data from a source/replica connection before aborting the read.",
+                "trigger_condition": "A replica waits longer than replica_net_timeout for more data from the source connection.",
+                "workload_impact": "The replication network read is aborted and the replica considers the connection interrupted.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

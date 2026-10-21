@@ -1,0 +1,59 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Database Memory Allocation Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level SQL or transaction design forces the engine to read, join, or lock far more data and for longer durations than business requirements dictate.\nDatabase Memory Allocation Anomaly : Engine and session memory structures grow beyond safe host limits, leading to pressure, paging, and cache churn that slow execution and risk OOM failures.\nTransaction Log Subsystem Anomaly : The write-ahead logging layer cannot absorb or persist redo fast enough, causing commit stalls, backlog in log archival/replication, and write-path throttling.\n\nWhen all three root causes coexist, the database exhibits a blend of severe and mutually amplifying symptoms: end-user statements run with extreme and highly variable latency; commits pause on log-flush waits that lengthen as memory pressure forces dirty buffers to be flushed and log buffers to shrink; slow queries and prolonged transactions monopolize buffer pages and work memory, driving resident-set growth, OS paging, and plan-cache bloat; concurrent long-running writes generate surges of redo that outpace log device throughput and fill log segments, triggering checkpoint storms and cascading stalls. Administrators may observe simultaneous slow-query spikes, escalating memory usage or OOM events, and commit latency alerts, making it difficult to attribute performance collapse to a single layer.\n\nCausally, inefficient SQL inflates row scans, sorts, and joins, expanding per-query work areas and dirty-page generation. This heightened memory demand collides with already stressed buffer, sort, and cache regions, accelerating memory pressure and evictions. As memory tightens, the engine may shrink log buffers or stall background flushers, further slowing commit throughput. Meanwhile, the bloated and long-running transactions from the workload anomaly emit excessive redo, saturating the undersized or contended transaction-log subsystem. Log flush delays prolong transaction lifetimes, which in turn hold memory and locks even longer, feeding back into memory exhaustion and elevated concurrency waits. The intertwined effects of heavy logical workload, memory overcommit, and log bottlenecks thus create a reinforcing loop that degrades both throughput and stability in write-intensive OLTP environments.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.7504380892520427,
+            "bm25_score": 35.25136759040547,
+            "lexical_score": 0.16812696417347578,
+            "matched_terms": [
+                "and",
+                "be",
+                "execution",
+                "from",
+                "long",
+                "longer",
+                "more",
+                "of",
+                "or",
+                "path",
+                "query",
+                "running",
+                "session",
+                "sql",
+                "than",
+                "that",
+                "the",
+                "this",
+                "user",
+                "when",
+                "with",
+                "work",
+                "workload"
+            ],
+            "match_count": 315,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

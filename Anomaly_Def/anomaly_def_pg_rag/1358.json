@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Composite definition: The database is simultaneously impaired by (1) a bottleneck in the write-ahead logging subsystem that restricts log generation, flushing, switching, archiving, or retention capacity, and (2) physical corruption or logical inconsistency inside on-disk data blocks and index structures. The system must therefore cope with both stalled commit processing and unreliable persistent structures at the same time.\n\nCombined observable phenomena: Users experience rising commit and DML latency, \"log write / log sync\" wait spikes, and frequent log-file switch or archive backlog messages while, in parallel, queries randomly miss or duplicate rows, integrity-check utilities flag page-checksum or index-ordering errors, and the engine emits corruption or recovery warnings. Recovery or redo‐apply operations may loop or slow dramatically, checkpoints can thrash, and replication or backup jobs may halt because damaged pages cannot be read while required log segments remain unarchived, causing log directories to grow uncontrollably. The overlap of symptoms makes it difficult to attribute stalls solely to I/O or corruption, as each condition amplifies the other.\n\nCausal interaction: Corrupted pages or broken index links often trigger extra page reads, forced validation scans, repetitious page splits, or emergency repairs, all of which generate surges of redo records that saturate an already constrained log subsystem. The resulting log backlog delays checkpoints and archive operations, extending the time that corrupted pages stay in service and increasing the risk of additional inconsistencies. Conversely, when the log device reaches capacity or flush latency grows, incomplete commits and prolonged recovery windows raise the likelihood of torn-page or lost-write scenarios, seeding further data and index corruption. Replication or backup retries against corrupt pages can pin log segments for longer retention, intensifying log file exhaustion. Thus the two root causes form a feedback loop that progressively degrades write throughput, data correctness, recovery time, and overall system availability.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.5717198713760674,
+            "bm25_score": 21.674189327460063,
+            "lexical_score": 0.1411764705882353,
+            "matched_terms": [
+                "and",
+                "be",
+                "can",
+                "check",
+                "is",
+                "latency",
+                "lost",
+                "messages",
+                "of",
+                "on",
+                "or",
+                "reaches",
+                "system",
+                "that",
+                "the",
+                "time",
+                "to",
+                "when"
+            ],
+            "match_count": 225,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_count",
+                "parameter_name": "tcp_keepalives_count",
+                "timeout_category": "network_keepalive_failure_threshold",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the number of TCP keepalive messages that can be lost before the server connection to the client is considered dead.",
+                "trigger_condition": "The number of lost TCP keepalive probes reaches tcp_keepalives_count on systems supporting TCP_KEEPCNT.",
+                "workload_impact": "The server can consider the client connection dead after the configured keepalive failure threshold.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

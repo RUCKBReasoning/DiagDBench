@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Database Configuration Parameter Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Inefficient or overly broad application-issued statements and transaction patterns that force the engine to process more data or hold resources longer than business logic requires.\nDatabase Configuration Parameter Anomaly : Mis-tuned engine parameters that misalign memory, logging, checkpoint, parallelism, or worker settings with actual hardware and workload needs.\nOperating System Resource Limit Anomaly : Exhaustion of kernel-enforced limits such as file handles, shared memory segments, or thread quotas, restricting the database process regardless of internal configurations.\n\nWhen these three root causes occur simultaneously, the workload generates excessive scans, large result sets, and long-running transactions while the engine is hamstrung by sub-optimal buffer sizes, work memory, checkpoint cadence, and worker pools. The inflated demand collides with artificial ceilings imposed by the operating system, producing a compound symptom set: long-tail and highly variable statement latency, frequent slow-query log entries, sudden spikes of log-write or buffer-flush waits that do not match actual device utilization, intermittent \"cannot allocate shared memory / open file\" errors, failed connection or parallel-worker startups, and partial outages where active sessions stall yet CPU and I/O metrics appear under-utilized. Diagnostic views may show bloated memory evictions, repeated checkpoint storms, and escalating kernel error messages about resource exhaustion, making it difficult to pin the problem on any single layer.\n\nCausally, inefficient SQL inflates resource consumption, driving up memory pressure, dirty-page generation, and concurrent session counts. Misconfigured parameters prevent the engine from absorbing this pressure—small buffer pools force excessive I/O and checkpoints, while oversized per-session memory or parallelism settings multiply the footprint of every bad query. The heightened demand accelerates consumption of kernel objects (file descriptors, shared memory, threads); once OS limits are reached, new allocations fail, which in turn causes retries, rollbacks, and further stretches transaction lifetimes. Each layer amplifies stress on the others: poor SQL magnifies the impact of bad configuration, while both together push the process into the hard wall imposed by operating-system limits, resulting in a feedback loop of escalating latency, resource thrashing, and intermittent errors that degrade overall database availability and performance.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.7500745156482861,
+            "bm25_score": 39.84839942563699,
+            "lexical_score": 0.1669150521609538,
+            "matched_terms": [
+                "and",
+                "by",
+                "engine",
+                "error",
+                "is",
+                "limit",
+                "long",
+                "match",
+                "or",
+                "query",
+                "resource",
+                "running",
+                "session",
+                "statement",
+                "the",
+                "this",
+                "together",
+                "when",
+                "with",
+                "work",
+                "workload"
+            ],
+            "match_count": 37,
+            "entry": {
+                "timeout_id": "mysql84_regular_expression_time_limit",
+                "parameter_name": "regexp_time_limit",
+                "timeout_category": "expression_evaluation_time_limit",
+                "scope": "global/session",
+                "official_definition": "The time limit for regular expression matching operations performed by the regular expression engine.",
+                "trigger_condition": "A regular expression match operation exceeds regexp_time_limit.",
+                "workload_impact": "The regular expression operation is constrained by the configured time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

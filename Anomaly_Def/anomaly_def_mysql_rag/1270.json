@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "CPU Resource Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "CPU Resource Anomaly : Saturation of host CPU cycles by database-related processes, driving run-queue growth and system-wide latency. \nNetwork and Connectivity Resource Anomaly : Exhaustion or slowdown of network, listener, or connection-handling resources, inflating connect times and socket waits. \n\nThis composite anomaly represents the simultaneous exhaustion of compute and network/connection resources on the database server. While the CPU is near saturation, the server is also unable to accept, authenticate, or transmit client traffic at the required rate, so both statement execution and session establishment are impaired concurrently.\n\nCombined manifestations include: • sustained CPU utilization >90 % with long OS run queues while listener or connection-pool queues back up; • spikes in both CPU-bound wait events (e.g., CPU_BUSY, RUNQ) and network events (client read/write, socket wait, accept) in engine views; • widespread query latency where time is split between CPU and network waits, making single-point diagnosis difficult; • increased application timeouts, retransmissions, and connection errors coinciding with elevated context switches and TCP retransmits; • feedback loops in which client retry storms multiply session attempts, further inflating CPU load on authentication and session setup threads, and keeping sockets open longer, which in turn increases kernel interrupt and protocol-stack CPU consumption.\n\nCausal chain: high CPU usage slows every server-side operation, including network I/O, accept() and SSL handshake processing, thereby lengthening connection lifecycles and filling socket queues. The congested network layer then stalls query result delivery, causing server worker threads to remain runnable longer and perform additional copy/checksum work, which pushes CPU utilization higher. Client retries triggered by network delays inflate request rates, adding parsing, authentication, and encryption work that further stresses CPU. This positive feedback loop between CPU saturation and network congestion amplifies latency and error rates, potentially leading to cascading application failures.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.6131145809330429,
+            "bm25_score": 23.780805894957155,
+            "lexical_score": 0.1909924202362066,
+            "matched_terms": [
+                "and",
+                "are",
+                "authentication",
+                "client",
+                "connect",
+                "connection",
+                "establishment",
+                "handling",
+                "handshake",
+                "is",
+                "latency",
+                "of",
+                "or",
+                "server",
+                "session",
+                "that",
+                "the",
+                "this",
+                "time",
+                "triggered",
+                "waits",
+                "with"
+            ],
+            "match_count": 57,
+            "entry": {
+                "timeout_id": "mysql84_connection_handshake_timeout",
+                "parameter_name": "connect_timeout",
+                "timeout_category": "connection_handshake_timeout",
+                "scope": "global",
+                "official_definition": "The number of seconds that the mysqld server waits for a connect packet before responding with Bad handshake.",
+                "trigger_condition": "A client does not complete the initial connection packet exchange within connect_timeout.",
+                "workload_impact": "The connection attempt fails during handshake.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

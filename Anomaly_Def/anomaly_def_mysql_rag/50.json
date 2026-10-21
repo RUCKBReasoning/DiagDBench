@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + MVCC Version Maintenance Anomaly + Replication Synchronization Anomaly",
+            "Description": "Schema and Index Design Anomaly: Static mismatch between table structures / index layout and workload access patterns forces inefficient scans and excessive maintenance work, independent of statistics freshness or plan-selection logic.\nMVCC Version Maintenance Anomaly: Accumulation of obsolete row versions and rollback records outpaces background cleanup, bloating tables/indexes and raising visibility-check overhead in high-churn environments.\nReplication Synchronization Anomaly: Downstream replicas fall behind because they cannot receive or apply primary-generated log records at the production rate, causing widening log lags and retention of old WAL segments.\n\nWhen all three root causes coexist, the system exhibits compounded symptoms:  • Queries on the primary perform long full-table or non-covering index scans against increasingly bloated storage, showing step-function latency spikes and misestimated plans.  • Update/delete-heavy workloads generate surging version stores; vacuum or purge workers remain perpetually active yet fail to reclaim space, leading to runaway disk growth on both primary and replicas.  • Excessive WAL produced by large, fragmented heaps and nonselective indexes saturates network and I/O channels, so replicas accumulate growing replay lag, expose stale data to read traffic, and hold back log recycling on the primary.  • Failover readiness deteriorates; maintenance windows lengthen as index rebuilds, vacuums, and catch-up replays compete for resources. Distinguishing which layer is at fault becomes difficult because every observed slowdown (scans, vacuums, replication) appears mutually reinforcing.\n\nCausally, ineffective schema and index design first increases I/O per query and amplifies row churn (e.g., heap-only tuple updates prevented by missing HOT-friendly indexes). The heavier churn inflates MVCC version chains; without supportive indexes, cleanup workers scan whole tables, fall behind, and leave more dead tuples. This bloat inflates each checkpoint’s WAL volume and lengthens full-table scans, further stressing CPU and storage. The swollen and write-intensive WAL stream then overwhelms replication channels; replicas that also suffer from the same poor indexing and version bloat replay changes even more slowly, extending apply lag. The prolonged retention of old snapshots on lagging replicas in turn delays VACUUM’s ability to reclaim dead versions on the primary, accelerating disk growth and perpetuating the vicious performance spiral.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.6764750310896619,
+            "bm25_score": 23.120038126780067,
+            "lexical_score": 0.11468839462673419,
+            "matched_terms": [
+                "and",
+                "apply",
+                "causing",
+                "data",
+                "downstream",
+                "is",
+                "lag",
+                "long",
+                "or",
+                "replication",
+                "the",
+                "this",
+                "to",
+                "when"
+            ],
+            "match_count": 3,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,61 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Database Configuration Parameter Anomaly + Database Memory Allocation Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same objects, producing long blocking chains or deadlocks that stall commit progress.\nDatabase Configuration Parameter Anomaly : Engine-level settings for memory, background activity, or concurrency are mis-tuned for the hardware or workload, so internal resources are throttled or over-committed in ways unrelated to true capacity limits.\nDatabase Memory Allocation Anomaly : Aggregate memory consumed by buffer caches, work areas, parallel workers, and other heaps grows beyond safe physical limits, provoking OS pressure, paging, or OOM terminations.\n\nWhen these three root causes strike together, the system experiences extreme and often confusing stress signals: lock-wait and deadlock events surge while overall throughput collapses; wait statistics show both prolonged lock waits and memory-pressure induced CPU stalls; background check-pointers, vacuum/cleaner, or lock-monitor threads contend for CPU cycles already inflated by mis-sized work-memory and excessive parallelism; sudden paging amplifies the latency of lock acquisition, causing lock queues to snowball and triggering deadlock detectors more frequently. Application sessions pile up in connection pools, retries multiply redo generation, and after each inevitable OOM or forced restart, recovery replays the same bloated, lock-heavy workload, lengthening downtime windows.\n\nCausally, poorly chosen configuration parameters (e.g., oversized per-session work memory, unchecked parallel workers, or minimal lock-manager hash buckets) allow individual transactions to reserve large private arenas while encouraging high concurrency. This accelerates total memory consumption until the host comes under OS memory pressure, where swapping and CPU thrashing lengthen critical sections inside transactions. The longer each transaction remains active, the longer it holds its locks, raising the probability of collisions and deadlocks. In turn, escalating lock contention causes sessions to accumulate in wait queues, increasing the number of simultaneously connected back-end processes and their memory footprints, which further exacerbates the memory shortfall. The feedback loop between mis-tuned parameters, runaway memory growth, and prolonged lock holding produces a self-reinforcing spiral that cripples OLTP responsiveness and stability.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.4179744490642867,
+            "bm25_score": 16.737841595713636,
+            "lexical_score": 0.17483622572118146,
+            "matched_terms": [
+                "activity",
+                "after",
+                "and",
+                "are",
+                "by",
+                "check",
+                "connection",
+                "for",
+                "holding",
+                "latency",
+                "of",
+                "on",
+                "or",
+                "pools",
+                "progress",
+                "responsiveness",
+                "session",
+                "sessions",
+                "system",
+                "that",
+                "the",
+                "this",
+                "to",
+                "when",
+                "which"
+            ],
+            "match_count": 179,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_interval",
+                "parameter_name": "tcp_keepalives_interval",
+                "timeout_category": "network_keepalive_retry_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time after which a TCP keepalive message that has not been acknowledged by the client should be retransmitted.",
+                "trigger_condition": "A TCP keepalive probe is not acknowledged for tcp_keepalives_interval on systems supporting TCP_KEEPINTVL or an equivalent socket option.",
+                "workload_impact": "Controls retry timing for keepalive probes used to detect unresponsive client connections.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

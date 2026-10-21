@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Query Plan Selection Anomaly + Replication Synchronization Anomaly",
+            "Description": "Optimizer Statistics Anomaly: Critical metadata about row counts, data distribution, and correlations is stale, missing, or inaccurate, causing systematic cardinality misestimation by the optimizer.\nQuery Plan Selection Anomaly: Despite acceptable or refreshed statistics, the optimizer’s plan–choice logic (cost model, parameter sniffing, cache reuse, hinting, etc.) selects execution plans that are substantially sub-optimal for the current runtime context.\nReplication Synchronization Anomaly: Downstream replicas or subscribers cannot receive, write, or apply redo at the rate the primary generates it, producing widening log-position gaps, replay lag, and retention of excessive log files on the primary.\n\nWhen these three root causes manifest simultaneously, a workload may show oscillating or chronically poor query performance on the primary, skyrocketing redo generation, and rapidly growing replication lag. Stale or incomplete statistics combine with an already fragile plan-selection process to create highly variable, often bloated execution plans—e.g., hash joins degraded to nested loops or full-table scans materializing large intermediate results. The resultant surge in I/O, CPU, and log volume prolongs transaction durations and inflates redo streams. Replicas struggle to keep pace, leading to seconds-to-hours of apply lag, swollen relay/WAL files, stale read-only query results, and reduced failover readiness. Because replicas replay long-running, poorly planned transactions serially, their apply workers may become backlogged or blocked by lock contention, further compounding lag.\n\nCausally, inaccurate statistics seed cardinality errors that steer the optimizer toward fragile plans; even if statistics are corrected, plan-selection anomalies (e.g., parameter sniffing or cost-model quirks) may continue to favor inefficient strategies. These inefficient plans inflate resource consumption and transaction sizes, multiplying redo output. The heavier the write volume and transaction duration, the more pressure is placed on the replication pipeline. Conversely, replication lag prevents timely feedback such as replicated statistics refreshes or plan–stability hint deployments on replicas, allowing bad plans to persist there as well. The intertwined feedback loop—bad stats ⇒ bad plans ⇒ high redo ⇒ replication backlog ⇒ delayed metadata convergence—drives a self-reinforcing degradation that affects both primary performance and replica consistency.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.31700330940174554,
+            "bm25_score": 12.77967057531047,
+            "lexical_score": 0.09147328656233136,
+            "matched_terms": [
+                "and",
+                "are",
+                "at",
+                "is",
+                "long",
+                "or",
+                "query",
+                "running",
+                "stale",
+                "that",
+                "the",
+                "when"
+            ],
+            "match_count": 245,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

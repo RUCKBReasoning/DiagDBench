@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Replication Synchronization Anomaly + CPU Resource Anomaly",
+            "Description": "Replication Synchronization Anomaly : Remote replicas or subscribers cannot ingest or apply transaction-log records as fast as the primary emits them, creating widening replay lag and retention of log segments.\nCPU Resource Anomaly : Database host CPUs are saturated by sustained, abnormal compute demand, starving other activities of processor cycles and inflating latencies across the stack.\n\nWhen both conditions exist together, replication delay and CPU exhaustion compound. Observables include rapidly growing replica apply lag, swelling on-disk WAL/relay logs, prolonged commit latency on the primary as recyclable log files accumulate, near-100 % CPU utilization on either the primary or replicas, spikes in run-queue wait events, and system-wide query slow-downs. Catch-up workers on replicas may show extreme CPU times, while primary back-pressure mechanisms (throttled senders, longer commit waits) manifest concurrently. Failover readiness degrades as replicas drift further behind, and administrative queries to inspect replication or CPU state also slow, making diagnosis harder.\n\nCausally, CPU saturation can both cause and be exacerbated by replication lag: overworked replicas lack CPU to replay incoming WAL, which increases backlog size; the resulting surge of deferred apply work then drives even higher CPU usage when capacity briefly becomes available. Conversely, large replication backlogs force the primary to retain and occasionally re-transmit log segments, adding encoding and network CPU overhead that pushes the primary toward saturation. The feedback loop between compute starvation and log-shipping delay amplifies resource pressure on all nodes, risking transaction latency spikes, storage exhaustion from un-recycled logs, and potential replication collapse.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.741581937799043,
+            "bm25_score": 27.693757922973468,
+            "lexical_score": 0.13860645933014354,
+            "matched_terms": [
+                "administrative",
+                "and",
+                "apply",
+                "be",
+                "inspect",
+                "lag",
+                "longer",
+                "or",
+                "replica",
+                "replication",
+                "the",
+                "times",
+                "to",
+                "waits",
+                "when"
+            ],
+            "match_count": 10,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

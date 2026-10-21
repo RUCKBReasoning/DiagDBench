@@ -1,0 +1,44 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Transaction Log Subsystem Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Sessions serialize on hot buffer pages, latches, or pin structures because the buffer manager cannot grant concurrent access fast enough.\nTransaction Log Subsystem Anomaly : The write-ahead log becomes the bottleneck for commit processing, log flushing, or archiving, stalling foreground writes.\nData Block and Index Integrity Anomaly : On-disk data or index pages have become physically or logically corrupt, breaking key ordering, page links, or checksums.\n\nWhen these three root causes strike together, the system shows an entangled symptom set: extreme and erratic commit latency, bursts of CPU spin on page latches, log-flush and buffer-busy wait events appearing side by side, and query results intermittently missing or duplicating rows as corrupted index pages are visited under high latch pressure. Frequent checkpoint storms and forced log switches lengthen the time buffers are held dirty, magnifying latch hold times. Integrity check utilities may hang or block behind the same latch and log waits, and recovery or failover attempts can stall because the damaged pages sit in dirty buffers that cannot be flushed while the log device is saturated.\n\nCausal chain: heavy write traffic first overdrives the log subsystem, stretching commit and checkpoint intervals. Extended checkpoints keep more dirty pages in memory, inflating buffer-pool turnover and intensifying latch contention on the hottest pages. Prolonged contention means pages stay pinned longer, so any latent corruption on popular data or index blocks surfaces more often and under higher concurrency, triggering retry loops, error logging, or full table scans that further inflate redo volume. The extra redo amplifies log saturation, while corrupted pages that cannot be flushed cleanly force additional I/O retries and keep buffers in a permanently dirty state, feeding back into both latch contention and log backlog. The three anomalies therefore reinforce one another, driving a vicious cycle of rising latency, shrinking throughput, and escalating data-integrity risk.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 158,
+            "score": 0.18418267346078765,
+            "bm25_score": 9.385714518682773,
+            "lexical_score": 0.09970014992503748,
+            "matched_terms": [
+                "access",
+                "and",
+                "as",
+                "cannot",
+                "error",
+                "is",
+                "or",
+                "that",
+                "the",
+                "under"
+            ],
+            "match_count": 15,
+            "entry": {
+                "error_code": "42703",
+                "error_name": "undefined_column",
+                "official_description": "undefined column",
+                "error_class": "Class 42 - Syntax Error or Access Rule Violation",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "sql_and_parser",
+                "cause_analysis": "The failure is typically associated with unsupported syntax, invalid statement structure, or feature usage that the target engine version cannot execute as written.",
+                "solution_guidance": "Validate SQL syntax, target-engine compatibility, statement shape, and whether the feature is supported under the current engine version or execution context.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "syntax error",
+                    "feature rejection"
+                ]
+            }
+        }
+    }
+]

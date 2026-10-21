@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Buffer Cache and Latch Contention Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Engine-level settings (memory, checkpoint, parallelism, etc.) are mis-tuned relative to hardware and workload, so the bottleneck stems from the parameter choices themselves rather than true resource exhaustion.\nBuffer Cache and Latch Contention Anomaly : Sessions stall on buffer-pool page pins, latches, and other lightweight synchronization points because hot or churning pages force serialised access and CPU spin-waiting.\nOperating System Resource Limit Anomaly : The database process collides with kernel-enforced ceilings on file descriptors, shared memory, semaphores, aio contexts, processes/threads, or cgroup quotas, blocking further allocations even though database-level resources appear free.\n\nWhen these three root causes strike together, the system exhibits a tangled symptom set: 1) extreme and erratic wait-event mixes in which buffer-busy/latch waits, log-write waits, and kernel resource-allocation errors appear in the same time slices; 2) bursts of checkpoint-driven I/O that stall on both latch contention and OS aio/file-handle shortages, causing sharp latency spikes and temporary query freezes; 3) CPU saturation by spin loops despite low measured user throughput; 4) sudden connection or worker-spawn failures accompanied by kernel messages about ENFILE, EMFILE, or shared-memory limits, leading to partial outages while existing sessions themselves are trapped behind hot-page latches; 5) highly variable performance after configuration changes, instance restarts, or workload surges, making the individual anomalies hard to distinguish because each masks or amplifies the others.\n\nCausally, mis-sized engine parameters (e.g., an undersized buffer pool, overly aggressive checkpoint target, or excessive parallel-worker cap) increase buffer turnover, concentrate access on a small set of pages, and flood the I/O and logging paths, which in turn magnifies latch contention inside the buffer manager. As latch pressure rises, sessions hold internal resources longer and attempt to open more files, spawn more background workers, or allocate larger shared-memory segments to cope with the backlog, quickly bumping into restrictive OS limits. Conversely, once the kernel refuses new handles, shared memory, or threads, the database cannot expand buffer pools or I/O contexts, forcing even tighter reuse of the existing cache and further intensifying page churn and latch waits. The feedback loop between bad configuration, internal contention, and external resource caps can thus cascade into severe throughput collapse and erratic, hard-to-diagnose performance degradation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.7086967678817847,
+            "bm25_score": 31.55998498105958,
+            "lexical_score": 0.14294117647058824,
+            "matched_terms": [
+                "access",
+                "and",
+                "because",
+                "behind",
+                "by",
+                "contention",
+                "in",
+                "limit",
+                "or",
+                "other",
+                "query",
+                "resource",
+                "the",
+                "time",
+                "together",
+                "when",
+                "with",
+                "workload"
+            ],
+            "match_count": 133,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

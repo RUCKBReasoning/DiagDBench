@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Replication Synchronization Anomaly",
+            "Description": "Composite definition: The database is simultaneously experiencing severe lock-manager contention that blocks or deadlocks foreground transactions and a replication pipeline that is unable to receive, persist, or apply write-ahead log records at the pace they are produced.\n\nCombined phenomena: On the primary, lock-wait queues, growing deadlock reports, rising transaction latency, and connection-pool back-pressure are observed at the same time that monitoring shows widening log-position gaps, increasing apply lag, and expanding retained WAL or relay logs on replicas. Users may see time-outs and retry storms, while read replicas deliver ever-staler data and lose fail-over currency. Disk consumption for unrecycled logs escalates, CPU on replicas spikes as single-threaded apply workers fall behind, and replica error logs may contain lock-conflict messages when replay encounters the same hot rows currently contended on the primary.\n\nCausal interaction: Prolonged or blocked transactions keep exclusive locks and their corresponding commit LSNs open, preventing log recycling and enlarging the volume of WAL that must be shipped downstream. When the locks finally release, large bursts of accumulated WAL can saturate network or I/O on replicas, deepening lag. Conversely, if synchronous or semi-synchronous replication is in use, a slowed or stalled replica lengthens commit acknowledgment times on the primary, forcing locks to be held even longer and intensifying contention. Apply-side lock conflicts on the replica can further delay replay and feed back into the commit path if the primary waits for replica confirmation, creating a mutually reinforcing loop that rapidly degrades both transactional throughput and replication freshness.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5357,
+            "score": 0.5802337999849544,
+            "bm25_score": 62.577093135594424,
+            "lexical_score": 0.17149999999999999,
+            "matched_terms": [
+                "and",
+                "apply",
+                "back",
+                "be",
+                "deliver",
+                "downstream",
+                "for",
+                "if",
+                "in",
+                "is",
+                "keep",
+                "lag",
+                "log",
+                "messages",
+                "network",
+                "of",
+                "or",
+                "replica",
+                "replication",
+                "the",
+                "to"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013486",
+                "error_name": "ER_GRP_RPL_MESSAGE_SERVICE_FATAL_ERROR",
+                "official_description": "A message sent through the Group Replication message deliver service was not delivered successfully. The server will now leave the group. Try to add the server back to the group and check if the problem persists, or check previous messages in the log for hints of what could be the problem.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

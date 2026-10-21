@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Buffer Cache and Latch Contention Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions compete for mutually incompatible locks on the same rows, pages, or metadata, producing long blocking chains or deadlocks inside the lock-manager layer.\nBuffer Cache and Latch Contention Anomaly : Sessions stall while fighting over hot buffer-cache pages, latches, or page pins, so every logical page access may spin or sleep before proceeding.\nStorage I/O Throughput Anomaly : The physical devices or storage virtualization tier are saturated, stretching read- and write-service times far beyond the engine’s expectations.\n\nWhen these three root causes strike together, the database exhibits extreme and baffling slowdowns: lock-wait and deadlock diagnostics explode while buffer-latch and I/O wait events spike; CPU may oscillate between idling (tasks sleeping on I/O) and frantic spinning (latch retries); transaction throughput collapses, statement latencies become highly variable, and connection pools back up. Autovacuum, checkpoints, or log flushes linger in the I/O queue, holding buffer-cache pages dirty and pinned, which in turn prolongs lock hold times. Application layers experience timeouts and cascading retries, masking whether the dominant bottleneck is logical locking, latch hot spots, or raw device saturation.\n\nCausally, saturated storage stretches page read and flush times, so backend processes keep buffer pages and their latches for longer, inflating latch-queue lengths. Extended latch ownership delays row-level operations, meaning locks on those rows or pages are held longer, propagating larger blocker-waiter trees and increasing the likelihood of deadlocks. Simultaneously, growing lock queues raise the number of active sessions that are all poised to proceed, so when a latch or page finally frees, a burst of threads hits the same hot page, further intensifying latch contention. The feedback loop between prolonged I/O, held latches, and extended lock durations amplifies each symptom, creating a compound performance cliff that is far steeper than any individual anomaly would cause on its own.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 473,
+            "score": 0.27069426105994415,
+            "bm25_score": 32.55239335627765,
+            "lexical_score": 0.13714285714285712,
+            "matched_terms": [
+                "and",
+                "each",
+                "engine",
+                "for",
+                "in",
+                "increasing",
+                "is",
+                "its",
+                "level",
+                "or",
+                "statement",
+                "than",
+                "the",
+                "to",
+                "together",
+                "whether"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "1492",
+                "error_name": "ER_RANGE_NOT_INCREASING_ERROR",
+                "official_description": "VALUES LESS THAN value must be strictly increasing for each partition",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

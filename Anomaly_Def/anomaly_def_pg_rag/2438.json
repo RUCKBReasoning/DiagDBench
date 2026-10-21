@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Database Configuration Parameter Anomaly + CPU Resource Anomaly",
+            "Description": "Schema and Index Design Anomaly : Tables, indexes, partitions, constraints, or data types are ill-suited to the workload, forcing the optimizer into systematically inefficient access paths independent of statistics freshness or plan choice.\nDatabase Configuration Parameter Anomaly : Engine-level memory, I/O, parallelism, and background-worker settings are mis-tuned for the hardware and workload mix, so internal subsystems operate outside their optimal envelopes even when the physical resources are not inherently scarce.\nCPU Resource Anomaly : The host’s CPU cores are saturated by database processes, producing run-queue buildup, scheduler waits, and global latency spikes across queries.\n\nWhen these three root causes coincide, the workload experiences cascading and mutually reinforcing symptoms: queries that lack proper indexing fan out into large scans and excessive row lookups, inflating CPU demand; at the same time mis-sized buffer pools, work-memory, and parallelism parameters amplify the CPU pressure by provoking redundant I/O, spill-to-disk operations, and over-parallel execution. The result is chronic CPU saturation, long run-queue delays, and erratic throughput. Execution plans show full table scans and noncovering-index probes, while wait-event histograms alternate between CPU-run, memory-allocation, and I/O-related waits despite overall storage and memory not being fully utilized. Checkpoints or background autovacuum/autopurge tasks may trigger storm-like episodes that momentarily seize all CPU, further degrading foreground query latency and causing timeouts.\n\nCausally, the missing or sub-optimal indexes inflate logical I/O and predicate evaluation work, directly driving up CPU usage. The misconfigured parameters then prevent the engine from absorbing or smoothing this load: undersized buffer pools force repeated physical reads, over-aggressive parallelism multiplies CPU threads per query, and poorly timed checkpoints inject extra compute overhead. The resulting CPU saturation feeds back into longer query runtimes, which in turn sustain higher memory and worker consumption, exhausting the mis-set limits and increasing context switches. Thus, static design flaws, dynamic misconfiguration, and hard CPU exhaustion lock the system into a self-reinforcing performance spiral that is difficult to attribute to any single layer without holistic analysis.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.6892770693107381,
+            "bm25_score": 31.428200697958815,
+            "lexical_score": 0.1541680921427757,
+            "matched_terms": [
+                "access",
+                "and",
+                "any",
+                "context",
+                "execution",
+                "from",
+                "is",
+                "long",
+                "longer",
+                "of",
+                "or",
+                "out",
+                "query",
+                "resource",
+                "that",
+                "the",
+                "this",
+                "time",
+                "timed",
+                "when",
+                "work",
+                "workload"
+            ],
+            "match_count": 282,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

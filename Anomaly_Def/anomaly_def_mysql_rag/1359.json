@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Composite definition: The database is simultaneously impaired by (1) a bottleneck in the write-ahead logging subsystem that restricts log generation, flushing, switching, archiving, or retention capacity, and (2) physical corruption or logical inconsistency inside on-disk data blocks and index structures. The system must therefore cope with both stalled commit processing and unreliable persistent structures at the same time.\n\nCombined observable phenomena: Users experience rising commit and DML latency, \"log write / log sync\" wait spikes, and frequent log-file switch or archive backlog messages while, in parallel, queries randomly miss or duplicate rows, integrity-check utilities flag page-checksum or index-ordering errors, and the engine emits corruption or recovery warnings. Recovery or redo‐apply operations may loop or slow dramatically, checkpoints can thrash, and replication or backup jobs may halt because damaged pages cannot be read while required log segments remain unarchived, causing log directories to grow uncontrollably. The overlap of symptoms makes it difficult to attribute stalls solely to I/O or corruption, as each condition amplifies the other.\n\nCausal interaction: Corrupted pages or broken index links often trigger extra page reads, forced validation scans, repetitious page splits, or emergency repairs, all of which generate surges of redo records that saturate an already constrained log subsystem. The resulting log backlog delays checkpoints and archive operations, extending the time that corrupted pages stay in service and increasing the risk of additional inconsistencies. Conversely, when the log device reaches capacity or flush latency grows, incomplete commits and prolonged recovery windows raise the likelihood of torn-page or lost-write scenarios, seeding further data and index corruption. Replication or backup retries against corrupt pages can pin log segments for longer retention, intensifying log file exhaustion. Thus the two root causes form a feedback loop that progressively degrades write throughput, data correctness, recovery time, and overall system availability.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.5317113119793322,
+            "bm25_score": 21.813859150549842,
+            "lexical_score": 0.12524108003857282,
+            "matched_terms": [
+                "and",
+                "be",
+                "because",
+                "by",
+                "constrained",
+                "engine",
+                "for",
+                "is",
+                "operations",
+                "or",
+                "other",
+                "the",
+                "time",
+                "when",
+                "with"
+            ],
+            "match_count": 65,
+            "entry": {
+                "timeout_id": "mysql84_regular_expression_time_limit",
+                "parameter_name": "regexp_time_limit",
+                "timeout_category": "expression_evaluation_time_limit",
+                "scope": "global/session",
+                "official_definition": "The time limit for regular expression matching operations performed by the regular expression engine.",
+                "trigger_condition": "A regular expression match operation exceeds regexp_time_limit.",
+                "workload_impact": "The regular expression operation is constrained by the configured time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

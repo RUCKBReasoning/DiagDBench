@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + CPU Resource Anomaly",
+            "Description": "Transaction Lock Contention Anomaly: Concurrent transactions block or deadlock on mutually incompatible locks, forcing sessions to wait or be aborted by the lock manager.\nCPU Resource Anomaly: Database processes consume an abnormally high share of CPU, driving the host to sustained compute saturation.\n\nComposite definition: This anomaly denotes a workload state in which severe lock blocking/deadlocks and host-level CPU saturation arise at the same time, each rooted in its own layer yet jointly degrading throughput and latency.\n\nCombined observable phenomena: Lock-wait queues, deadlock reports, and victim rollbacks appear together with OS run-queue inflation, near-100 % CPU utilization, and pervasive scheduler wait events. Queries and transactions stall both on locks and on CPU scheduling, causing erratic response times, sharp drops in TPS, rapid growth of connection-pool backlogs, and surges of application-side timeouts or retried statements. Deadlock victims and retry loops can inflate statement counts, while blocked sessions hold locks longer, inflating both wait chains and CPU consumption once they resume, making the overall performance picture noisy and harder to diagnose.\n\nCausal chain and interaction: Heavy lock contention lengthens transaction lifetimes; the sessions that finally obtain locks often perform their work in CPU-starved conditions, extending lock hold times and propagating blocking to more sessions. Simultaneously, deadlock victim retries, spin-loops, and repeated lock acquisition attempts add extra CPU load, feeding the saturation. The saturated CPU, in turn, slows lock-manager bookkeeping, prolongs detection of deadlocks, and delays the execution and commit phases that would release locks, thereby intensifying contention. This positive feedback loop between prolonged locking and depleted CPU cycles amplifies both anomalies, accelerating performance collapse unless one of the root causes is relieved.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.43065809202503463,
+            "bm25_score": 18.730011595640022,
+            "lexical_score": 0.14088350785340314,
+            "matched_terms": [
+                "an",
+                "and",
+                "can",
+                "connection",
+                "detection",
+                "is",
+                "latency",
+                "longer",
+                "of",
+                "on",
+                "or",
+                "sessions",
+                "the",
+                "this",
+                "time",
+                "to",
+                "together",
+                "which",
+                "with"
+            ],
+            "match_count": 197,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_idle",
+                "parameter_name": "tcp_keepalives_idle",
+                "timeout_category": "network_idle_keepalive_probe_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time with no network activity after which the operating system should send a TCP keepalive message to the client.",
+                "trigger_condition": "A TCP client connection has no network activity longer than tcp_keepalives_idle on systems supporting TCP_KEEPIDLE or an equivalent socket option.",
+                "workload_impact": "Starts TCP keepalive probing for an otherwise idle client connection; together with interval and count settings this can lead to dead connection detection.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

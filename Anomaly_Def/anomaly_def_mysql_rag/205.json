@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Database Configuration Parameter Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Metadata about row counts, value distribution, and correlations is stale or incomplete, causing systematic cardinality misestimation during plan generation.\nDatabase Configuration Parameter Anomaly : Core engine parameters that govern memory, parallelism, checkpointing, and background workers are mis-tuned for the current hardware or workload, creating artificial resource bottlenecks or idle hardware.\n\nWhen both root causes are present, the database simultaneously chooses poor plans and executes them on a poorly calibrated runtime environment. Observable phenomena include:\n• Wildly inaccurate estimated-vs-actual row counts combined with sudden memory spills because work-memory or sort-buffer limits are set too low for the over-sized intermediate result sets produced by the misestimated plans.\n• Queries oscillating between serial and over-parallelized plans as the optimizer tries to compensate for bad statistics while the max-degree-of-parallelism setting is misaligned with CPU capacity, leading to CPU thrashing yet low throughput.\n• Frequent plan recompilations triggered by automatic statistics refreshes colliding with aggressive checkpoint cadence or undersized log buffers, surfacing as alternating CPULOCK or LOGWRITE waits even when neither CPU nor storage is saturated.\n• Post-bulk-load or partition-exchange workloads stalling: stale global stats drive table scans, while undersized buffer pools or too-frequent checkpoints evict the same data repeatedly, causing excessive I/O that masks the true root causes.\n\nCausal chain: stale/missing statistics push the optimizer toward execution plans that consume unexpected amounts of memory, I/O, and CPU. Misconfigured parameters then fail to absorb these spikes—e.g., low work memory forces temp-db spills, small log buffers elongate commit latency, and over-aggressive parallelism amplifies contention. Conversely, poor configuration (such as disabled auto-stats, reduced sampling rates, or altered parallel-threshold parameters after an upgrade) can itself delay or distort statistics collection, perpetuating the misestimation cycle. Together, the two anomalies reinforce each other, making performance regressions broader, harder to diagnose, and more sensitive to data-volume or workload shifts than either anomaly alone.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 825,
+            "score": 0.690698370117868,
+            "bm25_score": 57.67177270445208,
+            "lexical_score": 0.17236363636363636,
+            "matched_terms": [
+                "an",
+                "and",
+                "as",
+                "by",
+                "can",
+                "configuration",
+                "each",
+                "engine",
+                "execution",
+                "for",
+                "global",
+                "is",
+                "on",
+                "or",
+                "resource",
+                "same",
+                "set",
+                "that",
+                "the",
+                "to",
+                "together",
+                "when",
+                "with",
+                "workload"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "1851",
+                "error_name": "OBSOLETE_ER_SQL_REPLICA_SKIP_COUNTER_NOT_SETTABLE_IN_GTID_MODE",
+                "official_description": "sql_replica_skip_counter can not be set when the server is running with @@GLOBAL.GTID_MODE = ON. Instead, for each transaction that you want to skip, generate an empty transaction with the same GTID as the transaction",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

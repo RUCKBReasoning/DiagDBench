@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Storage Space Capacity Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Critical runtime parameters (memory, checkpoint cadence, log sizing, parallelism, connection limits, etc.) are mis-tuned relative to hardware capacity, workload profile, or version defaults.\nStorage Space Capacity Anomaly : Physical or logical free space for data, logs, archives, temp areas, or backups is exhausted or approaching hard limits.\nNetwork and Connectivity Resource Anomaly : Network bandwidth, latency, socket/connection slots, or listener resources are insufficient to handle the connection rate and data flow between clients and the database.\n\nWhen all three root causes manifest together, the database exhibits an intertwined failure pattern: 1) Sudden or cascading \"out of space\" errors, aborted checkpoints, and stalled DML as log or data files cannot extend; 2) Spike in application timeouts, refused or half-open connections, and client-read/write waits even though in-engine CPU and I/O counters appear low; 3) Dramatic skew in wait-event distribution—sessions pile up on log-write, client-read, buffer-pin, and space-allocation waits concurrently; 4) Long-running transactions and idle-in-transaction sessions accumulate, consuming per-session memory far beyond what the mis-configured work-mem and connection limits can sustain; 5) Background workers (vacuum, cleanup, archiver) fall behind because checkpoints thrash and network copies of archives or backups cannot complete, further accelerating space depletion and widening performance variance.\n\nCausal interaction: Mis-sized parameters (e.g., too small log files, overly aggressive checkpoint targets, oversized per-session work memory, or an inflated max-connections setting) generate excess redo, temp data, and long-lived backends, driving faster space consumption. As free space dwindles, checkpoints and archive processes run more frequently and for longer, inflating I/O bursts and producing additional log segments that must be shipped or copied. Simultaneously, a saturated or flaky network slows archive shipping, backup streaming, and client traffic, preventing timely space reclamation and causing connection retries that further overload listener and backend slots already mis-tuned. Each layer feeds the next: bad parameters accelerate space growth, space exhaustion prolongs I/O stalls that keep transactions and sockets open, and network bottlenecks block the very maintenance operations meant to relieve space and memory pressure—creating a reinforcing loop that can culminate in complete service outage or forced instance shutdown.\n",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.38226314812080375,
+            "bm25_score": 18.073409853122616,
+            "lexical_score": 0.15159574468085105,
+            "matched_terms": [
+                "and",
+                "are",
+                "be",
+                "client",
+                "clients",
+                "complete",
+                "connection",
+                "idle",
+                "in",
+                "is",
+                "latency",
+                "of",
+                "or",
+                "preventing",
+                "session",
+                "sessions",
+                "the",
+                "to",
+                "when"
+            ],
+            "match_count": 120,
+            "entry": {
+                "timeout_id": "pg16_authentication_timeout",
+                "parameter_name": "authentication_timeout",
+                "timeout_category": "connection_authentication_timeout",
+                "scope": "server",
+                "official_definition": "Maximum amount of time allowed to complete client authentication; if not completed in time, the server closes the connection.",
+                "trigger_condition": "A would-be client does not complete the authentication protocol within authentication_timeout.",
+                "workload_impact": "The server closes the connection attempt, preventing hung clients from occupying a connection indefinitely.",
+                "default_behavior": "Default value is one minute.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

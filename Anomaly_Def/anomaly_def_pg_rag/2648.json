@@ -1,0 +1,43 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Replication Synchronization Anomaly + CPU Resource Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Sessions serialize on hot buffer-cache pages, page pins, or latches, stalling logical I/O without exhausting physical memory.\nReplication Synchronization Anomaly : Replicas fall behind because they cannot receive, persist, or apply WAL / redo as fast as the primary generates it.\nCPU Resource Anomaly : Database processes monopolize host CPU, driving utilization to sustained saturation and elongating every code path.\n\nWhen all three root causes strike concurrently, the database exhibits a mingled symptom set: CPU usage stays pegged while throughput drops; wait-event dashboards alternate between page-latch waits, replication sender/receiver backlog waits, and scheduler run-queue waits. Standbys show rapidly widening replay lag, yet the primary’s log recycling stalls, inflating on-disk log volume. Hot index root pages and monotonic insert pages on the primary incur heavy latch spin, amplifying CPU burn and exposing latency spikes for both foreground queries and background writer/checkpointer threads. The same CPU saturation slows the replica’s single-threaded apply workers, so relay logs accumulate and feedback pressure to the primary intensifies. Administrators may mis-attribute the issue to any one layer because the symptoms overlap and mask each other.\n\nCausal interaction: page-level contention on the primary forces processes into tight spin loops, inflating CPU demand; the inflated CPU demand lengthens log generation intervals and stretches commit latency. High commit latency and spin burning delay the shipping of finished log segments, so replication lag widens. As replicas fall behind, the primary must retain more unrecycled log files, filling buffer cache with log-writer pages and further choking the same latch paths already under pressure. The sustained spin-loop activity keeps CPU saturated on both primary and replica, slowing latch release and apply threads alike, thereby reinforcing buffer contention and replication backlog in a positive feedback loop that degrades the entire cluster’s resilience and performance.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 176,
+            "score": 0.2375027919711072,
+            "bm25_score": 9.482839190658856,
+            "lexical_score": 0.09133813922054516,
+            "matched_terms": [
+                "and",
+                "as",
+                "cannot",
+                "or",
+                "that",
+                "the",
+                "under",
+                "usage",
+                "with"
+            ],
+            "match_count": 13,
+            "entry": {
+                "error_code": "42P10",
+                "error_name": "invalid_column_reference",
+                "official_description": "invalid column reference",
+                "error_class": "Class 42 - Syntax Error or Access Rule Violation",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "sql_and_parser",
+                "cause_analysis": "The failure is typically associated with unsupported syntax, invalid statement structure, or feature usage that the target engine version cannot execute as written.",
+                "solution_guidance": "Validate SQL syntax, target-engine compatibility, statement shape, and whether the feature is supported under the current engine version or execution context.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "syntax error",
+                    "feature rejection"
+                ]
+            }
+        }
+    }
+]

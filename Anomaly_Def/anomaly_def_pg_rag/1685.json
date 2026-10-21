@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Operating System Resource Limit Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level statement or transaction design forces the database to scan, lock, or return more data than business logic requires, inflating execution time, resource demand, and result-set size.\nOperating System Resource Limit Anomaly : Database processes hit kernel-enforced ceilings for file handles, shared memory, threads, or other per-process / cgroup quotas, leading to failures in allocating required operating-system resources.\nNetwork and Connectivity Resource Anomaly : Transport paths, listener sockets, authentication handshakes, or connection slots become saturated or throttled, causing delays, refusals, and dropped or stalled client connections.\n\nWhen all three anomalies are present, the system exhibits an intertwined failure pattern: long-running or chatty SQL inflates the number and lifetime of sessions, each retaining open files, sockets, and memory segments until OS limits are exhausted. As limits are reached, the database intermittently fails to create back-end threads, accept new connections, or perform I/O, producing kernel “too many open files,” “cannot allocate memory,” or “cannot create thread” errors while simultaneous client-side timeouts, handshake failures, and rising retransmissions appear. Slow, data-heavy queries hold network sockets open for extended periods, clogging listener backlogs and leading to a surge of half-open or idle sockets. Application retries, triggered by connection failures, further lengthen transaction queues and exacerbate slow-query tails, making symptoms difficult to attribute to any single layer.\n\nCausally, inefficient SQL amplifies resource consumption per session—larger scans demand more file descriptors and shared memory, while bulky result sets and extended transaction windows monopolize sockets and keep network buffers full. This elevated baseline drives the system toward kernel limits; once those limits are crossed, the OS blocks new threads or I/O, which in turn forces the database to reject or stall additional work. Rejected or slow connections provoke client-side retry storms that inflate connection counts, magnify socket and authentication pressure, and deepen OS resource exhaustion. The feedback loop of heavy SQL, kernel-level denials, and network congestion accelerates degradation, potentially progressing from sporadic slowdowns to partial outages and, ultimately, complete service unavailability.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 194,
+            "score": 0.32172218194598484,
+            "bm25_score": 19.13787717081064,
+            "lexical_score": 0.14985875706214688,
+            "matched_terms": [
+                "and",
+                "by",
+                "execution",
+                "failure",
+                "in",
+                "level",
+                "limit",
+                "logic",
+                "many",
+                "or",
+                "pressure",
+                "resource",
+                "sql",
+                "statement",
+                "the",
+                "to",
+                "too",
+                "workload"
+            ],
+            "match_count": 12,
+            "entry": {
+                "error_code": "54023",
+                "error_name": "too_many_arguments",
+                "official_description": "too many arguments",
+                "error_class": "Class 54 - Program Limit Exceeded",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

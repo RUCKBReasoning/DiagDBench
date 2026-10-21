@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Buffer Cache and Latch Contention Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Obsolete row versions, rollback records, and dead index entries accumulate faster than background cleanup can reclaim them, swelling the version store and bloating heap and index pages.\nBuffer Cache and Latch Contention Anomaly : Concurrent sessions stall while fighting for buffer-cache pages, lightweight latches, and dirty-page flush slots, causing CPU spin and prolonged page waits.\nData Block and Index Integrity Anomaly : Physical data or index pages become internally inconsistent—checksums fail, key order breaks, or page links go missing—so logical access paths can no longer be trusted.\n\nWhen these three root causes strike together, the system shows a tangled mixture of symptoms: rapidly growing tables and indexes raise the buffer-pool residency pressure; the same hot, bloated, or corrupted pages are repeatedly pinned, evicted, and reread, amplifying latch and I/O waits; index or heap corruption forces query planners to fall back to full scans that must wade through mountains of obsolete versions; integrity-verification or auto-recovery tasks repeatedly touch damaged pages, further heating contention hotspots; cleanup workers run constantly yet make little visible progress, while sessions see latency spikes, duplicate or missing rows, and intermittent corruption warnings.\n\nCausal interaction: excessive version churn expands the number of dirty and frequently accessed pages, lengthening the time each page stays in the buffer pool and widening the window for latch contention. Prolonged latch holds and buffer pressure delay vacuum or purge workers, letting even more obsolete versions accumulate. The sustained write amplification increases checkpoint volume and I/O stress, heightening the risk of torn-page events or incomplete flushes that introduce on-disk corruption. Once corruption appears, every access to the damaged pages triggers additional retries, verification reads, or full-page writes, keeping the pages perpetually hot and further intensifying latch contention and cleanup backlog. The three anomalies therefore reinforce one another in a feedback loop that degrades throughput, threatens data correctness, and complicates diagnosis.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.5177796547979407,
+            "bm25_score": 18.155506726739638,
+            "lexical_score": 0.1408751793400287,
+            "matched_terms": [
+                "and",
+                "are",
+                "be",
+                "can",
+                "dead",
+                "latency",
+                "number",
+                "of",
+                "on",
+                "or",
+                "progress",
+                "sessions",
+                "system",
+                "that",
+                "the",
+                "time",
+                "to",
+                "when"
+            ],
+            "match_count": 228,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_count",
+                "parameter_name": "tcp_keepalives_count",
+                "timeout_category": "network_keepalive_failure_threshold",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the number of TCP keepalive messages that can be lost before the server connection to the client is considered dead.",
+                "trigger_condition": "The number of lost TCP keepalive probes reaches tcp_keepalives_count on systems supporting TCP_KEEPCNT.",
+                "workload_impact": "The server can consider the client connection dead after the configured keepalive failure threshold.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

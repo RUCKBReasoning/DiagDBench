@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Transaction Lock Contention Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Schema and Index Design Anomaly : A static mismatch between table structure, partitioning, and indexing versus actual access patterns, forcing scans and non-covering lookups that bloat I/O and touch far more rows or pages than necessary.\nTransaction Lock Contention Anomaly : Concurrent transactions request incompatible locks on the same resources, creating long blocking chains or deadlocks that throttle throughput and trigger rollbacks or timeouts.\nTransaction Log Subsystem Anomaly : The write-ahead log path—buffer, files, flushing, or archiving—cannot absorb the redo volume, so commits stall on log-write, switch, or archive waits.\n\nWhen these three root causes are present simultaneously, the database experiences a cascade of compounding symptoms: inefficient queries read or modify large row sets, acquiring wider or higher-level locks; those locks are held longer because each commit must wait for a slow log flush; prolonged lock holding inflates blocking queues, raises deadlock frequency, and pushes more sessions into retry loops. Meanwhile, the same lock contention and repeated rollbacks intensify redo generation, further saturating the log subsystem. Observable metrics therefore show a mixture of full-scan plans, skyrocketing buffer and physical reads, lock and deadlock wait events, steadily rising log-write and log-sync waits, checkpoint storms, and sudden collapses in transaction throughput that recover only after both indexing/design fixes and log-path relief are applied.\n\nCausally, missing or poorly chosen indexes inflate the data footprint of each statement, so even simple lookups convert to large scans or range updates that require broad row/page locks. The greater the locked footprint, the higher the probability that concurrent sessions collide, escalating to page or table locks. Each blocked or deadlocked transaction must later redo its work, doubling log traffic. Simultaneously, the oversized DML operations and additional rollbacks swell redo volume per transaction, quickly overrunning an already undersized or slow log subsystem. Log flush delays lengthen transaction lifetimes, keeping locks active and propagating contention to other sessions. The feedback loop—poor design → bigger locks → slower commits → longer lock retention → more contention and redo → worse log pressure—drives the system into a self-reinforcing performance spiral until both the schema/index issues and log throughput bottleneck are resolved.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1524,
+            "score": 0.3826530392351613,
+            "bm25_score": 49.511290634266956,
+            "lexical_score": 0.13909090909090907,
+            "matched_terms": [
+                "after",
+                "and",
+                "archive",
+                "archiving",
+                "cannot",
+                "in",
+                "its",
+                "level",
+                "log",
+                "must",
+                "or",
+                "pressure",
+                "redo",
+                "retry",
+                "statement",
+                "the",
+                "to",
+                "trigger"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "3982",
+                "error_name": "ER_INNODB_REDO_ARCHIVING_ENABLED",
+                "official_description": "Cannot perform operation as InnoDB is archiving redo log. Please retry after stopping redo archive by invoking innodb_redo_log_archive_stop()",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

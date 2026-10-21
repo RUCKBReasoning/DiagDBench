@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Database Memory Allocation Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Engine-level parameters are mis-tuned relative to hardware capacity, workload mix, or version defaults, leading to disproportionate waits or bursts of background activity even when physical resources are not fully utilized.\nDatabase Memory Allocation Anomaly : The database process allocates and retains more memory than the host can safely provide, triggering OS pressure, paging, or OOM events and causing volatile cache behavior.\nData Block and Index Integrity Anomaly : On-disk pages or index structures become physically or logically corrupted, breaking key order, page links, or checksums and making persisted data unreliable.\n\nWhen these three root causes coexist, the system exhibits a tangled set of symptoms:  • Sudden memory pressure from oversized work areas or buffer pools coincides with erratic checkpoint storms and aggressive log flushing driven by mis-set parameters, amplifying latency spikes.  • Paging, swap, or forced restarts caused by memory exhaustion interrupt I/O patterns, after which corruption errors, checksum failures, or divergent index/heap row counts surface during crash recovery or routine queries.  • Administrators observe oscillations between CPU-bound spin waits (due to mis-tuned parallelism or background workers), I/O idle periods with heavy log-write waits, and integrity-check failures that force query plan fallbacks to full scans, making performance troubleshooting highly ambiguous.\n\nCausal chain: inappropriate configuration settings (e.g., over-sized shared buffers, unlimited per-session work memory, aggressive checkpoint intervals) drive the engine to claim excessive memory. This sustained pressure provokes OS paging and ungraceful process terminations; the resulting write amplification, incomplete flushes, or aborted background operations heighten the probability of torn pages and index inconsistencies. Conversely, latent corruption can inflate memory usage—repeated retries, error logging, and forced cache invalidations—prompting administrators to further tweak parameters, unintentionally enlarging memory footprints. The feedback loop between bad parameters, runaway memory allocation, and emerging physical corruption degrades both performance and data reliability, placing the database into a progressively unstable state that affects transactional and analytical workloads alike.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.734568048668696,
+            "bm25_score": 22.962570456151134,
+            "lexical_score": 0.1673784582326081,
+            "matched_terms": [
+                "aborted",
+                "activity",
+                "after",
+                "and",
+                "are",
+                "between",
+                "can",
+                "check",
+                "during",
+                "idle",
+                "latency",
+                "not",
+                "or",
+                "pools",
+                "queries",
+                "query",
+                "session",
+                "system",
+                "that",
+                "the",
+                "this",
+                "when"
+            ],
+            "match_count": 189,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

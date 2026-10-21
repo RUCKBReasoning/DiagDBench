@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Replication Synchronization Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Composite Definition: The database simultaneously suffers (1) an on-host transaction-log write/flush bottleneck, (2) an off-host replication receive/replay backlog, and (3) saturation of the network and connection-handling layer that transports client traffic and ships the log stream. Together these three intertwined faults cripple the end-to-end commit, ship, and replay pipeline that protects transactional durability and availability. \n\nAmplified Observable Phenomena: • Application commits stall with soaring log-flush and log-sync waits, while archive or redo directories grow rapidly because completed segments cannot be recycled. • Replication monitoring shows diverging LSN/SCN gaps, increasing send/receive/replay lag, and bloated relay logs. • Listener queues fill, new sessions experience authentication or TCP timeouts, and established sessions pile up in client-read/client-write waits; network interfaces report retransmits and elevated RTT. • Checkpoint storms, frequent log switches, and \"cannot allocate log\" or \"replication retention\" alerts appear concurrently, and failover readiness drops as replicas fall hours behind. The combination makes it difficult to determine whether the primary, the network, or the replicas are at fault, while all three layers exhibit degraded performance.\n\nCausal Interaction: A slow or full transaction-log device lengthens commit latency and forces aggressive log switching; each switch amplifies the volume of log data that must traverse the network to replicas. Constrained network bandwidth, high packet loss, or listener saturation then throttles log shipping, enlarging replication lag and forcing the primary to retain additional log segments. This retention prevents log recycling, further filling the already stressed log disk and intensifying the log write/flush bottleneck. Meanwhile, frustrated applications open more connections or retry failed attempts, swelling connection pools and exhausting socket and backend slots, which in turn worsens network congestion and listener delays. The reinforcing loop between log I/O saturation, replication backlog, and network/connection exhaustion leads to cascading slowdowns, potential log-device exhaustion, and risk of primary unavailability under OLTP workloads.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 15,
+            "score": 0.5159354387857006,
+            "bm25_score": 17.843815206931275,
+            "lexical_score": 0.13205741626794257,
+            "matched_terms": [
+                "and",
+                "are",
+                "client",
+                "data",
+                "latency",
+                "loss",
+                "network",
+                "or",
+                "packet",
+                "read",
+                "slow",
+                "the",
+                "this",
+                "whether",
+                "write"
+            ],
+            "match_count": 41,
+            "entry": {
+                "timeout_id": "mysql84_xplugin_read_timeout",
+                "parameter_name": "mysqlx_read_timeout",
+                "timeout_category": "x_protocol_network_read_timeout",
+                "scope": "global/session/X Plugin",
+                "official_definition": "Read timeout for X Plugin network communication.",
+                "trigger_condition": "A MySQL X Protocol read operation exceeds mysqlx_read_timeout.",
+                "workload_impact": "The X Protocol network read operation times out.",
+                "default_behavior": "Defined as a MySQL X Plugin system variable.",
+                "system_domain": "network_transport",
+                "cause_analysis": "This timeout is usually triggered when network data is not acknowledged, received, or written within the configured transport-level waiting window.",
+                "solution_guidance": "Inspect packet loss, transport latency, client responsiveness, proxy behavior, and whether slow consumers or unstable links are delaying network progress.",
+                "observable_symptoms": [
+                    "network timeout",
+                    "disconnect",
+                    "read/write interruption"
+                ]
+            }
+        }
+    }
+]

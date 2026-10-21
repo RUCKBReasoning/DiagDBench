@@ -1,0 +1,61 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Database Memory Allocation Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "SQL Workload Logic Anomaly: Application-level statements or transaction logic oblige the engine to process and keep more rows, data, or transactional state than business requirements dictate.\nDatabase Memory Allocation Anomaly: Engine memory structures—buffer pools, work areas, caches, and session heaps—grow beyond the host’s safe physical limits, provoking paging, OOM terminations, or cache churn.\nBuffer Cache and Latch Contention Anomaly: Sessions serialize on hot buffer pages and associated latches, suffering wait-time spikes, CPU spin, and stalled I/O while vying for page access or flush slots.\n\nWhen these three root causes strike concurrently, the system exhibits extreme and erratic latency, with the same costly statements flooding slow-query logs while overall throughput collapses. Over-wide scans and long transactions inflate the working-set size, which in turn bloats buffer and work memory, driving the process resident set to the edge of physical RAM. Sustained memory pressure triggers paging, shrinking effective cache size and forcing constant page eviction. The resulting churn elevates buffer-busy and page-latch waits, causing CPU spin loops, queueing on hot pages, checkpoint stalls, and eventually OOM kills or node eviction. From the application perspective, users see timeouts, sporadic retries, and unpredictable performance cliffs that are difficult to attribute to a single layer because SQL, memory, and latch waits interleave in AWR/STATISTICS views.\n\nCausal chain: Inefficient SQL enlarges data touches and keeps transactions open longer, inflating per-query work areas and populating the buffer cache with more pages than hardware can comfortably hold. The excess allocations intensify memory pressure; once the OS begins reclaiming pages, cache turnover accelerates. Frequent evictions force the same hot root or sequence pages to be reloaded repeatedly, concentrating traffic and amplifying latch contention. Meanwhile, latch waits prolong each statement, stretching transaction lifetimes and further increasing the volume of in-memory state, which circles back to exacerbate memory exhaustion. Thus, the semantic inefficiencies of the workload ignite a feedback loop with memory over-commitment and buffer-latch hot spots, producing a severe, multifaceted performance degradation that persists until all underlying causes are addressed together.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.7544879742127448,
+            "bm25_score": 39.48485684234551,
+            "lexical_score": 0.1816265807091495,
+            "matched_terms": [
+                "access",
+                "and",
+                "be",
+                "because",
+                "contention",
+                "from",
+                "long",
+                "longer",
+                "more",
+                "of",
+                "or",
+                "query",
+                "session",
+                "sql",
+                "statement",
+                "than",
+                "that",
+                "the",
+                "time",
+                "together",
+                "until",
+                "when",
+                "with",
+                "work",
+                "workload"
+            ],
+            "match_count": 175,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

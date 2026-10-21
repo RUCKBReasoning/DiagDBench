@@ -1,0 +1,59 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Database Memory Allocation Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Engine-level runtime settings (e.g., buffer-pool size, per-session work memory, checkpoint cadence, connection limits) are mis-aligned with hardware capacity, workload mix, or version defaults.\nDatabase Memory Allocation Anomaly : Database components collectively consume more physical memory or swap than the host can safely supply, leading to paging, OOM events, or node eviction.\nNetwork and Connectivity Resource Anomaly : Transport, listener, authentication, or socket resources cannot sustain the offered connection or data-transfer rate, producing connection errors, backlog growth, or elevated client-read/write waits.\n\nWhen all three root causes appear together, symptoms overlap and amplify: connection storms and retry loops inflate backend counts that already exceed mis-tuned connection limits; every new session reserves oversized work memory, rapidly exhausting RAM and triggering operating-system paging or OOM kills. Memory pressure stalls backends, lengthening query turnaround and enlarging in-flight result sets, which in turn hold sockets open and deepen network backlog. Wait-event charts show simultaneous client-read/client-write stalls, log-write or checkpoint spikes divorced from actual I/O utilization, and CPU time lost to memory-pressure spin waits. The database may repeatedly restart, dropping TCP sessions and forcing clients into further reconnect attempts, while half-open sockets accumulate because listener backlog and keepalive timers are set too low.\n\nCausal chain: misconfigured parameters (high work_mem, high parallel-worker counts, lenient connection caps) initiate excessive per-session memory reservation. The resulting memory exhaustion slows or terminates backends, which increases latency and provokes client retries, swelling the active connection pool and socket queues. Network bottlenecks then prolong each session’s lifetime, causing even more memory to remain pinned. Conversely, dropped or timed-out connections create bursts of new logins that re-invoke the misconfiguration and allocation cycle. Thus, each root cause reinforces the others—parameter mis-tuning drives memory over-consumption, memory pressure magnifies network latency, and network congestion feeds back into connection growth—producing a cascading degradation that is more severe and harder to diagnose than any single anomaly alone.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.7495601249349296,
+            "bm25_score": 25.598911647607316,
+            "lexical_score": 0.16520041644976574,
+            "matched_terms": [
+                "and",
+                "because",
+                "cannot",
+                "client",
+                "connection",
+                "is",
+                "lifetime",
+                "network",
+                "of",
+                "or",
+                "overlap",
+                "retry",
+                "session",
+                "sessions",
+                "than",
+                "the",
+                "to",
+                "wait",
+                "waits",
+                "when",
+                "while",
+                "write"
+            ],
+            "match_count": 68,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

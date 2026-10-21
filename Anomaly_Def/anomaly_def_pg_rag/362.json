@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Query Plan Selection Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Row-count, histogram, density, and correlation metadata no longer match the actual data, causing systematic cardinality misestimation.\nQuery Plan Selection Anomaly : The cost model or plan-cache logic chooses a markedly sub-optimal execution plan even though statistical inputs are nominally adequate.\nData Block and Index Integrity Anomaly : On-disk pages or index structures are physically or logically corrupted, so the storage layer can no longer guarantee that index lookups or heap scans return the correct rows.\n\nWhen all three root causes coexist, the database can exhibit mutually reinforcing symptoms: estimates in execution plans are wildly inaccurate, but even repeated statistics refreshes fail to correct them; identical SQL statements oscillate between very different plans, some of which rely on damaged index structures and therefore return wrong or fluctuating result sets; operators that the optimizer expected to be inexpensive explode in runtime because they read chains of corrupt pages or because the true row counts are far higher than estimated; integrity-check utilities, plan re-compilations, and excessive statement retries appear together in logs, while performance swings and correctness errors grow harder to attribute to any single layer.\n\nCausally, stale or missing statistics can mislead the optimizer into selecting access paths that rely heavily on particular indexes; if those indexes are partially corrupted, the resulting runtime faults amplify execution cost and may trigger emergency plan invalidations, pushing the optimizer toward alternative but still sub-optimal plans. Conversely, corruption that silently drops or duplicates keys distorts sampling during automatic statistics collection, further degrading cardinality accuracy. The optimizer, deprived of reliable metadata and forced to choose among degraded structures, produces erratic plans whose poor execution characteristics impose additional I/O and recovery stress, potentially aggravating latent corruption. The intertwined feedback loop between bad statistics, bad plans, and bad pages intensifies both performance degradation and data-quality risk.\n",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.7393571428571428,
+            "bm25_score": 26.295841603970533,
+            "lexical_score": 0.1311904761904762,
+            "matched_terms": [
+                "and",
+                "any",
+                "because",
+                "database",
+                "index",
+                "longer",
+                "metadata",
+                "of",
+                "or",
+                "row",
+                "statement",
+                "than",
+                "that",
+                "the",
+                "to",
+                "when",
+                "while"
+            ],
+            "match_count": 181,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Transaction Lock Contention Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Optimizer Statistics Anomaly : Row-count and data-distribution statistics are stale, missing, or inaccurate, driving systematic cardinality misestimates and sub-optimal execution-plan choices.\nTransaction Lock Contention Anomaly : Concurrent sessions acquire incompatible locks on the same resources, causing blocking chains or deadlocks that stall or abort transactions.\nStorage I/O Throughput Anomaly : Physical read/write demand exceeds the bandwidth or IOPS that the underlying storage can deliver, inflating I/O latency and queue depth.\n\nWhen all three root causes arise together, the database exhibits a compound failure pattern: bad statistics make the optimizer favor full scans, hash joins, or broad index ranges that inflate the physical I/O footprint. The resulting surge of page reads and log writes pushes the storage subsystem beyond its throughput limits, lengthening every I/O. Statements and transactions therefore hold row, page, and metadata locks far longer than usual, causing long blocker-waiter chains, frequent deadlocks, and application timeouts. Meanwhile, auto-update statistics jobs and user-initiated ANALYZE commands are themselves delayed by lock waits and slow I/O, so the statistics remain stale, plans stay poor, and the cycle perpetuates. Symptom telemetry shows extreme divergence between estimated and actual rows, soaring PAGEIOLATCH/WRITELOG or comparable wait classes, lock and deadlock graphs growing in width and depth, and CPU trending moderate because execution is throttled by I/O and lock waits rather than computation.\n\nCausally, inaccurate statistics start the chain by producing plans that overrun the storage system; saturated I/O then stretches lock hold times, directly amplifying contention in a transactional workload. In turn, heavy blocking prevents timely statistics collection and keeps I/O-intensive maintenance or checkpoint activities queued, which sustains the storage bottleneck. Each anomaly thus reinforces the others, driving a feedback loop that degrades throughput and undermines both concurrency control and optimizer accuracy.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 16,
+            "score": 0.3605411180453337,
+            "bm25_score": 14.390646616438536,
+            "lexical_score": 0.11663773412517131,
+            "matched_terms": [
+                "and",
+                "are",
+                "data",
+                "exceeds",
+                "is",
+                "latency",
+                "or",
+                "read",
+                "slow",
+                "the",
+                "times",
+                "when",
+                "write"
+            ],
+            "match_count": 4,
+            "entry": {
+                "timeout_id": "mysql84_xplugin_write_timeout",
+                "parameter_name": "mysqlx_write_timeout",
+                "timeout_category": "x_protocol_network_write_timeout",
+                "scope": "global/session/X Plugin",
+                "official_definition": "Write timeout for X Plugin network communication.",
+                "trigger_condition": "A MySQL X Protocol write operation exceeds mysqlx_write_timeout.",
+                "workload_impact": "The X Protocol network write operation times out.",
+                "default_behavior": "Defined as a MySQL X Plugin system variable.",
+                "system_domain": "network_transport",
+                "cause_analysis": "This timeout is usually triggered when network data is not acknowledged, received, or written within the configured transport-level waiting window.",
+                "solution_guidance": "Inspect packet loss, transport latency, client responsiveness, proxy behavior, and whether slow consumers or unstable links are delaying network progress.",
+                "observable_symptoms": [
+                    "network timeout",
+                    "disconnect",
+                    "read/write interruption"
+                ]
+            }
+        }
+    }
+]

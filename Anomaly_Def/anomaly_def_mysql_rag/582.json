@@ -1,0 +1,46 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + MVCC Version Maintenance Anomaly + Database Memory Allocation Anomaly",
+            "Description": "Schema and Index Design Anomaly: Static mismatch between physical data model (tables, indexes, partitions, data types, constraints) and actual access patterns forces inefficient scans and look-ups.\nMVCC Version Maintenance Anomaly: Obsolete row versions and rollback records outpace background cleanup, causing table and index bloat and longer visibility checks under concurrent OLTP traffic.\nDatabase Memory Allocation Anomaly: Aggregate memory consumed by buffers, work areas, plan cache, and background workers exceeds available physical RAM, triggering paging, OOM events, and cache churn.\n\nWhen these three root causes manifest together, the database exhibits compounded symptoms: tables and indexes grow rapidly from both design-induced full scans and MVCC bloat, swelling the buffer cache and temporary work areas until the host faces sustained memory pressure, swap thrashing, and sporadic process terminations. Queries that already suffer from missing or non-covering indexes now read ever-larger bloated relations, producing longer execution times, misestimated plans, and runaway hash/sort buffers. Background vacuum or purge processes stay perpetually active yet ineffective, while their own memory use competes with foreground sessions, further depressing cache hit ratios and inflating I/O. Administrators may observe steeply rising disk usage, frequent checkpoint or eviction storms, and a feedback loop of degraded throughput, erratic latency spikes, and heightened crash risk.\n\nCausally, poor schema and index design forces excessive sequential scans and wide updates/deletes that generate large numbers of new row versions. The surge in version creation stresses MVCC cleanup; as autovacuum or purge workers fall behind, heaps and indexes expand, multiplying the data each scan must touch. The swelling on-disk structures inflate buffer-pool demand and per-query memory needs; combined with uncontrolled work-area allocations, this pushes the engine beyond physical memory limits, invoking the operating system’s paging or OOM killer. Memory pressure slows both user queries and cleanup workers, allowing even more version accumulation and bloat. Thus, each anomaly accelerates the others, creating a vicious cycle that severely impairs OLTP performance and stability.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 15,
+            "score": 0.2651892099653662,
+            "bm25_score": 8.890946496852193,
+            "lexical_score": 0.08593558907460253,
+            "matched_terms": [
+                "and",
+                "data",
+                "exceeds",
+                "latency",
+                "or",
+                "read",
+                "the",
+                "this",
+                "times",
+                "when"
+            ],
+            "match_count": 11,
+            "entry": {
+                "timeout_id": "mysql84_xplugin_read_timeout",
+                "parameter_name": "mysqlx_read_timeout",
+                "timeout_category": "x_protocol_network_read_timeout",
+                "scope": "global/session/X Plugin",
+                "official_definition": "Read timeout for X Plugin network communication.",
+                "trigger_condition": "A MySQL X Protocol read operation exceeds mysqlx_read_timeout.",
+                "workload_impact": "The X Protocol network read operation times out.",
+                "default_behavior": "Defined as a MySQL X Plugin system variable.",
+                "system_domain": "network_transport",
+                "cause_analysis": "This timeout is usually triggered when network data is not acknowledged, received, or written within the configured transport-level waiting window.",
+                "solution_guidance": "Inspect packet loss, transport latency, client responsiveness, proxy behavior, and whether slow consumers or unstable links are delaying network progress.",
+                "observable_symptoms": [
+                    "network timeout",
+                    "disconnect",
+                    "read/write interruption"
+                ]
+            }
+        }
+    }
+]

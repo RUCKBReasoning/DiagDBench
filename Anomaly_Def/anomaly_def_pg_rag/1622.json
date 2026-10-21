@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Buffer Cache and Latch Contention Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Composite Definition: Simultaneous occurrence of transaction-level lock conflicts, low-level buffer or latch serialization, and saturation of network/connection resources. The database engine is therefore impeded at three tiers—lock manager, buffer manager, and client connectivity—causing stacked waits that severely limit progress of OLTP requests.\n\nObservable Manifestation: Users see sharp and erratic increases in response time, timeouts during statement execution as well as during connection establishment, frequent deadlock or lock-wait victim errors, surging page-latch/buffer-busy waits, CPU spin without throughput gains, and a growing backlog of client sessions blocked in socket read/write or authentication phases. Internal monitoring shows long blocker-waiter chains, elevated lock-wait and deadlock detector activity, hot data pages with prolonged latch hold times, saturated buffer flush or I/O slots, and operating-system socket queues filling up. Overall, transaction throughput collapses while resource utilization oscillates between CPU spin (latch contention), I/O stalls (buffer churn), and idle waits on network operations.\n\nCausal Interaction: Network congestion or connection-pool exhaustion makes each client round-trip slower, holding transactions open longer and extending the lifetime of their locks and page pins. These extended lifetimes intensify lock contention; blocked transactions in turn keep buffer pages and their latches occupied, amplifying buffer-level serialization. Meanwhile, latch contention and slow page access prolong critical sections inside the engine, further delaying lock releases and enlarging blocking chains. The resulting backlog of inactive yet connected sessions overwhelms listener sockets and authentication workers, feeding back into the network/connectivity bottleneck. Together, the three layers reinforce each other in a positive feedback loop that degrades concurrency, inflates wait times across all tiers, and risks systemic throughput collapse.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.4379136273441145,
+            "bm25_score": 16.291657328550624,
+            "lexical_score": 0.17306210881078476,
+            "matched_terms": [
+                "activity",
+                "and",
+                "authentication",
+                "client",
+                "connection",
+                "establishment",
+                "holding",
+                "idle",
+                "inside",
+                "is",
+                "longer",
+                "of",
+                "open",
+                "or",
+                "progress",
+                "sessions",
+                "that",
+                "the",
+                "time",
+                "transaction",
+                "with"
+            ],
+            "match_count": 238,
+            "entry": {
+                "timeout_id": "pg16_idle_session_timeout",
+                "parameter_name": "idle_session_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle, but not within an open transaction, for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle and not inside an open transaction longer than the configured threshold.",
+                "workload_impact": "The session is terminated; the documentation warns about using this with connection pools or middleware.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

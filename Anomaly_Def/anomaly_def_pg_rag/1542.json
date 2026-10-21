@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Database Memory Allocation Anomaly + CPU Resource Anomaly",
+            "Description": "Schema and Index Design Anomaly: Static mismatch between physical data model (tables, indexes, partitions, data types, constraints) and the workload’s access patterns, forcing inefficient access paths.\nDatabase Memory Allocation Anomaly: Excessive or uncontrolled growth of buffer caches, work areas, plan cache, or background heaps that pushes the host into memory pressure, paging, or OOM situations.\nCPU Resource Anomaly: Sustained saturation of host CPU by database processes, producing long run queues, context-switch storms, and system-wide latency spikes.\n\nWhen all three root causes collide, the workload exhibits reinforcing symptoms: queries lacking proper indexing devolve into full scans and large hash/sort phases that allocate massive work buffers, rapidly inflating memory use. Memory pressure causes frequent buffer evictions, swap activity, and plan-cache churn, which forces additional physical reads and re-parses. The repeated large scans and reprocessing cycles drive CPU utilization to sustained saturation; concurrently, kernel and engine wait events show paging, scheduler contention, and memory latch waits. End-user latency and throughput fluctuate unpredictably as some statements time out under CPU exhaustion while others stall on memory faults or buffer re-loads, making performance problems appear both widespread and erratic.\n\nCausally, a poor schema/index design initiates oversized I/O and compute work per statement. These bloated operations consume large per-query work areas and enlarge the buffer and plan caches, triggering the memory allocation anomaly. Once the host starts paging or throttling memory requests, every buffer miss forces extra CPU cycles for re-reads, decryption, decompression, and re-planning, driving the CPU resource anomaly. Elevated CPU pressure, in turn, slows background flushers and memory reclamation threads, delaying buffer recycling and exacerbating memory bloat. The vicious cycle—inefficient data access → excessive memory use → CPU saturation → slower reclamation → further memory and CPU stress—amplifies each constituent anomaly and pushes the database into a state where small workload surges or maintenance tasks can precipitate acute outages.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.40982892589480013,
+            "bm25_score": 14.250841265857765,
+            "lexical_score": 0.1109918000780945,
+            "matched_terms": [
+                "and",
+                "context",
+                "for",
+                "long",
+                "of",
+                "or",
+                "query",
+                "schema",
+                "statement",
+                "that",
+                "the",
+                "time",
+                "user",
+                "when",
+                "while"
+            ],
+            "match_count": 237,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

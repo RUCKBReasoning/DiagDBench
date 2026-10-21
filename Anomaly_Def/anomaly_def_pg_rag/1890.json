@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Replication Synchronization Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Runtime settings governing memory, checkpoints, parallelism, etc. are mis-tuned relative to hardware, workload, or version defaults.\nReplication Synchronization Anomaly : Standbys or downstream consumers cannot receive or apply WAL/redo at the rate the primary produces it, leading to widening log-position gaps and replay lag.\nData Block and Index Integrity Anomaly : On-disk pages and index structures are physically or logically corrupted, causing checksums, ordering, or mappings to diverge from expected states.\n\nWhen these three root causes manifest together, the system exhibits an intertwined symptom set: replication lag grows erratically while the primary shows unusual wait patterns (e.g., log-write stalls without storage saturation), standby apply threads hit corruption errors that pause or crash replay, primary log segments are retained far beyond normal because corruption prevents truncation and replication prevents recycling, checkpoint storms triggered by mis-configured parameters stress I/O, and replicas remain perpetually behind, delivering stale or inconsistent reads and jeopardizing failover readiness. Administrators may observe cascading alert storms—parameter-related wait events, replication lag metrics, and integrity-check failures—without an obvious single point of failure, and traditional tuning or repair actions taken in isolation fail to restore stability.\n\nCausally, mis-tuned engine parameters can inflate checkpoint frequency or shrink log buffers, increasing the volume and burstiness of WAL traffic that replicas must ingest. This amplified throughput collides with latent data-page or index corruption on standbys—or surfaces hidden corruption on the primary—which forces replication apply processes to halt or retry, further widening lag. Simultaneously, corruption that blocks log recycling holds additional segments on the primary, exacerbating space pressure and triggering even more aggressive checkpointing dictated by the misguided configuration. The feedback loop between excessive WAL generation, replication backlog, and corruption-induced replay failures drives the system into a degraded state that neither single-dimension tuning nor isolated page repair can resolve.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.7022240399264226,
+            "bm25_score": 19.392465946847743,
+            "lexical_score": 0.13519230769230767,
+            "matched_terms": [
+                "an",
+                "and",
+                "are",
+                "can",
+                "check",
+                "of",
+                "on",
+                "or",
+                "settings",
+                "stale",
+                "system",
+                "the",
+                "this",
+                "to",
+                "together",
+                "triggered",
+                "when",
+                "which",
+                "with"
+            ],
+            "match_count": 255,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_idle",
+                "parameter_name": "tcp_keepalives_idle",
+                "timeout_category": "network_idle_keepalive_probe_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time with no network activity after which the operating system should send a TCP keepalive message to the client.",
+                "trigger_condition": "A TCP client connection has no network activity longer than tcp_keepalives_idle on systems supporting TCP_KEEPIDLE or an equivalent socket option.",
+                "workload_impact": "Starts TCP keepalive probing for an otherwise idle client connection; together with interval and count settings this can lead to dead connection detection.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

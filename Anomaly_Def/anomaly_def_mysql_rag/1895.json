@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Database Configuration Parameter Anomaly + Buffer Cache and Latch Contention Anomaly",
+            "Description": "Optimizer Statistics Anomaly: Stale, missing, or insufficiently detailed optimizer statistics misrepresent actual data distribution, causing systematic cardinality errors and mis-costed plan choices.\nDatabase Configuration Parameter Anomaly: Engine-level parameters (memory pools, checkpoint cadence, parallelism, etc.) are mis-tuned for the hardware or workload, distorting internal behaviors without any true resource exhaustion.\nBuffer Cache and Latch Contention Anomaly: Sessions contend for shared buffer pages, latches, or I/O slots inside the buffer manager, leading to wait-state storms and CPU spin that serialize access at the page level.\n\nWhen all three root causes coexist, the symptoms overlap and intensify: queries chosen by a misinformed optimizer funnel excessive traffic onto a small set of index or heap pages, while an undersized or aggressively flushed buffer pool (the result of bad configuration parameters) keeps those pages hot, repeatedly evicting and reloading them. The amplified page churn widens the gap between estimated and actual row counts, triggers frequent plan recompilations, and pushes latch and buffer-busy waits to the top of the wait-event profile. Observables include wildly inaccurate cardinality estimates in plans, sudden spikes in page-latch and buffer-busy waits despite low overall CPU or I/O utilization, checkpoint or flush storms immediately after DML bursts, and erratic throughput that worsens after configuration or data-loading events.\n\nCausally, stale or incomplete statistics misdirect the optimizer toward plan shapes (e.g., nested loops or single-threaded index probes) that hammer a narrow set of pages. Misconfigured parameters—such as an undersized buffer cache, overly frequent checkpoints, or excessive per-session work memory—reduce the cache residency of those hot pages and increase dirty-page pressure, provoking more latch acquisitions and longer retention times. The resulting latch contention inflates query runtimes, holding locks and pins longer, which in turn delays background processes that would otherwise refresh statistics or advance checkpoints. This feedback loop deepens cardinality inaccuracy, aggravates configuration stress points, and drives the system into a persistent high-latency, low-throughput state.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.6941162614531563,
+            "bm25_score": 20.331380280592278,
+            "lexical_score": 0.1425,
+            "matched_terms": [
+                "an",
+                "and",
+                "by",
+                "for",
+                "holding",
+                "in",
+                "longer",
+                "of",
+                "or",
+                "overlap",
+                "reduce",
+                "row",
+                "session",
+                "sessions",
+                "the",
+                "this",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 90,
+            "entry": {
+                "timeout_id": "mysql84_innodb_row_lock_wait_timeout",
+                "parameter_name": "innodb_lock_wait_timeout",
+                "timeout_category": "innodb_row_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "The length of time in seconds an InnoDB transaction waits for a row lock before giving up.",
+                "trigger_condition": "An InnoDB transaction waits longer than innodb_lock_wait_timeout for a row lock.",
+                "workload_impact": "The lock wait gives up; by default only the current statement is rolled back unless innodb_rollback_on_timeout is enabled.",
+                "default_behavior": "Defined as an InnoDB system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Replication Synchronization Anomaly + Storage Space Capacity Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly: Obsolete row versions, rollback records, and dead index entries pile up faster than background cleanup workers can reclaim them.\nReplication Synchronization Anomaly: Stand-by or downstream replicas cannot receive or apply the primary’s WAL/redo stream at the rate it is generated.\nStorage Space Capacity Anomaly: Physical or logical free space for data files, transaction logs, temp areas, or archives is exhausted or about to hit a hard boundary.\n\nWhen all three conditions co-exist, the system shows a compound failure pattern: version stores, heap and index files, and retained WAL segments grow rapidly; replicas fall ever further behind, reporting escalating receive, flush, and replay lags; primary-side log directories, tablespaces, and temp areas approach 100 % usage; autovacuum or purge workers run continuously yet remain ineffective; long-running queries on replicas see increasingly stale data; and once space is fully consumed, new transactions, temp operations, or log writes error out, potentially bringing both primary and replicas to a halt. Monitoring may report contradictory signals—high bloat on primary tables, massive log backlogs, and space exhaustion alarms—making root-cause isolation difficult.\n\nCausal chain: heavy update/delete churn inflates MVCC bloat, which in turn drives up WAL volume. The surging WAL stream overwhelms replicas, forcing the primary to retain additional log segments until they have been replayed. Those unrecycled segments, along with the enlarged tables, consume disk rapidly, pushing the system toward space exhaustion. As free space shrinks, checkpoints, autovacuum, and replica apply processes compete for I/O and fail more often, slowing cleanup and replay still further. The positive feedback loop—bloat ➝ more WAL ➝ replication lag ➝ retained logs ➝ space pressure ➝ slower cleanup/apply ➝ more bloat—amplifies each constituent anomaly and jeopardizes both data freshness and service availability.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 9,
+            "score": 0.5937204543089336,
+            "bm25_score": 20.905052352425994,
+            "lexical_score": 0.10378151260504201,
+            "matched_terms": [
+                "and",
+                "at",
+                "can",
+                "is",
+                "long",
+                "or",
+                "queries",
+                "running",
+                "stale",
+                "still",
+                "system",
+                "the",
+                "when"
+            ],
+            "match_count": 257,
+            "entry": {
+                "timeout_id": "pg16_client_connection_detection_interval",
+                "parameter_name": "client_connection_check_interval",
+                "timeout_category": "client_disconnect_detection_interval",
+                "scope": "session/system-dependent",
+                "official_definition": "Sets the interval between optional checks that the client is still connected while running queries.",
+                "trigger_condition": "During a long-running query, PostgreSQL polls the socket at this interval and can detect a closed connection sooner.",
+                "workload_impact": "Long-running queries can be aborted sooner after the kernel reports that the client connection is closed.",
+                "default_behavior": "Default value is 0, disabling connection checks.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

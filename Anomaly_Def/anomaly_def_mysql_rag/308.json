@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "CPU Resource Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "CPU Resource Anomaly: Database-related processes saturate host CPU capacity, driving run-queue growth and system-wide latency.\nOperating System Resource Limit Anomaly: Database processes exhaust kernel-enforced quotas such as file descriptors, threads, or shared-memory segments, blocking further allocations.\n\nComposite definition:\nThe system simultaneously suffers from severe CPU saturation and the exhaustion of one or more operating-system resource limits, creating a multi-layer bottleneck where compute cycles are scarce and new kernel objects cannot be obtained. \n\nCombined anomalous phenomena:\n• Sustained 90-100 % CPU utilization, long run queues, and increased context switches coincide with frequent engine or kernel errors about \"unable to create thread\", \"cannot allocate shared memory\", or \"too many open files\".\n• Session creation, parallel-worker spawning, or I/O submission intermittently fails; surviving sessions run slowly because every task competes both for CPU time-slices and for scarce kernel objects.\n• Wait-event views show a mix of CPU run-queue waits and kernel-resource waits; application logs show unexplained timeouts alongside low-level allocation failures.\n• Latency spikes and throughput collapse spread across otherwise unrelated queries, making performance degradation appear chaotic and difficult to attribute to a single layer.\n\nCausal chain and interaction:\nHigh CPU demand causes threads to execute longer and context-switch more frequently, accelerating consumption of per-process file descriptors, async-I/O contexts, and thread IDs. As these kernel limits are approached or reached, the database attempts to spawn additional workers or open more files to cope with the workload, but the kernel denies the requests, forcing retries and idle waits that further extend CPU hold times. The longer each thread sits runnable but unscheduled, the more the run queue grows, intensifying CPU saturation. Conversely, when kernel limits block thread or I/O creation, existing threads must shoulder more work, increasing CPU load even further. This feedback loop amplifies both anomalies, rapidly degrading overall throughput and potentially leading to partial or complete service outage.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 1855,
+            "score": 0.7324273400930469,
+            "bm25_score": 58.383911004166976,
+            "lexical_score": 0.1506341463414634,
+            "matched_terms": [
+                "allocation",
+                "and",
+                "consumption",
+                "create",
+                "engine",
+                "event",
+                "latency",
+                "memory",
+                "open",
+                "or",
+                "per",
+                "session",
+                "shared",
+                "the",
+                "with",
+                "workload"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "2044",
+                "error_name": "CR_SHARED_MEMORY_EVENT_ERROR",
+                "official_description": "Can't open shared memory; client could not create %s event (%lu)",
+                "error_class": null,
+                "severity_type": null,
+                "category": "client_library_error",
+                "system_domain": "memory_and_buffer",
+                "cause_analysis": "The failure is typically associated with insufficient memory headroom, buffer pressure, oversized intermediate state, or memory-allocation constraints inside the engine or client library.",
+                "solution_guidance": "Check memory availability, per-session memory settings, large sorts or hashes, and whether workload concurrency is amplifying memory consumption.",
+                "observable_symptoms": [
+                    "memory pressure",
+                    "allocation failure",
+                    "spill",
+                    "unstable latency"
+                ]
+            }
+        }
+    }
+]

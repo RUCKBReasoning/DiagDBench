@@ -1,0 +1,58 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Query Plan Selection Anomaly",
+            "Description": "Schema and Index Design Anomaly : Physical data-model objects (tables, partitions, indexes, constraints, data types) are misaligned with workload access patterns, forcing even well-written SQL to use inherently inefficient access paths.\nQuery Plan Selection Anomaly : The optimizer, despite having reasonably fresh statistics, picks a noticeably sub-optimal execution plan because of cost-model errors, plan reuse quirks, or context-dependent decisions.\n\nComposite definition: The database simultaneously suffers from a static physical design mismatch and an optimizer that frequently selects poor plans. Together they create an environment where sub-optimal plans are not only likely but also have no viable physical structures to fall back on, leading to extreme and unpredictable performance degradation.\n\nCombined anomalous phenomena:  • Rampant full-table or full-index scans, some caused by missing or non-covering indexes and others by bad plan choices, making it difficult to attribute blame to a single layer.  • Wild plan variability between executions: one run may scan an entire unpartitioned table, another may attempt an index access that still requires many random I/Os because the index lacks needed columns.  • Sudden latency spikes after plan-cache invalidation, statistics refresh, or workload shifts, where a new but still poor plan amplifies the cost of an already inefficient physical design.  • Excessive CPU and I/O on both read and write paths—writes suffer from bloated or redundant indexes while reads suffer from mis-chosen join orders and scan methods.  • Performance only stabilizes when both an index is added/restructured AND plan guidance (hints, baselines) is applied, indicating the interplay of the two root causes.\n\nCausal chain and interaction: Poor physical design supplies the optimizer with limited efficient choices; at the same time, plan-selection anomalies make the optimizer pick from those limited choices poorly. The absence of well-targeted or covering indexes inflates the estimated cost of index access, biasing the cost model toward full scans; conversely, an inaccurate cost model may underestimate the benefit of the few useful indexes that do exist, leaving them unused and masking the design flaw from simple index-usage reports. Plan reuse with skewed parameters can lock the system into a bad plan that is especially harmful given the table and index shortcomings. Together, the anomalies reinforce each other: inadequate structures magnify the impact of bad plans, while bad plans discourage investment in better structures by hiding or misrepresenting their benefit, leading to a feedback loop of degraded performance across both OLTP and OLAP workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.745298755186722,
+            "bm25_score": 30.347926713967944,
+            "lexical_score": 0.1509958506224066,
+            "matched_terms": [
+                "an",
+                "and",
+                "another",
+                "because",
+                "context",
+                "database",
+                "dependent",
+                "index",
+                "is",
+                "lock",
+                "of",
+                "or",
+                "other",
+                "schema",
+                "table",
+                "that",
+                "the",
+                "time",
+                "to",
+                "when",
+                "while"
+            ],
+            "match_count": 213,
+            "entry": {
+                "timeout_id": "pg16_lock_acquisition_timeout",
+                "parameter_name": "lock_timeout",
+                "timeout_category": "lock_wait_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that waits longer than the specified amount of time while attempting to acquire a lock.",
+                "trigger_condition": "A statement waits longer than lock_timeout for a table, index, row, or other database object lock.",
+                "workload_impact": "The statement attempting to acquire the lock is aborted.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

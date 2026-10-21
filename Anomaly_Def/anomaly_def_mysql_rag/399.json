@@ -1,0 +1,49 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Database Memory Allocation Anomaly + Replication Synchronization Anomaly",
+            "Description": "Composite definition: The database simultaneously suffers from (1) backlog in removing obsolete MVCC versions, (2) uncontrolled growth of in-process and shared memory allocations, and (3) replication receivers or apply workers that cannot keep pace with the primary’s WAL stream. The three issues coexist and interact, producing a compound failure mode that crosses the storage, memory, and replication subsystems.\n\nCombined observable phenomena: Dead-tuple density, version-store or rollback-segment length, and table/index sizes all rise quickly while autovacuum or purge workers remain constantly busy yet ineffective. At the same time the database processes’ resident memory and swap usage climb, leading to OS-level memory pressure, cache-eviction churn, and occasional OOM kills. On both primary and replicas the WAL/redo backlog grows; replication lag and relay-log retention widen, preventing log recycling and inflating disk usage. Administrators may see query slowdowns from bloated scans, erratic execution plans due to stale statistics, elevated CPU usage from memory thrashing, and degraded failover readiness because replicas are minutes or hours behind.\n\nCausal chain and reinforcement: Heavy OLTP update/delete churn creates excessive dead versions, inflating table size and producing larger WAL records. The enlarged working set must reside in buffer caches and plan/work areas, pushing total memory consumption beyond safe limits; memory pressure throttles autovacuum, purge, and replication apply workers, further delaying version cleanup and redo replay. Simultaneously, replication lag keeps old snapshots open on replicas (or via synchronous feedback slots), which in turn blocks HOT pruning and vacuum on the primary, locking more dead versions in place. The stranded WAL segments required for lagging replicas consume additional memory and disk, and their accumulation further stresses the memory allocator and I/O subsystem. This positive feedback loop makes each individual anomaly harder to remediate, accelerating systemic degradation until throughput collapses or the cluster experiences forced restarts.\n",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.6149285283452459,
+            "bm25_score": 16.004732425388447,
+            "lexical_score": 0.10812796208530806,
+            "matched_terms": [
+                "additional",
+                "and",
+                "are",
+                "for",
+                "from",
+                "more",
+                "of",
+                "or",
+                "stale",
+                "the",
+                "this",
+                "time",
+                "to"
+            ],
+            "match_count": 20,
+            "entry": {
+                "timeout_id": "mysql84_network_read_timeout",
+                "parameter_name": "net_read_timeout",
+                "timeout_category": "network_read_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for more data from a connection before aborting the read.",
+                "trigger_condition": "The server waits for additional data from a connection longer than net_read_timeout.",
+                "workload_impact": "The network read is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

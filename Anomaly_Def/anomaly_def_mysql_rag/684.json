@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Database Memory Allocation Anomaly + CPU Resource Anomaly",
+            "Description": "Composite Definition: This anomaly occurs when the optimizer persistently selects sub-optimal execution plans (Query Plan Selection Anomaly) while the engine simultaneously over-allocates and exhausts host memory (Database Memory Allocation Anomaly) and the database processes drive the CPUs into sustained saturation (CPU Resource Anomaly). All three root causes are active at the same time, creating a multi-layer failure that degrades throughput and predictability across the entire workload.\n\nCombined Observable Phenomena: • Statements flip between radically different plans, some exploding into full table scans or multi-way nested loops. • Memory usage of buffer cache, work areas, and plan cache grows without bound, pushing the operating system into paging or OOM kills; after each memory reclaim, new plans are recompiled, further inflating the plan cache. • CPU utilization remains near 100 %, run-queue length spikes, and wait events shift from I/O or lock waits to scheduler waits and spin-locks inside memory allocators. • Latency outliers become extreme; short OLTP requests time out while long analytical queries stall in memory pressure throttling. • Node failures or automatic failovers may be triggered by combined memory and CPU stress, masking the underlying plan instability.\n\nCausal Interaction: Sub-optimal plans often require larger hash/sort areas or read far more pages, inflating both per-query work memory and buffer-cache churn. The bloated memory footprint accelerates overall memory exhaustion; when the engine or OS begins paging, CPU cycles are wasted on page-fault handling and plan recompilations, further heating CPU. In turn, CPU saturation slows the optimizer and memory managers, lengthening critical sections and increasing contention on shared allocation latches, which feeds back into even poorer plan choices (e.g., time-outs in adaptive optimization) and larger memory grants issued as guard bands. The positive feedback loop between bad plans, runaway memory growth, and CPU starvation rapidly amplifies resource pressure, causing a system-wide degradation that is much worse than any single anomaly would produce in isolation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2012,
+            "score": 0.5687985109101799,
+            "bm25_score": 61.17009606215315,
+            "lexical_score": 0.15476190476190477,
+            "matched_terms": [
+                "allocation",
+                "and",
+                "are",
+                "buffer",
+                "engine",
+                "failure",
+                "inside",
+                "is",
+                "latency",
+                "memory",
+                "on",
+                "or",
+                "per",
+                "pressure",
+                "require",
+                "shared",
+                "the",
+                "workload"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010125",
+                "error_name": "ER_TRANSPORTS_WHAT_TRANSPORTS",
+                "official_description": "Server is started with --require-secure-transport=ON but no secure transports (SSL or Shared Memory) are configured.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "memory_and_buffer",
+                "cause_analysis": "The failure is typically associated with insufficient memory headroom, buffer pressure, oversized intermediate state, or memory-allocation constraints inside the engine or client library.",
+                "solution_guidance": "Check memory availability, per-session memory settings, large sorts or hashes, and whether workload concurrency is amplifying memory consumption.",
+                "observable_symptoms": [
+                    "memory pressure",
+                    "allocation failure",
+                    "spill",
+                    "unstable latency"
+                ]
+            }
+        }
+    }
+]

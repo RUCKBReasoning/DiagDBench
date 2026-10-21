@@ -1,0 +1,42 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Log Subsystem Anomaly + Replication Synchronization Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Transaction Log Subsystem Anomaly: The log-write, flush, switch, or archive path on the primary instance cannot sustain the redo generation rate, so commit processing stalls on log-related waits and space shortages.\nReplication Synchronization Anomaly: Standbys or downstream consumers fall behind because they cannot receive, persist, or apply the primary’s log stream fast enough, causing growing send/receive/replay lag and preventing log recycling on the source.\nData Block and Index Integrity Anomaly: Physical pages or index structures are corrupt or mutually inconsistent, producing checksum failures, wrong-result reads, and apply/redo errors.\n\nWhen all three faults are present simultaneously, the system exhibits an intertwined symptom set:  \n• End-user transactions see sharply rising commit latency, intermittent \"log full\" or \"cannot allocate new log segment\" errors, and sudden throughput cliffs.  \n• Replication monitoring shows ballooning send-, write-, and replay-lag; relay logs and retained primary log segments grow unchecked; failover readiness drops to zero.  \n• Integrity checkers and query workloads report checksum failures, duplicate/missing rows, and replication apply errors such as \"redo/row for missing page\" or \"index inconsistent with heap\".  \n• The primary’s log directory and the replica’s relay/redo directories expand simultaneously, checkpoint frequency spikes, and background archiver or apply processes cycle between idle, retry, and crash-restart states.  \n• Because the same retained log segments are needed both for crash-recovery of corrupt objects and for lagging replicas, storage fills faster, further throttling log writes and widening replication gaps.\n\nCausal chain: Corruption inside data blocks or index pages can cause the replica’s apply thread to halt or repeatedly retry the same failing redo, instantly creating a replication backlog. That backlog forces the primary to retain old log files, which consumes log-device space and intensifies the existing log-subsystem bottleneck; the resulting commit stalls generate even more drastic checkpoint and log-switch pressure, raising the chance of additional corruption during stressed I/O. Meanwhile, the saturated log path slows delivery of fixes (e.g., repairs, index rebuilds) to replicas, so corruption-induced apply failures persist and continue blocking log recycling. The feedback loop between log saturation, replication lag, and corruption-triggered apply errors amplifies each individual anomaly, degrading both write availability and read consistency across the cluster and leaving the entire estate vulnerable to data loss or extended outage.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 166,
+            "score": 0.19237123249268814,
+            "bm25_score": 10.41808542542105,
+            "lexical_score": 0.07717391304347826,
+            "matched_terms": [
+                "and",
+                "as",
+                "cannot",
+                "duplicate",
+                "or",
+                "that",
+                "the",
+                "with"
+            ],
+            "match_count": 12,
+            "entry": {
+                "error_code": "42723",
+                "error_name": "duplicate_function",
+                "official_description": "duplicate function",
+                "error_class": "Class 42 - Syntax Error or Access Rule Violation",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "sql_and_parser",
+                "cause_analysis": "The failure is typically associated with unsupported syntax, invalid statement structure, or feature usage that the target engine version cannot execute as written.",
+                "solution_guidance": "Validate SQL syntax, target-engine compatibility, statement shape, and whether the feature is supported under the current engine version or execution context.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "syntax error",
+                    "feature rejection"
+                ]
+            }
+        }
+    }
+]

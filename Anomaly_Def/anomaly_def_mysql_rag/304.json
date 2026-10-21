@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Database Memory Allocation Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Schema and Index Design Anomaly : Table, index, partition, and data-type choices do not match workload access patterns, forcing queries into inefficient and excessively large data access paths.\nDatabase Memory Allocation Anomaly : Cumulative buffer cache, work-area, plan cache, and background allocations grow beyond the host’s physical memory envelope, triggering paging, allocation churn, and OOM events.\nTransaction Log Subsystem Anomaly : Generation, flush, switching, or archival of write-ahead logs cannot keep pace with redo production, inflating commit latency and stalling write activity.\n\nWhen these three root causes coexist, the database exhibits a compounded failure pattern: 1) poorly indexed tables drive full-table scans, wide nested-loop lookups, and large batch modifications that explode redo volume; 2) the oversized intermediate result sets and hash/sort operations inflate per-session work memory and thrash the buffer cache, pushing the server into sustained memory pressure; 3) under pressure, the log buffer flushes more frequently yet still backs up behind a saturated log device or slow archiver, so commits stall and sessions linger while still hoarding memory and latches. Observable symptoms include dramatic and erratic response times, simultaneous spikes in physical I/O, paging, and log-flush waits, sudden drops in cache hit ratios, frequent checkpoint storms, and cascaded connection timeouts or node evictions.\n\nCausal chain: Inefficient schema and indexing multiply the amount of data each write or read touches, inflating both memory demand and redo generation. The bloated working set competes for limited RAM, causing cache churn and forcing dirty buffers to be flushed more aggressively—actions that funnel yet more traffic into the already stressed transaction-log subsystem. As log flushes lag, commit latency rises; longer-running transactions accumulate and hold even more memory, further intensifying allocation pressure. Meanwhile, memory pressure can shrink log buffers and increase write fragmentation, worsening log I/O throughput. The feedback loop between design-induced workload amplification, runaway memory usage, and log subsystem saturation quickly degrades overall system stability and throughput in write-intensive OLTP workloads.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5649,
+            "score": 0.6917201241022336,
+            "bm25_score": 72.03967163164334,
+            "lexical_score": 0.17614953271028036,
+            "matched_terms": [
+                "allocation",
+                "and",
+                "buffer",
+                "failure",
+                "hold",
+                "intermediate",
+                "large",
+                "latency",
+                "memory",
+                "or",
+                "oversized",
+                "per",
+                "pressure",
+                "response",
+                "session",
+                "the",
+                "to",
+                "with",
+                "workload"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013798",
+                "error_name": "ER_AUTHENTICATION_PLUGIN_REGISTRATION_INSUFFICIENT_BUFFER",
+                "official_description": "Buffer too small to hold registration challenge response.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "memory_and_buffer",
+                "cause_analysis": "The failure is typically associated with insufficient memory headroom, buffer pressure, oversized intermediate state, or memory-allocation constraints inside the engine or client library.",
+                "solution_guidance": "Check memory availability, per-session memory settings, large sorts or hashes, and whether workload concurrency is amplifying memory consumption.",
+                "observable_symptoms": [
+                    "memory pressure",
+                    "allocation failure",
+                    "spill",
+                    "unstable latency"
+                ]
+            }
+        }
+    }
+]

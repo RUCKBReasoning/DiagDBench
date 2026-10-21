@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Replication Synchronization Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Obsolete row versions and deleted index entries accumulate faster than background cleanup can reclaim them, inflating the version store and heap size.\nReplication Synchronization Anomaly : Stand-by or downstream replicas cannot receive or apply transaction-log records at the rate the primary generates them, producing sustained replication lag.\nData Block and Index Integrity Anomaly : Physical pages or index structures become internally inconsistent, causing logical/physical corruption and unreliable access paths.\n\nWhen all three root causes coexist, the system shows a blended symptom set: the primary’s tables and indexes grow rapidly while replication monitoring reports widening write/flush/replay gaps; VACUUM/cleanup workers stay permanently backlogged and may repeatedly abort or skip ranges because they encounter corrupted pages; replica apply workers stall on the same corrupt blocks, causing cascading log retention on the primary. Query plans on both primary and replicas degrade—some scans slow down due to bloated heaps, others fall back to full scans after detecting unusable indexes, and read-only replicas deliver increasingly stale or incorrect results. Disk consumption spikes on every node (heap bloat on the primary, retained WAL on the primary, expanded relay logs on replicas), and administrative utilities report both version-age horizon warnings and page-checksum or key-order errors.\n\nCausal interaction: heavy update/delete churn creates large WAL streams and rapid version accumulation. Replication lag prevents the primary from advancing its replication-xmin horizon, so VACUUM cannot prune old versions, further enlarging the version store. The swollen version store in turn magnifies WAL volume, worsening replication lag in a feedback loop. Concurrently, any latent on-disk block or index corruption causes VACUUM or replica apply processes to error out or slow down, freezing progress at exactly the pages that need cleanup or replay; this halting behavior amplifies both the version-maintenance backlog and the replication gap. Conversely, the prolonged presence of corrupted pages inside an ever-growing heap complicates detection and repair because corruption signatures are buried under layers of obsolete versions. The three anomalies therefore reinforce each other, accelerating storage growth, degrading query correctness, and eroding failover readiness far more severely than any single anomaly alone.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.6926683765689956,
+            "bm25_score": 24.481629873699717,
+            "lexical_score": 0.11999188029230948,
+            "matched_terms": [
+                "access",
+                "and",
+                "any",
+                "because",
+                "error",
+                "from",
+                "more",
+                "of",
+                "or",
+                "other",
+                "out",
+                "query",
+                "than",
+                "that",
+                "the",
+                "this",
+                "when"
+            ],
+            "match_count": 297,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

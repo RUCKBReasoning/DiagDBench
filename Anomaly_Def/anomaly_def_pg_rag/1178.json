@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Transaction Lock Contention Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer repeatedly chooses a sub-optimal execution plan even though statistics are adequate, leading to excessive I/O, CPU, or memory use per statement.\nTransaction Lock Contention Anomaly: Concurrent transactions acquire incompatible locks on the same resources, causing long blocking chains or deadlocks that stall throughput.\nData Block and Index Integrity Anomaly: Corruption or logical inconsistency inside data pages or index structures makes the physical representation of rows or keys unreliable.\n\nComposite anomaly definition: The database simultaneously suffers from sub-optimal plan choices, heavy lock contention, and underlying data/index corruption. Each of the three root causes is active at the same time, so queries may execute with inefficient plans, fight over locks, and occasionally hit corrupt pages or broken index structures—all within the same workload execution window.\n\nCombined anomalous phenomena: (1) Query texts randomly alternate between fast and extremely slow runtimes as the optimizer selects poor plans, sometimes forced into full table scans when damaged indexes are skipped. (2) Large scans and mis-estimated cardinalities inflate lock footprints, leading to long blocking queues, frequent deadlocks, and application timeouts. (3) Corrupted pages or malformed index links surface as sudden I/O errors or silent row omissions; when detected, the engine may escalate to table locks for recovery or consistency checks, further amplifying contention. Monitoring will show erratic query plans, surging lock-wait and deadlock statistics, escalating I/O retries, and integrity checker or error-log reports—all interleaved without a single dominant symptom.\n\nCausal chain and interaction: Index or data corruption can distort statistics and force the optimizer to abandon otherwise selective access paths, pushing it toward full scans or unhelpful join orders—triggering the Query Plan Selection Anomaly. These inflated scans touch far more rows and pages, acquiring many more row or page locks, which lengthens critical sections and intensifies Transaction Lock Contention. In turn, prolonged blocking keeps versions or pages pinned, hampering background scrub or repair processes and increasing the window during which corruption affects additional queries. The resulting deadlocks cause transaction rollbacks that force the optimizer to re-evaluate statements, potentially caching yet more unstable plans. Together, the three issues form a reinforcing loop that degrades performance, jeopardizes data integrity, and complicates root-cause isolation in high-concurrency OLTP environments.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.25694680843638296,
+            "bm25_score": 12.812867868188738,
+            "lexical_score": 0.09365773646801531,
+            "matched_terms": [
+                "and",
+                "are",
+                "data",
+                "is",
+                "long",
+                "may",
+                "on",
+                "or",
+                "the",
+                "time",
+                "when",
+                "within"
+            ],
+            "match_count": 218,
+            "entry": {
+                "timeout_id": "pg16_tcp_user_timeout",
+                "parameter_name": "tcp_user_timeout",
+                "timeout_category": "network_unacknowledged_data_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies how long transmitted data may remain unacknowledged before the TCP connection is forcibly closed.",
+                "trigger_condition": "TCP data sent by PostgreSQL remains unacknowledged longer than tcp_user_timeout on systems supporting TCP_USER_TIMEOUT.",
+                "workload_impact": "The TCP connection is forcibly closed.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

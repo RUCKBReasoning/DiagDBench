@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Transaction Log Subsystem Anomaly + Replication Synchronization Anomaly",
+            "Description": "Database Memory Allocation Anomaly : Excessive or uncontrolled growth of buffer caches, work areas, plan caches, and other in-process memory regions pushes the database host beyond its physical RAM and swap limits, provoking paging, OOM kills, and cache-churn inefficiencies.\nTransaction Log Subsystem Anomaly : The generation, buffering, flushing, or archiving of write-ahead log (WAL) records cannot keep pace with commit throughput, making the log file group, log buffer, or archiver the primary bottleneck on the write path.\nReplication Synchronization Anomaly : Downstream standbys or subscribers are unable to receive, persist, or apply WAL data at the rate produced by the primary, causing growing log-position lag and preventing log-segment recycling.\n\nWhen these three root causes occur together, the system exhibits compounded symptoms: commit latency and user-visible stalls rise sharply as log buffers back up behind a saturated log device while memory pressure simultaneously forces buffer eviction, swap storms, and CPU stalls. The primary accumulates large, unrecycled log segments because replicas lag, inflating on-disk log space; meanwhile, over-allocated in-memory caches and work areas bloat the resident set, further constraining I/O cache effectiveness. Administrators may observe oscillating throughput, frequent checkpoint storms, and emergency restarts triggered by out-of-memory or full-log conditions, along with widening replication delay and inconsistent read freshness on replicas. The overlapping waits (log flush, log sync, memory latch, page-in I/O) make it difficult to isolate any single culprit.\n\nCausally, aggressive memory allocation reduces effective filesystem cache and amplifies paging, slowing physical log writes and elevating commit latency. Prolonged log flush times expand the log tail that replicas must ship and apply; replica lag in turn prevents log recycling, causing the primary to retain ever-growing log files that consume additional disk and may prompt larger in-memory directory and metadata caches—exacerbating memory pressure. Conversely, as replicas fall behind, the primary must hold more WAL in memory and on disk, inflating both log buffer residency and archive queues, which collide with already scarce memory resources. The feedback loop between memory exhaustion, log-subsystem saturation, and replication backlog thus intensifies each anomaly, pushing the OLTP system toward throughput collapse or forced failover.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 11,
+            "score": 0.7430693779904306,
+            "bm25_score": 31.83182632061882,
+            "lexical_score": 0.1435645933014354,
+            "matched_terms": [
+                "and",
+                "apply",
+                "causing",
+                "data",
+                "downstream",
+                "lag",
+                "or",
+                "out",
+                "preventing",
+                "replica",
+                "replication",
+                "the",
+                "times",
+                "to",
+                "triggered",
+                "waits",
+                "when"
+            ],
+            "match_count": 100,
+            "entry": {
+                "timeout_id": "mysql84_stop_replica_timeout",
+                "parameter_name": "rpl_stop_replica_timeout",
+                "timeout_category": "replication_admin_command_timeout",
+                "scope": "global/replication",
+                "official_definition": "Controls how long STOP REPLICA waits before timing out.",
+                "trigger_condition": "A STOP REPLICA administrative operation waits longer than rpl_stop_replica_timeout.",
+                "workload_impact": "The administrative replication stop operation times out.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "replication",
+                "cause_analysis": "This timeout is usually triggered when replication endpoints stop exchanging or applying data within the configured timeout window, causing the channel to be considered inactive.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver status, upstream and downstream connectivity, and whether lag or stalled apply is preventing timely progress.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "channel reset"
+                ]
+            }
+        }
+    }
+]

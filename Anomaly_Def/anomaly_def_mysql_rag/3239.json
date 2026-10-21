@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Optimizer Statistics Anomaly + CPU Resource Anomaly",
+            "Description": "Schema and Index Design Anomaly : Physical data model and indexing choices do not align with workload access patterns, forcing inefficient access paths even when statements are well written.\nOptimizer Statistics Anomaly : Catalog statistics are stale, incomplete, or inaccurate, causing the optimizer to mis-estimate cardinalities and pick sub-optimal plans.\nCPU Resource Anomaly : Database processes saturate host CPU cores, leaving insufficient compute capacity for the rest of the workload.\n\nComposite definition: The database simultaneously suffers from a mis-aligned physical schema, misleading optimizer statistics, and sustained CPU saturation. Together these root causes make queries both logically and physically inefficient while the engine lacks compute headroom to mask the deficiencies.\n\nCombined phenomena:  • Execution plans show full scans or nested-loop cascades on large tables where selective index probes should occur, with estimated row counts far from the actual figures.  • Plan shapes flip unpredictably after data changes or recompiles, yet all alternatives consume abnormally high CPU, driving overall host utilization to near 100 %.  • Wait-event views alternate between CPU-bound waits and I/O stemming from unnecessary scans; end-user latency spikes sharply during peak periods, and tuning changes that address only one layer (e.g., adding an index or updating stats) yield partial or short-lived relief.  • Automatic statistics jobs or index-rebuild tasks themselves compete for CPU, lengthening maintenance windows and creating further contention.\n\nCausal chain: Poor schema and index design expands the amount of data each statement must touch. Stale or inadequate statistics then mislead the optimizer into believing these wide scans or non-covering lookups are cheaper than they are, cementing inefficient plans. The inflated work per statement aggregates into heavy CPU demand; as CPU saturates, collection of fresh statistics and index-creation tasks are delayed or throttled, allowing statistics to drift even further from reality. The reinforcing cycle—bad design → bad estimates → bad plans → CPU saturation → deferred maintenance → even worse estimates—amplifies performance degradation across both transactional and analytical workloads.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.432822051135614,
+            "bm25_score": 15.768860704371004,
+            "lexical_score": 0.13161290322580646,
+            "matched_terms": [
+                "and",
+                "are",
+                "data",
+                "for",
+                "from",
+                "latency",
+                "not",
+                "of",
+                "or",
+                "stale",
+                "than",
+                "the",
+                "to",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 151,
+            "entry": {
+                "timeout_id": "mysql84_network_read_timeout",
+                "parameter_name": "net_read_timeout",
+                "timeout_category": "network_read_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for more data from a connection before aborting the read.",
+                "trigger_condition": "The server waits for additional data from a connection longer than net_read_timeout.",
+                "workload_impact": "The network read is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

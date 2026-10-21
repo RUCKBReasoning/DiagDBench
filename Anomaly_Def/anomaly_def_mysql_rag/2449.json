@@ -1,0 +1,50 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Replication Synchronization Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Transaction Lock Contention Anomaly: Concurrent transactions hold or request mutually incompatible locks on shared rows, pages, or metadata, creating long blocking chains or deadlocks that stall commit progress.\nReplication Synchronization Anomaly: Stand-by or replica nodes fall behind because they cannot receive, persist, or apply primary-generated log records at the produced rate, inflating replication lag and retaining excess log segments on the primary.\nNetwork and Connectivity Resource Anomaly: Transport or connection-handling bottlenecks—bandwidth saturation, packet loss, socket exhaustion, or authentication backlogs—impede data flow between clients or replicas and the database server.\n\nWhen these three issues arise together, the database exhibits compound symptoms: application sessions pile up in both connection pools and lock wait queues; ordinary statements appear to \"freeze\" as they wait for locks held by transactions whose clients are themselves stalled on sluggish networks; deadlock detector activity and victim rollbacks surge; replica replay lag grows rapidly because lock-intensive transactions commit slowly and because network congestion throttles log shipping; primary WAL or binlog disks fill due to unrecycled segments retained for lagging replicas; monitoring shows simultaneous spikes in lock-wait time, replication apply delay, network retransmissions, and refused or idle sockets, making it difficult to attribute the slowdown to a single layer.\n\nCausally, degraded network paths first throttle both client traffic and replication streaming. Prolonged round-trip times cause application transactions to hold locks longer, increasing the probability of blocking and deadlocks on the primary; these stalled commits in turn reduce commit throughput while still accumulating unflushed WAL. Because the same network impairment also limits the rate at which replicas receive or acknowledge log data, the primary cannot recycle its growing log, further stressing disk subsystems. On the replica side, apply workers encountering lock conflicts left by large or long-running transactions replay even more slowly, amplifying lag. The feedback loop—network-induced latency inflating lock duration, lock contention elongating transactions and generating larger bursts of WAL, and replication backlog preventing log cleanup—drives a systemic degradation that impacts both write and read traffic and complicates root-cause isolation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2588,
+            "score": 0.36023163668452907,
+            "bm25_score": 52.56855029242643,
+            "lexical_score": 0.1381651376146789,
+            "matched_terms": [
+                "and",
+                "apply",
+                "between",
+                "binlog",
+                "handling",
+                "lag",
+                "log",
+                "network",
+                "on",
+                "or",
+                "replica",
+                "replication",
+                "shipping",
+                "the",
+                "to"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010701",
+                "error_name": "OBSOLETE_ER_NDB_BINLOG_ERROR_HANDLING_SCHEMA_EVENT",
+                "official_description": "NDB: error %lu (%s) on handling binlog schema event",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

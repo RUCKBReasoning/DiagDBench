@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Database Configuration Parameter Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Obsolete row versions, rollback records, and dead index entries accumulate faster than background cleanup can reclaim them, inflating storage and visibility-check overhead.\nDatabase Configuration Parameter Anomaly : Engine parameters governing memory, workers, checkpointing, and parallelism are mis-tuned for the hardware and workload, introducing artificial bottlenecks and untimely background activity.\nData Block and Index Integrity Anomaly : On-disk pages and index structures contain physical or logical corruption that breaks key order, page links, or checksum verification, making access paths unreliable.\n\nCombined phenomena: When all three root causes are active, the system shows explosive table and index growth, chronic autovacuum or purge backlogs, and erratic query plans that oscillate between bloated index scans and full table scans because of missing or duplicated rows. Checkpoints and log flushes may surge immediately after parameter changes, yet the storage subsystem remains under-utilised. Background cleaners report \"skipped corrupted page\" or stall on invalid page links, leaving ever more dead tuples behind. Integrity-check utilities and engine logs intermittently emit checksum, page-level, or index-order errors, while wait-event charts are dominated by version visibility checks, corruption-related retries, and idle CPU gaps that do not match the apparent workload pressure. Application sessions may experience sudden serialization failures, duplicate-key errors on inserts, or silent data loss when queries miss rows that are present in the heap but absent from a damaged index.\n\nCausal chain: Mis-tuned parameters (e.g., undersized cleanup workers, disabled page checksums, aggressive checkpoint throttling, or oversized work_mem that bloats per-session memory) throttle version reclamation and extend transaction ID horizons, allowing MVCC debris to pile up. The enlarged heap and index footprint forces more page IO and longer maintenance windows, increasing the chance of power events, firmware bugs, or out-of-memory conditions that precipitate physical corruption. Once corruption appears, cleanup workers may skip or loop on damaged pages, further slowing or halting version reclamation. The lingering MVCC bloat in turn amplifies the stress on misconfigured memory and checkpoint parameters, causing additional checkpoint storms and weakened durability settings that make future corruption more likely. The three anomalies therefore reinforce each other in a feedback loop that degrades performance, jeopardises data integrity, and complicates root-cause diagnosis.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5847,
+            "score": 0.5064019320777011,
+            "bm25_score": 58.47635643575748,
+            "lexical_score": 0.14947619601908974,
+            "matched_terms": [
+                "and",
+                "but",
+                "by",
+                "can",
+                "configuration",
+                "engine",
+                "future",
+                "in",
+                "index",
+                "level",
+                "log",
+                "make",
+                "match",
+                "not",
+                "or",
+                "pressure",
+                "the",
+                "to",
+                "up",
+                "version",
+                "workload"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-014007",
+                "error_name": "ER_IB_INDEX_LOG_VERSION_MISMATCH",
+                "official_description": "Index log version %u did not match. Max index version is %u. Recovery can't continue. Please make sure server is not starting up with the datadir generated in future version.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

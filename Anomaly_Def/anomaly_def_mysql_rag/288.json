@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Transaction Lock Contention Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer selects or reuses a substantially sub-optimal execution plan even though statistics are accurate, inflating execution cost and runtime footprint.\nTransaction Lock Contention Anomaly : Concurrent transactions contend for incompatible locks, generating long blocking chains or deadlocks that stall throughput.\nOperating System Resource Limit Anomaly : The database process hits kernel-enforced limits on objects such as file handles, processes/threads, or shared-memory segments, preventing further resource allocation.\n\nWhen all three root causes coexist, the workload may exhibit extreme and erratic slowdowns: a sudden plan switch to a full-table scan or wide nested loop holds many row or page locks for far longer than usual, magnifying lock-wait times, deadlock frequency, and application time-outs. Sessions that pile up behind the blockers spawn additional server processes or threads until the operating-system quota for PIDs, file descriptors, or semaphore sets is reached, after which new connections, background workers, or parallel query helpers fail to start. Operators may observe a mixture of symptoms—escalating lock-wait graphs, deadlock-victim errors, optimizer plan regressions in execution-plan caches, and kernel log messages about \"too many open files\" or \"cannot allocate memory\"—making root-cause isolation difficult.\n\nCausal chain: a poor plan (1) dramatically lengthens critical sections, enlarging the time windows in which locks are held; (2) the prolonged locks throttle other transactions, causing them to queue and accumulate; (3) each waiting or retrying session consumes additional database back-end processes, file descriptors, and shared-memory objects; (4) once kernel limits are saturated, even diagnostic queries or deadlock-detector threads may fail to start, further delaying lock resolution and forcing the engine into partial outage. The three anomalies therefore reinforce one another—sub-optimal planning triggers lock storms, which in turn drive the system to exhaust OS resources, amplifying the performance collapse and complicating recovery.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 6055,
+            "score": 0.6547646365583973,
+            "bm25_score": 75.60038607068674,
+            "lexical_score": 0.1611650485436893,
+            "matched_terms": [
+                "and",
+                "are",
+                "blocking",
+                "chains",
+                "contention",
+                "is",
+                "limits",
+                "on",
+                "or",
+                "prolonged",
+                "recovery",
+                "resource",
+                "the",
+                "time",
+                "transactions",
+                "until",
+                "wait",
+                "waiting"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-015136",
+                "error_name": "ER_GRP_RPL_RECOVERY_WAIT_APPLIER_BACKLOG_START",
+                "official_description": "Distributed recovery will wait until the transactions '%s' contained on the 'group_replication_applier' channel are applied.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "timeout_and_waiting",
+                "cause_analysis": "The failure is typically associated with extended waiting, resource queues, unresponsive peers, or configured time limits being exceeded before the requested operation completes.",
+                "solution_guidance": "Check wait sources, blocking chains, network responsiveness, timeout settings, and whether resource contention is prolonging operation completion.",
+                "observable_symptoms": [
+                    "timeout",
+                    "prolonged waiting",
+                    "interrupted operation"
+                ]
+            }
+        }
+    }
+]

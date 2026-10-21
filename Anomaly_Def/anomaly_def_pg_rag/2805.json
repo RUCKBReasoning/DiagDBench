@@ -1,0 +1,47 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Buffer Cache and Latch Contention Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Engine-level settings (memory, checkpoint, parallelism, etc.) are mis-tuned relative to hardware and workload, so the bottleneck stems from the parameter choices themselves rather than true resource exhaustion.\nBuffer Cache and Latch Contention Anomaly : Sessions stall on buffer-pool page pins, latches, and other lightweight synchronization points because hot or churning pages force serialised access and CPU spin-waiting.\nOperating System Resource Limit Anomaly : The database process collides with kernel-enforced ceilings on file descriptors, shared memory, semaphores, aio contexts, processes/threads, or cgroup quotas, blocking further allocations even though database-level resources appear free.\n\nWhen these three root causes strike together, the system exhibits a tangled symptom set: 1) extreme and erratic wait-event mixes in which buffer-busy/latch waits, log-write waits, and kernel resource-allocation errors appear in the same time slices; 2) bursts of checkpoint-driven I/O that stall on both latch contention and OS aio/file-handle shortages, causing sharp latency spikes and temporary query freezes; 3) CPU saturation by spin loops despite low measured user throughput; 4) sudden connection or worker-spawn failures accompanied by kernel messages about ENFILE, EMFILE, or shared-memory limits, leading to partial outages while existing sessions themselves are trapped behind hot-page latches; 5) highly variable performance after configuration changes, instance restarts, or workload surges, making the individual anomalies hard to distinguish because each masks or amplifies the others.\n\nCausally, mis-sized engine parameters (e.g., an undersized buffer pool, overly aggressive checkpoint target, or excessive parallel-worker cap) increase buffer turnover, concentrate access on a small set of pages, and flood the I/O and logging paths, which in turn magnifies latch contention inside the buffer manager. As latch pressure rises, sessions hold internal resources longer and attempt to open more files, spawn more background workers, or allocate larger shared-memory segments to cope with the backlog, quickly bumping into restrictive OS limits. Conversely, once the kernel refuses new handles, shared memory, or threads, the database cannot expand buffer pools or I/O contexts, forcing even tighter reuse of the existing cache and further intensifying page churn and latch waits. The feedback loop between bad configuration, internal contention, and external resource caps can thus cascade into severe throughput collapse and erratic, hard-to-diagnose performance degradation.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 107,
+            "score": 0.518829093372894,
+            "bm25_score": 34.25494529992041,
+            "lexical_score": 0.11623529411764705,
+            "matched_terms": [
+                "and",
+                "blocking",
+                "contention",
+                "in",
+                "limits",
+                "or",
+                "resource",
+                "settings",
+                "the",
+                "time",
+                "wait",
+                "waiting",
+                "with"
+            ],
+            "match_count": 15,
+            "entry": {
+                "error_code": "25P03",
+                "error_name": "idle_in_transaction_session_timeout",
+                "official_description": "idle in transaction session timeout",
+                "error_class": "Class 25 - Invalid Transaction State",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "timeout_and_waiting",
+                "cause_analysis": "The failure is typically associated with extended waiting, resource queues, unresponsive peers, or configured time limits being exceeded before the requested operation completes.",
+                "solution_guidance": "Check wait sources, blocking chains, network responsiveness, timeout settings, and whether resource contention is prolonging operation completion.",
+                "observable_symptoms": [
+                    "timeout",
+                    "prolonged waiting",
+                    "interrupted operation"
+                ]
+            }
+        }
+    }
+]

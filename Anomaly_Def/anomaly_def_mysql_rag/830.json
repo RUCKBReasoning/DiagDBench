@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Database Configuration Parameter Anomaly + Storage Space Capacity Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Obsolete row versions, rollback records, and dead index entries accumulate faster than background cleanup can reclaim them, inflating the version store and increasing visibility-check work.\nDatabase Configuration Parameter Anomaly : Critical engine settings for memory, background workers, checkpointing, and parallelism are mis-tuned for the hardware and workload, so internal subsystems operate with inappropriate resource budgets or cadences.\nStorage Space Capacity Anomaly : Data files, log areas, or temporary/backup destinations run out of free space, producing allocation failures, stalled writes, and growth-limit errors.\n\nWhen all three root causes strike at once, the database exhibits a compounding failure pattern: dead tuples and rollback segments bloat tables and indexes, while mis-configured memory and worker limits prevent vacuum/garbage-collection processes from keeping up, causing version stores and relation files to balloon until the underlying tablespace, log, or temp volumes exhaust their physical capacity. Operators see a convergence of symptoms: rapidly escalating disk-usage alarms, sudden log-archive or data-file growth spikes, longer and less predictable query latencies due to enlarged heap scans and bloated indexes, frequent autovacuum or cleanup workers stuck or thrashing, checkpoints triggering under duress yet unable to flush because target filesystems are full, sessions receiving \"no space left on device\" or \"cannot extend\" errors, and wait events oscillating between space-allocation stalls and version-visibility scans.\n\nCausally, excessive MVCC churn is the initial generator of extra pages and undo records. Mis-tuned configuration parameters (e.g., undersized cleanup worker budgets, conservative vacuum cost limits, small log segments, overly aggressive checkpoint intervals, or insufficient temp/maintenance memory) throttle the very mechanisms that should reclaim that space, so the bloat progresses unchecked. The swollen relation and log files rapidly consume the finite storage allotment, pushing the system into a capacity crisis. Once space becomes scarce, checkpoint and vacuum operations slow further because they cannot allocate new segments, which in turn leaves even more dead versions on disk, forming a positive feedback loop that magnifies latency spikes and increases the probability of outright service outage. Together, the three anomalies reinforce one another, turning what would be benign bloat, mild mis-tuning, or manageable space usage in isolation into a self-amplifying OLTP outage scenario.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.3711839714440087,
+            "bm25_score": 16.129792640926393,
+            "lexical_score": 0.1193746091307067,
+            "matched_terms": [
+                "and",
+                "another",
+                "because",
+                "cannot",
+                "configured",
+                "for",
+                "in",
+                "is",
+                "longer",
+                "or",
+                "sessions",
+                "than",
+                "the",
+                "to",
+                "when",
+                "while"
+            ],
+            "match_count": 39,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

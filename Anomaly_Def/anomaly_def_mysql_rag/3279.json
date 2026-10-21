@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + CPU Resource Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Composite definition: The database simultaneously suffers from a physical-schema/index design that forces inefficient access paths, sustained saturation of host CPU resources, and exhaustion of kernel-enforced process or handle limits. The three layers—data model, compute, and operating system—are therefore all active bottlenecks, and any single-layer fix alone will be insufficient.\n\nCombined phenomena: Queries show full-table scans, non-covering index lookups, or needless partition scans that inflate CPU time per statement. Host metrics reveal near-100 % core utilization, long run queues, and frequent context switches. In parallel, the engine or system logs record failures to create threads, open files, allocate shared memory, or start parallel workers; new sessions intermittently fail while existing ones slow dramatically. Application latency spikes, timeouts multiply, and performance becomes erratic—sometimes appearing as pure CPU saturation, other times as sudden \"cannot allocate resource\" errors—making diagnosis confusing.\n\nCausal interaction: Poor schema and indexing force the optimizer toward scan-heavy or row-by-row execution, inflating CPU demand. The resulting surge in CPU usage lengthens query runtimes, causing connection backlogs and encouraging the engine to spawn more worker threads or parallel processes. This escalated process and descriptor count pushes the workload toward operating-system limits on file handles, threads, shared memory segments, and async-I/O contexts. Once those limits are hit, kernel denials prevent new workers from starting, which further queues work on already saturated CPUs, amplifying latency and resource thrashing. Conversely, when OS limits are low, even a moderate CPU spike caused by sub-optimal schema can tip the system into both CPU starvation and kernel-resource exhaustion, creating a reinforcing feedback loop that degrades throughput far faster than any of the three anomalies would individually.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 10,
+            "score": 0.36365413883890074,
+            "bm25_score": 16.69679005716629,
+            "lexical_score": 0.1302967563837129,
+            "matched_terms": [
+                "and",
+                "are",
+                "connection",
+                "data",
+                "from",
+                "latency",
+                "more",
+                "of",
+                "or",
+                "sessions",
+                "than",
+                "the",
+                "this",
+                "time",
+                "to",
+                "when"
+            ],
+            "match_count": 153,
+            "entry": {
+                "timeout_id": "mysql84_replica_network_timeout",
+                "parameter_name": "replica_net_timeout",
+                "timeout_category": "replication_network_timeout",
+                "scope": "global/replication",
+                "official_definition": "The number of seconds to wait for more data from a source/replica connection before aborting the read.",
+                "trigger_condition": "A replica waits longer than replica_net_timeout for more data from the source connection.",
+                "workload_impact": "The replication network read is aborted and the replica considers the connection interrupted.",
+                "default_behavior": "Defined as a MySQL replication system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

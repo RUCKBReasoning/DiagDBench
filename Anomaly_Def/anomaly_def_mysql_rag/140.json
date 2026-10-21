@@ -1,0 +1,61 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + MVCC Version Maintenance Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer persistently picks or re-uses an execution plan whose estimated cost is far lower than its real runtime cost, even though statistics are adequate.\nMVCC Version Maintenance Anomaly : Obsolete row versions and logically deleted index entries accumulate faster than background cleaners can reclaim them, inflating table and index size and adding visibility-check overhead.\nTransaction Log Subsystem Anomaly : Redo/commit log generation, flushing, or archival becomes the primary bottleneck, driving up commit latency and stalling write activity.\n\nComposite definition: The database simultaneously suffers from sub-optimal plan selection, runaway MVCC version buildup, and saturation of the transaction-log path. All three root causes are active at the same time, creating a compound performance and stability issue that spans the optimizer, storage engine, and durability layer.\n\nCombined phenomena: 1) Queries that once completed quickly now switch between table scans and poorly parameterized index paths, inflating row touch counts. 2) The excess row touches manifest as a surge of UPDATE/DELETE and vacuum traffic, causing the version store and on-disk heap to grow rapidly. 3) Checkpoints, log-flush waits, and archive-lag alerts appear alongside rising commit latency; long-running queries held open by bad plans keep old snapshots alive, preventing cleanup and forcing the log manager to retain older segments. 4) Planner misestimates grow worse because bloat skews statistics, leading to even heavier scans, more undo/redo generation, and longer transaction lifetimes, making it increasingly difficult to isolate any single symptom from the others.\n\nCausal chain: Sub-optimal plans amplify row accesses and modification volume, which explodes MVCC version creation. The inflated version store increases physical I/O and statistics drift, feeding back into even poorer plan choices. The heightened DML throughput and prolonged transactions generate large bursts of redo; simultaneously, the MVCC cleanup lag forces the log subsystem to retain old segments for snapshot visibility, pushing log buffers, disk groups, and archivers past capacity. Log-flush delays lengthen commit times, extending transaction lifespans, which further pins row versions and perpetuates the cycle. The intertwined feedback loops among the optimizer, MVCC cleaner, and log manager thus escalate latency, resource consumption, and risk of outage far beyond what any of the individual anomalies would cause in isolation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 5719,
+            "score": 0.712644992499873,
+            "bm25_score": 77.84274863173742,
+            "lexical_score": 0.18384289476697585,
+            "matched_terms": [
+                "an",
+                "and",
+                "are",
+                "because",
+                "capacity",
+                "check",
+                "creation",
+                "disk",
+                "durability",
+                "engine",
+                "in",
+                "is",
+                "latency",
+                "log",
+                "logically",
+                "of",
+                "older",
+                "or",
+                "paths",
+                "redo",
+                "storage",
+                "the",
+                "to",
+                "version",
+                "which",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-013876",
+                "error_name": "OBSOLETE_ER_IB_MSG_LOG_UPGRADE_FLUSH_FAILED__UNEXPECTED",
+                "official_description": "Cannot upgrade format (v%lu) of redo log files, because InnoDB failed to reach state in which redo log is logically empty. Please use an older version of MySQL - recover and shutdown (with innodb-fast-shutdown < 2).",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

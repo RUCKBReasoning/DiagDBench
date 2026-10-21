@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Buffer Cache and Latch Contention Anomaly + Transaction Log Subsystem Anomaly",
+            "Description": "Transaction Lock Contention Anomaly: Concurrent transactions block or deadlock each other while waiting for incompatible locks on the same rows, pages, or metadata resources.\nBuffer Cache and Latch Contention Anomaly: Sessions stall on hot buffer pages or the latches that protect them, causing CPU spin or wait time and slowing page access.\nTransaction Log Subsystem Anomaly: Commit processing and redo generation are throttled by saturated log buffers, slow log writes, or delayed archive/replication, inflating commit latency.\n\nWhen all three conditions arise together, the database experiences a compound bottleneck in which logical row-level blocking, physical buffer-page serialization, and log-flush back-pressure converge. Symptoms include extreme and erratic transaction latency, long blocker–waiter chains that do not clear after deadlock resolution, surging page-latch and log-write waits, CPU spikes from spin-locks, stalled checkpoints, and cascading application timeouts. Standard diagnostic views show simultaneous growth in ungranted locks, latch wait events, and pending log-flush queues, making it hard to attribute the slowdown to any single layer.\n\nCausally, hot rows or pages drive up lock conflicts; blocked transactions then hold buffer pages and latches longer, increasing buffer contention. Prolonged critical-section occupancy inflates redo generation bursts when blockers finally commit, which overwhelms the log buffer and stretches log-flush times. In turn, the sluggish log subsystem delays commit completion, extending lock hold times and keeping pages pinned, which feeds back into both lock and latch queues. The intertwined feedback loops between lock duration, latch residency, and log-flush latency amplify each other, creating a severe, self-reinforcing degradation of OLTP throughput.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 148,
+            "score": 0.6199341458704982,
+            "bm25_score": 84.22912484226777,
+            "lexical_score": 0.1804839391377853,
+            "matched_terms": [
+                "and",
+                "blocking",
+                "by",
+                "chains",
+                "concurrent",
+                "conflicts",
+                "delayed",
+                "for",
+                "incompatible",
+                "lock",
+                "logical",
+                "or",
+                "resources",
+                "same",
+                "stalled",
+                "the",
+                "transaction",
+                "transactions",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "1150",
+                "error_name": "OBSOLETE_ER_UNUSED1",
+                "official_description": "Delayed insert thread couldn't get requested lock for table %-.192s",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "concurrency_and_transaction",
+                "cause_analysis": "The failure is typically associated with concurrent transactions contending for the same logical resources, incompatible lock acquisition order, or transaction-state conflicts surfaced by the engine.",
+                "solution_guidance": "Inspect blocking chains, reduce conflicting write overlap, shorten transaction lifetime, review lock acquisition order, and verify whether transaction scheduling or retry logic needs adjustment.",
+                "observable_symptoms": [
+                    "blocking",
+                    "rollback",
+                    "retry",
+                    "stalled transaction"
+                ]
+            }
+        }
+    }
+]

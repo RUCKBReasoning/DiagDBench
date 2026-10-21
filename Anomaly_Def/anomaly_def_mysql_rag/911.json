@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Transaction Log Subsystem Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Database Memory Allocation Anomaly: Excessive or un-bounded growth of buffer caches, work areas, plan caches, and other engine heaps drives the database process beyond the safe physical or virtual memory envelope. \nTransaction Log Subsystem Anomaly: Commit processing is throttled because log buffering, flushing, segment switching, or archiving cannot keep pace with the rate of redo generation. \nStorage Space Capacity Anomaly: Free space for data, log, archive, temp, or backup areas falls to zero or below auto-extend thresholds, causing allocation failures and write stalls.\n\nWhen these three root causes arise together, the instance exhibits a compound failure pattern: commit latencies and log-flush waits lengthen while overall memory consumption surges and physical free space dwindles. Checkpoints and log switches fire in rapid succession, yet archived-log backlogs and full destinations prevent reuse, so active log files balloon until the underlying volume is exhausted. As space tightens, the engine is forced to retain extra dirty buffers in memory because checkpoints cannot persist pages, amplifying memory pressure, paging, and OOM risks. Concurrently, background archiver and cleanup processes contend for both memory and I/O, further delaying log rotation and consuming the last bytes of available space. Application sessions observe timeouts, \"cannot allocate extent / no space left on device\" errors, and eventual instance or node eviction when the operating system can no longer satisfy memory or disk requests.\n\nCausally, aggressive memory allocation (e.g., un-capped per-query work areas or plan-cache bloat) increases the rate and size of redo records as large in-memory operations generate heavy transactional metadata. The swollen redo stream pushes the transaction-log subsystem past its flush and switch capacity; because archives are slow or space-constrained, log segments cannot be recycled, causing on-disk log growth that quickly consumes the same storage pool where data and temp files reside. As the device fills, checkpoints stall, forcing dirty pages to remain resident and inflating memory use even further. The positive feedback loop—memory bloat → higher redo volume → log bottleneck → storage exhaustion → blocked checkpoints → more memory bloat—drives the system into a state where neither memory, log throughput, nor space can recover without external intervention.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.7437391952309984,
+            "bm25_score": 29.970707382005738,
+            "lexical_score": 0.1457973174366617,
+            "matched_terms": [
+                "and",
+                "be",
+                "because",
+                "blocked",
+                "constrained",
+                "engine",
+                "for",
+                "is",
+                "operations",
+                "or",
+                "other",
+                "pattern",
+                "query",
+                "the",
+                "together",
+                "when",
+                "with",
+                "work"
+            ],
+            "match_count": 44,
+            "entry": {
+                "timeout_id": "mysql84_regular_expression_time_limit",
+                "parameter_name": "regexp_time_limit",
+                "timeout_category": "expression_evaluation_time_limit",
+                "scope": "global/session",
+                "official_definition": "The time limit for regular expression matching operations performed by the regular expression engine.",
+                "trigger_condition": "A regular expression match operation exceeds regexp_time_limit.",
+                "workload_impact": "The regular expression operation is constrained by the configured time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

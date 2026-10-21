@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Transaction Log Subsystem Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Query Plan Selection Anomaly: The optimizer persistently chooses a sub-optimal execution plan despite accurate statistics, leading to excessive I/O, CPU, or row versions.\nTransaction Log Subsystem Anomaly: The write-ahead logging path—log buffer, log file, flushing, or archiving—cannot keep pace with redo generation, inflating commit latency and stalling writers.\nOperating System Resource Limit Anomaly: Kernel-enforced ceilings on file handles, I/O contexts, threads, or shared memory are reached, preventing the database from allocating the low-level resources it needs.\n\nWhen these three root causes arise together, workloads experience a perfect storm of symptoms: queries unexpectedly switch from efficient indexed access to scan-heavy or nested-loop plans that emit far more redo, causing explosive growth in transaction-log volume. The log device shows sustained 100 % utilization, with surging log flush and commit wait times. Simultaneously, the database and archiver processes begin reporting \"too many open files,\" \"cannot allocate shared memory,\" or \"AIO context limit reached,\" further throttling log writes and causing checkpoints, replication catch-up, or crash-recovery to stall. Applications observe erratic response times—some statements hang on plan compilation or commit, others fail outright with OS-level resource errors—while existing sessions linger in lock-held states, amplifying contention.\n\nCausally, a bad plan that scans or loops excessively multiplies the volume of row modifications and undo/redo records, driving the log subsystem toward saturation. As log flush latency rises, transactions take longer to commit, leading to a backlog of database processes waiting on log space or syncs. This surge in concurrent waiting sessions grows the number of open files, I/O requests, threads, and shared-memory attachments, quickly consuming the host’s kernel quotas. Once OS limits are hit, the database can no longer create additional log write contexts, archiver threads, or temporary files, which further slows or blocks both query compilation and log flushing. The feedback loop between poor plan-induced write amplification, an overtaxed log path, and hard OS ceilings escalates into widespread slowdown or partial outage, making each individual anomaly harder to diagnose and resolve in isolation.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2052,
+            "score": 0.5712073843352355,
+            "bm25_score": 55.44668880072055,
+            "lexical_score": 0.15037617554858934,
+            "matched_terms": [
+                "access",
+                "and",
+                "are",
+                "create",
+                "file",
+                "growth",
+                "latency",
+                "log",
+                "memory",
+                "of",
+                "or",
+                "path",
+                "replication",
+                "the",
+                "to",
+                "too",
+                "with",
+                "write"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "MY-010165",
+                "error_name": "ER_RPL_CANT_MAKE_PATHS",
+                "official_description": "Unable to create replication path names: out of memory or path names too long (path name exceeds %d or file name exceeds %d).",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_error_log_message",
+                "system_domain": "storage_and_persistence",
+                "cause_analysis": "The failure is typically associated with file creation, filesystem access, write durability, log persistence, tablespace management, or storage-capacity boundaries.",
+                "solution_guidance": "Inspect filesystem capacity and permissions, verify persistence paths, review log and data placement, and check whether storage latency or write failures are affecting the engine.",
+                "observable_symptoms": [
+                    "write failure",
+                    "disk pressure",
+                    "log growth",
+                    "file operation error"
+                ]
+            }
+        }
+    }
+]

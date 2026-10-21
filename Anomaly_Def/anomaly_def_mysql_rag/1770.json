@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + Database Memory Allocation Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Composite definition: The database is simultaneously experiencing excessive lock contention and/or deadlocks in the lock manager, uncontrolled growth or exhaustion of engine-level memory regions, and physical corruption or logical inconsistency of on-disk data and index pages. All three root causes coexist during the same workload execution, creating a multifaceted failure mode that spans concurrency control, memory management, and storage integrity.\n\nCombined observable phenomena: 1) Long blocker-waiter chains, frequent deadlock victim rollbacks, and sharp drops in transaction throughput. 2) Escalating resident-set size, swapping or OOM events, plummeting cache-hit ratios, and CPU stalls caused by memory pressure. 3) Intermittent corruption errors, checksum failures, and mismatched row counts between index and heap scans. Because the faults reinforce one another, operators may also see: transactions stuck in lock wait while holding large private work buffers that cannot be freed; corruption-induced plan fall-backs to full scans that inflate both lock footprints and memory consumption; node restarts triggered by combined OOM kills and corruption-related assertion failures; and a surge of application-side timeouts and retry storms that obscure the true root causes.\n\nCausal interaction: Damaged data or index pages can force the optimizer to abandon narrow index paths in favor of broader scans, which lock more rows or pages for longer periods, heightening lock contention. These heavier scans also allocate larger buffer and work areas, accelerating memory exhaustion. In turn, severe memory pressure prolongs execution time, delays lock release, and may trigger automatic lock-escalation, all of which deepen blocking chains. Prolonged lock waits keep dirty or inconsistent pages pinned in shared buffers, hampering checkpoint flush and increasing the likelihood that corrupted pages survive or propagate. Repeated crash recoveries due to OOM or corruption amplify concurrency storms when clients reconnect, recreating the contention–memory–corruption cycle and progressively degrading the overall database health.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 3,
+            "score": 0.6072261519659563,
+            "bm25_score": 27.554553887683984,
+            "lexical_score": 0.1599405425492382,
+            "matched_terms": [
+                "and",
+                "another",
+                "because",
+                "blocking",
+                "cannot",
+                "for",
+                "holding",
+                "in",
+                "is",
+                "lock",
+                "longer",
+                "or",
+                "retry",
+                "the",
+                "to",
+                "transaction",
+                "triggered",
+                "waits",
+                "when",
+                "while"
+            ],
+            "match_count": 84,
+            "entry": {
+                "timeout_id": "mysql84_metadata_lock_wait_timeout",
+                "parameter_name": "lock_wait_timeout",
+                "timeout_category": "metadata_lock_wait_timeout",
+                "scope": "global/session",
+                "official_definition": "Specifies the timeout in seconds for attempts to acquire metadata locks.",
+                "trigger_condition": "A statement waits longer than lock_wait_timeout while attempting to acquire a metadata lock.",
+                "workload_impact": "The metadata lock acquisition fails and the statement does not proceed.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

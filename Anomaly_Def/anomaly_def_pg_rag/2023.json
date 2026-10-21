@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Replication Synchronization Anomaly + Data Block and Index Integrity Anomaly + Storage Space Capacity Anomaly",
+            "Description": "Replication Synchronization Anomaly : Standbys or downstream consumers cannot receive, write, or apply WAL/redo fast enough to keep pace with the primary, leading to growing replication lag and retention of log segments.\nData Block and Index Integrity Anomaly : On-disk data or index pages become physically or logically corrupt, breaking key order, page links, or checksums and causing inconsistent query results or engine errors.\nStorage Space Capacity Anomaly : The database or log storage reaches or nears its physical or logical size limit, preventing further allocations or log recycling and causing allocation failures.\n\nWhen all three root causes coexist, the system exhibits compounding symptoms: replication lag widens while retained primary log segments balloon; the enlarged log volume, unrecycled due to replica delay and corruption-triggered recovery retries, rapidly consumes remaining disk space until data files, archive areas, or temporary spaces hit hard limits. Corrupted pages or indexes surfaced on the replica may propagate back as apply failures, causing replication worker crashes, skipped transactions, or repeated retries that further increase lag. On the primary, space exhaustion and unrecycled logs generate \"no space left\" errors, stall checkpoints, and block new transactions, while read replicas deliver stale or inconsistent query results because of both replay delay and local corruption.\n\nCausally, storage capacity pressure and replication backlogs reinforce each other: corruption encountered during replay forces replicas to halt or loop on failing records, which prevents log-position advancement; the primary therefore retains more WAL segments, accelerating space consumption. As free space dwindles, both primary and replica I/O subsystems may switch to synchronous archiving or halt allocations, further slowing write throughput and exacerbating replication lag. Simultaneously, corruption inside data or index pages can trigger larger redo generation (e.g., forced page writes or index rebuild attempts), inflating log volume when the replica is already behind. The intertwined feedback among replication delay, corruption-induced replay failures, and shrinking storage headroom drives the database toward a cascading failure that impairs availability, data integrity, and recovery options.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.5856838763269411,
+            "bm25_score": 16.905715067243175,
+            "lexical_score": 0.1106541450777202,
+            "matched_terms": [
+                "and",
+                "can",
+                "is",
+                "no",
+                "of",
+                "on",
+                "or",
+                "stale",
+                "system",
+                "the",
+                "to",
+                "triggered",
+                "when",
+                "which",
+                "with"
+            ],
+            "match_count": 261,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_idle",
+                "parameter_name": "tcp_keepalives_idle",
+                "timeout_category": "network_idle_keepalive_probe_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the amount of time with no network activity after which the operating system should send a TCP keepalive message to the client.",
+                "trigger_condition": "A TCP client connection has no network activity longer than tcp_keepalives_idle on systems supporting TCP_KEEPIDLE or an equivalent socket option.",
+                "workload_impact": "Starts TCP keepalive probing for an otherwise idle client connection; together with interval and count settings this can lead to dead connection detection.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

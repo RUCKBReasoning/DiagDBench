@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Database Configuration Parameter Anomaly",
+            "Description": "Composite definition: The database simultaneously suffers from application-level SQL that requests or manipulates far more data than required and from engine parameters that are mis-tuned for the actual hardware and workload, so neither layer can compensate for the other’s inefficiencies.\nSQL Workload Logic Anomaly: Inefficient or ill-scoped statements/transactions that inflate data access, hold resources too long, or create excessive round-trips beyond business need.\nDatabase Configuration Parameter Anomaly: Misconfigured memory, logging, checkpoint, parallelism, or session limits that create artificial bottlenecks or under-utilize available hardware resources.\n\nCombined phenomena: • Slow-query logs and statement statistics show extreme, erratic latencies; the same queries sometimes complete quickly and other times stall for minutes. • Wait-class distributions become skewed—e.g., concurrent scans spill to disk due to undersized work memory while CPU cores remain partially idle because parallelism caps are too low. • Prolonged transactions from chatty or scan-heavy logic trigger frequent checkpoints or log-flush storms configured too aggressively, causing I/O bursts followed by idle periods. • Lock waits, deadlocks, and connection pool exhaustion increase as sessions linger in resource waits created by both excessive work and tight limits. • Monitoring displays paradoxes such as high logical I/O but low physical I/O, or memory pressure alongside low buffer-cache hit ratios.\n\nCausal chain: Verbose or poorly filtered SQL expands row sets, consumes more buffer cache, work memory, and redo space, pushing the engine toward its configured ceilings. Because critical parameters (buffer pool size, work_mem, max_parallelism, checkpoint_timeout, etc.) are mis-aligned, the inflated demand cannot be absorbed gracefully: memory spills to temp files, checkpoints fire prematurely, and log files wrap too quickly, each inducing additional waits. Conversely, if parameters are over-provisioned, each heavy query can monopolize large swaths of RAM or worker threads, starving other sessions and amplifying contention created by the flawed workload logic. The two root causes therefore reinforce each other—inefficient SQL raises resource pressure, while poor configuration converts that pressure into severe contention or wasted capacity—making performance regressions broader, harder to predict, and more difficult to diagnose.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.7507576419213974,
+            "bm25_score": 38.57119303742735,
+            "lexical_score": 0.16919213973799124,
+            "matched_terms": [
+                "access",
+                "and",
+                "be",
+                "because",
+                "by",
+                "configured",
+                "contention",
+                "for",
+                "in",
+                "long",
+                "or",
+                "other",
+                "query",
+                "resource",
+                "session",
+                "statement",
+                "statements",
+                "the",
+                "too",
+                "work",
+                "workload"
+            ],
+            "match_count": 6,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

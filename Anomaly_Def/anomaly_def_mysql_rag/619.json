@@ -1,0 +1,55 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Buffer Cache and Latch Contention Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Engine runtime settings (memory, checkpoint cadence, parallelism, etc.) are mis-tuned for the actual hardware and workload, creating artificial pressure or idle gaps that do not reflect real resource limits.\nBuffer Cache and Latch Contention Anomaly : Sessions block or spin while fighting for access to hot buffer-cache pages, page pins, or latches, causing serialization inside the buffer manager rather than at the row-lock layer.\nStorage I/O Throughput Anomaly : Physical devices or virtual storage layers hit their bandwidth / IOPS ceiling, stretching read- and write-latencies and driving up I/O wait times.\n\nWhen these three root causes strike together, the database exhibits a confused mix of symptoms:  • Bursts of buffer-busy, page-latch, log-write, and file-I/O waits appear side-by-side.  • Checkpoint or background-writer storms trigger prolonged dirty-page flushing that holds buffer latches, freezes modifying sessions, and inflates read/write latency at the device.  • CPU alternates between under-utilization (blocked on I/O) and futile spin-loops (contending for latches), while overall throughput collapses and response-time variance widens.  • Wait-event histograms show both high in-engine spin / latch time and deep storage queue depths, yet OS-level memory and CPU headroom remain.\n\nCausal chain: Misaligned configuration parameters—such as too small a buffer pool, overly aggressive checkpoint intervals, or an undersized async I/O batch size—force pages to be evicted and flushed more often than necessary. The heightened flush frequency drives up physical I/O, quickly exhausting the storage subsystem’s throughput budget and inflating device latency. Slower I/O prolongs dirty-page residency and latch hold times, intensifying buffer and latch contention. In turn, the elevated contention magnifies the sensitivity to the original configuration errors, prompting more retries, spin-loops, and timeout-driven flushes. The feedback loop between bad configuration, I/O saturation, and internal latch contention compounds stalls across all sessions, degrading both transactional and analytical workloads simultaneously.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.7422625538020086,
+            "bm25_score": 25.443050932979304,
+            "lexical_score": 0.1408751793400287,
+            "matched_terms": [
+                "an",
+                "and",
+                "be",
+                "block",
+                "for",
+                "lock",
+                "of",
+                "or",
+                "sessions",
+                "than",
+                "the",
+                "timeout",
+                "to",
+                "wait",
+                "waits",
+                "when",
+                "while",
+                "write"
+            ],
+            "match_count": 30,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

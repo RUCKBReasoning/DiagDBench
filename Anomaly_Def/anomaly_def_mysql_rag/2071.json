@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Buffer Cache and Latch Contention Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Database Memory Allocation Anomaly: Excessive or uncontrolled growth of database memory regions (buffer caches, work areas, plan cache, etc.) pushes the host beyond its safe physical- or virtual-memory envelope.\nBuffer Cache and Latch Contention Anomaly: Hot buffer pages and their protecting latches become serialization points, forcing sessions to wait, spin, or stall while competing for page access rather than for higher-level locks.\nOperating System Resource Limit Anomaly: The database engine or its worker processes exhaust kernel-enforced limits such as file descriptors, shared-memory segments, semaphores, or thread quotas, preventing new allocations or spawns.\n\nWhen all three root causes arise concurrently, the system exhibits a blended failure pattern: 1) memory-pressure symptoms such as paging, rising RSS, or OOM kills; 2) escalating buffer-busy and latch wait events accompanied by CPU spin and latency spikes; and 3) intermittent \"cannot allocate resource\" errors, failed connection attempts, or stalled background workers as kernel limits are hit. Swapping amplifies latch hold times, making contention metrics surge, while blocked or crashed auxiliary processes (e.g., check-pointers, log writers, or parallel workers) further starve the buffer pool and inflate both wait and memory footprints. The overall effect is sharp throughput collapse, erratic response times, and partial outages that can be difficult to attribute to a single layer.\n\nCausal chain: unbounded memory allocation enlarges the buffer cache and per-session work areas, increasing the absolute number of dirty pages and active latches; longer flush cycles and greater page churn intensify latch contention. The prolonged waits keep transactions open and memory pinned, which in turn accelerates memory consumption. As memory pressure mounts, the kernel begins paging and elevates the likelihood of hitting process limits for address space, file handles, or worker threads. Once OS limits are breached, essential database helpers fail to start or crash, reducing the system’s ability to recycle or flush buffers and releasing latches even more slowly. The three anomalies therefore reinforce one another in a positive feedback loop—memory bloat fuels contention, contention prolongs memory residency, and both drive the engine into kernel resource exhaustion—culminating in severe, workload-agnostic instability.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 4,
+            "score": 0.7021493898216836,
+            "bm25_score": 26.058377335427746,
+            "lexical_score": 0.14550660792951542,
+            "matched_terms": [
+                "access",
+                "and",
+                "be",
+                "blocked",
+                "by",
+                "contention",
+                "for",
+                "in",
+                "is",
+                "limit",
+                "or",
+                "pattern",
+                "resource",
+                "session",
+                "the",
+                "when",
+                "work",
+                "workload"
+            ],
+            "match_count": 98,
+            "entry": {
+                "timeout_id": "mysql84_select_execution_timeout",
+                "parameter_name": "max_execution_time",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "global/session/SET_VAR hint",
+                "official_definition": "The execution timeout for SELECT statements, in milliseconds.",
+                "trigger_condition": "A SELECT statement exceeds the configured max_execution_time limit.",
+                "workload_impact": "The SELECT statement is interrupted by the execution time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

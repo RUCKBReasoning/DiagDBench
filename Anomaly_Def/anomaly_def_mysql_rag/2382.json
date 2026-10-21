@@ -1,0 +1,62 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Storage I/O Throughput Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Database Memory Allocation Anomaly: The database engine allocates and retains more memory than the host can safely provide, driving paging, swap activity, and cache thrashing.\nStorage I/O Throughput Anomaly: Physical disks or storage fabric are unable to sustain the read/write throughput or IOPS demanded by data, temp, or log files, forcing long device queues and high latency.\nNetwork and Connectivity Resource Anomaly: Network paths, listeners, or connection slots are saturated or unstable, delaying session establishment and data transfer between clients and the database.\n\nWhen these three root causes strike concurrently, the system exhibits a multi-layer performance collapse: memory pressure forces dirty pages and large work areas to spill to disk exactly when the underlying storage is already throughput-bound, amplifying device queues and read/write latency. Stalled I/O keeps backend processes in active states, each holding scarce memory, sockets, and worker threads, which in turn inflates overall memory footprint and accelerates paging. Prolonged statement execution and commit latency lengthen transaction lifetimes, causing application connection pools to exhaust, inflating the volume of concurrent connection attempts, listener backlogs, and network retransmissions. Clients observe erratic response times, frequent timeouts, and sporadic \"too many connections\" errors, while the server shows simultaneous spikes in page-fault rates, disk wait events, and socket queue depths that are difficult to disentangle.\n\nCausally, excessive in-engine memory allocation pushes the operating system to evict buffer pages, initiating large amounts of swap and checkpoint traffic that overwhelms storage bandwidth. Storage saturation elongates every I/O, trapping sessions in wait states and preventing memory from being released, thus worsening the memory shortfall. The elongated waits propagate up the stack as slow or hanging queries; clients keep connections open longer and retry failed attempts, which saturates network and listener resources. Network congestion and connection storms then feed back into the database by further delaying commit acknowledgements and result-set drains, keeping server processes resident in memory and perpetuating high buffer and work-area allocations. The intertwined feedback loops among memory pressure, I/O bottlenecks, and network contention magnify each anomaly, driving the database into cascading degradation or forced restarts.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 5,
+            "score": 0.7635945945945946,
+            "bm25_score": 28.822423738120648,
+            "lexical_score": 0.21198198198198198,
+            "matched_terms": [
+                "activity",
+                "and",
+                "are",
+                "connection",
+                "data",
+                "establishment",
+                "from",
+                "holding",
+                "is",
+                "latency",
+                "longer",
+                "more",
+                "network",
+                "of",
+                "or",
+                "pools",
+                "read",
+                "server",
+                "session",
+                "sessions",
+                "than",
+                "the",
+                "to",
+                "wait",
+                "waits",
+                "when"
+            ],
+            "match_count": 112,
+            "entry": {
+                "timeout_id": "mysql84_network_read_timeout",
+                "parameter_name": "net_read_timeout",
+                "timeout_category": "network_read_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for more data from a connection before aborting the read.",
+                "trigger_condition": "The server waits for additional data from a connection longer than net_read_timeout.",
+                "workload_impact": "The network read is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Buffer Cache and Latch Contention Anomaly + Operating System Resource Limit Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Buffer Cache and Latch Contention Anomaly : Concurrency hotspots inside the buffer manager force sessions to serialize on page-latch or pin operations, inflating CPU spin time and I/O churn.\nOperating System Resource Limit Anomaly : Kernel-enforced ceilings on file descriptors, threads, shared memory, or other per-process/host objects prevent the database from acquiring the resources it needs to run new work.\nNetwork and Connectivity Resource Anomaly : Server-side listener, socket, or authentication capacity is exhausted or slow, producing connection errors, half-open sockets, and client-side timeouts.\n\nWhen these three root causes manifest together, the instance experiences a compound performance collapse: hot pages already gating throughput hold back worker threads that are themselves scarce because the OS will not create more. Existing backends spend longer in latch wait or spin loops while new clients repeatedly retry connections, swelling the inbound socket backlog. System views show simultaneous surges in page-latch waits, failures to fork or create threads, and connection refusals. Clients alternate between slow query latency (due to buffer contention) and outright inability to connect (due to exhausted sockets or processes). The mixture can create cascading stalls where even connected sessions hang on network writes because kernel socket buffers are saturated by stalled peers.\n\nCausally, latch contention amplifies OS-level resource consumption: prolonged critical sections keep worker threads active, inflating the count of open files, memory pins, and sockets per process. As OS limits on descriptors, semaphores, or threads are hit, the database cannot spawn additional background writers or accept new client connections, reducing its ability to flush dirty pages and further intensifying buffer-cache pressure. Concurrently, failed or slow connection attempts generate waves of retries that flood the listener and network stack, consuming yet more sockets and backlog slots already constrained by kernel limits. The positive feedback loop between in-engine latch hot spots, OS resource exhaustion, and network saturation drives the system into a state where both existing workload execution and new connection establishment degrade severely, prolonging recovery and complicating diagnosis.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 204,
+            "score": 0.57575783249325,
+            "bm25_score": 41.055431929724975,
+            "lexical_score": 0.134031007751938,
+            "matched_terms": [
+                "and",
+                "authentication",
+                "cannot",
+                "client",
+                "connect",
+                "connection",
+                "establishment",
+                "is",
+                "limits",
+                "network",
+                "or",
+                "server",
+                "the"
+            ],
+            "match_count": 13,
+            "entry": {
+                "error_code": "57P03",
+                "error_name": "cannot_connect_now",
+                "official_description": "cannot connect now",
+                "error_class": "Class 57 - Operator Intervention",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "connection_and_network",
+                "cause_analysis": "The failure is typically associated with connection establishment, authentication exchange, protocol correctness, network reachability, or client/server communication stability.",
+                "solution_guidance": "Check endpoint reachability, authentication flow, connection limits, protocol compatibility, transport stability, and client connection lifecycle management.",
+                "observable_symptoms": [
+                    "connection failure",
+                    "disconnect",
+                    "handshake failure",
+                    "unreachable session"
+                ]
+            }
+        }
+    }
+]

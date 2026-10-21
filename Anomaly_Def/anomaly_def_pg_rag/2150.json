@@ -1,0 +1,54 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + CPU Resource Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Obsolete row versions, rollback records, and dead index entries accumulate faster than background cleanup workers can reclaim them.\nCPU Resource Anomaly : Database processes sustain near-saturation CPU consumption, starving other work and inflating latency.\nOperating System Resource Limit Anomaly : Database processes hit kernel-enforced ceilings such as file descriptors, shared-memory segments, or thread counts, causing allocation failures.\n\nWhen all three root causes are active, the system shows a compound failure signature: vacuum or purge workers spin at 100 % CPU yet make little progress, overall host load and context-switch rates soar, and the engine begins to log errors about failing to spawn new workers, open files, or extend shared memory. Query latencies rise non-linearly; some sessions stall on visibility checks of bloated tables while others are rejected outright by the kernel. Monitoring views show both a growing version store and a backlog of blocked or aborted background jobs. Administrators may observe that even emergency maintenance commands refuse to start because required handles or processes cannot be created.\n\nCausal chain: heavy UPDATE/DELETE churn inflates the version store, awakening more cleanup workers; these workers consume additional CPU cycles and create more kernel objects (threads, file handles, async-I/O contexts). The extra CPU demand pushes the host to saturation, lengthening task-switch queues and slowing all workers—including those needed for cleanup—so the MVCC bloat worsens. Meanwhile, the multiplication of worker threads and open files drives the process toward OS resource ceilings; once those limits are reached, new vacuum workers and client sessions fail to start, eliminating the very mechanisms that could relieve version pressure. The three anomalies therefore reinforce one another: MVCC bloat triggers CPU saturation, CPU saturation accelerates kernel object creation, OS denials block remediation, and the feedback loop rapidly degrades overall database availability.\n",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.3774275870126689,
+            "bm25_score": 16.88133634820119,
+            "lexical_score": 0.14028132992327363,
+            "matched_terms": [
+                "and",
+                "are",
+                "be",
+                "can",
+                "client",
+                "dead",
+                "failure",
+                "latency",
+                "of",
+                "on",
+                "or",
+                "progress",
+                "sessions",
+                "system",
+                "that",
+                "the",
+                "to",
+                "when"
+            ],
+            "match_count": 265,
+            "entry": {
+                "timeout_id": "pg16_tcp_keepalives_count",
+                "parameter_name": "tcp_keepalives_count",
+                "timeout_category": "network_keepalive_failure_threshold",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies the number of TCP keepalive messages that can be lost before the server connection to the client is considered dead.",
+                "trigger_condition": "The number of lost TCP keepalive probes reaches tcp_keepalives_count on systems supporting TCP_KEEPCNT.",
+                "workload_impact": "The server can consider the client connection dead after the configured keepalive failure threshold.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

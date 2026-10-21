@@ -1,0 +1,65 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Transaction Lock Contention Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "SQL Workload Logic Anomaly: Application-level SQL or transaction design forces the engine to touch more rows, hold transactions open longer, or perform extra round-trips beyond business needs.\nTransaction Lock Contention Anomaly: Concurrent transactions request incompatible locks on the same resources, leading to long wait chains or deadlocks managed by the lock manager.\nOperating System Resource Limit Anomaly: The database process hits kernel-enforced ceilings such as file-descriptor, thread, or shared-memory limits, preventing new workers or I/O operations.\n\nWhen these three root causes coexist, the system exhibits a blended symptom set: individual statements run slowly and appear repeatedly in slow-query logs; lock-wait and deadlock statistics surge, producing victim rollbacks and application retries; and, simultaneously, the engine logs failures to open files, spawn threads, or allocate shared memory, causing partial connection or worker starvation. Blocking sessions linger because the lock manager cannot grant locks, while new sessions or parallel workers cannot be created due to exhausted OS resources, amplifying queue length at both the database and application tiers. Observable effects include steep drops in throughput, rising response-time variance, connection-pool exhaustion, and oscillations between lock timeouts, transaction aborts, and \"resource cannot be acquired\" engine errors.\n\nCausal chain: chatty or scan-heavy SQL inflates transaction scope and lock footprint, lengthening the time each lock is held and turning otherwise brief conflicts into chronic blocking or deadlock scenarios. Prolonged waits keep server processes alive and idle for longer, inflating the number of simultaneously active threads, file handles, and asynchronous I/O contexts. This sustained pressure drives the database process toward OS-level resource ceilings. Once those limits are reached, the engine can no longer spawn new worker threads to service blocked or retrying sessions, which in turn magnifies lock contention because fewer transactions can progress to release their locks. The positive feedback loop between over-heavy SQL, extended lock holding, and kernel resource exhaustion pushes the database into a severe, self-reinforcing degradation state that is difficult to resolve without addressing all three layers.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.7594044665012406,
+            "bm25_score": 38.33348616751851,
+            "lexical_score": 0.19801488833746897,
+            "matched_terms": [
+                "active",
+                "and",
+                "because",
+                "blocking",
+                "cannot",
+                "for",
+                "holding",
+                "idle",
+                "incompatible",
+                "is",
+                "lock",
+                "locks",
+                "long",
+                "longer",
+                "of",
+                "open",
+                "or",
+                "preventing",
+                "query",
+                "sessions",
+                "that",
+                "the",
+                "this",
+                "time",
+                "transaction",
+                "transactions",
+                "when",
+                "while"
+            ],
+            "match_count": 218,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

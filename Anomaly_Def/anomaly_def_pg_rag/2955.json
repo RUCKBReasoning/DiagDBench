@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Schema and Index Design Anomaly + Storage Space Capacity Anomaly + Operating System Resource Limit Anomaly",
+            "Description": "Schema and Index Design Anomaly : Physical data-model and indexing choices do not match workload access patterns, forcing inefficient plans and excess I/O.\nStorage Space Capacity Anomaly : The database or related log/temporary areas run out of free space, leading to allocation failures and halted operations.\nOperating System Resource Limit Anomaly : Kernel-enforced limits on file handles, shared memory, threads, or similar objects are exhausted, preventing the database from creating or accessing required resources.\n\nWhen all three root causes are present, symptoms intertwine: poorly indexed queries trigger large full-table scans and spill to temp segments, rapidly consuming tablespace and temp space; background growth of data files or logs fails because host file-descriptor quotas or filesystem space are simultaneously exhausted; error logs show a mix of \"no space left on device\" and \"too many open files\" while query latency escalates and write operations stall. Autovacuum, index rebuilds, and backup jobs may start but abort mid-way due to both space exhaustion and lost OS resources, leaving partially created objects that further waste space and ties up additional file handles. End-user experience degrades from slow responses to outright session failures as new connections cannot allocate shared memory or temp work areas.\n\nCausally, the inefficient physical design inflates I/O volume and temporary allocations, accelerating consumption of both disk space and kernel objects (e.g., temp files, workfile descriptors). Rapid space growth forces frequent file extensions, each of which requires additional file handles and shared memory mappings, pushing the system toward OS limits. Conversely, once OS handle or memory limits are hit, auto-extension and cleanup tasks fail, preventing space reclamation and exacerbating space shortages. The mutual reinforcement of design-driven bloat, space exhaustion, and OS limit saturation produces a feedback loop that intensifies resource starvation and makes the composite anomaly harder to diagnose than any single constituent issue.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 2,
+            "score": 0.6319469770976687,
+            "bm25_score": 25.951071701178243,
+            "lexical_score": 0.14727483571704675,
+            "matched_terms": [
+                "and",
+                "any",
+                "because",
+                "cannot",
+                "cleanup",
+                "from",
+                "of",
+                "open",
+                "or",
+                "preventing",
+                "query",
+                "required",
+                "schema",
+                "session",
+                "than",
+                "that",
+                "the",
+                "user",
+                "when",
+                "while"
+            ],
+            "match_count": 307,
+            "entry": {
+                "timeout_id": "pg16_idle_in_transaction_session_timeout",
+                "parameter_name": "idle_in_transaction_session_timeout",
+                "timeout_category": "idle_transaction_session_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Terminates any session that has been idle within an open transaction for longer than the specified amount of time.",
+                "trigger_condition": "A session is idle, waiting for a client query, while an open transaction remains active longer than the configured threshold.",
+                "workload_impact": "The session is terminated; this prevents long idle transactions from holding locks or preventing vacuum cleanup.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

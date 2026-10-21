@@ -1,0 +1,57 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Query Plan Selection Anomaly + Database Configuration Parameter Anomaly + Replication Synchronization Anomaly",
+            "Description": "Query Plan Selection Anomaly : The optimizer repeatedly chooses sub-optimal execution plans despite having reasonably accurate statistics, leading to erratic or inefficient statement performance.\nDatabase Configuration Parameter Anomaly : Engine-level settings for memory, logging, parallelism, and background workers are mis-tuned relative to hardware capacity and workload needs, causing systemic inefficiencies that are not rooted in actual resource exhaustion.\nReplication Synchronization Anomaly : Downstream replicas cannot receive, persist, or apply WAL / redo data as quickly as the primary produces it, resulting in widening replay lag and retention of log segments.\n\nWhen all three root causes coexist, the database exhibits compound symptoms: 1) the same query may oscillate between fast and slow executions or fall back to full scans, 2) CPU, memory, or I/O usage appears either under-utilized or intermittently saturated without a clear pattern, 3) checkpoint storms or oversized log bursts coincide with sudden optimizer plan flips, and 4) replica lag spikes unpredictably, with large log backlogs held open by long-running or poorly planned queries whose resource footprints are inflated by mis-configured memory and parallelism settings. Administrators may observe plan-cache churn, bloated work-memory allocations, growing un-recycled WAL segments, and replicas stuck replaying expensive plans that amplify apply latency.\n\nCausally, misaligned configuration parameters (e.g., overly large work_mem, insufficient shared buffers, aggressive checkpoint intervals, or excessively high max_parallelism) skew the optimizer’s cost model, leading it to prefer plans that assume more memory, CPU, or I/O bandwidth than the system can actually deliver. These bloated plans run longer and generate disproportionate redo, inflating the primary’s transaction log volume. The surge of log output must traverse the replication channel, but downstream nodes already constrained by sub-optimal apply plans and limited resources fall behind, deepening replication lag. The growing backlog prevents log truncation on the primary, which in turn increases disk usage and can trigger further emergency checkpoints, compounding pressure on the mis-tuned buffer and I/O subsystems. Thus, the initial mis-configuration amplifies poor plan choices, both of which magnify redo generation and hinder replication, creating a feedback loop that degrades performance and availability across the entire deployment.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.7447981824619379,
+            "bm25_score": 37.115147749574156,
+            "lexical_score": 0.1493272748731264,
+            "matched_terms": [
+                "and",
+                "behind",
+                "configured",
+                "execution",
+                "long",
+                "longer",
+                "more",
+                "of",
+                "or",
+                "pattern",
+                "query",
+                "resource",
+                "running",
+                "statement",
+                "than",
+                "that",
+                "the",
+                "when",
+                "with",
+                "work",
+                "workload"
+            ],
+            "match_count": 271,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

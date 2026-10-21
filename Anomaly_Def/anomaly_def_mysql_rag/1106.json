@@ -1,0 +1,56 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Transaction Lock Contention Anomaly + Database Memory Allocation Anomaly",
+            "Description": "SQL Workload Logic Anomaly: Application-level statements or transactions are written in ways that process or touch far more data, rows, or time than business logic actually requires.\nTransaction Lock Contention Anomaly: Concurrent sessions request incompatible locks on the same resources, producing long blocking chains or deadlocks inside the lock manager.\nDatabase Memory Allocation Anomaly: The engine’s cumulative buffer, cache, work-area, and session allocations outgrow safe physical limits, causing memory pressure, paging, or OOM events.\n\nWhen these three root causes manifest together, the system experiences prolonged statement runtimes, expanding lock-wait trees, rising deadlock and timeout errors, and simultaneous memory pressure. Bulky, poorly filtered queries and transactions hold row or table locks for extended periods, stalling other sessions. While they wait, blocked sessions keep their work areas, sort/hash buffers, and transaction state pinned in memory, inflating overall RAM consumption. Elevated memory usage intensifies OS paging or swap storms, which in turn slows lock acquisition and release, drives up lock-wait durations, and triggers more application-level retries. Monitoring views show spikes in both lock-related wait events and memory-related stalls; slow-query and deadlock logs reference the same heavyweight statements; the database process’s RSS grows continuously while transaction throughput collapses and connection pools back up.\n\nCausally, inefficient workload logic initiates large scans, huge intermediate result sets, and overlong transactions. These operations acquire broad or numerous locks that persist for their extended execution window, seeding hot-spot contention. The same bloated operations consume excessive work memory and expand buffer-cache footprints; as concurrency rises, each blocked session retains its allocations, pushing the node toward memory exhaustion. Memory pressure degrades I/O and CPU scheduling, elongating transaction runtimes and further prolonging lock holding times—thereby aggravating the contention spiral. Conversely, lock waits keep transactions active longer, preventing memory from being released and escalating pressure. The mutually reinforcing feedback loop between inefficient workload design, persistent locking, and runaway memory growth can rapidly degrade OLTP service levels and precipitate crashes or widespread timeouts.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 7,
+            "score": 0.6877210967646653,
+            "bm25_score": 34.69876367000214,
+            "lexical_score": 0.16114092479600084,
+            "matched_terms": [
+                "and",
+                "blocked",
+                "contention",
+                "engine",
+                "execution",
+                "for",
+                "long",
+                "operations",
+                "or",
+                "other",
+                "query",
+                "session",
+                "statement",
+                "the",
+                "time",
+                "timeout",
+                "together",
+                "when",
+                "work",
+                "workload"
+            ],
+            "match_count": 54,
+            "entry": {
+                "timeout_id": "mysql84_regular_expression_time_limit",
+                "parameter_name": "regexp_time_limit",
+                "timeout_category": "expression_evaluation_time_limit",
+                "scope": "global/session",
+                "official_definition": "The time limit for regular expression matching operations performed by the regular expression engine.",
+                "trigger_condition": "A regular expression match operation exceeds regexp_time_limit.",
+                "workload_impact": "The regular expression operation is constrained by the configured time limit.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

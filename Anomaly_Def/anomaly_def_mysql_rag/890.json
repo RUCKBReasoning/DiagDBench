@@ -1,0 +1,59 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Schema and Index Design Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-level statements or transaction patterns request, scan, or lock more data than the business case requires, inflating logical work and execution time.\nSchema and Index Design Anomaly : The physical data model lacks the indexes, partitions, or data types needed to support the workload’s access paths, forcing otherwise valid statements into inefficient full scans or lookups.\nStorage I/O Throughput Anomaly : The underlying storage devices or shared-storage tier cannot deliver the read/write throughput or latency demanded by the database engine, causing long I/O waits even for correctly issued requests.\n\nWhen all three root causes coexist, the database experiences a cascade of amplified symptoms: statements already bloated by poor SQL logic and missing indexes trigger large full-table or index scans that generate surges of physical I/O; these surges immediately hit the ceiling of an I/O subsystem that is itself throughput-constrained. Observable effects include extreme and widely variable statement and transaction latencies, slow-query logs filled with repeated business operations, execution plans showing scan-heavy access with high physical read counts, buffer pool churn, sustained queue depths and read/write latencies at the device level, elevated lock wait times as long-running transactions hold resources, and application timeouts or retries that further multiply the workload.\n\nCausal chain: ill-formed SQL and chatty transaction logic expand the amount of data the engine must touch. Because the schema lacks selective or covering indexes, the optimizer has no alternative but to choose scan-oriented plans, converting excess logical work into massive physical I/O. The inflated I/O demand overwhelms an already bandwidth-limited storage layer, stretching device queues and service times. As storage stalls lengthen, open transactions remain active longer, keeping locks and latches held and feeding back into even more contention and retry traffic. Thus, weaknesses at the workload layer and schema layer magnify the stress on storage, while storage saturation in turn exposes and aggravates every inefficiency in the upper layers, resulting in a self-reinforcing performance collapse that is difficult to attribute to any single tier without holistic diagnosis.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 6,
+            "score": 0.5719139914512389,
+            "bm25_score": 31.16484941704052,
+            "lexical_score": 0.16868673050615596,
+            "matched_terms": [
+                "an",
+                "and",
+                "because",
+                "cannot",
+                "for",
+                "is",
+                "lock",
+                "longer",
+                "of",
+                "or",
+                "retry",
+                "schema",
+                "statement",
+                "than",
+                "the",
+                "to",
+                "transaction",
+                "wait",
+                "waits",
+                "when",
+                "while",
+                "write"
+            ],
+            "match_count": 42,
+            "entry": {
+                "timeout_id": "mysql84_network_write_timeout",
+                "parameter_name": "net_write_timeout",
+                "timeout_category": "network_write_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds to wait for a block to be written to a connection before aborting the write.",
+                "trigger_condition": "The server waits longer than net_write_timeout while writing a block to the client connection.",
+                "workload_impact": "The network write is aborted.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "concurrency_and_locking",
+                "cause_analysis": "This timeout is usually triggered when a statement cannot obtain the required lock within the configured waiting window because another transaction or metadata operation is holding an incompatible lock.",
+                "solution_guidance": "Inspect blocking sessions, reduce conflicting transaction overlap, shorten transaction lifetime, and review lock scheduling and schema-change timing.",
+                "observable_symptoms": [
+                    "waiting statement aborted",
+                    "blocking",
+                    "retry",
+                    "transaction delay"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,51 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "MVCC Version Maintenance Anomaly + Replication Synchronization Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "MVCC Version Maintenance Anomaly : Obsolete row versions and deleted index entries accumulate faster than background cleanup can reclaim them, inflating the version store and heap size.\nReplication Synchronization Anomaly : Stand-by or downstream replicas cannot receive or apply transaction-log records at the rate the primary generates them, producing sustained replication lag.\nData Block and Index Integrity Anomaly : Physical pages or index structures become internally inconsistent, causing logical/physical corruption and unreliable access paths.\n\nWhen all three root causes coexist, the system shows a blended symptom set: the primary’s tables and indexes grow rapidly while replication monitoring reports widening write/flush/replay gaps; VACUUM/cleanup workers stay permanently backlogged and may repeatedly abort or skip ranges because they encounter corrupted pages; replica apply workers stall on the same corrupt blocks, causing cascading log retention on the primary. Query plans on both primary and replicas degrade—some scans slow down due to bloated heaps, others fall back to full scans after detecting unusable indexes, and read-only replicas deliver increasingly stale or incorrect results. Disk consumption spikes on every node (heap bloat on the primary, retained WAL on the primary, expanded relay logs on replicas), and administrative utilities report both version-age horizon warnings and page-checksum or key-order errors.\n\nCausal interaction: heavy update/delete churn creates large WAL streams and rapid version accumulation. Replication lag prevents the primary from advancing its replication-xmin horizon, so VACUUM cannot prune old versions, further enlarging the version store. The swollen version store in turn magnifies WAL volume, worsening replication lag in a feedback loop. Concurrently, any latent on-disk block or index corruption causes VACUUM or replica apply processes to error out or slow down, freezing progress at exactly the pages that need cleanup or replay; this halting behavior amplifies both the version-maintenance backlog and the replication gap. Conversely, the prolonged presence of corrupted pages inside an ever-growing heap complicates detection and repair because corruption signatures are buried under layers of obsolete versions. The three anomalies therefore reinforce each other, accelerating storage growth, degrading query correctness, and eroding failover readiness far more severely than any single anomaly alone.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 1343,
+            "score": 0.49391043831662407,
+            "bm25_score": 58.0250800369916,
+            "lexical_score": 0.13695755841678586,
+            "matched_terms": [
+                "after",
+                "and",
+                "apply",
+                "downstream",
+                "lag",
+                "log",
+                "logs",
+                "node",
+                "or",
+                "replica",
+                "replication",
+                "retention",
+                "some",
+                "stale",
+                "the",
+                "to"
+            ],
+            "match_count": 1,
+            "entry": {
+                "error_code": "3787",
+                "error_name": "ER_RPL_ENCRYPTION_FAILED_TO_ROTATE_LOGS",
+                "official_description": "Failed to rotate some logs after changing binlog encryption settings. Please fix the problem and rotate the logs manually.",
+                "error_class": null,
+                "severity_type": null,
+                "category": "server_to_client_error",
+                "system_domain": "replication",
+                "cause_analysis": "The failure is typically associated with log shipping, replica apply state, replication-channel configuration, or cross-node communication needed to keep replicated state consistent.",
+                "solution_guidance": "Inspect replication channel health, sender/receiver state, log retention, downstream apply lag, and network stability between replication endpoints.",
+                "observable_symptoms": [
+                    "replication interruption",
+                    "lag",
+                    "stale replica",
+                    "channel disconnect"
+                ]
+            }
+        }
+    }
+]

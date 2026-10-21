@@ -1,0 +1,47 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Memory Allocation Anomaly + Operating System Resource Limit Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Database Memory Allocation Anomaly : The database allocates aggregate buffer, work-area, cache, and background-process memory beyond the safe physical or swap capacity of the host, driving paging, OOM kills, and cache churn.\nOperating System Resource Limit Anomaly : The database or its child processes hit kernel-enforced ceilings for file descriptors, shared-memory segments, semaphores, threads, address space, or cgroup quotas, independent of the engine’s own configuration.\nNetwork and Connectivity Resource Anomaly : Listener, socket, authentication, or transport resources become saturated, producing connection refusals, long hand-shakes, stalled I/O, and elevated retransmissions.\n\nWhen these three root causes co-exist the system exhibits a tangled failure pattern: memory pressure inflates process RSS and swap-in/out latency, while simultaneous kernel limit exhaustion returns intermittent ENOMEM, EMFILE, or EAGAIN errors for new threads, shared memory, and sockets. Clients see sporadic login failures, TLS hand-shake timeouts, and abrupt disconnects; surviving sessions suffer elevated client-read/client-write waits as network queues back up. Surge-driven connection storms inflate the number of backend processes and file handles, aggravating both kernel limit exhaustion and memory overcommit. The host may thrash, evict pages needed for socket buffers, and emit kernel warnings; the database may partially hang, unable to spawn workers, allocate work memory, or accept further connections even though some internal metrics appear normal.\n\nCausally, excessive per-session memory allocations inflate each backend’s footprint, accelerating consumption of virtual memory, address space, and locked memory quotas. As processes bloat, they open more temporary files and sockets, quickly reaching per-process file-handle and thread limits. Failed spawns and resource denials lead to application-layer retries that flood the listener, saturating socket queues and exhausting connection slots, which in turn lengthens transaction latency and keeps active backends idle while holding their large memory heaps. The feedback loop—memory overuse → OS limit breaches → connection failures → retry storms → additional socket and process pressure—drives the system into a compounded degradation that is harder to diagnose because symptoms of each anomaly mask and magnify the others.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 106,
+            "score": 0.21082970507601417,
+            "bm25_score": 16.21675615239864,
+            "lexical_score": 0.11954545454545454,
+            "matched_terms": [
+                "and",
+                "configuration",
+                "engine",
+                "failed",
+                "failure",
+                "in",
+                "is",
+                "its",
+                "or",
+                "pressure",
+                "resource",
+                "the",
+                "to",
+                "transaction"
+            ],
+            "match_count": 11,
+            "entry": {
+                "error_code": "25P02",
+                "error_name": "in_failed_sql_transaction",
+                "official_description": "in failed sql transaction",
+                "error_class": "Class 25 - Invalid Transaction State",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "general_engine",
+                "cause_analysis": "The failure is typically associated with a general engine-level execution problem surfaced by the official error catalogue, but its precise trigger must be interpreted together with workload context and surrounding evidence.",
+                "solution_guidance": "Review the surrounding workload, official description, and engine state to determine whether the issue is rooted in SQL logic, resource pressure, configuration, or environmental instability.",
+                "observable_symptoms": [
+                    "statement failure",
+                    "engine error"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,48 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Database Configuration Parameter Anomaly + Data Block and Index Integrity Anomaly",
+            "Description": "Database Configuration Parameter Anomaly : Runtime engine parameters are mis-tuned relative to hardware capacity, workload profile, or version defaults, creating artificial bottlenecks or idle resources.\nData Block and Index Integrity Anomaly : On-disk pages or index structures are physically or logically corrupted, making storage contents inconsistent with logical expectations.\n\nWhen both root causes exist, the database exhibits a confusing blend of resource-misuse and data-corruption symptoms: skewed wait-event distributions (e.g., sustained log-write or page-flush waits despite idle I/O devices) coincide with query results that are missing, duplicated, or trigger checksum and page-verification errors. Checkpoint storms or aggressive background flushes spawned by misconfigured parameters repeatedly touch the same corrupted pages, flooding the log with page-level errors, while inconsistent indexes force the optimizer to abandon index scans and fall back to full table scans that overrun the undersized buffer pool. After upgrades or instance resizing, runtime settings that silently changed may amplify corruption visibility—integrity-check utilities start during low-checkpoint intervals, or recovery attempts loop because truncated logs cannot replay damaged pages. As a result, performance degrades unpredictably, correctness alarms rise, and the signals of the two issues mask each other, complicating triage.\n\nCausal chain: Mis-calibrated parameters (e.g., too-frequent checkpoints, undersized WAL, disabled page checksums, or over-aggressive parallel write-back) increase I/O churn and recovery pressure, heightening the chance of uncovering latent corruption or even causing it during crash-recovery edge cases. Once corruption exists, it forces plan fallbacks and larger data scans, which in turn stress the poorly sized memory and I/O settings, generating further flush storms and log pressure. The two anomalies therefore reinforce each other—parameter misconfiguration can precipitate corruption, and corruption-triggered workload shifts magnify the impact of the bad configuration—creating a feedback loop that degrades both performance and data integrity.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 1,
+            "score": 0.3808761651107684,
+            "bm25_score": 11.571281138846109,
+            "lexical_score": 0.1067099567099567,
+            "matched_terms": [
+                "and",
+                "are",
+                "check",
+                "idle",
+                "it",
+                "of",
+                "on",
+                "or",
+                "the",
+                "triggered",
+                "waits",
+                "when"
+            ],
+            "match_count": 15,
+            "entry": {
+                "timeout_id": "mysql84_idle_noninteractive_session_timeout",
+                "parameter_name": "wait_timeout",
+                "timeout_category": "idle_session_timeout",
+                "scope": "global/session",
+                "official_definition": "The number of seconds the server waits for activity on a noninteractive connection before closing it.",
+                "trigger_condition": "A noninteractive session remains idle longer than wait_timeout.",
+                "workload_impact": "The server closes the idle connection.",
+                "default_behavior": "Defined as a MySQL server system variable.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]

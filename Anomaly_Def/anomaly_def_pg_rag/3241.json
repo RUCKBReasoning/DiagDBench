@@ -1,0 +1,52 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Transaction Lock Contention Anomaly + MVCC Version Maintenance Anomaly + Network and Connectivity Resource Anomaly",
+            "Description": "Transaction Lock Contention Anomaly : Concurrent transactions request mutually incompatible locks on the same data or metadata objects, forming blocking chains or deadlocks that stall statement execution until a waiter is granted, times out, or is chosen as a deadlock victim.\nMVCC Version Maintenance Anomaly : Obsolete row versions and rollback records accumulate faster than background cleaners can reclaim them, inflating storage, lengthening visibility checks, and slowing scans and look-ups.\nNetwork and Connectivity Resource Anomaly : Client-server network links, listener sockets, or backend connection slots are saturated or slow, causing connection establishment delays, data-transfer stalls, and session-level wait events.\n\nWhen all three root causes coexist, the database exhibits an intertwined symptom set: long transaction latencies and timeouts surface first as network-side slow query or connection errors, while backend diagnostics simultaneously show deep lock-wait queues, deadlock rollbacks, bloated heaps and indexes, and cleaners permanently at 100 % duty cycle. Transactions that finally obtain a lock still spend extra CPU cycles traversing oversized version chains, prolonging their critical sections and locking window, which in turn lengthens blocking chains and keeps sockets open longer. Clients perceive sporadic connection refusals or abrupt resets as the server exhausts connection slots held by lock-blocked backends that are further delayed by MVCC bloat. Monitoring tools show a self-reinforcing rise in lock-wait time, version-store size, listener backlog depth, and end-to-end RTT, making it difficult to attribute the slowdown to any single subsystem.\n\nCausally, heavy lock contention increases the lifetime of in-flight snapshots because waiting transactions hold older transaction IDs open, throttling vacuum/cleaner progress and aggravating MVCC version accumulation. In turn, the larger version store stretches the duration of read and write statements, widening the timeframe in which they hold locks and intensifying contention. Both factors keep backend processes active yet unproductive, consuming connection slots and keeping TCP sockets open; this swells the listener queue and pushes the system toward network-level saturation. Conversely, network stalls slow down result delivery, extending transaction completion time and further delaying lock release and version cleanup. The feedback loop across concurrency control, version maintenance, and connectivity layers ultimately drives a compounded degradation that is more severe than any individual anomaly acting alone.",
+            "Type": "OLTP"
+        },
+        "rag_content": {
+            "candidate_index": 140,
+            "score": 0.7439352720450281,
+            "bm25_score": 59.915908525375905,
+            "lexical_score": 0.14645090681676048,
+            "matched_terms": [
+                "and",
+                "blocking",
+                "by",
+                "chains",
+                "concurrent",
+                "deadlock",
+                "incompatible",
+                "is",
+                "lifetime",
+                "lock",
+                "or",
+                "rollback",
+                "same",
+                "the",
+                "transaction",
+                "transactions",
+                "write"
+            ],
+            "match_count": 16,
+            "entry": {
+                "error_code": "40P01",
+                "error_name": "deadlock_detected",
+                "official_description": "deadlock detected",
+                "error_class": "Class 40 - Transaction Rollback",
+                "severity_type": "error",
+                "category": "sqlstate_error",
+                "system_domain": "concurrency_and_transaction",
+                "cause_analysis": "The failure is typically associated with concurrent transactions contending for the same logical resources, incompatible lock acquisition order, or transaction-state conflicts surfaced by the engine.",
+                "solution_guidance": "Inspect blocking chains, reduce conflicting write overlap, shorten transaction lifetime, review lock acquisition order, and verify whether transaction scheduling or retry logic needs adjustment.",
+                "observable_symptoms": [
+                    "blocking",
+                    "rollback",
+                    "retry",
+                    "stalled transaction"
+                ]
+            }
+        }
+    }
+]

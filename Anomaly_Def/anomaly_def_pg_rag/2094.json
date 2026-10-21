@@ -1,0 +1,60 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "SQL Workload Logic Anomaly + Optimizer Statistics Anomaly + Storage Space Capacity Anomaly",
+            "Description": "SQL Workload Logic Anomaly : Application-layer SQL or transaction design forces the engine to process or retain far more data, rows, or time in flight than the true business requirement demands.\nOptimizer Statistics Anomaly : Costing metadata is stale, incomplete, or inaccurate, driving the optimizer to mis-estimate cardinalities and choose sub-optimal execution plans.\nStorage Space Capacity Anomaly : Physical or logical free space in data, temp, or log areas falls to or past hard limits, producing space-allocation failures and knock-on stalls.\n\nWhen all three root causes coexist, the database exhibits an extreme and nonlinear degradation pattern: poorly written or chatty SQL generates large scans, bloated intermediate results, and long-running transactions; the misaligned statistics cause the optimizer to underestimate these result sizes, selecting plan shapes (nested loops, memory-hungry hash joins, spill-prone sorts) that further amplify I/O and temp usage; the excessive data movement and prolonged transactions rapidly consume datafiles, temp segments, and redo/undo logs, driving the system into critical low-space territory. Operators observe a cascade of symptoms—exploding temporary-space consumption, sudden \"out of space\" or auto-extend failures mid-query, runaway statement latency with estimates far below actual rows, lock retention due to aborted space allocations, repeated plan recompiles as statistics auto-updates struggle against space limits, and erratic application-level timeouts and retries.\n\nCausally, inefficient workload logic is the initiator, inflating data volume and transaction lifetimes. Stale or missing statistics mask the true cost of this bloat, preventing the optimizer from choosing mitigative plans and sometimes reintroducing plan instability that widens space usage variance. The inflated runtime footprints accelerate space exhaustion, while space shortages trigger temp-file extension failures, redo log stalls, and emergency autovacuum or checkpoint storms that further slow or roll back the already heavy queries—feeding back into longer transaction windows and more space held. Thus each anomaly reinforces the others, creating a feedback loop that magnifies performance degradation and increases the likelihood of hard failures.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 0,
+            "score": 0.7523084552442351,
+            "bm25_score": 38.45593939590433,
+            "lexical_score": 0.17436151748078355,
+            "matched_terms": [
+                "aborted",
+                "and",
+                "execution",
+                "from",
+                "is",
+                "long",
+                "longer",
+                "more",
+                "of",
+                "or",
+                "out",
+                "pattern",
+                "query",
+                "running",
+                "sql",
+                "statement",
+                "than",
+                "that",
+                "the",
+                "this",
+                "time",
+                "when",
+                "with",
+                "workload"
+            ],
+            "match_count": 265,
+            "entry": {
+                "timeout_id": "pg16_statement_execution_timeout",
+                "parameter_name": "statement_timeout",
+                "timeout_category": "statement_execution_timeout",
+                "scope": "session/user/context-dependent",
+                "official_definition": "Aborts any statement that takes more than the specified amount of time; zero disables the timeout.",
+                "trigger_condition": "A SQL statement runs longer than statement_timeout, measured from command arrival until completion.",
+                "workload_impact": "The running statement is aborted; when configured, the timed-out statement is logged.",
+                "default_behavior": "Default value is 0, meaning disabled.",
+                "system_domain": "statement_execution",
+                "cause_analysis": "This timeout is usually triggered when statement execution exceeds a configured execution-time budget because the operation runs too long or the workload is blocked behind other work.",
+                "solution_guidance": "Inspect query shape, access path quality, resource contention, and whether the timeout threshold should be reviewed together with the workload pattern.",
+                "observable_symptoms": [
+                    "statement cancelled",
+                    "long-running query aborted",
+                    "timeout error"
+                ]
+            }
+        }
+    }
+]

@@ -1,0 +1,53 @@
+[
+    {
+        "anomaly_def": {
+            "Name": "Optimizer Statistics Anomaly + Buffer Cache and Latch Contention Anomaly + Storage I/O Throughput Anomaly",
+            "Description": "Optimizer Statistics Anomaly: Cardinality-estimation inputs are stale or incomplete, causing the optimizer to choose sub-optimal execution plans.\nBuffer Cache and Latch Contention Anomaly: Concurrent sessions serialize on hot buffer pages and latches, stalling CPU threads despite sufficient overall memory.\nStorage I/O Throughput Anomaly: The physical devices that host data, temp, or log files are saturated in bandwidth, IOPS, or latency budget.\n\nWhen these three root causes coincide, the database exhibits a multi-layered performance collapse. Misestimated row counts lead the optimizer to favor plans that repeatedly probe or update a few root index pages or a single hot heap page, sharply amplifying latch contention inside the buffer cache. The same skewed plans may also trigger large, unexpected full scans or spill operations that thrash the already over-subscribed buffer pool, forcing frequent evictions and surges of physical I/O. Because the storage layer is simultaneously throughput-bound, each extra read or write caused by the bad plans waits in a deep device queue, lengthening latch-hold times and propagating wait chains. Observable symptoms therefore mix extreme plan-estimate errors, chronic PAGE/BUFFER_LATCH and BUFFER_BUSY waits, CPU spin without forward progress, and soaring read/write latency with device queues pegged, making the individual issues hard to isolate.\n\nCausally, stale statistics start the chain by driving the optimizer toward access patterns that concentrate traffic on a small set of pages and inflate I/O volume. The resulting hot pages cause threads to fight for buffer-cache latches; every lost spin or sleep extends critical sections. Meanwhile, the inflated I/O demand encounters a storage subsystem already at its throughput ceiling, so each physical read or write takes longer, further extending the period during which latches are held or re-acquired. The prolonged latch holding feeds back into higher concurrency pressure, while the slower I/O prevents the buffer pool from refreshing pages quickly, keeping the same hot pages in constant circulation. The interaction of these three factors forms a reinforcing loop that magnifies latency spikes, shrinks throughput, and can eventually lead to workload timeouts or node instability.",
+            "Type": "BOTH"
+        },
+        "rag_content": {
+            "candidate_index": 8,
+            "score": 0.49633322362014526,
+            "bm25_score": 15.717333763656548,
+            "lexical_score": 0.1358616681197326,
+            "matched_terms": [
+                "and",
+                "are",
+                "budget",
+                "by",
+                "data",
+                "holding",
+                "is",
+                "latency",
+                "longer",
+                "may",
+                "on",
+                "or",
+                "progress",
+                "sessions",
+                "stale",
+                "the",
+                "when"
+            ],
+            "match_count": 187,
+            "entry": {
+                "timeout_id": "pg16_tcp_user_timeout",
+                "parameter_name": "tcp_user_timeout",
+                "timeout_category": "network_unacknowledged_data_timeout",
+                "scope": "session/system-dependent",
+                "official_definition": "Specifies how long transmitted data may remain unacknowledged before the TCP connection is forcibly closed.",
+                "trigger_condition": "TCP data sent by PostgreSQL remains unacknowledged longer than tcp_user_timeout on systems supporting TCP_USER_TIMEOUT.",
+                "workload_impact": "The TCP connection is forcibly closed.",
+                "default_behavior": "Default value is 0, selecting the operating system default.",
+                "system_domain": "connection_and_session",
+                "cause_analysis": "This timeout is usually triggered when connection establishment, authentication exchange, or session activity does not progress within the allowed time budget.",
+                "solution_guidance": "Check connection lifecycle, client responsiveness, authentication latency, idle-session handling, and whether connection pools are holding stale sessions.",
+                "observable_symptoms": [
+                    "connection timeout",
+                    "session closed",
+                    "idle disconnect"
+                ]
+            }
+        }
+    }
+]
