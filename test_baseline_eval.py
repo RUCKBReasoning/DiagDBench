@@ -2,7 +2,7 @@
 """Diagnose each sample with a baseline method, then score it immediately.
 
 Per sample (output layout `<output_root_dir>/<sample_id>/`):
-  1. baseline/       target method diagnosis + recovery (Baselines/codex driver)
+  1. baseline/       target method diagnosis + recovery (method's native driver)
   2. eval/           test_eval.py scoring in a freshly created evaluation container
                      (the diagnosis containers are removed first)
   3. eval_workload/  test_eval_workload.py semantic-consistency re-scoring
@@ -20,6 +20,7 @@ import logging
 import os
 import queue
 import statistics
+import shutil
 import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -32,17 +33,23 @@ if str(BASE_DIR) not in sys.path:
 
 import test_eval as te  # noqa: E402
 import test_eval_workload as tew  # noqa: E402
-from Baselines.codex import react  # noqa: E402
+from Baselines.ReAct import react  # noqa: E402
 from llm_api import FatalAPIQuotaError  # noqa: E402
 from utils import set_up_logger  # noqa: E402
 
 
-DEFAULT_CONFIG = BASE_DIR / "Configs" / "test_baseline_eval" / "config_codex_common.json"
+DEFAULT_CONFIG = BASE_DIR / "Configs" / "test_baseline_eval" / "codex.json"
 METHOD_MODULES = {
-    "codex_pro": "Baselines.Codex_Pro.agent",
-    "codex": "Baselines.codex.agent",
+    "react": ("Baselines.ReAct.react", "Baselines.ReAct.react", None),
+    "codex": ("Baselines.Codex.agent", "Baselines.Codex.driver", "run_agent"),
+    "claude_code": ("Baselines.Claude_Code.claude_code", "Baselines.Claude_Code.react", "run_claude_agent"),
+    "db_gpt": ("Baselines.DB-GPT.db_gpt", "Baselines.ReAct.react", "run_db_gpt_agent"),
+    "dbaiops": ("Baselines.DBAIOps.dbaiops", "Baselines.ReAct.react", "run_dbaiops_agent"),
 }
-METHOD_DISPLAY_NAMES = {"codex_pro": "Codex Pro", "codex": "Codex"}
+METHOD_DISPLAY_NAMES = {
+    "react": "ReAct", "codex": "Codex", "claude_code": "Claude Code",
+    "db_gpt": "DB-GPT", "dbaiops": "DBAIOps",
+}
 SCORE_DETAIL = tew.SCORE_DETAIL_FILENAME
 RUN_ID = te.RUN_LEVEL_SAMPLE_ID
 
@@ -63,11 +70,6 @@ EXPECTED_SIGNATURES = (
         "solution_script_directory", "sample_id", "case_index",
     )),
 )
-METHOD_SIGNATURES = {
-    "run_agent": ("prompt", "config", "container", "output", "files", "logger"),
-    "validate_config": ("config",),
-    "preflight": ("config",),
-}
 
 
 def project_path(value):
@@ -124,10 +126,9 @@ def mean(values):
     return te.round_score(statistics.mean(values)) if values else None
 
 
-def check_signatures(method_module):
-    checks = list(EXPECTED_SIGNATURES) + [
-        (getattr(method_module, name), names) for name, names in METHOD_SIGNATURES.items()
-    ]
+def check_signatures(method):
+    checks = [(method.driver._run_case_body, EXPECTED_SIGNATURES[0][1])]
+    checks.extend(EXPECTED_SIGNATURES[1:])
     for function, names in checks:
         actual = tuple(inspect.signature(function).parameters)
         if actual[:len(names)] != names:
@@ -135,12 +136,64 @@ def check_signatures(method_module):
                 f"Interface changed: {function.__module__}.{function.__qualname__}"
                 f"{actual}; this pipeline expects {names}. Adapt test_baseline_eval.py."
             )
+    if method.run_agent is not None:
+        inspect.signature(method.run_agent).bind(
+            "prompt", {}, "container", Path("output"), {}, logging.getLogger(__name__)
+        )
+
+
+class BaselineMethod:
+    """Adapt the published entry points without replacing their native agent loops."""
+
+    def __init__(self, workflow):
+        module_name, driver_name, runner_name = METHOD_MODULES[workflow]
+        self.workflow = workflow
+        self.module = importlib.import_module(module_name)
+        self.driver = importlib.import_module(driver_name)
+        self.run_agent = getattr(self.module, runner_name) if runner_name else None
+
+    def validate_config(self, config):
+        if self.workflow == "codex":
+            self.module.validate_config(config)
+        self.driver.validate_config(config, True)
+
+    def preflight(self, config):
+        if self.workflow == "codex":
+            return self.module.preflight(config)
+        required = ["docker", "tmux"]
+        if self.workflow in {"db_gpt", "dbaiops"}:
+            conda_home = Path(config.get("conda_home", str(Path.home() / "miniforge3")))
+            conda = conda_home / "bin" / "conda"
+            if not conda.is_file():
+                raise FileNotFoundError(f"Baseline Conda installation not found: {conda}")
+            env_name = config.get("conda_env", f"{self.workflow}_baseline")
+            if not (conda_home / "envs" / env_name / "bin" / "python").is_file():
+                raise FileNotFoundError(f"Baseline Conda environment not found: {env_name}")
+        if self.workflow == "claude_code":
+            importlib.import_module("claude_agent_sdk")
+            importlib.import_module("mcp")
+        missing = [name for name in required if not shutil.which(name)]
+        if missing:
+            raise RuntimeError(f"Required executables not found: {', '.join(missing)}")
+        return {"method": METHOD_DISPLAY_NAMES[self.workflow], "executables": required}
+
+
+def resolve_environment_key(llm, require_credentials):
+    """Resolve environment credentials only in memory, including judge credentials."""
+    llm = dict(llm)
+    env_name = llm.get("api_key_env")
+    if not llm.get("api_key") and env_name:
+        key = os.environ.get(env_name)
+        if not key and require_credentials:
+            raise ValueError(f"Set the environment variable `{env_name}`.")
+        llm["api_key"] = key or f"<environment:{env_name}>"
+    return llm
 
 
 # --------------------------------------------------------------------------- #
 # Configuration
 # --------------------------------------------------------------------------- #
-def load_config(config_path):
+def load_config(config_path, require_credentials=True):
     config_path = project_path(config_path)
     raw = tew.read_json(config_path)
     for section in ("baseline", "eval", "eval_workload"):
@@ -156,9 +209,10 @@ def load_config(config_path):
     # ---- baseline (diagnosis method) -----------------------------------
     diagnosis = dict(raw["baseline"])
     workflow = str(diagnosis.get("workflow_type", "")).lower()
+    workflow = {"dbgpt": "db_gpt", "react_super": "react"}.get(workflow, workflow)
     if workflow not in METHOD_MODULES:
         raise ValueError(f"Unsupported workflow_type `{workflow}`; known: {sorted(METHOD_MODULES)}.")
-    method_module = importlib.import_module(METHOD_MODULES[workflow])
+    method_module = BaselineMethod(workflow)
     check_signatures(method_module)
     api_key_source = diagnosis.pop("api_key_source", None)
     retries = diagnosis.pop("sample_retry_times", 0)
@@ -170,12 +224,18 @@ def load_config(config_path):
         parallelism_num=parallelism,
         llm_configuration=react.diagnosis_llm_config(diagnosis.get("llm_configuration", {})),
     )
+    if require_credentials:
+        inject_model_key(diagnosis["llm_configuration"], api_key_source)
+    if workflow != "codex":
+        diagnosis["llm_configuration"] = resolve_environment_key(
+            diagnosis["llm_configuration"], require_credentials)
     method_module.validate_config(diagnosis)
-    react.validate_config(diagnosis, True)
-    inject_model_key(diagnosis["llm_configuration"], api_key_source)
 
     # ---- eval (test_eval.py) --------------------------------------------
     evaluation = dict(raw["eval"])
+    if isinstance(evaluation.get("judge_llm_configuration"), dict):
+        evaluation["judge_llm_configuration"] = resolve_environment_key(
+            evaluation["judge_llm_configuration"], require_credentials)
     mode = te.evaluation_mode(evaluation)
     timeout_times = float(evaluation.get("timeout_times", te.RECOVERY_ZERO_SCORE_RATIO))
     if timeout_times != te.RECOVERY_ZERO_SCORE_RATIO:
@@ -218,6 +278,9 @@ def load_config(config_path):
 
     # ---- eval_workload (test_eval_workload.py) --------------------------
     workload = dict(raw["eval_workload"])
+    if isinstance(workload.get("judge_llm_configuration"), dict):
+        workload["judge_llm_configuration"] = resolve_environment_key(
+            workload["judge_llm_configuration"], require_credentials)
     repetitions = workload.get("judge_repetitions", 3)
     if isinstance(repetitions, bool) or not isinstance(repetitions, int) or repetitions <= 0 or repetitions % 2 == 0:
         raise ValueError("eval_workload.judge_repetitions must be an odd positive integer.")
@@ -254,6 +317,9 @@ def inject_model_key(llm_configuration, source):
     """Export the method's model key to its env variable; never log or persist it."""
     env_name = llm_configuration.get("api_key_env")
     if not env_name or os.environ.get(env_name):
+        return
+    if llm_configuration.get("api_key"):
+        os.environ[env_name] = llm_configuration["api_key"]
         return
     if not isinstance(source, dict) or not source.get("config_path"):
         raise ValueError(f"Set `{env_name}` or provide baseline.api_key_source.config_path.")
@@ -396,6 +462,7 @@ class Pipeline:
         self.logger = logger
         self.root = config["output_root"]
         self.method = config["method_module"]
+        self.driver = self.method.driver
         self.cases = list(react.validate_input_data(config["diagnosis"]))
         self.anomaly_root = config["key_information_path"].parent
         self.stop_event = threading.Event()
@@ -432,11 +499,11 @@ class Pipeline:
 
         containers = []
         try:
-            react._run_case_body(
+            self.driver._run_case_body(
                 index, len(self.cases), case, config, True, output_dir, logger,
                 base_docker_name, container_config, retries, init_timeout,
                 dbms, database_name, schema_name, user_config, hardware, files,
-                react.request_llm, self.method.run_agent, containers,
+                self.driver.request_llm, self.method.run_agent, containers,
             )
         finally:
             for container_name in dict.fromkeys(containers):
@@ -456,7 +523,7 @@ class Pipeline:
         for attempt in range(1, attempts + 1):
             if self.stop_event.is_set() or self.fatal_marker.exists():
                 raise RuntimeError("Fatal API marker exists; diagnosis not started.")
-            # Codex_Pro refuses an existing `pro_control`; every attempt starts clean.
+            # Each native-agent attempt starts with fresh artifacts.
             moved = archive(output_dir, sample_root, "baseline")
             if moved:
                 logger.warning(f"[BASELINE][RESUME] Archived incomplete diagnosis output to `{moved}`.")
@@ -629,6 +696,19 @@ class Pipeline:
             f"evaluation=`{eval_prefix}`:{eval_port}"
         )
         try:
+            if self.method.workflow == "db_gpt":
+                _, sample_dir = react.find_sample_directory(self.anomaly_root, case)
+                sample_config = react.load_json_file(sample_dir / "config.json")
+                dbms = sample_config.get("dbms", case.get("dbms", "PostgreSQL"))
+                if react.normalize_dbms(dbms) != "pg":
+                    summary.update(baseline_status="skipped_unsupported_dbms", dbms=dbms)
+                    status_path = self.root / sample_id / "baseline" / "status.json"
+                    tew.write_json_atomic(status_path, {
+                        "status": "skipped_unsupported_dbms",
+                        "reason": f"DB-GPT supports PostgreSQL only; got {dbms}.",
+                    })
+                    logger.info(f"[BASELINE][SKIP] DB-GPT does not support `{dbms}`.")
+                    return summary
             baseline_status = self.stage_baseline(index, case, sample_id, logger, diagnosis_prefix, diagnosis_port)
             summary["baseline_status"] = baseline_status["status"]
             eval_detail = self.stage_eval(index, case, sample_id, logger, diagnosis_prefix, eval_prefix, eval_port)
@@ -659,6 +739,8 @@ class Pipeline:
             logger.error(f"[PIPELINE][ERROR] Sample pipeline failed: {summary['error']}")
         finally:
             for prefix in (diagnosis_prefix, eval_prefix):
+                if summary.get("baseline_status") == "skipped_unsupported_dbms":
+                    break
                 try:
                     te.cleanup_evaluation_prefix(prefix)
                 except Exception as exc:  # noqa: BLE001
@@ -739,6 +821,9 @@ class Pipeline:
             result[f"overall_{name}_score"] = mean(item.get(f"{name}_score") for item in summaries)
             result[f"overall_{name}_performance_score"] = mean(
                 item.get(f"{name}_performance_score") for item in summaries)
+        result["skipped_sample_num"] = sum(
+            item.get("baseline_status") == "skipped_unsupported_dbms" for item in summaries
+        )
         for stage in ("baseline_status", "eval_status", "eval_workload_status"):
             counts = {}
             for item in summaries:
@@ -772,7 +857,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-    config = load_config(args.config)
+    config = load_config(args.config, require_credentials=not args.dry_run)
     if args.preflight:
         print(json.dumps(config["method_module"].preflight(config["diagnosis"]), indent=2, default=str))
         return
@@ -798,4 +883,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

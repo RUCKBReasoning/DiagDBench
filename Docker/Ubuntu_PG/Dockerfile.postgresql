@@ -1,0 +1,73 @@
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Asia/Shanghai
+ENV PGDATA=/var/lib/postgresql/16/main
+ENV PATH="/opt/venv/bin:/usr/lib/postgresql/16/bin:$PATH"
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends tzdata && \
+    ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && \
+    echo $TZ > /etc/timezone && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    curl \
+    gnupg \
+    lsb-release \
+    python3 \
+    python3-pip \
+    python3-dev \
+    python3-venv \
+    iproute2 \
+    net-tools \
+    vim \
+    time \
+    iptables \
+    wget \
+    stress \
+    fio \
+    jq \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN apt-get update && apt-get install -y postgresql-common \
+    && echo -e '\n' | sh /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh \
+    && apt-get update \
+    && apt-get install -y postgresql-16 postgresql-client-16 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python3 -m venv /opt/venv
+RUN pip config set global.index-url https://mirrors.aliyun.com/pypi/simple/
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install numpy pandas psycopg2-binary
+
+RUN mkdir -p /var/run/postgresql && chown -R postgres:postgres /var/run/postgresql
+COPY ./init_dbms_postgresql.sh /home/init_dbms_postgresql.sh
+RUN chmod +x /home/init_dbms_postgresql.sh
+
+# Create the reusable empty cluster and service identities once at build time.
+RUN set -eux; \
+    rm -rf "$PGDATA"; \
+    install -d -o postgres -g postgres -m 700 "$PGDATA" /var/run/postgresql; \
+    su -s /bin/bash postgres -c "/usr/lib/postgresql/16/bin/initdb -D '$PGDATA'"; \
+    printf "%s\n" \
+      "listen_addresses = '*'" \
+      "port = 5432" \
+      "password_encryption = scram-sha-256" \
+      "logging_collector = on" \
+      "log_filename = 'postgres.log'" >> "$PGDATA/postgresql.conf"; \
+    printf "%s\n" \
+      "local   all             all                                     trust" \
+      "host    all             all             127.0.0.1/32            scram-sha-256" \
+      "host    all             all             ::1/128                 scram-sha-256" \
+      "host    all             all             0.0.0.0/0               scram-sha-256" > "$PGDATA/pg_hba.conf"; \
+    su -s /bin/bash postgres -c "/usr/lib/postgresql/16/bin/pg_ctl -D '$PGDATA' -w start"; \
+    su -s /bin/bash postgres -c "psql -v ON_ERROR_STOP=1 -d postgres -c \"CREATE ROLE root LOGIN SUPERUSER PASSWORD 'root';\""; \
+    su -s /bin/bash postgres -c "psql -v ON_ERROR_STOP=1 -d postgres -c \"CREATE ROLE diagnosis LOGIN CREATEROLE CREATEDB PASSWORD 'diagnosis';\""; \
+    su -s /bin/bash postgres -c "createdb -O diagnosis diagnosis"; \
+    su -s /bin/bash postgres -c "psql -v ON_ERROR_STOP=1 -d postgres -c \"CREATE ROLE monitor LOGIN PASSWORD 'monitor'; GRANT pg_monitor TO monitor;\""; \
+    su -s /bin/bash postgres -c "/usr/lib/postgresql/16/bin/pg_ctl -D '$PGDATA' -m fast -w stop"; \
+    chown -R postgres:postgres /var/lib/postgresql /var/run/postgresql
+
+CMD ["tail", "-f", "/dev/null"]
