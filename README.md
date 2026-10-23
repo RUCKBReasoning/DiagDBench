@@ -1,4 +1,4 @@
-# DiagDBench: Evaluating Agentic LLMs on Interactive Database Diagnosis and Anomaly Remediation: [Experiments & Analysis]
+# DiagDBench: Evaluating Agentic LLMs on Interactive Database Diagnosis and Anomaly Remediation [Experiment, Analysis & Benchmark]
 
 Database diagnosis and anomaly remediation are essential to reliable database management system (DBMS) operation. However, constructing executable environments that reproduce diverse anomalies at scale remains challenging, limiting the samples available for database agent training and evaluation.
 
@@ -14,13 +14,12 @@ Database diagnosis and anomaly remediation are essential to reliable database ma
 
 ```
 DiagDBench/
-├── DiagDBench/          # Benchmark dataset
-│   ├── eval/            #   Evaluation split (454 samples)
-│   └── train/           #   Training split (MySQL/ + PostgreSQL/)
+├── DiagDBench/          # Benchmark dataset archive tracked with Git LFS
+│   └── DiagDBench.tar.gz # Archive containing eval/ and train/
 ├── Anomaly_Def/         # Public anomaly-definition with RAG knowledge base
 ├── Baselines/           # Baseline methods for database diagnosis agents
 ├── Configs/             # Example configuration files
-├── Docker/              # Containerized DBMS runtime init scripts
+├── Docker/              # PostgreSQL/MySQL Dockerfiles and runtime init scripts
 ├── Scripts/             # Evaluation & database utility scripts
 ├── Skills/              # Agent skill for LLM-based anomaly sample construction
 ├── test_*.py            # Data-synthesis & generation pipeline
@@ -35,10 +34,59 @@ DiagDBench/
 
 ## Dataset (`DiagDBench/`)
 
+The dataset is distributed as the single archive [`DiagDBench/DiagDBench.tar.gz`](./DiagDBench/DiagDBench.tar.gz) (1,026,029,584 bytes, approximately 979 MiB), tracked with Git LFS. Install Git LFS before cloning; if the clone contains only an LFS pointer, download the archive with `git lfs pull`.
+
+The archive contains 7,394 samples and 74,463 regular files, with this layout:
+
+```text
+eval/
+├── key_information.json
+└── <sample_id>/          # 454 evaluation samples
+train/
+├── MySQL/               # 3,296 training samples
+└── PostgreSQL/          # 3,644 training samples
+```
+
+Once the archive is available locally, run the following from the repository root. Extraction keeps the archive in place and creates the paths used by the evaluation configs:
+
+```bash
+tar -xzf DiagDBench/DiagDBench.tar.gz -C DiagDBench
+```
+
+Archive SHA-256: `01f6567725bbafc96b065a6f474611b22545512adc05fbf7367aa10f68ca4d5d`.
+
 Each sample is a self-contained directory bundling its anomaly definition and the inputs needed to reproduce and evaluate it: `anomaly_description.json`, `config.json`, `user_phenomenon_description.txt`, `initialization_workload.sql`, `verified_workload.sql`, (`merged_workload.sql`), `data_modification.sql`, `data_feature_summarization.txt`, a per-sample evaluation script (`anomaly_eval.py`), and an anomaly injector (`anomaly_inject.sh`).
 
 - **`eval/`** — Evaluation split with 454 samples in a flat layout (one numeric directory per sample), indexed by a top-level `key_information.json`. Each injector is shipped source-free: an `anomaly_inject.sh` launcher plus an encrypted `.inject_entry` binary.
 - **`train/`** — Training split, grouped by DBMS into `MySQL/` (3296 samples) and `PostgreSQL/` (3644 samples). Each sample keeps its plaintext `anomaly_inject.sh`.
+
+---
+
+## Docker Runtime and Baseline Evaluation
+
+Build the database images from the repository root. Each build context includes its corresponding initialization script:
+
+```bash
+docker build -t pg_diag -f Docker/Ubuntu_PG/Dockerfile.postgresql Docker/Ubuntu_PG
+docker build -t mysql_diag -f Docker/Ubuntu_MySQL/Dockerfile.mysql Docker/Ubuntu_MySQL
+```
+
+The images provide PostgreSQL 16 and MySQL 8.4 with reusable initialized data directories. Database benchmark inputs under `Data/` or `Database_Instances/` must also be prepared for the selected database, as required by [`docker_func.py`](./docker_func.py).
+
+[`test_baseline_eval.py`](./test_baseline_eval.py) runs diagnosis, recovery scoring, and workload semantic-consistency scoring sequentially for each sample. It supports the published ReAct, Codex, Claude Code, DB-GPT, and DBAIOps implementations, with configs under [`Configs/test_baseline_eval/`](./Configs/test_baseline_eval). Each method uses its native agent entry point; DB-GPT skips MySQL samples because its diagnostic tools support PostgreSQL only.
+
+Set the model endpoints and model names in the selected config. Supply model credentials through `OPENAI_API_KEY` (ReAct, DB-GPT, DBAIOps), `CODEX_API_KEY` (Codex), or `ANTHROPIC_API_KEY` (Claude Code), plus `JUDGE_API_KEY` for both scoring stages. Codex requires its CLI and isolation tools; Claude Code requires the Claude Agent SDK and MCP dependencies; DB-GPT and DBAIOps require their configured Conda environments.
+
+```bash
+# Validate config, input sample files and method interfaces without model calls.
+python test_baseline_eval.py --config Configs/test_baseline_eval/codex.json --dry-run
+# Check method dependencies with credentials configured.
+python test_baseline_eval.py --config Configs/test_baseline_eval/codex.json --preflight
+# Diagnose and evaluate selected samples; omit --sample-ids to process the split.
+python test_baseline_eval.py --config Configs/test_baseline_eval/codex.json --sample-ids 0
+```
+
+Replace `codex.json` with `react.json`, `claude_code.json`, `db_gpt.json`, or `dbaiops.json` to select another method. Outputs are stored under `<output_root_dir>/<sample_id>/baseline`, `eval`, and `eval_workload`, with a run-level `evaluation_result.json`. Completed stages are resumed; incomplete attempts are archived before retrying.
 
 ---
 

@@ -2,7 +2,7 @@
 
 import sys
 
-from . import react
+from .ReAct import react
 
 react_common = react
 react_super = react

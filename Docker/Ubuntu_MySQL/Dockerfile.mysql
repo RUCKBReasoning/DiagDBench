@@ -1,0 +1,92 @@
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Asia/Shanghai
+ENV PATH="/opt/venv/bin:/usr/sbin:/usr/bin:$PATH"
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends tzdata && \
+    ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && \
+    echo $TZ > /etc/timezone && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    curl \
+    gnupg \
+    lsb-release \
+    python3 \
+    python3-pip \
+    python3-dev \
+    python3-venv \
+    iproute2 \
+    net-tools \
+    vim \
+    time \
+    iptables \
+    wget \
+    stress \
+    fio \
+    jq \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN apt-get update && apt-get install -y gnupg curl wget debconf-utils \
+    && rm -f /etc/apt/sources.list.d/mysql.list \
+    && rm -f /etc/apt/sources.list.d/*mysql* \
+    && rm -f /etc/apt/trusted.gpg.d/*mysql* \
+    && rm -f /usr/share/keyrings/mysql*.gpg \
+    && echo "mysql-apt-config mysql-apt-config/select-server select mysql-8.4-lts" | debconf-set-selections \
+    && echo "mysql-apt-config mysql-apt-config/select-connectors select Enabled" | debconf-set-selections \
+    && echo "mysql-community-server mysql-community-server/root-pass password root" | debconf-set-selections \
+    && echo "mysql-community-server mysql-community-server/re-root-pass password root" | debconf-set-selections \
+    && wget https://repo.mysql.com/mysql-apt-config_0.8.36-1_all.deb \
+    && dpkg -i mysql-apt-config_0.8.36-1_all.deb \
+    && rm mysql-apt-config_0.8.36-1_all.deb \
+    && apt-get update \
+    && apt-get install -y mysql-server mysql-client \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python3 -m venv /opt/venv
+RUN pip config set global.index-url https://mirrors.aliyun.com/pypi/simple/
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install numpy pandas mysql-connector-python
+
+RUN mkdir -p /var/run/mysqld && chown -R mysql:mysql /var/run/mysqld
+COPY ./init_dbms_mysql.sh /home/init_dbms_mysql.sh
+RUN chmod +x /home/init_dbms_mysql.sh
+
+# Create the reusable empty data directory and service identities once.
+RUN set -eux; \
+    rm -rf /var/lib/mysql; \
+    install -d -o mysql -g mysql -m 750 /var/lib/mysql /var/run/mysqld /var/log/mysql; \
+    printf "%s\n" \
+      "[mysqld]" \
+      "bind-address = 0.0.0.0" \
+      "port = 3306" \
+      "socket = /var/run/mysqld/mysqld.sock" \
+      "datadir = /var/lib/mysql" \
+      "log_error = /var/log/mysql/mysql.log" \
+      "pid-file = /var/run/mysqld/mysqld.pid" \
+      "skip-name-resolve" \
+      "local_infile = ON" \
+      "mysql_native_password = ON" > /etc/mysql/mysql.conf.d/dbdiag.cnf; \
+    mysqld --defaults-file=/etc/mysql/mysql.conf.d/dbdiag.cnf --initialize-insecure --user=mysql; \
+    mysqld --defaults-file=/etc/mysql/mysql.conf.d/dbdiag.cnf --user=mysql --daemonize; \
+    for i in $(seq 1 120); do mysqladmin --socket=/var/run/mysqld/mysqld.sock ping --silent && break; sleep 1; done; \
+    mysql --protocol=socket --socket=/var/run/mysqld/mysqld.sock -uroot -e "\
+      ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'root'; \
+      CREATE USER 'root'@'%' IDENTIFIED WITH mysql_native_password BY 'root'; \
+      GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION; \
+      CREATE USER 'diagnosis'@'%' IDENTIFIED WITH mysql_native_password BY 'diagnosis'; \
+      GRANT CREATE, CREATE USER, CREATE ROLE, SELECT, INSERT, UPDATE, DELETE, DROP, ALTER, INDEX, REFERENCES, CREATE TEMPORARY TABLES, LOCK TABLES, EXECUTE, CREATE VIEW, SHOW VIEW, CREATE ROUTINE, ALTER ROUTINE, EVENT, TRIGGER ON *.* TO 'diagnosis'@'%'; \
+      CREATE DATABASE diagnosis CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci; \
+      GRANT ALL PRIVILEGES ON diagnosis.* TO 'diagnosis'@'%'; \
+      CREATE USER 'monitor'@'%' IDENTIFIED WITH mysql_native_password BY 'monitor'; \
+      GRANT PROCESS, REPLICATION CLIENT, SELECT ON *.* TO 'monitor'@'%'; \
+      GRANT SELECT ON performance_schema.* TO 'monitor'@'%'; \
+      GRANT SELECT ON sys.* TO 'monitor'@'%'; \
+      FLUSH PRIVILEGES;"; \
+    MYSQL_PWD=root mysqladmin --socket=/var/run/mysqld/mysqld.sock -uroot shutdown; \
+    chown -R mysql:mysql /var/lib/mysql /var/run/mysqld /var/log/mysql
+
+CMD ["tail", "-f", "/dev/null"]
