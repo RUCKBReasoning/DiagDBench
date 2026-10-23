@@ -1,0 +1,97 @@
+name: Sync to RUCKBReasoning
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: sync-diagdb-main
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    # 即使工作流被复制到目标仓库，也不会在那里执行同步
+    if: >-
+      github.repository == 'XinxinZhao798/DiagDBench' &&
+      github.ref == 'refs/heads/main'
+
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+
+    env:
+      GIT_TERMINAL_PROMPT: "0"
+
+    steps:
+      - name: Read source repository
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if ! git lfs version >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y git-lfs
+          fi
+
+          # 当前源仓库为 Public，无需源仓库写入凭据
+          git clone --bare --single-branch --branch main \
+            https://github.com/XinxinZhao798/DiagDBench.git \
+            "$RUNNER_TEMP/diagdb-sync.git"
+
+          cd "$RUNNER_TEMP/diagdb-sync.git"
+
+          git remote add target \
+            https://github.com/RUCKBReasoning/DiagDBench.git
+
+          git lfs install --local
+
+          # 明确限定 LFS 下载和上传端点
+          git config lfs.url \
+            https://github.com/XinxinZhao798/DiagDBench.git/info/lfs
+
+          git config lfs.pushurl \
+            https://github.com/RUCKBReasoning/DiagDBench.git/info/lfs
+
+          # 获取 main 历史引用的 LFS 对象
+          git lfs fetch --all origin main
+
+      - name: Sync main without force
+        shell: bash
+        env:
+          SYNC_TOKEN: ${{ secrets.DIAGDBENCH_SYNC_TOKEN }}
+        run: |
+          set -euo pipefail
+          : "${SYNC_TOKEN:?请先配置 DIAGDBENCH_SYNC_TOKEN}"
+
+          cd "$RUNNER_TEMP/diagdb-sync.git"
+
+          # 凭据由环境变量提供，不把 Token 写进仓库 URL
+          git config --local credential.helper \
+            '!f() { if [ "$1" = get ]; then printf "username=x-access-token\npassword=%s\n" "$SYNC_TOKEN"; fi; }; f'
+
+          # 目标已有 main 时，先确认不会覆盖它的独立提交
+          remote_main="$(git ls-remote target refs/heads/main)"
+
+          if [ -n "$remote_main" ]; then
+            git fetch --no-tags target \
+              refs/heads/main:refs/remotes/target/main
+
+            if ! git merge-base --is-ancestor \
+              refs/remotes/target/main refs/heads/main; then
+              echo "::error::目标 main 存在独立提交或历史不一致，已停止，未强制覆盖。"
+              exit 1
+            fi
+          fi
+
+          # 先上传 LFS 实体文件，再更新 Git 分支
+          git lfs push --all target main
+          git push target refs/heads/main:refs/heads/main
+
+          # 验证目标 main 与本次同步的源版本一致
+          source_sha="$(git rev-parse refs/heads/main)"
+          target_sha="$(git ls-remote target refs/heads/main | cut -f1)"
+
+          test "$source_sha" = "$target_sha"
+          echo "同步完成，提交：$source_sha"
