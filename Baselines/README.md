@@ -1,125 +1,171 @@
-# 数据库智能体测评方法
+# Database Diagnosis Agents
 
-本目录包含五种方法，统一输出 `diagnosis_report.md`、`solution_script.sh`、
-`optimized_verified_workload.sql`。诊断输入是用户现象、初始化与验证负载、账号及运行时观测。
+This directory contains five methods with a shared output format:
+`diagnosis_report.md`, `solution_script.sh`, and `optimized_verified_workload.sql`.
+Diagnosis inputs include the reported symptoms, initialization and verification
+workloads, database account information, and runtime observations.
 
-| 方法 | 入口 | 诊断方式 |
+| Method | Entry point | Diagnosis approach |
 |---|---|---|
-| ReAct | `ReAct/react.py` | 显式动作/观察循环 |
-| Codex | `Codex/codex.py` | 原生 Codex CLI 循环，受控 MCP 工具 |
-| Claude Code | `Claude_Code/claude_code.py` | 原生 Claude Agent SDK，原生 WebSearch/WebFetch 与受控 MCP 工具 |
-| DB-GPT | `DB-GPT/db_gpt.py` | 原生多智能体诊断，再编译恢复产物；目前仅 PostgreSQL |
-| DBAIOps | `DBAIOps/dbaiops.py` | 知识检索问答诊断，再编译恢复产物 |
+| ReAct | `ReAct/react.py` | Explicit reasoning, action, and observation loop |
+| Codex | `Codex/codex.py` | Native Codex CLI loop with controlled MCP tools |
+| Claude Code | `Claude_Code/claude_code.py` | Native Claude Agent SDK with WebSearch/WebFetch and controlled MCP tools |
+| DB-GPT | `DB-GPT/db_gpt.py` | Native multi-agent diagnosis followed by recovery-artifact generation; currently PostgreSQL only |
+| DBAIOps | `DBAIOps/dbaiops.py` | Knowledge-retrieval Q&A diagnosis followed by recovery-artifact generation |
 
-## Prompt 约束
+## Prompt requirements
 
-`input_contract.py` 统一维护输入格式与五种方法共享的测评约束。ReAct 在模板渲染时加入，
-Codex/Claude 在原生任务 Prompt 中加入，DB-GPT 在各角色的角色说明和模板中加入，
-DBAIOps 在诊断系统 Prompt 中加入。两种报告转代码适配器也加入相同约束。
+`input_contract.py` defines the input format and shared evaluation requirements
+for all five methods. ReAct adds them when rendering its templates; Codex and
+Claude Code include them in their native task prompts. DB-GPT adds them to role
+descriptions and templates, and DBAIOps includes them in its diagnosis system
+prompt. Both adapters that convert reports into recovery code apply the same
+requirements.
 
-- 仅允许优化 `verified_workload.sql`；初始化负载保持原样，不混入优化产物。
-- SQL 数量、顺序、逐条结果、重复值、NULL、事务边界、副作用和持久状态必须等价。
-  无法证明等价或没有具体性能收益时返回空优化字段，保存器保留原验证负载。
-- 恢复脚本必须可从异常状态独立执行，不能依赖本次诊断已做的操作。
-- 成功退出意味着异常及相关恢复期残留已清理，并可立即验证负载。
-  需按事件实际情况，对回滚/undo、锁释放、I/O、维护完成、资源及服务就绪做有界轮询和后置检查。
-  无法确认恢复应非零退出，不能用固定 sleep、后台任务或忽略错误代替完成证明。
-- 报告区分已观测、建议和未验证事项。保存器只做格式与 Bash 语法检查；
-  SQL 语义与真实恢复效果仍需后续评测验证，不能把文件保存成功等同于恢复成功。
+- Optimize only `verified_workload.sql`. Keep the initialization workload
+  unchanged and exclude it from the optimization output.
+- Preserve statement count and order, per-statement results, duplicates, NULLs,
+  transaction boundaries, side effects, and persistent state. If equivalence
+  cannot be established or there is no concrete performance benefit, return an
+  empty optimization field; the artifact writer retains the original workload.
+- Recovery scripts must run independently from the anomalous state, without
+  relying on actions performed during diagnosis.
+- A successful script exit must mean the anomaly and any remaining recovery
+  activity have been resolved, so workload verification can start immediately.
+  Use bounded polling and postconditions as appropriate for rollback/undo, lock
+  release, I/O, maintenance completion, resources, and service readiness. Exit
+  with a nonzero status if recovery cannot be confirmed; fixed sleeps, background
+  jobs, and ignored errors do not establish completion.
+- Reports must distinguish observations, recommendations, and unverified claims.
+  The artifact writer checks format and Bash syntax only. SQL semantics and
+  actual recovery still require evaluation; saving a file does not establish
+  successful recovery.
 
-## 原生框架的能力与隔离
+## Native capabilities and isolation
 
-| 能力 | Codex | Claude Code |
+| Capability | Codex | Claude Code |
 |---|---|---|
-| 自主循环 | 原生 CLI | 原生 Agent SDK |
-| 数据库 Bash/SQL | `db_execute`，本样本封闭容器 | 同左 |
-| 本地文件 | `workspace_*` | 同左 |
-| Python/Bash 辅助分析 | `analysis_execute`，独立离线容器 | 同左 |
-| 计划、观察日志 | `plan_*`、`read_observation` | 同左 |
-| 文档与网络 | 固定文档、官方 PG 在线检索、PG/MySQL 官方文档读取 | 同左，另有原生 `WebSearch`/`WebFetch` |
-| 辅助专家 | 同模型、只读、共享预算的 MCP 专家 | 未开启 |
+| Autonomous loop | Native CLI | Native Agent SDK |
+| Database Bash/SQL | `db_execute` in the sample's isolated container | Same |
+| Local files | `workspace_*` | Same |
+| Python/Bash analysis | `analysis_execute` in a separate offline container | Same |
+| Plans and observation logs | `plan_*`, `read_observation` | Same |
+| Documentation and network | Pinned documents, online search of official PostgreSQL documentation, and reads of official PostgreSQL/MySQL documentation | Same, plus native `WebSearch`/`WebFetch` |
+| Auxiliary specialists | Read-only MCP specialists using the same model and shared budget | Disabled |
 
-Codex 当前使用 Chat Completions 网关适配 Responses 协议。该网关不能执行
-Responses 原生 `web_search`，因此在线检索由 MCP 提供；不将其描述为完整的原生网页工具评测。
-Claude 的原生网页功能仍取决于实际模型供应商支持，离线测试不验证供应商的在线搜索服务。
+Codex currently uses a Chat Completions gateway to adapt the Responses protocol.
+The gateway cannot execute the native Responses `web_search` tool, so online
+search is provided through MCP. This setup does not exercise the complete native
+web-tool interface. Claude's native web capabilities depend on the model
+provider; offline checks cannot verify the provider's online search service.
 
-每个样本只开放 `<sample_output>/agent_workspace/inputs/` 和 `work/`。
-`inputs/` 只含批准的现象、负载、账号；`work/` 用于生成的笔记和脚本。
-上级目录、绝对路径、隐藏路径、符号链接、硬链接均拒绝访问。
-初始化日志、注入代码、原始样本、控制上下文和兄弟样本输出不开放。
+Each sample exposes only `<sample_output>/agent_workspace/inputs/` and `work/`.
+`inputs/` contains approved symptoms, workloads, and database account information;
+`work/` holds generated notes and scripts. Access to parent directories, absolute
+paths, hidden paths, symbolic links, and hard links is rejected. Initialization
+logs, injection code, raw samples, control context, and other samples' outputs
+are not exposed.
 
-两个原生 Agent 在初始化和注入完成后，都在**同一个**数据库容器中封闭宿主机挂载，
-检查存活进程的文件引用，并断开外部网络。SQL 文件读取受到相同边界约束。
-封闭失败直接失败退出，不放宽隔离，也不靠杀死异常进程来通过检查。
-正常数据库进程和诊断证据仍保留。依赖原始文件或外部网络持续运行的异常，
-可能不兼容此隔离方式，需要单独记录。
+After initialization and injection, both native agents seal host mounts in the
+**same database container**, inspect file references held by running processes,
+and disconnect external networking. SQL file reads follow the same boundary.
+If sealing fails, the run fails without relaxing isolation or killing anomalous
+processes to pass the checks. Normal database processes and diagnosis evidence
+are preserved. Anomalies that require continued access to raw files or external
+networks may be incompatible with this isolation scheme and must be recorded
+separately.
 
-宿主机原生 shell/文件工具保持关闭，以受控工具提供同类功能；
-`cwd` 和只读沙箱本身并不能防止读取宿主机其他目录。
-Codex 禁用用户配置、规则与项目说明自动载入，并在网关过滤工具。
-Claude 使用独立配置目录、空配置来源、严格 MCP 配置，关闭 CLAUDE.md/记忆自动载入，
-并用 PreToolUse 拒绝未知能力。控制器和 SDK 运行文件不属于模型可访问的工作区。
+Native host shell and file tools remain disabled; controlled tools provide the
+corresponding operations. A working directory and a read-only sandbox alone do
+not prevent reads from other host directories. Codex disables automatic loading
+of user configuration, rules, and project instructions, and filters tools at the
+gateway. Claude uses a separate configuration directory, no inherited settings
+sources, strict MCP configuration, and no automatic CLAUDE.md or memory loading.
+Its `PreToolUse` hook rejects unknown capabilities. Controller and SDK runtime
+files are outside the model-accessible workspace.
 
-默认数据库动作预算为 20（含提交），辅助工具预算为 100。
-Claude SDK 总轮数为两者之和，原生网页调用计入 SDK 轮数；
-MCP 辅助动作另外受辅助预算约束。各方法总算力并不自动相等。
+The default budget is 20 database actions, including submission, and 100 auxiliary
+tool actions. Claude's SDK turn limit is their sum; native web calls count toward
+SDK turns. Auxiliary MCP actions also have their own budget. These settings do
+not automatically equalize total compute across methods.
 
-## 目录与公共接口
+## Directory structure and public interfaces
 
-顶层公共模块的职责如下：
+The top-level shared modules have the following responsibilities:
 
-| 文件 | 职责 |
+| File | Responsibility |
 |---|---|
-| `__init__.py` | 轻量包初始化，不再提供历史 ReAct 模块别名，也不提前加载诊断运行依赖 |
-| `input_contract.py` | 合并初始化/验证负载的输入呈现、保留阶段边界、渲染 Prompt，并统一追加诊断与恢复约束 |
-| `preparation.py` | 准备阶段异常分类、数据准备与 I/O 调度、LLM 重试策略、异常注入命令，以及顺序批次 CLI |
-| `container_boundary.py` | 样本暂存与四文件白名单、诊断阶段隔离、可信注入命名空间及受限容器执行 |
-| `script.sh` | 单方法配置检查、运行锁及入口分派 |
+| `__init__.py` | Lightweight package initialization, without legacy ReAct aliases or eager loading of diagnosis dependencies |
+| `input_contract.py` | Present initialization and verification workloads with their stage boundaries, render prompts, and add shared diagnosis and recovery requirements |
+| `preparation.py` | Preparation-error classification, data preparation and I/O scheduling, LLM retry policy, injection commands, and a sequential batch CLI |
+| `container_boundary.py` | Sample staging, the four-file allowlist, diagnosis isolation, trusted injection namespaces, and restricted container execution |
+| `script.sh` | Configuration checks, run locking, and entry-point dispatch for a single method |
 
-各方法、评估入口和测试直接导入现存模块；ReAct 使用
-`from Baselines.ReAct import react`。Codex 和 Claude Code 保留各自的样本驱动。
-导入 `preparation.py` 不会启动批次；批次调度仅在脚本或模块入口执行时运行。
-样本暂存与容器边界位于同一模块，保留原有函数签名、公开文件白名单及
-`_sample_staging_dir` 配置字段，不改变异常机制或评估结果协议。
+Methods and evaluation entry points import the current modules directly; ReAct
+uses `from Baselines.ReAct import react`. Codex and Claude Code retain their own
+sample drivers. Importing `preparation.py` does not launch a batch; scheduling
+starts only through its script or module entry point. Sample staging and
+container boundaries share one module, preserving the function signatures,
+public file allowlist, and `_sample_staging_dir` configuration field without
+changing the anomaly mechanism or evaluation result format.
 
-新路径使用大小写准确的 `ReAct`、`Codex`、`Claude_Code`。
-Codex 驱动、协议适配和产物 schema 都在自身目录；Claude Code 复用其中的
-MCP、工具和隔离组件，整理目录时需同步保留这些调用关系。
+Paths are case-sensitive: use `ReAct`, `Codex`, and `Claude_Code` exactly.
+The Codex driver, protocol adapter, and artifact schemas live in its directory.
+Claude Code reuses its MCP, tool, and isolation components; preserve these
+dependencies when reorganizing files.
 
-规范配置名为 `workflow_type: "codex"`，选项块为 `"codex"`。
-统一入口为 `Baselines/Codex/codex.py`，默认密钥环境变量为 `CODEX_MODEL_KEY`。
-具体配置、调用指令和参数见 `Baselines/Codex/README.md`。
+The canonical configuration uses `workflow_type: "codex"` with a `"codex"`
+options block. Its entry point is `Baselines/Codex/codex.py`, and its default
+credential environment variable is `CODEX_MODEL_KEY`. See
+[Codex documentation](Codex/README.md) for configuration, commands, and parameters.
 
-`Configs/` 的每个配置叶目录仅保留一个 `example.json`，历史运行目录与重复配置已清理。
-独立诊断配置位于 `Configs/baselines/<method>/example.json`，保留五种方法。
-所有 LLM/Judge 的地址、密钥、API 版本和模型名均为空，运行前需复制到 Configs 之外的本地配置并填写；
-基线密钥可通过示例中的 `api_key_env` 指定；Judge 密钥可通过 `api_key_env` 环境变量提供，无需写入配置。DBAIOps 知识服务地址需单独填写，使用独立密钥环境变量。
+Standalone diagnosis examples for all five methods are stored at
+`Configs/baselines/<method>/example.json`. Copy an example to a private
+configuration outside `Configs/` and fill in the LLM/Judge endpoint, model, and
+any required API version and credentials. Use `api_key_env` to supply baseline
+and Judge credentials through environment variables. DBAIOps also requires a
+separate knowledge-service endpoint and credential environment variable.
 
-| 配置 | 入口与用途 |
+| Configuration | Entry point and purpose |
 |---|---|
-| `Configs/evaluation/codex/example.json` | `Evaluation/test_baseline_eval.py`：Codex 诊断与评估 |
-| `Configs/evaluation/<react\|db_gpt\|dbaiops>/example.json` | `Evaluation/test_baseline_eval.py`：指定方法诊断与评估 |
-| `Configs/evaluation/scoring/example.json` | `Evaluation/test_eval.py`：评估既有诊断产物 |
+| `Configs/evaluation/codex/example.json` | `Evaluation/test_baseline_eval.py`: Codex diagnosis and evaluation |
+| `Configs/evaluation/<react\|db_gpt\|dbaiops>/example.json` | `Evaluation/test_baseline_eval.py`: diagnosis and evaluation with the selected method |
+| `Configs/evaluation/scoring/example.json` | `Evaluation/test_eval.py`: score existing diagnosis artifacts |
 
-Codex 与独立评估入口默认加载上表对应示例；其他方法组合评估需通过 `--config` 显式指定。
-组合配置分为 `baseline`、`eval` 两块，独立评估配置使用平铺字段。
-新示例使用 3 次测量、3 次 Judge、60 秒恢复等待与 8 倍耗时归零阈值，默认单个并行任务。
-示例不包含实际评估样本；运行前须填写输入路径、输出目录、模型信息、容器前缀与端口。
+The integrated evaluator defaults to the Codex example; the standalone evaluator
+defaults to the scoring example. Select other integrated methods explicitly with
+`--config`. Integrated configurations contain `baseline` and `eval` sections;
+standalone scoring configurations use flat fields.
 
-`script.sh CONFIG_JSON` 用于启动单个方法：校验配置、定位 Python 环境、
-检查容器前缀与端口、执行 dry-run、锁定输出目录、保存配置快照，再启动对应入口。
-它读取 `Configs/baselines` 类型的方法配置，不读取上述评估配置。
-`preparation.py` 的批次入口接收 `--config-dir`、`--output-dir` 和可选 `--framework`；
-前者存放方法 JSON，后者存放 `agentic_smoke_status.json` 与 `suite_status.json`。
-默认配置目录为 `Configs/baselines`，输出目录为 `Output/baseline_suite`；支持 `<method>/example.json`，也兼容用户提供的旧式 `<method>.json`。
-批次仍要求每个方法并行度为 2、预检通过且配置哈希匹配；负责进程组监督、
-端口选择、失败状态记录与本批次容器/tmux 清理。
+The examples use three measured runs, three Judge repetitions, a 60-second
+recovery settling interval, and a recovery score of zero at or above eight times
+the clean-baseline latency. They default to one concurrent task. They contain no
+evaluation samples; fill in input paths, output directories, model settings,
+container prefixes, and ports before running.
 
-已清除批次调度、Codex 协议适配和 Claude SDK 配置中的临时调试上报代码。
+`script.sh CONFIG_JSON` launches one method. It validates the configuration,
+locates the Python environment, checks container prefixes and ports, performs a
+dry-run, locks the output directory, saves a configuration snapshot, and starts
+the selected entry point. It accepts standalone method configurations of the
+`Configs/baselines` form, rather than the evaluation configurations above.
 
-## 运行与验证
+The batch CLI in `preparation.py` accepts `--config-dir`, `--output-dir`, and an
+optional `--framework`. The input directory holds method JSON configurations; the
+output directory holds `agentic_smoke_status.json` and `suite_status.json`.
+Defaults are `Configs/baselines` and `Output/baseline_suite`. Both
+`<method>/example.json` and user-provided legacy `<method>.json` layouts are
+supported. Batch execution requires a parallelism of two for each method, a
+successful preflight, and matching configuration hashes. It supervises process
+groups, selects ports, records failures, and cleans up the batch's containers and
+tmux sessions.
 
-在项目根目录、包含依赖的 `db_diag` Python 环境中：
+Temporary debug-reporting code has been removed from batch scheduling, the Codex
+protocol adapter, and Claude SDK configuration.
+
+## Running and validating
+
+Run these commands from the repository root in the `db_diag` Python environment
+with the required dependencies installed:
 
 ```bash
 python Baselines/Codex/codex.py --config YOUR_CONFIG.json --dry-run
@@ -130,11 +176,15 @@ python Evaluation/test_baseline_eval.py --config YOUR_EVAL_CONFIG.json --dry-run
 python Evaluation/test_eval.py --config YOUR_SCORING_CONFIG.json
 python Baselines/preparation.py --help
 
-python -m unittest discover -s Baselines/Codex/Test -p 'test_*.py' -v
 python -m Baselines.Codex.Test.host_probe
 python -m Baselines.Codex.Test.integration --dbms postgresql
 python -m Baselines.Codex.Test.integration --dbms mysql
 ```
 
-原生 CLI/SDK 回归测试使用本地模拟模型服务，不消耗外部模型额度。
-Docker 集成测试使用独立小型测试容器，不能替代全量样本诊断效果评测。
+`--dry-run` checks configuration and sample paths; `--preflight` checks local
+runtime prerequisites. `Codex/Test/` retains opt-in runtime checks:
+`host_probe.py` checks container isolation, `integration.py` uses separate small
+PostgreSQL/MySQL containers, and `native_smoke.py` calls the configured model
+through the native agent. These checks do not replace benchmark evaluation.
+`Evaluation/test_baseline_eval.py` and `Evaluation/test_eval.py` are the actual
+evaluation entry points.

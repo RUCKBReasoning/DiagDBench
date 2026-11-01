@@ -45,16 +45,11 @@ Evaluation/method_adapters.py::run_agent
 3. 模型/库准备完成后再执行 `script.sh --preflight`；删除旧的 `DB_GPT_KB_MODE=bundled` 设置。不提供静默降级模式。
 4. 独立原生 CLI 可通过 `DB_GPT_METRICS_SOURCE=prometheus` 使用原版指标命名。评测启动器固定使用其实际采集的 `container` 观测；不能将两类证据混用。
 
-## 离线回归
-
-`test_upstream_contract.py` 覆盖语义嵌入失败边界、原生检索调用/去重、专家路由、指标边界及运行产物隔离。测试不执行异常注入、恢复脚本、数据库或模型请求；Bash 仅做 `bash -n` 语法检查。
-
 ## 跨文件接口兼容
 
 - `run_db_gpt_agent` 参数顺序及 finish 返回字段不变；共用入口仍通过原模块路径动态加载。
 - 通过 `Baselines/native_runtime.py` 统一项目相对环境路径解析，并使用 `DIAGDBENCH_NATIVE_RUN_DIR` 将 Python 入口、启动脚本与精确产物文件绑定。旧的独立脚本调用不设置该变量时仍自动创建目录。
 - 原生交互状态模板使用相对源码文件的绝对位置，运行目录改变不会读错模板。`multiagents` 仅为已声明的公开导出初始化模型注册，普通属性探测不再意外要求模型密钥。
-- `Baselines/test_native_interfaces.py` 覆盖真实分发器、启动脚本、报告文件及共用 `save_finish` 的串联；外部数据库/模型被模拟。原有知识库初始化与模型依赖要求不因此改变。
 
 
 ## DBA 授权恢复产物转换（2026-11-02）
@@ -86,7 +81,4 @@ Evaluation/method_adapters.py::run_agent
 - 新增 `conversion_prompt.txt`、`conversion_meta.json`，记录策略版本、输入身份、
   产物摘要及是否使用原始 SQL 回退；`execution_status=not_executed` 仅描述
   转换阶段未执行脚本，真实执行结果以评测日志为准。
-- `Baselines/test_recovery_artifacts.py` 覆盖修复 SQL、输入边界、上下文预算、
-  报告冻结、回退、格式重试、元数据及公共评测保存/管理员凭据接口。
-  全部离线模拟，不请求模型或数据库，不执行生成脚本。未更改评分、重跑历史
-  实验或覆盖旧产物；旧缓存不会自动升级，需要另行显式生成新的运行产物。
+- 旧缓存不会自动升级，需要另行显式生成新的运行产物。

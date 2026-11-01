@@ -43,21 +43,20 @@ Evaluation/method_adapters.py::run_agent
 - 原浏览器模型请求还携带 `similarity`、`top_n`、`knowledge_base_id` 扩展字段；本适配器已在独立知识请求中应用检索参数，不向标准 chat-completions 服务重复传这些非标准字段。这是显式的传输适配，并非逐字节请求复刻。
 - 共用 `DIAGNOSIS_REQUIREMENTS` 和事实/推断约束追加到系统提示；这属于实验条件，会影响提示词，未删除安全/证据边界。
 - `generate_artifact_action`：原生问答完成后额外调用模型，产生统一恢复脚本和可选 SQL 改写，并做格式修复重试。模型不得改写冻结的诊断报告；失败时仍保留 `native_diagnosis_report.md`。恢复能力、token 和耗时不能全部归因于原版 DBAIOps。
-- `test_native_runner.py`、本说明文档也是本项目新增，而非上游文件。
+- 本说明文档也是本项目新增，而非上游文件。
 
 ## 配置与验证边界
 
 - 知识服务密钥与 LLM 密钥独立，不能相互替代。
 - 旧 `knowledge_service.local_knowledge_dir` / `DBAIOPS_LOCAL_KNOWLEDGE_DIR` 在共用入口只触发废弃警告，不再启用回退。`--local-knowledge-dir` CLI 参数以及 `retrieve_knowledge(..., fallback_dir=..., dbms=...)` 旧关键字形式仍兼容，但只警告并忽略回退配置，不会恢复自动替代算法。
 - 默认 PG 数据集为 `2104`，MySQL 为 `2102`；服务是否可用及数据集权限必须在实际环境验证。
-- 本轮未启动浏览器、连接数据库、请求模型/知识服务或执行生成脚本。`test_native_runner.py` 通过模拟服务核验上游规则、请求/提示分支、失败行为、报告冻结及产物隔离，不代表真实服务端到端测试通过。
+- 真实服务的端到端可用性需使用配置好的模型和知识服务单独验证。
 
 ## 跨文件接口兼容
 
 - 共用评测器和独立 CLI 使用 `Baselines/native_runtime.py` 的同一凭据解析规则，支持配置文件、`api_key_env` 和独立知识密钥；不替换为 LLM 密钥。
 - 配置中的相对 `conda_home` 固定以项目根目录解析。直接执行 `script.sh` 时，样本、输出和环境相对路径以调用者工作目录解析，进入方法目录不会改变其含义。
 - `run_dbaiops_agent` 的参数顺序和 finish 返回字段不变。它通过 `DIAGDBENCH_NATIVE_RUN_DIR` 与脚本约定本次唯一目录，读取精确产物文件；独立脚本不设置该变量时仍自动创建唯一目录。
-- `Baselines/test_native_interfaces.py` 覆盖真实模块分发、独立入口、脚本参数、旧参数、产物回传及共用 `save_finish`。数据库、Docker 和模型边界采用模拟，不代表真实服务已可用。
 
 
 ## DBA 授权恢复产物转换（2026-11-02）
@@ -89,7 +88,4 @@ Evaluation/method_adapters.py::run_agent
 - 新增 `conversion_prompt.txt`、`conversion_meta.json`，记录策略版本、输入身份、
   产物摘要及是否使用原始 SQL 回退；`execution_status=not_executed` 仅描述
   转换阶段未执行脚本，真实执行结果以评测日志为准。
-- `Baselines/test_recovery_artifacts.py` 覆盖修复 SQL、输入边界、上下文预算、
-  报告冻结、回退、格式重试、元数据及公共评测保存/管理员凭据接口。
-  全部离线模拟，不请求模型或数据库，不执行生成脚本。未更改评分、重跑历史
-  实验或覆盖旧产物；旧缓存不会自动升级，需要另行显式生成新的运行产物。
+- 旧缓存不会自动升级，需要另行显式生成新的运行产物。
