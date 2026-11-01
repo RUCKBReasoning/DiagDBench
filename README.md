@@ -26,7 +26,7 @@ DiagDBench/
 ├── Anomaly_Def/                      # Anomaly definitions and supporting knowledge
 ├── Baselines/                        # Database diagnosis agents and shared tools
 │   ├── ReAct/                        # Agent that repeats reasoning, actions, and observations
-│   ├── Codex/                        # Codex CLI integration, database tools, and tests
+│   ├── Codex/                        # Codex CLI integration, database tools, and runtime checks
 │   ├── Claude_Code/                  # Claude Agent SDK integration using shared Codex tools
 │   ├── DB-GPT/                       # Multi-expert diagnosis agent adapted for this benchmark
 │   ├── DBAIOps/                      # Knowledge-based diagnosis service and browser extension
@@ -35,8 +35,7 @@ DiagDBench/
 │   ├── container_boundary.py         
 │   ├── native_runtime.py             
 │   ├── recovery_artifacts.py         
-│   ├── script.sh                     # Starts a diagnosis agent from a configuration file
-│   └── test_*.py                     
+│   └── script.sh                     # Starts a diagnosis agent from a configuration file
 ├── Evaluation/                       # Runs diagnosis and measures recovery quality
 │   ├── test_baseline_eval.py         # Runs an agent and scores its diagnosis and recovery
 │   ├── test_eval.py                  # Scores existing reports, recovery scripts, and workloads
@@ -44,8 +43,7 @@ DiagDBench/
 │   ├── measurement.py                
 │   ├── namespace.py                  
 │   ├── recovery_reassessment.py      
-│   ├── offline_rescore.py            
-│   └── Test/                         
+│   └── offline_rescore.py
 ├── Configs/                          # Example configurations to copy and customize before running
 ├── Filter/                           # Filters samples using rules or an LLM agent; includes configurations
 ├── Revision/                         # Revises samples based on human review comments
@@ -109,33 +107,9 @@ Core requirements do **not** install every third-party baseline runtime:
 | Human-review revision | `Configs/revision/example.json`, `example_mysql.json` | `Revision/test_ref_anomaly.py` |
 | Rule-based / agentic filtering | `Filter/Configs/example_rule.json`, `example_agentic.json` | Corresponding `Filter/test_*.py` |
 
-Most `Configs/` workflow leaves contain `example.json`; revision also has a MySQL
-example. `Configs/extract_solution/example.json` records extraction settings, but
-`test_extract_solution.py` takes CLI arguments, **not** `--config`.
-
-Copy examples to private `*.local.json` files and fill endpoint, model, optional
-API version, input/output paths, container prefixes and ports. Public templates
-are not ready-to-run configurations. In particular, replace
-`REPLACE_WITH_GENERATED_RUN_DIRECTORY` with the actual preceding stage's output.
-
-| Credential | Default environment variable in the corresponding examples |
-|---|---|
-| ReAct / synthesis / native baseline model | `OPENAI_API_KEY` |
-| Codex model | `CODEX_MODEL_KEY` |
-| Standalone Claude Code | `ANTHROPIC_API_KEY` |
-| Evaluation Judge | `JUDGE_API_KEY` |
-| DBAIOps knowledge service | `DBAIOPS_KNOWLEDGE_API_KEY` |
-| Agentic filter model | `FILTER_LLM_API_KEY` |
-
-Use the variable named by the relevant `api_key_env`; do not commit live keys.
-Integrated configs have `baseline` and `eval` sections; standalone scoring uses
-flat fields. DBAIOps needs a separate knowledge-service URL and credential.
-Its obsolete `local_knowledge_dir` setting, still present in some examples, is
-ignored: it does not replace the remote knowledge service.
-
 ## Manual-Guided Anomaly Synthesis
 
-This pipeline turns anomaly knowledge from DBA manuals and official DBMS
+This pipeline instantiate abstract anomaly definitions along with error codes and timeouts from official DBMS
 documentation into executable samples through three sequential stages. Each stage
 uses database execution feedback to refine its outputs.
 
@@ -152,11 +126,45 @@ Prepare database schemas, seed data, anomaly definitions, and a private model
 configuration. `Anomaly_Def/` holds single/composite definitions and knowledge
 assets. `Anomaly_Def/syn_comp_anomaly.py` constructs composite definitions;
 `test_retri.py` and `test_retri_top_n.py` retrieve and enrich anomaly knowledge.
-These preparation utilities have their own input conventions and do not all
-accept `--config`.
 
-The synthesis examples target PostgreSQL. For MySQL, also supply matching schemas,
-seed data, DBMS/account/port settings, and the appropriate initialization mode.
+From the repository root, run retrieval first, then expand the definitions with
+the retained matches. Set `ANOMALY_DIR` to your prepared input directory: each
+`<id>.json` should contain one anomaly definition, either as an object or wrapped
+in a single-element list. The scripts' default `Anomaly_Def/anomaly_def_formatted`
+directory is not included in this checkout.
+
+```bash
+ANOMALY_DIR="/absolute/path/to/formatted_anomalies"
+
+# PostgreSQL: retrieve error-code and timeout knowledge, then expand definitions.
+python -B test_retri.py \
+  --dbms_name "PostgreSQL 16.11" \
+  --anomaly_dir "$ANOMALY_DIR" \
+  --output_dir Output/retrieval/PG_Retrieval
+python -B test_retri_top_n.py \
+  --n 4 \
+  --anomaly_dir "$ANOMALY_DIR" \
+  --retrieve_dir Output/retrieval/PG_Retrieval \
+  --output_dir Output/retrieval/anomaly_def_pg_rag
+
+# MySQL: keep its retrieval results and expanded definitions in separate directories.
+python -B test_retri.py \
+  --dbms_name "MySQL 8.4" \
+  --anomaly_dir "$ANOMALY_DIR" \
+  --output_dir Output/retrieval/MySQL_Retrieval
+python -B test_retri_top_n.py \
+  --n 4 \
+  --anomaly_dir "$ANOMALY_DIR" \
+  --retrieve_dir Output/retrieval/MySQL_Retrieval \
+  --output_dir Output/retrieval/anomaly_def_mysql_rag
+```
+
+Run the pair for your target DBMS and use definitions applicable to that system.
+Retrieval reads `Anomaly_Def/knowledge_base/error_code_list.json` and
+`timeout_list.json`. The expansion script matches input and retrieval filenames,
+takes up to `--n` retained items (error-code matches followed by timeout matches),
+and writes one expanded definition per item. Use the resulting directory as the
+anomaly-definition input in the synthesis configuration.
 
 ### Run the pipeline
 
@@ -186,19 +194,42 @@ evaluation. The resulting sample contract is described in [DiagDBench](#diagdben
 
 ## Incident-Guided Anomaly Reproduction
 
-This pipeline reconstructs an anomaly directly from a production incident record,
+This pipeline reconstructs an anomaly directly from a real-world onlien diagnosis incident record,
 using the database schema, system/user configuration, and reproduction guidance.
 `test_syn_ano_rep.py` runs an interactive construction loop to produce the anomaly
-definition, user issue description, workloads, database modifications, and
+definition, user issue description, anomaly-verified workloads, database modifications, and anomaly
 injection script.
 
 ### Prepare inputs and reproduce an incident
 
 Create a private copy of `Configs/syn_ano_rep/example.json`. Supply
 `incident_record_path`, `database_schema_directory`, database/model settings, and
-an output directory. The current entry uses the first database in `database_names`
-as the reproduction target. Guidance is loaded from `skills_directory`, including
+an output directory. Guidance is loaded from `skills_directory`, including
 the incident-category and reproduction playbook files in `Skills/`.
+
+Private incident datasets differ in their record structure and available evidence.
+Adapt `test_syn_ano_rep.py` to the attributes of each source before reproduction:
+
+- **File format and record layout:** `read_incident_record_csv` currently reads
+  only the first data row of a CSV file. `build_incident_sample_list` discovers
+  numeric `<id>.csv` filenames in batch mode. For multi-record CSV, JSON, or other
+  exports, normalize the data to this layout or adjust these readers and the
+  sample-ID mapping.
+- **Field names and nested content:** update `INCIDENT_FIELD_LABELS` and
+  `format_incident_record_info` to map the source's symptoms, impact,
+  investigation notes, conclusions, and classification fields. Adapt the parsing
+  of nested values such as `summary`, `category_by_customer`, and
+  `fault_locator_msg`, including missing fields and encoding differences.
+- **Incident meaning and reproduction criteria:** align source-specific category
+  labels with the guidance in `Skills/`, configure the corresponding schema and
+  database environment, and select a `SuccessCriterion` supported by the recorded
+  evidence: performance degradation, blocking/timeouts, or execution errors.
+  Extend the relevant validation logic if the source requires another criterion.
+
+Changing the input path alone does not adapt an unfamiliar record schema.
+Inspect the formatted evidence for representative records before running a batch;
+retain the exclusion of tracking identifiers and raw snapshots when updating the
+field mapping.
 
 ```bash
 cp Configs/syn_ano_rep/example.json syn-ano-rep.local.json
@@ -227,67 +258,21 @@ same curation and evaluation workflow as manually guided samples.
 ## DiagDBench
 
 DiagDBench organizes samples from both construction pipelines into a common
-interface for interactive diagnosis and remediation. A runnable sample combines
-the database environment, a user-observed issue, initialization and verification
-workloads, and private anomaly-injection and reference artifacts.
+interface for interactive diagnosis and remediation. Each anomaly sample contains
+the database environment, user issue description, anomaly-verified workloads, database modifications, and anomaly-injection script.
 
 ### Local archives versus runnable inputs
 
 The inspected local checkout contains `DiagDBench/Eval.zip` and
-`DiagDBench/Train.zip`. They are local data artifacts covered by `.gitignore`,
-not a guarantee that a source checkout or release includes downloadable datasets.
+`DiagDBench/Train.zip`.
 
-**Do not point the current evaluator directly at these archives or assume that
-unpacking them is sufficient.** The local `Eval.zip` has an `Eval/` directory and
+Specifically, `Eval.zip` has an `Eval/` directory and
 `Eval/key_information.json`, but uses packaged names such as:
 
 - `anomaly_definition.json`
 - `anomaly_verified_workload.sql`
 - `user_issue_description.txt`
 - `.inject_entry`, invoked through `anomaly_inject.sh`
-
-It does not contain the current driver's separate `initialization_workload.sql`,
-`verified_workload.sql`, or `user_phenomenon_description.txt` files. Its ground-truth
-filename also differs from the evaluation default `anomaly_description.json`.
-The local training archive has a different layout and no `key_information.json`.
-
-Prepare a compatible, validated dataset before execution. Recover the original
-preparation/verification phase boundary from authoritative sample information;
-merely renaming a merged SQL file or inventing an empty preparation file can
-change the experiment. Configure `ground_truth_diagnosis` to the correct
-per-sample reference filename and validate its content. Compiled injection
-binaries also need a compatible runtime.
-
-### Required runtime layout
-
-Keep the **complete source samples outside the repository**. The staging code
-rejects a source inside the project and uses `<repository>/DiagDBench/<id>/` as a
-controlled temporary view. For example:
-
-```text
-/absolute/path/outside/repository/eval_samples/
-├── key_information.json              # JSON list; one entry per sample
-└── 0/
-    ├── config.json                  # DBMS, database/schema, accounts and resources
-    ├── user_phenomenon_description.txt
-    ├── initialization_workload.sql
-    ├── verified_workload.sql
-    ├── data_modification.sql
-    ├── anomaly_inject.sh
-    ├── anomaly_description.json     # Default ground truth; configurable filename
-    └── ...                          # Additional files needed by the sample/injector
-```
-
-Set `key_information_path` to the external index, replacing the examples'
-`DiagDBench/eval/key_information.json` placeholder. Index entries use `sample_id`
-or `anomaly_id`, include `database_name`, and must match the sample directories.
-The driver also recognizes the existing `<id>_<database>` directory convention.
-
-Only four public files remain in the agent-visible sample view: `config.json`,
-the phenomenon description, and the two workload files. Injection source,
-data-modification instructions, ground truth and other private artifacts are
-reserved for trusted preparation/evaluation, not supplied as diagnosis evidence.
-The original source must not be exposed through another mount or a symlink.
 
 ### Filtering and human-review revision
 
@@ -299,8 +284,7 @@ Use `Filter/` to check sample validity and recoverability:
 | Agentic | `Filter/test_agentic_llm_filter.py` | `Filter/Configs/example_agentic.json` | Filters out recoverable samples (`failed_ids`) and retains unrecovered samples (`pass_ids`) |
 
 Both entries accept `--config` and support `--dry-run`. Real filtering performs
-database operations; the agentic filter also calls a model. The root
-`test_filter_syn_data.py` exposes the rule-filter workflow as well.
+database operations; the agentic filter also calls a model.
 
 `Revision/test_ref_anomaly.py` refines samples using human review notes. It expects
 wrapped `Raw_Data/<dataset>/<id>/raw_sample/` inputs and
@@ -323,20 +307,6 @@ the model revision loop. Successful revisions require anomaly evaluation and a
 valid finish action; unreviewed or failed revisions keep the original sample
 content. Keep revision output separate from the input tree.
 
-`test_stat_key_info.py` provides sample statistics and aggregation. Its output
-mode can clear the configured destination, so inspect `--help` before use.
-
-### Data management
-
-Keep dataset payloads, database seeds, credentials, private configurations, and
-run outputs out of source commits. `.gitignore` covers the main local-data/output
-paths and `*.local.json`, but does not untrack files already recorded by Git.
-Treat model traces, database evidence, generated scripts, and configuration
-snapshots as private data.
-
-For redistribution, review bundled knowledge assets and third-party license and
-provenance files, including [DB-GPT provenance](Baselines/DB-GPT/UPSTREAM.md) and
-[DBAIOps provenance](Baselines/DBAIOps/UPSTREAM.md).
 
 ## Database Agents for Diagnosis and Remediation
 
@@ -354,9 +324,7 @@ information, and runtime observations to diagnose and remediate anomalies.
 | `db_gpt` | `Baselines/DB-GPT/db_gpt.py` | Native multi-expert diagnosis and recovery-artifact adapter | Yes; PostgreSQL only |
 | `dbaiops` | `Baselines/DBAIOps/dbaiops.py` | Knowledge-Q&A diagnosis and recovery-artifact adapter | Yes |
 
-DB-GPT excludes unsupported non-PostgreSQL samples. DBAIOps runs its headless
-knowledge-Q&A adapter. DB-GPT and DBAIOps reuse the ReAct sample lifecycle through
-native callbacks; Claude Code reuses Codex MCP/tool/isolation components.
+DB-GPT excludes unsupported non-PostgreSQL samples.
 
 ### Run standalone diagnosis
 
@@ -372,10 +340,6 @@ configuration snapshot and locks its output directory. It runs **diagnosis only*
 Use the corresponding `Configs/baselines/<method>/example.json` for another agent.
 The [Evaluation](#evaluation) section covers scoring the generated artifacts.
 
-The optional sequential suite CLI is `python -B Baselines/preparation.py --help`.
-It currently covers ReAct, Codex and Claude Code, requires two workers per method,
-and checks existing smoke-test evidence plus configuration hashes. It is not a
-replacement for the five-method standalone launcher or integrated scoring entry.
 
 ### Shared artifacts and constraints
 
@@ -389,15 +353,8 @@ optimized_verified_workload.sql
 
 The final action's workload field is `verified_workload.sql`; the saver writes
 `optimized_verified_workload.sql`. An empty optional rewrite retains the original
-verification SQL as the effective artifact. A missing artifact at scoring time is
-not equivalent to that valid fallback. Initialization SQL is never part of the
-optimized verification artifact.
+verification SQL as the effective artifact.
 
-`Baselines/input_contract.py` defines shared diagnosis and remediation constraints:
-the recovery script must run independently from the anomaly state, and optional
-workload changes must preserve SQL order, results, transaction boundaries, side
-effects, and persistent state. A saved report or script does not by itself
-establish successful recovery; evaluation executes and checks the artifacts.
 
 To collect existing standalone artifacts without running a model:
 
@@ -407,15 +364,9 @@ python -B test_extract_solution.py \
   --output-directory Output/extracted_solutions/react
 ```
 
-The extractor expects immediate per-sample artifact directories, not the nested
-integrated `<id>/baseline/` layout. Its optional `--clean-output` flag clears the
-destination. See the [agent documentation](Baselines/README.md) for runtime,
-tool-isolation, and method-specific details.
-
 ## Evaluation
 
-`Evaluation/` provides a shared scoring policy for integrated diagnosis runs and
-existing diagnosis artifacts. It measures recovery in a reconstructed anomaly
+`Evaluation/` adopt two complementary evaluation protocols: Execution-Grounded Remediation Evaluation and LLM-Judged Diagnostic Report Evaluation. It measures recovery in a reconstructed anomaly
 environment and uses an LLM Judge to assess diagnosis and workload equivalence.
 
 ### Integrated diagnosis and scoring
@@ -469,7 +420,7 @@ standalone scoring uses `<output_base>/<id>/`. Evaluation produces per-sample
 `score_detail.json`, Judge/measurement evidence and logs, plus the aggregate
 `evaluation_result.json`.
 
-The current engine has one score channel, **`Reinitialized.optimized_llm_judge`**:
+The evaluation workflow is as follows:
 
 1. Measure the original verified workload on a clean database.
 2. Reconstruct the database, apply the anomaly and verify injection.
@@ -477,48 +428,4 @@ The current engine has one score channel, **`Reinitialized.optimized_llm_judge`*
 4. Measure the submitted effective verification workload.
 5. Judge the diagnosis and ordered workload semantics using the shared evaluator.
 
-The sample score is `0.3 * diagnosis_score + 0.7 * recovery_score`. Recovery credit
-uses the implemented latency curve and is zero at or above 8x clean-baseline
-latency. SQL/initialization errors, timeouts, invalid injection and semantic
-rejection remain failures. The recovery script's exit status is recorded, but a
-nonzero exit alone is not the recovery-score gate. Fingerprints are supporting
-evidence, not an alternative to the semantic Judge.
-
-There is no separately scored original-workload or live post-remediation channel.
-Current examples request three measured repetitions, Judge repetitions and a
-settling interval. Resume decisions check scoring version, source/artifact hashes
-and the exact measurement protocol; outdated results are not silently reused.
-The supported mode is `both`. See the [evaluation documentation](Evaluation/README.md)
-for the authoritative field layout, failure semantics, and compatibility details.
-
-`Evaluation/offline_rescore.py` and `Evaluation/historical_scoring.py` support
-explicit migration of historical evaluation snapshots. They do not produce fresh
-benchmark measurements or replace the current evaluator.
-
-### Offline checks
-
-Use the core project environment for:
-
-```bash
-python -B -m unittest discover -s Baselines/Codex/Test -p 'test_*.py' -v
-python -B -m unittest Baselines.test_native_interfaces Baselines.test_recovery_artifacts -v
-python -B -m unittest discover -s Evaluation/Test -p 'test_*.py' -v
-python -B Baselines/DBAIOps/test_native_runner.py -v
-```
-
-Run the DB-GPT contract test in its configured environment, which includes its
-YAML dependency:
-
-```bash
-python -B Baselines/DB-GPT/test_upstream_contract.py -v
-```
-
-Targeted discovery matters: root files named `test_syn_*`, `test_eval*`, etc. are
-also workflow entry points, not a uniform unit-test suite. Do not recursively
-import all vendored DB-GPT packages just to discover its contract test.
-
-Codex's `host_probe.py`, `integration.py` and `native_smoke.py` are separate,
-opt-in runtime checks; integration uses real containers and native smoke may use
-a real model. They are not included by the `test_*.py` command above. Passing
-syntax checks, offline tests or dry-run does not establish dataset compatibility,
-model-service availability, isolation support, or end-to-end diagnosis accuracy.
+The sample score is `0.3 * diagnosis_score + 0.7 * recovery_score`.

@@ -178,11 +178,14 @@ combined diagnosis-and-scoring pipeline, configure `Configs/evaluation/codex/exa
 and pass it to `Evaluation/test_baseline_eval.py --config`. That pipeline uses
 separate `baseline` and `eval` sections; do not pass its configuration to `codex.py`.
 
-## Offline checks
+## Runtime checks
 
 ```bash
-python -B -m unittest discover -s Baselines/Codex/Test -p 'test_*.py' -v
+python -B Baselines/Codex/codex.py --config YOUR_CONFIG.json --dry-run
+python -B Baselines/Codex/codex.py --config YOUR_CONFIG.json --preflight
 ```
 
-`host_probe.py` and `integration.py` are opt-in Docker tests; `native_smoke.py`
-also calls the configured model. They are not part of the offline command above.
+Dry-run validates configuration and sample paths; preflight checks local runtime
+prerequisites. The retained `Test/host_probe.py` and `Test/integration.py` are
+opt-in checks using real Docker containers. `Test/native_smoke.py` also calls the
+configured model. These checks do not calculate benchmark evaluation scores.

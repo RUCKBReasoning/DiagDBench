@@ -14,7 +14,10 @@ integrated diagnosis. It does not implement competing score channels.
 | `measurement.py` | Bounded result capture and exact measurement-protocol validation. |
 | `recovery_reassessment.py` | Explicit frozen-report conversion, source-bound diagnosis-score reuse and bounded continuation. |
 | `offline_rescore.py` | Migrate and verify published historical snapshots without database or model calls. |
-| `Test/` | Offline policy, lifecycle, interface, and isolation regressions. |
+
+`test_baseline_eval.py` and `test_eval.py` are operational evaluation entry points,
+despite their `test_` prefix. They run diagnosis/scoring workflows and remain
+required by the public commands below.
 
 ## Scoring policy
 
@@ -121,11 +124,3 @@ Historical migration preserves the original measurements and removes only the
 recovery-script exit-status score gate. Its reviewed scoring fingerprint ignores
 empty Python-version-specific AST fields, and rejects substantive scorer changes.
 Historical inputs must use `mode: both`, matching the retained scoring formula.
-
-## Offline tests
-
-```bash
-python -B -m unittest discover -s Evaluation/Test -p 'test_*.py' -v
-python -B -m unittest discover -s Baselines/Codex/Test -p 'test_*.py' -v
-python -B -m unittest Baselines.test_native_interfaces -v
-```
