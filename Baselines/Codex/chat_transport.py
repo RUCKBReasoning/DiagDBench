@@ -18,6 +18,10 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from types import SimpleNamespace
 
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from llm_api import prepare_request
+
 
 def text_content(content):
     if isinstance(content, str):
@@ -139,7 +143,10 @@ def create_chat_completion(client, request, llm, audit=None):
     delay = max(0.0, float(llm.get("codex_transport_retry_delay_seconds", 2)))
     for attempt in range(retries + 1):
         try:
-            return collect_chat(client.chat.completions.create(**request))
+            fitted, context_meta = prepare_request(request, llm)
+            if audit and (context_meta['truncated'] or context_meta['output_budget_adjusted']):
+                audit(dict(context_meta, status='context_budget'))
+            return collect_chat(client.chat.completions.create(**fitted))
         except Exception as exc:
             status = getattr(exc, "status_code", None)
             retryable = (
@@ -397,18 +404,17 @@ def saved_finish_is_current(output):
 
 @contextmanager
 def configured_transport(llm, output=None):
-    """Use Azure Chat for Azure-compatible gateways, preserving native Codex execution."""
+    """Use Azure-compatible chat gateways, preserving native Codex execution."""
+    import llm_api
+
     transport = llm.get("codex_transport")
-    if transport is None and llm.get("provider") == "azure":
+    if transport is None and llm_api.resolve_llm_provider(llm) == "azure":
         transport = "chat_completions"
     if transport != "chat_completions":
         yield {}
         return
-    import llm_api
-
-    factory = llm_api.build_llm_client
     timeout = float(llm.get("codex_transport_timeout_seconds", llm.get("timeout", 120)))
-    client = factory(llm).with_options(timeout=timeout, max_retries=0)
+    client = llm_api.create_llm_client(llm).with_options(timeout=timeout, max_retries=0)
     token = secrets.token_urlsafe(32)
     audit_lock = threading.Lock()
 
@@ -436,7 +442,7 @@ def configured_transport(llm, output=None):
                 body = json.loads(self.rfile.read(size))
                 request = chat_request(body, llm)
                 tools = request.get("tools", [])
-                default_tool_mode = "json" if llm.get("provider") == "azure" else "function"
+                default_tool_mode = "json" if llm_api.resolve_llm_provider(llm) == "azure" else "function"
                 json_mode = llm.get("codex_tool_mode", default_tool_mode) == "json" and bool(tools)
                 request_id = uuid.uuid4().hex
                 if saved_finish_is_current(output):

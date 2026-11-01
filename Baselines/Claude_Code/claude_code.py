@@ -37,7 +37,7 @@ def _openrouter_proxy_environment(llm):
         return {}
     wrapper_value = llm.get(
         "openrouter_proxy_wrapper",
-        "",
+        "~/.local/bin/with-openrouter-proxy",
     )
     if not wrapper_value:
         return {}
@@ -71,7 +71,8 @@ def _openrouter_proxy_environment(llm):
 
 
 def build_options(llm, workspace, max_turns, context_path=None):
-    from claude_agent_sdk import ClaudeAgentOptions
+    from claude_agent_sdk import ClaudeAgentOptions, HookMatcher
+    from Baselines.Codex.tools import SPECS
 
     timeout_seconds = float(llm.get("claude_api_timeout_seconds", 300))
     if not 0 < timeout_seconds < float("inf"):
@@ -79,6 +80,10 @@ def build_options(llm, workspace, max_turns, context_path=None):
     env = {
         "API_TIMEOUT_MS": str(max(1, int(timeout_seconds * 1000))),
         "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+        "CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1",
+        "CLAUDE_CODE_DISABLE_CLAUDE_MDS": "1",
+        "CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS": "1",
+        "CLAUDE_CODE_DISABLE_BACKGROUND_TASKS": "1",
     }
     env.update(_openrouter_proxy_environment(llm))
     key = llm.get("anthropic_api_key") or llm.get("api_key") or os.environ.get(llm.get("api_key_env", "ANTHROPIC_API_KEY"))
@@ -92,17 +97,56 @@ def build_options(llm, workspace, max_turns, context_path=None):
     if base:
         env["ANTHROPIC_BASE_URL"] = base
     servers = {}
+    native_tools = []
+    allowed = []
     if context_path is not None:
+        # The controller context is not part of the agent-visible workspace.
+        state = json.loads(Path(context_path).read_text())
+        offered = set(SPECS) - {"agent_spawn", "agent_status"}
+        if not state.get("enable_web_docs", True):
+            offered -= {"web_search", "web_fetch"}
+        native_tools = ["WebSearch", "WebFetch"]
+        allowed = native_tools + ["mcp__diagnosis__" + name for name in sorted(offered)]
         servers["diagnosis"] = {
             "type": "stdio", "command": sys.executable,
             "args": [str(Path(__file__).with_name("diagnosis_mcp.py")), "--context", str(context_path)],
         }
+        cli_home = Path(context_path).parent / "cli_home"
+        cli_home.mkdir(mode=0o700, exist_ok=True)
+        env["CLAUDE_CONFIG_DIR"] = str(cli_home)
+        env["HOME"] = str(cli_home)
+        runtime_dir = cli_home / "runtime"
+        runtime_dir.mkdir(mode=0o700, exist_ok=True)
+        env["XDG_RUNTIME_DIR"] = str(runtime_dir)
+
+    async def guard_tool(data, tool_use_id, context):
+        # PreToolUse runs even for allowed_tools: unknown/new SDK capabilities
+        # cannot silently gain access to host files or a shell.
+        del tool_use_id, context
+        name = data.get("tool_name", "")
+        if name not in allowed:
+            return {"hookSpecificOutput": {
+                "hookEventName": "PreToolUse", "permissionDecision": "deny",
+                "permissionDecisionReason": "Only public research and sample-scoped MCP tools are permitted.",
+            }}
+        if name == "WebFetch":
+            parsed = urlparse(str(data.get("tool_input", {}).get("url", "")))
+            if parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.username or parsed.password:
+                return {"hookSpecificOutput": {
+                    "hookEventName": "PreToolUse", "permissionDecision": "deny",
+                    "permissionDecisionReason": "WebFetch accepts public HTTP(S) documents only.",
+                }}
+        return {}
+
     return ClaudeAgentOptions(
         cwd=str(workspace), model=llm.get("claude_model") or llm["model_name"],
         system_prompt={"type": "preset", "preset": "claude_code", "append": native_agent.PROTOCOL},
-        max_turns=max_turns, tools=[], setting_sources=[],
-        mcp_servers=servers,
-        allowed_tools=["mcp__diagnosis__db_execute", "mcp__diagnosis__db_finish_diagnosis"],
+        max_turns=max_turns, tools=native_tools, setting_sources=[], skills=[],
+        mcp_servers=servers, strict_mcp_config=True,
+        allowed_tools=allowed,
+        disallowed_tools=["Bash", "Read", "Write", "Edit", "Glob", "Grep",
+                          "NotebookEdit", "Agent", "Task", "Skill"],
+        hooks={"PreToolUse": [HookMatcher(hooks=[guard_tool])]},
         permission_mode="dontAsk", env=env,
     )
 
@@ -166,7 +210,10 @@ async def run_native_query(prompt, options, output):
 
 def run_claude_agent(prompt, config, container, output, files, logger):
     context, workspace, prompt = native_agent.prepare(prompt, config, container, output, files)
-    options = build_options(config["llm_configuration"], workspace, int(config.get("max_turn_num", 20)), context)
+    native_turns = int(config.get("max_turn_num", 20)) + int(
+        config.get("claude_code", {}).get("max_aux_actions", 100)
+    )
+    options = build_options(config["llm_configuration"], workspace, native_turns, context)
     logger.info("[Claude Code] Starting native Agent SDK session with database MCP tools.")
     async def execute():
         await asyncio.wait_for(run_native_query(prompt, options, output), timeout=float(config.get("agent_timeout", 14400)))
@@ -180,6 +227,8 @@ def run_claude_agent(prompt, config, container, output, files, logger):
                 detail = detail.replace(key, "<redacted>")
         native_agent.fatal_api_error(output, detail)
         raise RuntimeError(detail) from exc
+    finally:
+        context.unlink(missing_ok=True)
     return native_agent.finish_result(output)
 
 
@@ -257,7 +306,7 @@ def request_claude_code(
 if __name__ == "__main__":
     react.run(
         privileged=True,
-        default_config=react.PROJECT_ROOT / "Configs" / "baselines" / "claude_code.json",
+        default_config=react.PROJECT_ROOT / "Configs" / "baselines" / "claude_code" / "example.json",
         description="Database diagnosis baseline backed by the native Claude Agent SDK.",
         agent_runner=run_claude_agent,
         workflow_type="claude_code",

@@ -1,22 +1,24 @@
+import sys
+from pathlib import Path
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+NATIVE_ROOT = SCRIPT_DIR.parents[2]
+if str(NATIVE_ROOT) not in sys.path:
+    sys.path.insert(0, str(NATIVE_ROOT))
+
 import random
 import openai
 import os
 import re
-import numpy as np
 import pickle
-from data.load_data import load_data
+from multiagents.prompt_template_scripts.index_tuning.data.load_data import load_data
 import logging
-import sys
 import json
-import copy
 
-sys.path.append('..')
-
-from automatic_prompt_engineer import ape, config, template, utils
-from evaluation.exec_eval import exec_instruction_evaluator
-from evaluation.eval_result import SQLEvaluationResult
-from evaluation.utility import get_sql_score_index_tuning, create_indexes, drop_indexes
-from utils.database import Database, DBArgs
+from multiagents.prompt_template_scripts.automatic_prompt_engineer import ape, config, template, utils
+from multiagents.prompt_template_scripts.evaluation.exec_eval import exec_instruction_evaluator
+from multiagents.prompt_template_scripts.evaluation.utility import get_sql_score_index_tuning, create_indexes, drop_indexes
+from multiagents.utils.database import Database, DBArgs
 
 eval_template = "Instruction: [PROMPT]\n\nInput: [INPUT]\nOutput: [OUTPUT]"
 prompt_gen_template = " I gave a friend an instruction.\
@@ -142,10 +144,14 @@ with open(train_pik, "wb") as f:
 
 # Step 6.1. get the ape indexes (in list) for each eval workload
 ### involve column (#-rows, distinct value ratio) in the prompt
+sample_count = min(args.eval_sample, len(eval_data[0]))
+eval_data = (eval_data[0][:sample_count], eval_data[1][:sample_count])
+conf['evaluation']['num_samples'] = sample_count
 inputs, model_outputs, answers = eval_prompts(prompts, eval_template, eval_data, demos_template, conf['evaluation'])
+prompt_inputs = list(eval_data[0])
+evaluated_inputs = inputs
 
 # Step 6.2. reload the SOTA indexes (in list) for each eval workload
-num_valid_samples = args.eval_sample
 with open(args.eval_data, 'r') as f:
     data = json.load(f)
 examples = data['examples']
@@ -160,21 +166,18 @@ eval_data = (inputs, outputs)
 
 # Step 6.3. 1) (greedy) filter indexes that are out of storage limit; 2) compute the cost reduction of ape indexes
 ### ape indexes of [args.eval_sample] workloads of the [args.gen_prompt_per_sample] prompts
-indexes_ape_under_budget = [[[] for j in range(args.eval_sample)] for i in range(len(prompts))] 
+indexes_ape_under_budget = [[[] for _ in range(sample_count)] for _ in prompts]
 total_index_cost = 0
+total_index_reduction = 0
+selection_flags = [[False for _ in range(sample_count)] for _ in prompts]
 
-for j, prediction, ans_ in enumerate(zip(model_outputs, answers)):
-
-    indexes = prediction.split(";")
-    updated_indexes = []
-    for index in indexes:
-        if "CREATE INDEX" in index:
-            index = index.replace("\n", "")
-            index = index + ";"
-            updated_indexes.append(index)
-
-    flag, total_cost, reduced_cost, indexes_under_budget = get_sql_score_index_tuning(indexes, eval_data[0][j], args.storage_budget, args)
-    indexes_ape_under_budget[j] = indexes_under_budget
+for j, prediction in enumerate(model_outputs):
+    prompt_index = j // sample_count
+    workload_index = prompt_inputs.index(evaluated_inputs[j])
+    flag, total_cost, reduced_cost, indexes_under_budget = get_sql_score_index_tuning(
+        prediction, eval_data[0][workload_index], args.storage_budget, args)
+    indexes_ape_under_budget[prompt_index][workload_index] = indexes_under_budget
+    selection_flags[prompt_index][workload_index] = flag
 
     # compute the cost reduction with the index
     total_index_reduction = total_index_reduction + reduced_cost
@@ -215,7 +218,7 @@ for k,indexes in enumerate(eval_data[1]):
             index = index + ";"
             updated_indexes.append(index)
 
-    create_indexes(updated_indexes)
+    create_indexes(updated_indexes, dbargs)
     # print("create {} indexes".format(len(updated_indexes)))
 
     tmpdb = Database(dbargs, timeout)
@@ -227,7 +230,7 @@ for k,indexes in enumerate(eval_data[1]):
     tmpdb.conn.commit()
     tmpdb.conn.close()
 
-    drop_indexes(updated_indexes)
+    drop_indexes(updated_indexes, dbargs)
     print("drop {} indexes".format(len(updated_indexes)))
 
 ######################################################################################################
@@ -236,17 +239,15 @@ for k,indexes in enumerate(eval_data[1]):
 
 ### the latency of workloads in database with ape indexes (latency_ape)
 results = []
-flags = []
-costs = []
 for j, prompt in enumerate(prompts):
 
     latency_ape = 0 # compute the total latency of all the eval workloads
 
     for i,workload in enumerate(eval_data[0]):
         print("================ workload {} ================".format(i))
-        updated_indexes = indexes_ape_under_budget[i]
+        updated_indexes = indexes_ape_under_budget[j][i]
 
-        create_indexes(updated_indexes, args.storage_budget)
+        create_indexes(updated_indexes, dbargs)
 
         tmpdb = Database(dbargs, timeout)
         for sql in workload:
@@ -257,16 +258,16 @@ for j, prompt in enumerate(prompts):
         tmpdb.conn.commit()
         tmpdb.conn.close()
 
-        drop_indexes(updated_indexes)
+        drop_indexes(updated_indexes, dbargs)
 
-    results.append([flag, 
+    results.append([all(selection_flags[j]),
                     "{:.4f}".format(latency_ape), 
                     "{:.4f}".format((latency_database-latency_ape)/latency_database), # latency reduction ratio
                     "{:.4f}".format(latency_sota), 
                     "{:.4f}".format((latency_database-latency_sota)/latency_database),
                     prompt])
 
-sorted_results = sorted(results, key=lambda x: float(x[2]))
+sorted_results = sorted(results, key=lambda x: float(x[2]), reverse=True)
 
 for acc, ape_latency, ape_latency_reduction, sota_latency, sota_latency_reduction, prompt in sorted_results[:10]:
     logging.info(f'  {acc}, {ape_latency}, {ape_latency_reduction}, {sota_latency}, {sota_latency_reduction}: {prompt}')

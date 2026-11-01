@@ -13,7 +13,7 @@ except Exception:  # tqdm is optional; fall back to a no-op iterator wrapper.
 
 # python test_retri.py --dbms_name "PostgreSQL 16.11" \
 #     --anomaly_dir ./Anomaly_Def/anomaly_def_formatted \
-#     --output_dir ./User_Spe_Phe/PG_Retrieval
+#     --output_dir ./Anomaly_Def/knowledge_base/PG_Retrieval
 
 # ============================================================
 # Retrieval hyper-parameters and count-list state
@@ -226,7 +226,9 @@ def _rank_candidates_hybrid(query_tokens, candidates, field_weights, count_list,
 
 
 def _build_counter_cache_key(dbms_name, json_path):
-    return f"{dbms_name}::{os.path.abspath(json_path)}"
+    root = os.path.dirname(os.path.abspath(__file__))
+    path = json_path if os.path.isabs(json_path) else os.path.join(root, json_path)
+    return f"{dbms_name}::{os.path.relpath(path, root)}"
 
 
 def _get_entry_identity(entry, identity_field):
@@ -286,8 +288,8 @@ def match_user_description_with_anomaly_definition(
 ):
     base_dir = os.path.dirname(os.path.abspath(__file__))
     canonical_dbms_name = _canonicalize_dbms_name(dbms_name)
-    error_code_json_path = error_code_json_path or os.path.join(base_dir, "User_Spe_Phe", "error_code_list.json")
-    timeout_json_path = timeout_json_path or os.path.join(base_dir, "User_Spe_Phe", "timeout_list.json")
+    error_code_json_path = error_code_json_path or os.path.join(base_dir, "Anomaly_Def", "knowledge_base", "error_code_list.json")
+    timeout_json_path = timeout_json_path or os.path.join(base_dir, "Anomaly_Def", "knowledge_base", "timeout_list.json")
 
     if not isinstance(anomaly_definition, dict):
         logger.error("[USER DESCRIPTION RETRIEVAL][ERROR] Invalid anomaly definition: `anomaly_definition` must be a dictionary.")
@@ -405,7 +407,7 @@ if __name__ == "__main__":
     parser.add_argument("--anomaly_dir", type=str, default="./Anomaly_Def/anomaly_def_formatted",
                         help="Directory of formatted anomaly definition files (one [{...}] per file).")
     parser.add_argument("--output_dir", type=str, default=None,
-                        help="Output directory. Defaults to ./User_Spe_Phe/{PG_Retrieval|MySQL_Retrieval} based on dbms_name.")
+                        help="Output directory. Defaults to ./Anomaly_Def/knowledge_base/{PG_Retrieval|MySQL_Retrieval} based on dbms_name.")
     args = parser.parse_args()
 
     # ----- logger -----
@@ -420,7 +422,7 @@ if __name__ == "__main__":
 
     anomaly_dir = _resolve_path(args.anomaly_dir, base_dir)
     if args.output_dir is None:
-        output_dir = os.path.join(base_dir, "User_Spe_Phe", retrieval_subdir)
+        output_dir = os.path.join(base_dir, "Anomaly_Def", "knowledge_base", retrieval_subdir)
     else:
         output_dir = _resolve_path(args.output_dir, base_dir)
 

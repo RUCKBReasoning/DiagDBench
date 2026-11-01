@@ -117,7 +117,7 @@ HIGH_CONN_OPTS="-h $MYSQL_CLIENT_HOST -P $DB_PORT -u $REMOTE_HIGH_PRV_USER -D my
 
 wait_for_mysql_ready() {
     local opts="$1"
-    local timeout="${2:-60}"
+    local timeout="${2:-600}"
     local elapsed=0
 
     while [ "$elapsed" -lt "$timeout" ]; do
@@ -260,10 +260,35 @@ rewrite_mysql_source_to_database() {
     ' "$source_file"
 }
 
+# Opt-in and connection-scoped: never changes the workload/diagnosis defaults.
+emit_import_ddl_session_tuning() {
+    local bytes="${DB_DIAG_MYSQL_IMPORT_DDL_BUFFER_BYTES:-0}"
+    local threads="${DB_DIAG_MYSQL_IMPORT_READ_THREADS:-0}"
+    if ! [[ "$bytes" =~ ^[0-9]{1,10}$ && "$threads" =~ ^[0-9]{1,2}$ ]]; then
+        echo "Error: Invalid import-only DDL tuning values." >&2
+        return 1
+    fi
+    if [ "$bytes" -ne 0 ]; then
+        if [ "$bytes" -lt 1048576 ] || [ "$bytes" -gt 536870912 ] || [ "$bytes" -gt "$(( $(available_memory_bytes) / 8 ))" ]; then
+            echo "Error: Import DDL buffer exceeds the safe container budget." >&2
+            return 1
+        fi
+        printf "SET SESSION innodb_ddl_buffer_size=%s;\n" "$bytes"
+    fi
+    if [ "$threads" -ne 0 ]; then
+        if [ "$threads" -gt 16 ]; then
+            echo "Error: Import read threads must be within 1..16." >&2
+            return 1
+        fi
+        printf "SET SESSION innodb_parallel_read_threads=%s;\n" "$threads"
+    fi
+}
+
 emit_mysql_import_stream() {
     local source_file="$1"
     local db_name="$2"
 
+    emit_import_ddl_session_tuning || return 1
     printf "%s\n" "SET SESSION AUTOCOMMIT=0;"
     printf "%s\n" "SET SESSION UNIQUE_CHECKS=0;"
     printf "%s\n" "SET SESSION FOREIGN_KEY_CHECKS=0;"
@@ -281,6 +306,7 @@ run_mysql_import() {
     local cmd_exit
 
     echo "   Import timeout: ${timeout_seconds}s"
+    echo "   Import-only session DDL buffer=${DB_DIAG_MYSQL_IMPORT_DDL_BUFFER_BYTES:-default}, read threads=${DB_DIAG_MYSQL_IMPORT_READ_THREADS:-default}"
     set +e
     if command -v timeout > /dev/null 2>&1; then
         emit_mysql_import_stream "$source_file" "$DB_NAME" | timeout "$timeout_seconds" mysql $CONN_OPTS "$DB_NAME"
@@ -337,6 +363,7 @@ emit_mysql_load_data_stream() {
     local data_literal
     local is_header=1
 
+    emit_import_ddl_session_tuning || return 1
     printf "%s\n" "SET SESSION AUTOCOMMIT=0;"
     printf "%s\n" "SET SESSION UNIQUE_CHECKS=0;"
     printf "%s\n" "SET SESSION FOREIGN_KEY_CHECKS=0;"
@@ -529,7 +556,9 @@ if [ "$DB_HOST" = "127.0.0.1" ] || [ "$DB_HOST" = "localhost" ]; then
           /var/run/mysqld/mysqld.pid 2>/dev/null || true
     mysqld --defaults-file="$MYSQL_CONF" --user=mysql --datadir="$DATA_DIR" --tmpdir="$MYSQL_TMPDIR" </dev/null >/dev/null 2>&1 &
     export MYSQL_PWD="$REMOTE_HIGH_PRV_PASSWORD"
-    wait_for_mysql_ready "$ADMIN_OPTS" 60
+    # Slow I/O can delay recovery/startup beyond the former 60-second window.
+    # This applies only to environment initialization, never measured workloads.
+    wait_for_mysql_ready "$ADMIN_OPTS" 600
     mysql $ADMIN_OPTS -N -B -e "SHOW VARIABLES WHERE Variable_name IN ('tmpdir', 'innodb_tmpdir');" >&2 || true
 else
     echo "REMOTE CONNECTION needs to support initialization via remote superuser"

@@ -37,12 +37,13 @@ from docker_func import (  # noqa: E402
 from prompt_template import agentic_llm_act_prompt_template, agentic_llm_report_prompt_template  # noqa: E402
 from utils import extract_json_object, normalize_dbms, prune_obser_log, set_up_logger  # noqa: E402
 from Baselines.input_contract import anomaly_verified_workload, render_diagnosis_prompt  # noqa: E402
-from Baselines.runtime_policy import diagnosis_llm_config, direct_injection_command
+from Baselines.preparation import diagnosis_llm_config, direct_injection_command
 from llm_api import FatalAPIQuotaError
+from Baselines.container_boundary import staged_diagnosis, sanitize_before_diagnosis
 
 DEFAULT_TIMEOUTS = {
     "tpch_1": 1500, "imdb": 4500, "tpcds_1": 1800,
-    "tpch_10": 11800,
+    "tpch_10": 11800, "sqlbrain_ap": 36000, "sqlbrain_tp": 14400,
 }
 DEFAULT_HARDWARE = {"CPU": 16, "Memory": 16, "Memory + Swap": 32, "Storage": 256}
 DEFAULT_DB_USER = {"DB_USER": "diagnosis", "DB_PASSWORD": "diagnosis", "DB_HOST": "localhost", "DB_PORT": "5432"}
@@ -78,9 +79,9 @@ def terminal_sample_result(output_base: Path, index: int, case: Dict[str, Any]) 
 
 def project_path(value: str | Path) -> Path:
     # Resolve symlinks to the canonical path. The evaluation container
-    # bind-mounts the CANONICAL host path, so any sample file handed to
-    # `docker exec` must be canonical too; passing a symlinked alias makes the
-    # file invisible inside the container ("No such file or directory").
+    # bind-mounts the CANONICAL host path (e.g. /data00/...), so any sample file
+    # handed to `docker exec` must be canonical too; passing the /home/... symlink
+    # makes the file invisible inside the container ("No such file or directory").
     path = Path(value)
     path = path if path.is_absolute() else PROJECT_ROOT / path
     return path.resolve()
@@ -282,12 +283,12 @@ def request_llm(
             "LLM dependencies are unavailable. Install the project requirements with "
             "`python -m pip install -r requirements.txt` before running diagnosis."
         ) from exc
-    # Log the request parameters WITHOUT leaking the API key: only model
+    # Log the request parameters WITHOUT leaking the API key: only model / provider
     # / temperature and the conversation size are recorded.
     if logger is not None:
         logger.info(
             f"{tag} Sending LLM request (model=`{llm_config.get('model_name')}`, "
-            f"temperature=`{llm_config.get('temperature')}`, "
+            f"provider=`{llm_config.get('provider')}`, temperature=`{llm_config.get('temperature')}`, "
             f"messages={len(messages)}) ..."
         )
     response = get_llm_response(messages, diagnosis_llm_config(llm_config))
@@ -352,6 +353,7 @@ def run_case(
             force_remove_container(container_name)
 
 
+@staged_diagnosis
 def _run_case_body(
     case_index: int, total_cases: int, case: Dict[str, Any], config: Dict[str, Any],
     privileged: bool, output_dir: Path, logger: logging.Logger,
@@ -449,6 +451,8 @@ def _run_case_body(
         save_finish(action, output_dir, read_text(files["verified"]))
         logger.info(f"{tag} Diagnosis artifacts saved to `{output_dir}`.")
         return container_name
+    files = sanitize_before_diagnosis(files, container_name)
+
     prompt = build_prompt(
         privileged, int(config.get("max_turn_num", 20)), hardware, user_config,
         config.get("superuser_config"), files,
@@ -645,6 +649,6 @@ def run(
 if __name__ == "__main__":
     run(
         privileged=True,
-        default_config=PROJECT_ROOT / "Configs" / "baselines" / "react.json",
+        default_config=PROJECT_ROOT / "Configs" / "baselines" / "react" / "example.json",
         description="ReAct database diagnosis baseline with superuser recovery permissions.",
     )

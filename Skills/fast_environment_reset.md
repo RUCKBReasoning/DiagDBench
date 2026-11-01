@@ -19,7 +19,7 @@ The snapshot point differs by workflow:
 | --- | --- | --- |
 | Synthetic injection (`test_syn_ano.py`) | Imported database after the fixed data-modification step | Before each later injection turn |
 | Sample revision (`Revision/test_ref_anomaly.py`) | Imported database after the candidate's data modification | Before each candidate observation |
-| Incident reproduction (`test_syn_ano_rep.py`) | Raw imported database before any LLM-authored `data_modification.sql` | Before each `finish` validation and after a failed validation, followed by the current candidate's data modification |
+| Online Diagnosis Incident reproduction (`test_syn_ano_rep.py`) | Raw imported database before any LLM-authored `data_modification.sql` | Before each `finish` validation and after a failed validation, followed by the current candidate's data modification |
 
 The reproduction baseline intentionally excludes `data_modification.sql`.
 That file may change during Refine, so every restore replays the current version

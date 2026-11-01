@@ -6,7 +6,7 @@ import argparse
 from utils import normalize_dbms, resolve_path_from_base, resolve_db_type
 
 # ============================================================================
-# Key-information extraction for the Online Diagnosis Incident anomaly REPRODUCTION pipeline.
+# Key-information extraction for the Online Diagnosis Incident reproduction pipeline.
 #
 # Why a dedicated ``_rep`` variant (instead of reusing test_extract_key_info.py)
 # --------------------------------------------------------------------------
@@ -30,7 +30,7 @@ from utils import normalize_dbms, resolve_path_from_base, resolve_db_type
 #
 # On top of that the reproduction flow differs in three ways that make the
 # legacy extractor unsafe here:
-#   1. Some run directories are INCOMPLETE (only ``incident_source.json`` was
+#   1. Some run directories are INCOMPLETE (only provenance metadata was
 #      written before the run was aborted); the legacy extractor would crash on
 #      ``shutil.copyfile`` of a missing core file.
 #   2. The same ``<idx>`` can appear under several timestamped runs (a retried
@@ -286,7 +286,7 @@ def main():
     anomaly_id, db_name = parsed
 
     # ---- Reject incomplete samples (missing any core file). ----
-    # Aborted reproduction runs contain only ``incident_source.json``; those are
+    # Aborted reproduction runs contain only provenance metadata; those are
     # skipped so a partial sample never enters the filtering workload.
     missing_files = [
         file_name for file_name in CORE_FILE_NAMES

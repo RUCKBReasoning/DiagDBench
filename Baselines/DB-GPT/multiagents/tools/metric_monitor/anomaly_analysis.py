@@ -1,21 +1,8 @@
 from configs import DIAGNOSTIC_RESULTS_PATH
 from multiagents.tools.metric_monitor.anomaly_detection import detect_anomalies
-try:
-    from prometheus_service_docker.prometheus_abnormal_metric import prometheus_metrics
-except ModuleNotFoundError:
-    prometheus_metrics = {
-        "cpu_usage": "cpu_usage",
-        "memory_usage": "memory_usage",
-        "cpu_metrics": ["cpu_usage"],
-        "memory_metrics": ["memory_usage", "pg_stat_database_blks_hit_ratio"],
-        "io_metrics": ["container_block_read_bytes", "container_block_write_bytes",
-                       "pg_stat_database_temp_bytes_per_second"],
-        "network_metrics": ["container_network_receive_bytes",
-                            "container_network_transmit_bytes"],
-        "query_metrics": ["pg_stat_activity_count", "pg_stat_activity_active_count",
-                          "pg_locks_count", "pg_stat_database_tup_returned_per_second",
-                          "pg_stat_database_xact_rollback_per_second"],
-    }
+from benchmark_metrics import load_metric_catalog
+prometheus_metrics = load_metric_catalog()
+
 from multiagents.tools.metrics import *
 from multiagents.utils.markdown_format import generate_prometheus_chart_content
 from server.knowledge_base.kb_doc_api import search_docs, fetch_expert_kb_names
@@ -25,19 +12,14 @@ import copy
 
 def metric_analysis_results(agent_name, kb_name, alert_metric, diag_id, enable_prometheus, start_time, end_time):
 
-    normalized_agent = agent_name.lower()
-    if "cpu" in normalized_agent:
+    if "cpu" in agent_name or "workload" in agent_name or "index" in agent_name or "query" in agent_name:
         metric_prefix = "cpu"
-    elif "write" in normalized_agent or "io" in normalized_agent or "disk" in normalized_agent:
+    elif "write" in agent_name or "io" in agent_name:
         metric_prefix = "io"
-    elif "mem" in normalized_agent:
+    elif "mem" in agent_name or "write" in agent_name:
         metric_prefix = "memory"
-    elif "network" in normalized_agent:
-        metric_prefix = "network"
-    elif any(name in normalized_agent for name in ("workload", "index", "query", "configuration")):
-        metric_prefix = "query"
     else:
-        metric_prefix = "query"
+        metric_prefix = "cpu"
 
     # alert metric names
     alert_metric_list = []
@@ -83,6 +65,7 @@ def metric_analysis_results(agent_name, kb_name, alert_metric, diag_id, enable_p
 
                     top5_abnormal_metrics.pop(min_abnormal_value_key)
                     top5_abnormal_metrics_map.pop(min_abnormal_value_key)
+                    top5_abnormal_metrics_map[metric_name] = anomaly_value
 
     abnormal_metric_detailed_values = []
     for metric_name in top5_abnormal_metrics:

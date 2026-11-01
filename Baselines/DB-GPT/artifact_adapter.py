@@ -10,6 +10,14 @@ import subprocess
 import time
 from pathlib import Path
 from typing import Any
+from benchmark_policy import DIAGNOSIS_REQUIREMENTS
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from llm_api import prepare_request
+from Baselines.recovery_artifacts import (
+    build_recovery_prompt, collect_public_evidence, conversion_metadata,
+    effective_workload, read_utf8, validate_artifacts,
+)
 
 
 TIMEOUT_LINE = re.compile(r"# TIMEOUT THRESHOLD: ([1-9][0-9]*)")
@@ -49,118 +57,39 @@ def extract_json_object(text: str) -> dict[str, Any]:
 
 
 def validate_generated_fields(value: dict[str, Any]) -> dict[str, str]:
-    if set(value) != GENERATED_KEYS:
-        raise ValueError(
-            "Expected exactly `solution_script.sh` and `verified_workload.sql`."
-        )
-    if not all(isinstance(value[key], str) for key in GENERATED_KEYS):
-        raise ValueError("Both generated artifact fields must be strings.")
-
-    script = value["solution_script.sh"]
-    first_line = script.splitlines()[0].strip() if script.splitlines() else ""
-    if TIMEOUT_LINE.fullmatch(first_line) is None:
-        raise ValueError(
-            "`solution_script.sh` must start with "
-            "`# TIMEOUT THRESHOLD: <positive integer>`."
-        )
-    checked = subprocess.run(
-        ["bash", "-n"],
-        input=script,
-        text=True,
-        capture_output=True,
-        timeout=10,
-        check=False,
-    )
-    if checked.returncode:
-        raise ValueError(f"Recovery script has invalid Bash syntax: {checked.stderr.strip()}")
-    return {
-        "solution_script.sh": script.rstrip() + "\n",
-        "verified_workload.sql": value["verified_workload.sql"].strip(),
-    }
+    return validate_artifacts(value)
 
 
 def native_report_from_result(result: dict[str, Any]) -> str:
     report = result.get("report")
     if not isinstance(report, str) or not report.strip():
         raise ValueError("DB-GPT result does not contain a non-empty Markdown `report`.")
-    return report.strip() + "\n"
+    return report
 
 
 def original_workload(sample_dir: Path) -> str:
-    for name in ("verified_workload.sql", "merged_workload.sql"):
-        path = sample_dir / name
-        if path.is_file():
-            return read_text(path).strip()
-    return ""
+    return read_utf8(sample_dir / "verified_workload.sql")
 
 
 def collect_evidence(sample_dir: Path, snapshot_path: Path | None, limit: int) -> str:
-    sections = []
-    remaining = max(0, limit)
-    candidates = [(name, sample_dir / name) for name in SAMPLE_EVIDENCE_FILES]
-    if snapshot_path is not None:
-        candidates.append(("database_snapshot.json", snapshot_path))
-    for name, path in candidates:
-        if path.is_file() and remaining:
-            content = read_text(path, remaining)
-            sections.append(f"## {name}\n{content}")
-            remaining = max(0, remaining - len(content))
-    if remaining:
-        initialization = read_text(sample_dir / "initialization_workload.sql")
-        verified = original_workload(sample_dir)
-        workload = (
-            "-- Preparation phase: execute first\n"
-            + initialization.strip()
-            + "\n\n--- anomaly-verified workload phase boundary ---\n\n"
-            + "-- Anomaly verification phase: execute second\n"
-            + verified.strip()
-        )
-        sections.append(f"## anomaly-verified workload\n{workload[:remaining]}")
-    return "\n\n".join(sections)
+    """Retain the old signature; recovery evidence now follows the explicit allowlist.
+
+    snapshot_path and limit remain accepted for caller compatibility. Snapshots
+    are diagnosis inputs, not recovery authority; complete public SQL is never
+    silently truncated. The model context budget rejects oversized requests.
+    """
+    return json.dumps(collect_public_evidence(sample_dir, "PostgreSQL"), ensure_ascii=False)
 
 
 def build_prompt(native_report: str, evidence: str) -> str:
-    return f"""You are a database recovery artifact compiler.
-
-The diagnosis below was produced by DB-GPT's native multi-agent workflow. Do not
-change its root cause, invent observations, or claim that recovery was executed.
-Convert only its supported recommendations into a conservative, reusable Bash
-recovery script and an optional optimized verification workload.
-
-Requirements:
-1. Return exactly one JSON object with exactly these string fields:
-   "solution_script.sh" and "verified_workload.sql".
-2. The first line of the Bash script must be:
-   # TIMEOUT THRESHOLD: <positive integer seconds>
-3. The script must be non-interactive, valid Bash, use PostgreSQL client commands,
-   consume DB_HOST/DB_PORT/DB_NAME/DB_USER/DB_PASSWORD environment variables,
-   set PGPASSWORD without exposing it on the command line, and use ON_ERROR_STOP.
-4. Add bounded prechecks and postchecks. Refuse destructive or broad actions when
-   the diagnosis does not identify a sufficiently specific target.
-5. Do not restart the DBMS, remove containers, modify the host OS, or terminate
-   unrelated sessions.
-6. When DB-GPT only recommends investigation or lacks evidence for an automatic
-   repair, generate a safe inspection-only script that exits nonzero with an
-   explanation instead of guessing.
-7. Treat the original verification workload as an ordered sequence. Set
-   "verified_workload.sql" to a non-empty optimized workload only when the DB-GPT
-   diagnosis supports a rewrite with a concrete potential performance benefit.
-   The rewrite must retain exactly the same number of SQL statements in exactly
-   the same order and preserve every statement's semantics and order-sensitive
-   logic. Starting from the same initialized database state, sequential execution
-   must produce exactly the same observable result for every corresponding
-   statement, including returned rows and values, duplicate counts, affected-row
-   counts, and persistent database state. Do not add, delete, merge, split,
-   replace, or reorder statements. Any execution-result mismatch is a diagnosis
-   failure. If exact result equivalence cannot be guaranteed, return "".
-8. Output JSON only, without Markdown fences or commentary.
-
-# Native DB-GPT Markdown report
-{native_report}
-
-# Supplied sample evidence
-{evidence}
-"""
+    try:
+        public = json.loads(evidence)
+    except (ValueError, TypeError):
+        # Preserve the public build_prompt(report, evidence_text) calling form.
+        public = evidence
+    return build_recovery_prompt({
+        "native_diagnosis_report": native_report, "public_evidence": public,
+    }, DIAGNOSIS_REQUIREMENTS)
 
 
 def request_completion(
@@ -190,23 +119,20 @@ def request_completion(
                 base_url=api_base,
                 timeout=timeout,
             )
-        response = client.chat.completions.create(
-            model=model,
-            messages=[
-                {
-                    "role": "system",
-                    "content": "Produce machine-readable database recovery artifacts.",
-                },
-                {"role": "user", "content": prompt},
-            ],
-            temperature=temperature,
-            max_tokens=max_tokens,
-            stream=False,
-        )
+        request, _ = prepare_request({
+            'model':model,
+            'messages':[{'role':'system','content':'Produce machine-readable database recovery artifacts.'},
+                        {'role':'user','content':prompt}],
+            'temperature':temperature, 'max_tokens':max_tokens, 'stream':False,
+        }, {'model_name':model, 'allow_context_truncation': False})
+        response = client.chat.completions.create(**request)
+
     except Exception as exc:
         raise RuntimeError(f"Artifact API request failed: {exc}") from exc
 
     raw = response.model_dump_json()
+    if response.choices and response.choices[0].finish_reason in {"length", "content_filter"}:
+        raise RuntimeError("Artifact API response was incomplete or filtered")
     content = response.choices[0].message.content if response.choices else ""
     if not isinstance(content, str) or not content.strip():
         raise RuntimeError("Artifact API response did not contain text content.")
@@ -242,7 +168,7 @@ def generate_artifacts(
             )
             raw_responses.append(raw)
             return validate_generated_fields(extract_json_object(content)), raw_responses
-        except (ValueError, RuntimeError, json.JSONDecodeError) as exc:
+        except (ValueError, RuntimeError, json.JSONDecodeError, subprocess.SubprocessError) as exc:
             errors.append(f"attempt {attempt}: {exc}")
             current_prompt = (
                 prompt
@@ -261,7 +187,8 @@ def save_artifacts(
     generated: dict[str, str],
     fallback_workload: str,
 ) -> dict[str, str]:
-    optimized_workload = generated["verified_workload.sql"] or fallback_workload
+    generated = validate_generated_fields(generated)
+    optimized_workload = effective_workload(generated["verified_workload.sql"], fallback_workload)
     action = {
         "action": "finish",
         "diagnosis_report.md": native_report,
@@ -272,7 +199,7 @@ def save_artifacts(
     atomic_write(output_dir / "solution_script.sh", generated["solution_script.sh"], 0o700)
     atomic_write(
         output_dir / "optimized_verified_workload.sql",
-        optimized_workload.rstrip() + ("\n" if optimized_workload else ""),
+        optimized_workload,
     )
     atomic_write(
         output_dir / "artifact_action.json",
@@ -330,8 +257,11 @@ def main() -> int:
     result = json.loads(read_text(args.diagnosis_result))
     native_report = native_report_from_result(result)
     evidence = collect_evidence(args.sample_dir, args.snapshot, args.context_chars)
+    prompt = build_prompt(native_report, evidence)
+    args.output_dir.mkdir(parents=True, exist_ok=True)
+    atomic_write(args.output_dir / "conversion_prompt.txt", prompt, 0o600)
     generated, raw_responses = generate_artifacts(
-        build_prompt(native_report, evidence),
+        prompt,
         api_key=api_key,
         model=args.model,
         api_base=args.api_base,
@@ -345,12 +275,14 @@ def main() -> int:
         args.output_dir / "artifact_raw_responses.json",
         json.dumps(raw_responses, ensure_ascii=False, indent=2) + "\n",
     )
-    save_artifacts(
-        args.output_dir,
-        native_report,
-        generated,
-        original_workload(args.sample_dir),
+    # Reuse the exact SQL supplied to the converter, not a second filesystem read.
+    public_evidence = json.loads(evidence)
+    fallback_workload = public_evidence["public_inputs"]["verified_workload.sql"]
+    save_artifacts(args.output_dir, native_report, generated, fallback_workload)
+    metadata = conversion_metadata(
+        "DB-GPT", native_report, generated, fallback_workload, prompt, public_evidence,
     )
+    atomic_write(args.output_dir / "conversion_meta.json", json.dumps(metadata, ensure_ascii=False, indent=2) + "\n", 0o600)
     print(f"Structured artifacts written to {args.output_dir}")
     return 0
 

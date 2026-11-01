@@ -1,4 +1,4 @@
-"""Run DBAIOps' open-source knowledge-Q&A flow for one evaluation sample."""
+"""Headless DiagDBench adapter for DBAIOps knowledge Q&A, not the full extension."""
 
 from __future__ import annotations
 
@@ -10,12 +10,23 @@ import os
 import re
 import ssl
 import subprocess
+import sys
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Any
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+from Baselines.input_contract import DIAGNOSIS_REQUIREMENTS
+from llm_api import prepare_request
+from Baselines.recovery_artifacts import (
+    VERSION as RECOVERY_CONVERSION_VERSION, build_recovery_prompt, collect_public_evidence,
+    conversion_metadata, effective_workload, validate_artifacts,
+)
 
 
 DBMS_DATASETS = {"pg": "2104", "mysql": "2102"}
@@ -88,6 +99,7 @@ def request_json(
     retry_delay: float = 30,
     validate_response=None,
     response_attempts: int = 3,
+    prepare_payload=None,
 ) -> dict[str, Any]:
     if attempts < 1 or timeout <= 0 or retry_delay < 0:
         raise ValueError("Invalid request retry budget")
@@ -96,9 +108,11 @@ def request_json(
         url += separator + "api-version=" + urllib.parse.quote(api_version)
     invalid_responses = 0
     for attempt in range(1, attempts + 1):
+        # Recompute after each output-budget change; knowledge-service payloads are untouched.
+        outgoing = prepare_payload(payload) if prepare_payload is not None else payload
         request = urllib.request.Request(
             url,
-            data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+            data=json.dumps(outgoing, ensure_ascii=False).encode("utf-8"),
             headers={
                 "Authorization": "Bearer " + api_key,
                 "api-key": api_key,
@@ -157,7 +171,16 @@ def retrieve_knowledge(
     similarity: float,
     topn: int,
     temperature: float,
+    fallback_dir: Path | None = None,
+    dbms: str = "",
 ) -> tuple[list[str], list[dict[str, Any]]]:
+    # Keep the old keyword signature, but do not substitute a different method.
+    if fallback_dir is not None:
+        logging.getLogger(__name__).warning(
+            "fallback_dir is deprecated and ignored; native DBAIOps uses only the remote knowledge service"
+        )
+    if retries < 1:
+        raise ValueError("Knowledge request attempts must be positive")
     payload = {
         "question": question,
         "similarity": similarity,
@@ -167,29 +190,67 @@ def retrieve_knowledge(
         "language": "中文",
         "isSupportImg": "true",
     }
-    attempts = []
-    for attempt in range(1, retries + 1):
-        try:
-            response = request_json(url, payload, api_key)
-            attempts.append(response)
-            if str(response.get("status")) != "200":
-                raise RuntimeError(
-                    "DBAIOps knowledge service rejected the request: "
-                    + str(response.get("message", "unknown error"))
-                )
-            data = response.get("data") or {}
-            items = data.get("dataList") if isinstance(data, dict) else data
-            if not isinstance(items, list) or not items:
-                raise RuntimeError("DBAIOps knowledge service returned no matched documents")
-            return [item if isinstance(item, str) else json.dumps(item, ensure_ascii=False)
-                    for item in items], attempts
-        except PermanentHTTPError:
-            raise
-        except RuntimeError:
-            if attempt == retries:
-                raise
-            time.sleep(min(attempt, 3))
-    raise AssertionError("unreachable")
+    response = request_json(url, payload, api_key, attempts=retries, retry_delay=1)
+    if not isinstance(response, dict) or str(response.get("status")) != "200":
+        message = response.get("message", "unknown error") if isinstance(response, dict) else "invalid response"
+        raise RuntimeError("DBAIOps knowledge service rejected the request: " + str(message))
+    data = response.get("data")
+    # streamChat requests the image-aware response schema. Do not reinterpret an
+    # empty response as permission to use a different method's local documents.
+    items = data.get("dataList") if isinstance(data, dict) else None
+    if not isinstance(items, list) or not items:
+        raise RuntimeError("DBAIOps knowledge service returned no matched documents; diagnosis stopped")
+    return [item if isinstance(item, str) else _js_string(item) for item in items], [response]
+
+
+def _js_string(value: Any) -> str:
+    """Match the extension's String(item) conversion for JSON service values."""
+    if value is None:
+        return "null"
+    if value is True:
+        return "true"
+    if value is False:
+        return "false"
+    if isinstance(value, dict):
+        return "[object Object]"
+    if isinstance(value, list):
+        return ",".join("" if item is None else _js_string(item) for item in value)
+    return str(value)
+
+
+def build_native_messages(question, knowledge, dbms, rule):
+    """Port callOllamaAPI's Chinese text-Q&A prompt construction.
+
+    There is no browser page in this adapter; about:blank is a neutral placeholder.
+    Benchmark evidence/safety constraints remain explicit additions at the end.
+    """
+    locale = json.loads((UPSTREAM_RULES.parents[3] / "i18n/locales/zhcn.json").read_text(encoding="utf-8"))
+    general = locale["popup.system.aiAssistantPromptGeneral"]
+    rule_prompt = rule["prompt"]
+    if not re.search(r"[\u4e00-\u9fff]", question):
+        instruction = (
+            "如果用户的问题不是中文，请先将其翻译成中文仅用于检索和理解，但务必继续使用用户原始语言进行思考与推理，"
+            "最终将思考和回答等一切文字请翻译成中文输出。"
+        )
+        general = instruction + "\n\n" + general
+        rule_prompt = instruction + "\n\n" + rule_prompt
+    system_prompt = (
+        rule_prompt + "\n\n" + general + "\n\n"
+        + locale["popup.system.knowledgeBasePrompt"].replace("{{name}}", DBMS_NAMES[dbms])
+    )
+    content = "\n\n".join(knowledge)
+    if "相似度：" in content or "版本：" in content:
+        context = locale["popup.context.kbQueryResult"] + ":\n" + content
+    else:
+        context = (locale["popup.context.pageUrl"] + ": about:blank\n"
+                   + locale["popup.context.pageContent"] + ": " + content[:2000] + "...")
+    context = (locale["popup.context.baseContent"] + ":\n\n" + context
+               + "\n\n" + locale["popup.context.question"] + ":" + question)
+    system_prompt += (
+        "\n\n评测补充约束：区分事实、推断和待验证项；不得虚构指标、"
+        "执行结果、异常注入方式或已完成的恢复操作。" + DIAGNOSIS_REQUIREMENTS
+    )
+    return [{"role": "system", "content": system_prompt}, {"role": "user", "content": context}]
 
 
 def chat_endpoint(url: str, model: str, provider: str = "") -> str:
@@ -197,9 +258,10 @@ def chat_endpoint(url: str, model: str, provider: str = "") -> str:
     parts = urllib.parse.urlsplit(url)
     path = parts.path.rstrip("/")
     host = (parts.hostname or "").lower()
-    azure = provider in {"azure", "azure", "azure_openai"}
-    if not provider:
-        azure = host.endswith(".openai.azure.com")
+    azure = provider in {"azure", "azure_openai"}
+    if provider not in {"aiskt", "ark", "openai", "openrouter", "openai_compatible"}:
+        azure = azure or "/openai/deployments/" in path or "/modelhub/" in path
+        azure = azure or host.endswith(".openai.azure.com") or host.endswith(".cognitiveservices.azure.com")
     if not path.endswith("/chat/completions"):
         if azure and "/openai/deployments/" not in path:
             if not path.endswith("/openai"):
@@ -222,6 +284,7 @@ def chat_completion(
     request_attempts: int = 1,
     request_delay: float = 30,
     request_timeout: int = 300,
+    allow_context_truncation: bool = True,
 ) -> tuple[str, dict[str, Any]]:
     endpoint = chat_endpoint(url, model, provider)
     payload = {
@@ -257,6 +320,9 @@ def chat_completion(
         retry_delay=request_delay,
         timeout=request_timeout,
         validate_response=validate,
+        prepare_payload=lambda value: prepare_request(value, {
+            'model_name': model, 'allow_context_truncation': allow_context_truncation,
+        })[0],
     )
     choices = response.get("choices") or []
     content = choices[0].get("message", {}).get("content", "") if choices else ""
@@ -283,28 +349,21 @@ def validate_action(action: dict[str, Any]) -> dict[str, str]:
         "action", "diagnosis_report.md", "solution_script.sh",
         "verified_workload.sql",
     }
-    if set(action) != expected or action.get("action") != "finish":
+    if not isinstance(action, dict) or set(action) != expected or action.get("action") != "finish":
         raise ValueError("Artifact response does not match the finish schema")
     for key in expected - {"action"}:
         if not isinstance(action[key], str):
             raise ValueError(f"{key} must be a string")
     if not action["diagnosis_report.md"].strip():
         raise ValueError("Diagnosis report is empty")
-    script_lines = action["solution_script.sh"].splitlines()
-    first_line = script_lines[0].strip() if script_lines else ""
-    if re.fullmatch(r"# TIMEOUT THRESHOLD: [1-9][0-9]*", first_line) is None:
-        raise ValueError("Solution script has no valid timeout header")
-    checked = subprocess.run(
-        ["bash", "-n"], input=action["solution_script.sh"], text=True,
-        capture_output=True, check=False, timeout=10,
-    )
-    if checked.returncode:
-        raise ValueError(f"Invalid Bash: {checked.stderr.strip()}")
+    validate_artifacts({key: action[key] for key in ("solution_script.sh", "verified_workload.sql")})
     return {key: str(action[key]) for key in expected}
 
 
 def normalize_artifact(action: dict[str, Any], native_report: str) -> dict[str, str]:
-    """Fill deterministic fields, then apply the unchanged finish validation."""
+    """Wrap two-field artifacts (or legacy finish responses) with the frozen report."""
+    if not isinstance(action, dict):
+        raise ValueError("Artifact response must be an object")
     declared = action.get("action")
     if declared is None:
         declared = "finish"
@@ -319,7 +378,7 @@ def normalize_artifact(action: dict[str, Any], native_report: str) -> dict[str, 
         "action": "finish",
         # The native diagnosis is authoritative, including when the model omits
         # or rewrites this field. Extra commentary fields are not finish fields.
-        "diagnosis_report.md": native_report.rstrip() + "\n",
+        "diagnosis_report.md": native_report,
         "solution_script.sh": action["solution_script.sh"],
         "verified_workload.sql": "" if workload is None else workload,
     }
@@ -358,6 +417,7 @@ def generate_artifact_action(
                 request_attempts=getattr(args, "model_request_attempts", 1),
                 request_delay=getattr(args, "model_request_delay", 30),
                 request_timeout=getattr(args, "model_request_timeout", 300),
+                allow_context_truncation=False,
             )
         except Exception as exc:
             # Transport errors remain errors, not schema corrections.
@@ -374,7 +434,7 @@ def generate_artifact_action(
                 if choice.get("finish_reason") == "length":
                     raise ValueError("Artifact model response was not completed")
             action = normalize_artifact(extract_object(text), native_report)
-        except ValueError as exc:
+        except (ValueError, subprocess.SubprocessError) as exc:
             record.update(status="invalid", error=str(exc))
             atomic_write(path, json.dumps(attempts, ensure_ascii=False, indent=2) + "\n")
             if index == repairs:
@@ -384,9 +444,10 @@ def generate_artifact_action(
             correction = (
                 "\n\nThe previous artifact response failed validation. No generated script "
                 "was executed. Keep the native diagnosis unchanged and regenerate one complete "
-                "JSON object with action='finish', diagnosis_report.md, solution_script.sh, "
+                "JSON object with exactly solution_script.sh and "
                 "verified_workload.sql. Include a valid Bash script starting with "
-                "'# TIMEOUT THRESHOLD: <positive integer>'. Any non-empty optimized "
+                "'# TIMEOUT THRESHOLD: <positive integer at most 1800>'. Use installed psql/mysql "
+                "clients for guarded target-database recovery, not an advisory-only refusal. Any non-empty optimized "
                 "workload must retain exactly the same statements in exactly the same "
                 "order and produce exactly the same sequential execution results as the "
                 "original workload; do not add, delete, merge, split, replace, or reorder "
@@ -403,6 +464,10 @@ def generate_artifact_action(
 
 
 def run(args: argparse.Namespace) -> None:
+    if getattr(args, "local_knowledge_dir", None) is not None:
+        logging.getLogger(__name__).warning(
+            "--local-knowledge-dir is deprecated and ignored; no automatic knowledge fallback is enabled"
+        )
     sample_dir = args.sample_dir.resolve()
     output_dir = args.output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -433,109 +498,76 @@ def run(args: argparse.Namespace) -> None:
         topn=rule["topn"],
         temperature=rule["temperature"],
     )
-    knowledge_text = "\n\n".join(knowledge)
-    system_prompt = (
-        rule["prompt"]
-        + "\n\n你是一个智能问答助手，基于用户提供的内容来回答问题。"
-        "请提供准确、有用的回答。"
-        + f"\n\n请结合{DBMS_NAMES[args.dbms]}的专业知识来回答问题。"
-        + "\n\n评测补充约束：区分事实、推断和待验证项；不得虚构指标、"
-        "执行结果、异常注入方式或已完成的恢复操作。"
-    )
-    native_user_prompt = (
-        "基于以下内容回答问题:\n\n"
-        "知识库查询结果:\n"
-        + knowledge_text
-        + "\n\n问题:"
-        + question
-    )
+    native_messages = build_native_messages(question, knowledge, args.dbms, rule)
     native_report, diagnosis_response = chat_completion(
-        [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": native_user_prompt},
-        ],
+        native_messages,
         url=args.model_url,
         api_key=args.model_api_key,
         model=args.model,
         api_version=args.api_version,
-        # Retrieval rules configure the knowledge service, not the chosen LLM.
-        temperature=args.temperature,
+        # Upstream callOllamaAPI applies the selected rule to the model as well.
+        temperature=rule["temperature"],
         max_tokens=args.max_tokens,
         provider=getattr(args, "provider", ""),
         request_attempts=getattr(args, "model_request_attempts", 1),
         request_delay=getattr(args, "model_request_delay", 30),
         request_timeout=getattr(args, "model_request_timeout", 300),
     )
+    # Canonical native output is frozen once; the converter never rewrites it.
+    native_report = native_report.rstrip() + "\n"
     # Persist the native method's output before the fallible evaluation adapter.
-    atomic_write(output_dir / "native_diagnosis_report.md", native_report.rstrip() + "\n")
+    atomic_write(output_dir / "native_diagnosis_report.md", native_report)
     trace = {
-        "method": "DBAIOps open-source knowledge-Q&A flow",
+        "method": "DBAIOps headless knowledge-Q&A adapter",
+        "upstream_commit": "86fa8bfaa32eb55f227370285ec09ae4b7f32ee9",
+        "adapter_scope": "Chinese text Q&A; no browser/AWR/inspection/image rendering",
         "dataset_id": args.dataset_id,
-        "model_temperature": args.temperature,
+        "model_temperature": rule["temperature"],
+        "artifact_temperature": args.temperature,
         "parameter_rule": {key: value for key, value in rule.items() if key != "prompt"},
-        "native_messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": native_user_prompt},
-        ],
+        "native_messages": native_messages,
         "knowledge_items": knowledge,
         "knowledge_responses": knowledge_responses,
+        "knowledge_source": "remote_dbaiops",
         "diagnosis_response": diagnosis_response,
         "artifact_status": "pending",
+        "recovery_conversion_version": RECOVERY_CONVERSION_VERSION,
     }
     atomic_write(output_dir / "native_trace.json", json.dumps(trace, ensure_ascii=False, indent=2) + "\n")
-    artifact_prompt = f"""The following Markdown report is the frozen output of the
-DBAIOps knowledge-Q&A diagnosis flow. Preserve the diagnosis exactly and only compile
-the evaluation artifacts.
-
-Return one JSON object with exactly: action, diagnosis_report.md,
-solution_script.sh, verified_workload.sql. action must be "finish".
-diagnosis_report.md must be exactly the native report below.
-The Bash script must start with '# TIMEOUT THRESHOLD: <positive integer>', be
-non-interactive, use DB_HOST/DB_PORT/DB_NAME/DB_USER/DB_PASSWORD, and avoid broad
-or destructive actions when the report lacks evidence.
-
-For `verified_workload.sql`, treat the original workload as an ordered sequence.
-A non-empty optimized workload must have a concrete potential performance benefit,
-retain exactly the same number of SQL statements in exactly the same order, and
-preserve each statement's semantics and order-sensitive logic. Starting from the
-same initialized database state, sequential execution must produce exactly the
-same observable result for every corresponding statement, including returned rows
-and values, duplicate counts, affected-row counts, and persistent database state.
-Do not add, delete, merge, split, replace, or reorder statements. Any execution-
-result mismatch is a diagnosis failure. Return an empty optimized workload unless
-exact result equivalence can be guaranteed.
-
-## Native report
-{native_report}
-
-## Anomaly-verified workload
-{workload}
-"""
     try:
+        public_evidence = collect_public_evidence(sample_dir, args.dbms)
+        artifact_prompt = build_recovery_prompt({
+            "native_diagnosis_report": native_report, "public_evidence": public_evidence,
+        }, DIAGNOSIS_REQUIREMENTS)
+        atomic_write(output_dir / "conversion_prompt.txt", artifact_prompt, 0o600)
         action, artifact_response = generate_artifact_action(
             args, artifact_prompt, native_report, output_dir,
+        )
+        original_verified = public_evidence["public_inputs"]["verified_workload.sql"]
+        optimized = effective_workload(action["verified_workload.sql"], original_verified)
+        metadata = conversion_metadata(
+            "DBAIOps", native_report, action, original_verified, artifact_prompt, public_evidence,
+        )
+        atomic_write(output_dir / "diagnosis_report.md", action["diagnosis_report.md"])
+        atomic_write(output_dir / "solution_script.sh", action["solution_script.sh"], 0o700)
+        atomic_write(output_dir / "optimized_verified_workload.sql", optimized)
+        atomic_write(
+            output_dir / "conversion_meta.json",
+            json.dumps(metadata, ensure_ascii=False, indent=2) + "\n", 0o600,
+        )
+        atomic_write(
+            output_dir / "artifact_action.json",
+            json.dumps(action, ensure_ascii=False, indent=2) + "\n",
         )
     except Exception:
         trace["artifact_status"] = "failed"
         atomic_write(output_dir / "native_trace.json", json.dumps(trace, ensure_ascii=False, indent=2) + "\n")
         raise
-    original_verified = (sample_dir / "verified_workload.sql").read_text(encoding="utf-8").strip()
-    optimized = action["verified_workload.sql"].strip() or original_verified
-    atomic_write(output_dir / "diagnosis_report.md", action["diagnosis_report.md"])
-    atomic_write(output_dir / "solution_script.sh", action["solution_script.sh"], 0o700)
-    atomic_write(
-        output_dir / "optimized_verified_workload.sql",
-        optimized + ("\n" if optimized else ""),
-    )
-    atomic_write(
-        output_dir / "artifact_action.json",
-        json.dumps(action, ensure_ascii=False, indent=2) + "\n",
-    )
     trace.update(artifact_status="completed", artifact_response=artifact_response)
     atomic_write(output_dir / "native_trace.json", json.dumps(trace, ensure_ascii=False, indent=2) + "\n")
 
 
-def main() -> int:
+def parse_args(argv=None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--sample-dir", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
@@ -544,6 +576,8 @@ def main() -> int:
     parser.add_argument("--dataset-id", default="")
     parser.add_argument("--knowledge-url", required=True)
     parser.add_argument("--knowledge-api-key", required=True)
+    parser.add_argument("--local-knowledge-dir", type=Path, default=None,
+                        help="Deprecated compatibility option; ignored (remote knowledge only)")
     parser.add_argument("--model-url", required=True)
     parser.add_argument("--model-api-key", required=True)
     parser.add_argument("--model", required=True)
@@ -561,9 +595,13 @@ def main() -> int:
         help="Additional artifact schema repair attempts (0-3; default 2)",
     )
     parser.add_argument("--context-chars", type=int, default=50000)
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
     args.dataset_id = args.dataset_id or DBMS_DATASETS[args.dbms]
-    run(args)
+    return args
+
+
+def main() -> int:
+    run(parse_args())
     return 0
 
 

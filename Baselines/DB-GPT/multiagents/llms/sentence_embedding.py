@@ -1,7 +1,5 @@
 import os
 import time
-import hashlib
-import re
 from openai import OpenAI
 from typing import List
 
@@ -11,21 +9,15 @@ except ModuleNotFoundError:
     SentenceTransformer = None
 
 
-def _lexical_embedding(sentence: str, dimensions: int = 768) -> List[float]:
-    vector = [0.0] * dimensions
-    for token in re.findall(r"[\w]+", sentence.lower()):
-        digest = hashlib.sha256(token.encode("utf-8")).digest()
-        index = int.from_bytes(digest[:4], "big") % dimensions
-        vector[index] += 1.0
-    return vector
-
-
 #def sentence_embedding(sentence: str, model: str = "text-embedding-ada-002"):
 def sentence_embedding(sentence: str, model: str = "sentence-transformer") -> List[float]:
 
     if model == "sentence-transformer":
         if SentenceTransformer is None:
-            return _lexical_embedding(sentence)
+            raise RuntimeError(
+                "Native DB-GPT requires sentence-transformers and its embedding model; "
+                "lexical/hash embeddings are not an equivalent substitute."
+            )
 
         model_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "localized_llms/sentence_embedding/sentence-transformer/")
         try:
@@ -82,4 +74,7 @@ def sentence_embedding(sentence: str, model: str = "sentence-transformer") -> Li
 
         # embedding = json.loads(response.text)['data'][0]['embedding']
         
+    else:
+        raise ValueError(f"Unsupported embedding model: {model}")
+
     return embedding

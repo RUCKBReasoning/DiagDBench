@@ -1,0 +1,36 @@
+name: Sync A to B
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-to-org-main
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    # 文件同步到 B 后，不在 B 中执行此任务
+    if: github.repository == 'XinxinZhao798/DiagDBench'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout A
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Push to B
+        env:
+          GH_TOKEN: ${{ secrets.ORG_SYNC_TOKEN }}
+          TARGET_REPO: RUCKBReasoning/DiagDBench
+        run: |
+          gh auth setup-git --hostname github.com
+          git push "https://github.com/${TARGET_REPO}.git" HEAD:refs/heads/main

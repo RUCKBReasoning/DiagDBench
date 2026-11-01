@@ -4,6 +4,7 @@ from multiagents.multiagents import MultiAgents
 from multiagents.tools.metrics import current_diag_time, WORKLOAD_FILE_NAME
 import json
 import os
+import shutil
 import asyncio
 import time
 from pathlib import Path
@@ -39,11 +40,16 @@ async def main(args):
 
     records["report_generate_time"] = current_diag_time
 
-    with open(f"{DIAGNOSTIC_RESULTS_PATH}/{model_type}/{str(cur_time)}.jsonl", "w", encoding='utf8') as f:
+    result_path = Path(os.environ.get(
+        "DB_GPT_RESULT_PATH",
+        f"{DIAGNOSTIC_RESULTS_PATH}/{model_type}/{str(cur_time)}.jsonl",
+    ))
+    result_path.parent.mkdir(parents=True, exist_ok=True)
+    with result_path.open("w", encoding="utf8") as f:
         json.dump(records, f, ensure_ascii=False, indent=4)
 
     if os.path.exists(f"{DIAGNOSTIC_RESULTS_PATH}/{str(current_diag_time)}"):
-        os.system(f"rm -rf {DIAGNOSTIC_RESULTS_PATH}/{str(current_diag_time)}")
+        shutil.rmtree(Path(DIAGNOSTIC_RESULTS_PATH) / str(current_diag_time))
 
     return report, records
 

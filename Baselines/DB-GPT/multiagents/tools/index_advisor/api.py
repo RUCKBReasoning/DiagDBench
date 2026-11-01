@@ -1,7 +1,7 @@
 import os
 import ast
 # import sys
-# sys.path.insert(0, 'Baselines/DB-GPT')
+# sys.path.insert(0, '/home/wuy/DB/new_old_GPT/DB-GPT')
 from multiagents.tools.index_advisor.index_selection.selection_utils.postgres_dbms import PostgresDatabaseConnector
 from multiagents.tools.index_advisor.index_selection.selection_utils import selec_com
 from multiagents.tools.index_advisor.configs import get_index_result

@@ -143,9 +143,9 @@ class StructuredDocumentSplitter(RecursiveCharacterTextSplitter):
             "\n\n",
             "\n",
             "。|！|？",
-            "\.\s|\!\s|\?\s",
-            "；|;\s",
-            "，|,\s"
+            "\\.\\s|\\!\\s|\\?\\s",
+            "；|;\\s",
+            "，|,\\s"
         ]
         self._is_separator_regex = is_separator_regex
         self._section_style_prefix = section_style_prefix

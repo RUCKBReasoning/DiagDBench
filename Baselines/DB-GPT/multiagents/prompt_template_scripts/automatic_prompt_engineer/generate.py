@@ -1,5 +1,5 @@
 from faulthandler import disable
-from utils import data, llm
+from multiagents.utils import data, llm
 
 
 def get_query(prompt_gen_template, demos_template, subsampled_data):

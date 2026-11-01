@@ -1,12 +1,1 @@
-"""Database diagnosis baseline implementations."""
-
-import sys
-
-from .ReAct import react
-
-react_common = react
-react_super = react
-sys.modules[f"{__name__}.react_common"] = react
-sys.modules[f"{__name__}.react_super"] = react
-
-__all__ = ["react", "react_common", "react_super"]
+"""Database diagnosis baselines; import implementations from their subpackages."""

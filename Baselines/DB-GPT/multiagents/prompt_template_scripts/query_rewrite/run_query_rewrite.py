@@ -1,20 +1,25 @@
+import sys
+from pathlib import Path
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+NATIVE_ROOT = SCRIPT_DIR.parents[2]
+if str(NATIVE_ROOT) not in sys.path:
+    sys.path.insert(0, str(NATIVE_ROOT))
+
 import random
 import openai
 import os
 import re
 import numpy as np
 import pickle
-from data.load_data import load_data
+from multiagents.prompt_template_scripts.query_rewrite.data.load_data import load_data
 import logging
-import sys
 
-sys.path.append('..')
-
-from automatic_prompt_engineer import ape, config, template, utils
-from evaluation.exec_eval import exec_instruction_evaluator
-from evaluation.eval_result import SQLEvaluationResult
-from evaluation.utility import get_sql_latc_cost
-from utils.database import DBArgs
+from multiagents.prompt_template_scripts.automatic_prompt_engineer import ape, config, template, utils
+from multiagents.prompt_template_scripts.evaluation.exec_eval import exec_instruction_evaluator
+from multiagents.prompt_template_scripts.evaluation.eval_result import SQLEvaluationResult
+from multiagents.prompt_template_scripts.evaluation.utility import get_sql_latc_cost
+from multiagents.utils.database import DBArgs
 
 eval_template = "Instruction: [PROMPT]\n\nInput: [INPUT]\nOutput: [OUTPUT]"
 prompt_gen_template = "I gave a friend an instruction. The friend followed the instruction to rewrite the input SQL query for a concrete potential performance improvement while preserving its exact observable execution result. The rewrite must retain the original statement as one corresponding statement, without adding, deleting, merging, splitting, replacing, or reordering workload statements, and must preserve all order-sensitive logic. Starting from the same database state, it must return exactly the same rows, values, and duplicate counts, produce the same affected-row count, and leave the same persistent database state. Any execution-result mismatch is a diagnosis failure; when exact equivalence cannot be guaranteed, the original query must be retained. The resulting output SQL query can be executed on a PostgreSQL database with decreased latency. Based on the instruction they produced the following input-output pairs:\n\n[full_DEMO]\n\nInstruction: [APE]"

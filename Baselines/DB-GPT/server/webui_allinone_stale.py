@@ -15,10 +15,6 @@ python webui_allinone.py --model-path-address model1@host1@port1 model2@host2@po
 python webui_alline.py --model-path-address model@host@port --num-gpus 2 --gpus 0,1 --max-gpu-memory 10GiB
 
 """
-import streamlit as st
-from webui_pages.utils import *
-from streamlit_option_menu import option_menu
-from webui_pages import *
 import os
 from server.llm_api_stale import string_args,launch_all,controller_args,worker_args,server_args,LOG_PATH
 
@@ -59,10 +55,10 @@ def launch_webui(args,args_list=web_args,log_name=None):
     if args.nohup:
         print(f"logs on api are written in {log_name}")
         print(f"webui服务日志位于{log_name}下，如启动异常请查看日志")
-        webui_sh = "streamlit run webui.py {args_str} >{log_name}.log 2>&1 &".format(
+        webui_sh = "python webui.py {args_str} >{log_name}.log 2>&1 &".format(
         args_str=args_str,log_name=log_name)
     else:
-        webui_sh = "streamlit run webui.py {args_str}".format(
+        webui_sh = "python webui.py {args_str}".format(
         args_str=args_str)
     subprocess.run(webui_sh, shell=True, check=True)
     print("launch webui done!")

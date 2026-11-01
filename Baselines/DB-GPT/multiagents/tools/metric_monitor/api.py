@@ -9,22 +9,9 @@ from multiagents.tools.metric_monitor.anomaly_analysis import (
     workload_analysis_results
 )
 from multiagents.utils.markdown_format import generate_prometheus_chart_content
-try:
-    from prometheus_service_docker.prometheus_abnormal_metric import prometheus_metrics
-except ModuleNotFoundError:
-    prometheus_metrics = {
-        "cpu_usage": "cpu_usage",
-        "memory_usage": "memory_usage",
-        "cpu_metrics": ["cpu_usage"],
-        "memory_metrics": ["memory_usage", "pg_stat_database_blks_hit_ratio"],
-        "io_metrics": ["container_block_read_bytes", "container_block_write_bytes",
-                       "pg_stat_database_temp_bytes_per_second"],
-        "network_metrics": ["container_network_receive_bytes",
-                            "container_network_transmit_bytes"],
-        "query_metrics": ["pg_stat_activity_count", "pg_stat_activity_active_count",
-                          "pg_locks_count", "pg_stat_database_tup_returned_per_second",
-                          "pg_stat_database_xact_rollback_per_second"],
-    }
+from benchmark_metrics import load_metric_catalog
+prometheus_metrics = load_metric_catalog()
+
 from server.knowledge_base.kb_doc_api import search_docs, fetch_expert_kb_names
 from multiagents.initialization import LANGUAGE
 

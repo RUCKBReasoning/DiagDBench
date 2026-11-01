@@ -290,7 +290,7 @@ class Attention(bmt.DistributedModule):
                 score = FlashAttnFunc.apply(h_q, h_k, h_v, attention_mask_bias, False, None)
             else:
                 if pos_bias_type == "chatglm_rotary":
-                    raise NotImplemented("No FlashAttn version for ChatGLM at present!")
+                    raise NotImplementedError("No FlashAttn version for ChatGLM at present!")
                 h_q = h_q.view(len_q, self.num_heads, self.dim_head)  # .permute(0, 2, 1, 3)
                 h_k = h_k.view(len_k, self.num_kv_heads, self.dim_head)  # .permute(0, 2, 1, 3)
                 h_v = h_v.view(len_k, self.num_kv_heads, self.dim_head)  # .permute(0, 2, 1, 3)

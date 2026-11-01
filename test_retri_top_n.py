@@ -5,7 +5,7 @@ import logging
 
 # python test_retri_top_n.py --n 2 \
 #     --anomaly_dir ./Anomaly_Def/anomaly_def_formatted \
-#     --retrieve_dir ./User_Spe_Phe/PG_Retrieval \
+#     --retrieve_dir ./Anomaly_Def/knowledge_base/PG_Retrieval \
 #     --output_dir ./Anomaly_Def/anomaly_def_rag
 
 
@@ -30,7 +30,7 @@ if __name__ == "__main__":
                         help="Number of top retrieved items (error codes + timeout reasons) to keep per anomaly.")
     parser.add_argument("--anomaly_dir", type=str, default="./Anomaly_Def/anomaly_def_formatted",
                         help="Directory of formatted anomaly definition files (one [{...}] per file).")
-    parser.add_argument("--retrieve_dir", type=str, default="./User_Spe_Phe/MySQL_Retrieval",
+    parser.add_argument("--retrieve_dir", type=str, default="./Anomaly_Def/knowledge_base/MySQL_Retrieval",
                         help="Directory of retrieval result files produced by test_retri.py.") # MySQL, PG
     parser.add_argument("--output_dir", type=str, default="./Anomaly_Def/anomaly_def_mysql_rag", # mysql, pg
                         help="Output directory for the RAG-expanded anomaly files.")

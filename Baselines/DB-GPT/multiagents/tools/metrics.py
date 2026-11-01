@@ -5,6 +5,7 @@ import numpy as np
 from multiagents.utils.database import DBArgs, Database
 import time
 import json
+import os
 
 # [anomaly script]
 
@@ -35,7 +36,7 @@ advisor = "db2advis"  # option: extend, db2advis (fast)
 # [workload statistics]
 dbargs = DBArgs("postgresql", config=POSTGRESQL_CONFIG)
 # db = Database(dbargs, timeout=-1)
-WORKLOAD_FILE_NAME = "workload_info.json"
+WORKLOAD_FILE_NAME = os.path.join(os.getenv("DB_GPT_RUN_DIR", "."), "workload_info.json")
 
 
 def get_workload_statistics():
@@ -85,7 +86,7 @@ def processed_values(data, language="en"):
     # deviation
     deviation_value = round(np.std(np.array(data)), 2)
     # evenly sampled 10 values (reserve two decimal places)
-    evenly_sampled_values = [round(data[i], 2) for i in range(0, len(data), len(data) // 10)]
+    evenly_sampled_values = [round(data[i], 2) for i in range(0, len(data), max(1, len(data) // 10))]
 
     # describe the above five values in a string
     if language == "zh":

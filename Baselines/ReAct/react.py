@@ -37,12 +37,13 @@ from docker_func import (  # noqa: E402
 from prompt_template import agentic_llm_act_prompt_template, agentic_llm_report_prompt_template  # noqa: E402
 from utils import extract_json_object, normalize_dbms, prune_obser_log, set_up_logger  # noqa: E402
 from Baselines.input_contract import anomaly_verified_workload, render_diagnosis_prompt  # noqa: E402
-from Baselines.runtime_policy import diagnosis_llm_config, direct_injection_command
+from Baselines.preparation import diagnosis_llm_config, direct_injection_command
 from llm_api import FatalAPIQuotaError
+from Baselines.container_boundary import staged_diagnosis, sanitize_before_diagnosis
 
 DEFAULT_TIMEOUTS = {
     "tpch_1": 1500, "imdb": 4500, "tpcds_1": 1800,
-    "tpch_10": 11800,
+    "tpch_10": 11800, "sqlbrain_ap": 36000, "sqlbrain_tp": 14400,
 }
 DEFAULT_HARDWARE = {"CPU": 16, "Memory": 16, "Memory + Swap": 32, "Storage": 256}
 DEFAULT_DB_USER = {"DB_USER": "diagnosis", "DB_PASSWORD": "diagnosis", "DB_HOST": "localhost", "DB_PORT": "5432"}
@@ -78,9 +79,9 @@ def terminal_sample_result(output_base: Path, index: int, case: Dict[str, Any]) 
 
 def project_path(value: str | Path) -> Path:
     # Resolve symlinks to the canonical path. The evaluation container
-    # bind-mounts the CANONICAL host path, so any sample file handed to
-    # `docker exec` must be canonical too; passing a symlinked alias makes the
-    # file invisible inside the container ("No such file or directory").
+    # bind-mounts the CANONICAL host path (e.g. /data00/...), so any sample file
+    # handed to `docker exec` must be canonical too; passing the /home/... symlink
+    # makes the file invisible inside the container ("No such file or directory").
     path = Path(value)
     path = path if path.is_absolute() else PROJECT_ROOT / path
     return path.resolve()
@@ -139,6 +140,11 @@ def load_json_file(path: Path) -> Dict[str, Any]:
 
 
 def validate_config(config: Dict[str, Any], requires_superuser: bool) -> None:
+    workers = config.get("parallelism_num", 1)
+    if type(workers) is not int or workers < 1:
+        raise ValueError("parallelism_num must be a positive integer.")
+    if config.get("workflow_type") in {"db_gpt", "dbgpt"} and workers != 1:
+        raise ValueError("DB-GPT requires parallelism_num=1 because native files are shared.")
     required = {"key_information_path", "llm_configuration", "docker_name"}
     missing = sorted(required - config.keys())
     if missing:
@@ -282,12 +288,12 @@ def request_llm(
             "LLM dependencies are unavailable. Install the project requirements with "
             "`python -m pip install -r requirements.txt` before running diagnosis."
         ) from exc
-    # Log the request parameters WITHOUT leaking the API key: only model
+    # Log the request parameters WITHOUT leaking the API key: only model / provider
     # / temperature and the conversation size are recorded.
     if logger is not None:
         logger.info(
             f"{tag} Sending LLM request (model=`{llm_config.get('model_name')}`, "
-            f"temperature=`{llm_config.get('temperature')}`, "
+            f"provider=`{llm_config.get('provider')}`, temperature=`{llm_config.get('temperature')}`, "
             f"messages={len(messages)}) ..."
         )
     response = get_llm_response(messages, diagnosis_llm_config(llm_config))
@@ -352,6 +358,10 @@ def run_case(
             force_remove_container(container_name)
 
 
+from Baselines.preparation import PreparationError, run_data_preparation
+
+
+@staged_diagnosis
 def _run_case_body(
     case_index: int, total_cases: int, case: Dict[str, Any], config: Dict[str, Any],
     privileged: bool, output_dir: Path, logger: logging.Logger,
@@ -386,7 +396,7 @@ def _run_case_body(
                 break
         logger.warning(f"{tag}[WARNING] Container initialization failed ({attempt}/{retries}).")
         if attempt == retries:
-            raise RuntimeError(f"Unable to initialize Docker container `{container_name}`.")
+            raise PreparationError("container_initialization", f"Unable to initialize Docker container `{container_name}`.")
         time.sleep(5)
     logger.info(f"{tag} Docker Container `{container_name}` Initialized Successfully.")
 
@@ -404,7 +414,7 @@ def _run_case_body(
         logger.warning(f"{tag}[WARNING] Database initialization failed ({attempt}/{retries}).")
         if attempt == retries:
             reset_tmux_window(container_name, "status")
-            raise RuntimeError(f"Unable to initialize database `{database_name}`.")
+            raise PreparationError("database_initialization", f"Unable to initialize database `{database_name}`.")
         time.sleep(5)
         # Recreate under a NEW unique name before the next database-init retry.
         _, container_name = recreate_container_with_new_name(container_name, base_docker_name, container_config)
@@ -414,10 +424,10 @@ def _run_case_body(
     logger.info(f"{tag} [STEP 3/5] Applying Data Modification ...")
     modification_log = output_dir / "data_modification_log.txt"
     command = build_sql_file_command(dbms, user_config, str(files["modification"]), database_name)
-    success, details = run_docker_exec_observation(container_name, command, str(modification_log), 600, session_name=container_name)
+    success, details = run_data_preparation(run_docker_exec_observation, container_name, command, str(modification_log), 600, session_name=container_name)
     if not success:
         logger.error(f"{tag}[ERROR] Data Modification Failed. Log: {modification_log}")
-        raise RuntimeError(f"Data modification failed: {modification_log}\n{details}")
+        raise PreparationError("data_modification", f"Data modification failed: {modification_log}\n{details}")
     logger.info(f"{tag} Data Modification Succeeded. Log: {modification_log}")
 
     logger.info(f"{tag} [STEP 4/5] Executing anomaly_inject.sh directly (prevalidated sample) ...")
@@ -432,8 +442,10 @@ def _run_case_body(
     if not success:
         logger.error(f"{tag}[ERROR] Anomaly Injection Failed. Log: {injection_log}")
         reset_tmux_window(container_name, "observation")
-        raise RuntimeError(f"Anomaly injection failed: {injection_log}\n{details}")
+        raise PreparationError("anomaly_injection", f"Anomaly injection failed: {injection_log}\n{details}")
     logger.info(f"{tag} Anomaly Injection Succeeded. Log: {injection_log}")
+
+    files = sanitize_before_diagnosis(files, container_name)
 
     prompt = build_prompt(
         privileged, int(config.get("max_turn_num", 20)), hardware, user_config,
@@ -453,6 +465,7 @@ def _run_case_body(
         f"model=`{llm_config.get('model_name')}`, retry_times=`{llm_config.get('retry_times')}`) ..."
     )
     finished = False
+    truncation_error = None
     for turn in range(max_turn_num):
         logger.info(f"{tag} [Turn {turn + 1}/{max_turn_num}] Requesting diagnosis action from LLM ...")
         history = []
@@ -464,7 +477,17 @@ def _run_case_body(
             action, reason = parse_action(response)
             if action is not None:
                 break
+            if getattr(response, "truncated", False):
+                truncation_error = (
+                    f"Model output truncated ({response.finish_reason}) at turn {turn + 1}; "
+                    f"no complete action: {reason}. No regeneration requested."
+                )
+                logger.warning(f"{tag}[TRUNCATED] {truncation_error}")
+                break
             logger.warning(f"{tag}[WARNING] Invalid LLM action at turn {turn + 1} ({retry + 1}/{llm_config['retry_times']}): {reason}")
+        if truncation_error:
+            messages.append(response)
+            break
         if action is None:
             logger.warning(f"{tag}[WARNING] No valid action parsed at turn {turn + 1}; re-prompting for a valid action JSON.")
             messages.append(response)
@@ -480,6 +503,13 @@ def _run_case_body(
             try:
                 save_finish(action, output_dir, read_text(files["verified"]))
             except ValueError as exc:
+                if getattr(response, "truncated", False):
+                    truncation_error = (
+                        f"Model output truncated ({response.finish_reason}) at turn {turn + 1}; "
+                        f"invalid final artifacts: {exc}. No regeneration requested."
+                    )
+                    logger.warning(f"{tag}[TRUNCATED] {truncation_error}")
+                    break
                 messages.append(f"Invalid final artifacts: {exc}. Correct and finish again.")
                 continue
             messages.append("Diagnosis completed.")
@@ -488,7 +518,7 @@ def _run_case_body(
             break
         messages.append(execute_action(container_name, output_dir, turn, action, logger))
 
-    if not finished:
+    if not finished and not truncation_error:
         logger.warning(f"{tag}[WARNING] Diagnosis loop reached max_turn=`{max_turn_num}` without a finish action.")
 
     (output_dir / f"{base_docker_name}_messages.json").write_text(
@@ -496,6 +526,15 @@ def _run_case_body(
         encoding="utf-8",
     )
     logger.info(f"{tag} == DONE == Container `{container_name}` ready for teardown.")
+    if truncation_error:
+        (output_dir / "output_truncation.json").write_text(
+            json.dumps({
+                "status": "truncated", "finish_reason": response.finish_reason,
+                "turn": turn + 1, "visible_characters": len(response),
+                "regenerated": False, "error": truncation_error,
+            }, ensure_ascii=False, indent=2) + "\n", encoding="utf-8",
+        )
+        raise RuntimeError(truncation_error)
     if not finished:
         raise RuntimeError("Turn limit reached without valid diagnosis and recovery artifacts.")
     return container_name
@@ -637,6 +676,6 @@ def run(
 if __name__ == "__main__":
     run(
         privileged=True,
-        default_config=PROJECT_ROOT / "Configs" / "baselines" / "react.json",
+        default_config=PROJECT_ROOT / "Configs" / "baselines" / "react" / "example.json",
         description="ReAct database diagnosis baseline with superuser recovery permissions.",
     )

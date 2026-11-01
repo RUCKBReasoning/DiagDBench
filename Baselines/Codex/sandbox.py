@@ -1,9 +1,9 @@
 """Controller-only Docker isolation. No command allowlist is a security boundary.
 
-Database initialization/injection remains in Baselines.Codex.driver. Only after it
-finishes, hide host bind mounts in that SAME container, reject outstanding source
-references, and disconnect external networks. SQL file APIs then see the same
-sealed filesystem as Bash. Failure aborts the sample, never falls back unsealed.
+Database initialization/injection remains in Baselines.Codex.react. Afterwards,
+the common boundary exposes only the sanitized sample and agent-owned scratch.
+SQL file APIs see the same sealed filesystem as Bash. Controllers retain their
+private view without resetting the fault. Failure never falls back unsealed.
 """
 from __future__ import annotations
 
@@ -37,80 +37,6 @@ def command(args: list[str], *, data: str | None = None, timeout: int = 45) -> s
 
 def inspect_container(name: str) -> dict:
     return json.loads(command(["docker", "inspect", name]))[0]
-
-
-# Executed by the trusted host controller before the agent starts. Reject source descriptors
-# and alternate mount namespaces instead of killing injection workers or silently
-# changing their behavior. /proc itself remains available for normal diagnostics.
-RUNTIME_SCRATCH_AUDIT = r"""
-import os,sys,json
-roots=json.loads(sys.argv[1])
-leader=sys.argv[2]
-pidns=os.readlink("/proc/"+leader+"/ns/pid")
-def under(path, root):
-    return path==root or path.startswith(root+"/")
-rows=[]
-for pid in os.listdir("/proc"):
-    if not pid.isdigit():continue
-    base="/proc/"+pid
-    try:
-        if os.readlink(base+"/ns/pid")!=pidns:continue
-        exe=os.path.basename(os.readlink(base+"/exe").removesuffix(" (deleted)"))
-        if exe not in ("mysqld","mariadbd"):continue
-        args=open(base+"/cmdline","rb").read().decode(errors="replace").split("\0")
-        tmpdirs=[]
-        for i,arg in enumerate(args):
-            if arg.startswith("--tmpdir="):tmpdirs.append(arg.split("=",1)[1])
-            elif arg=="--tmpdir" and i+1<len(args):tmpdirs.append(args[i+1])
-        start=open(base+"/stat").read().rsplit(")",1)[1].split()[19]
-        for path in tmpdirs:
-            real=os.path.realpath(path)
-            if os.path.isabs(real) and any(under(real,r) and real!=r for r in roots):
-                rows.append({"pid":pid,"start":start,"path":real})
-    except (FileNotFoundError,ProcessLookupError,PermissionError):continue
-print(json.dumps(rows))
-"""
-
-
-REFERENCE_AUDIT = r"""
-import os,sys,json
-roots=json.loads(sys.argv[1])
-leader=sys.argv[2]
-allowed=json.loads(sys.argv[3])
-pidns=os.readlink("/proc/"+leader+"/ns/pid")
-def sensitive(path):
-    path=path.removesuffix(" (deleted)")
-    return any(path==r or path.startswith(r+"/") for r in roots)
-def approved(pid,name,target):
-    row=allowed.get(pid)
-    if not row or not name.startswith("fd/"):return False
-    try:start=open("/proc/"+pid+"/stat").read().rsplit(")",1)[1].split()[19]
-    except (FileNotFoundError,ProcessLookupError,PermissionError):return False
-    target=target.removesuffix(" (deleted)")
-    return start==row["start"] and any(target==p or target.startswith(p+"/") for p in row["paths"])
-own=os.readlink("/proc/"+leader+"/ns/mnt")
-bad=[]
-for pid in os.listdir("/proc"):
-    if not pid.isdigit():continue
-    base="/proc/"+pid
-    try:
-        if os.readlink(base+"/ns/pid")!=pidns:continue
-        if os.readlink(base+"/ns/mnt")!=own:
-            bad.append([pid,"mount_namespace"]);continue
-        names=[base+"/cwd",base+"/root",base+"/exe"]
-        names.extend(base+"/fd/"+f for f in os.listdir(base+"/fd"))
-        for name in names:
-            try: target=os.readlink(name)
-            except FileNotFoundError: continue
-            label="/".join(name.rsplit("/",2)[-2:])
-            if sensitive(target) and not approved(pid,label,target):bad.append([pid,label])
-        with open(base+"/maps") as f:
-            if any(any(r+"/" in row for r in roots) for row in f):
-                bad.append([pid,"memory_mapping"])
-    except (FileNotFoundError,ProcessLookupError):continue
-    except PermissionError:bad.append([pid,"unverifiable"])
-print(json.dumps({"ok":not bad,"references":bad}))
-"""
 
 
 # Database backends and parallel/autovacuum workers share the server executable
@@ -155,9 +81,8 @@ class DatabaseSandbox:
         self.project_root = project_root.resolve()
         self.owner_prefix = owner_prefix
         self.identity: str | None = None
+        # Shared Claude metadata still reads this compatibility field.
         self.hidden: list[str] = []
-        self.runtime_scratch: list[str] = []
-        self.reference_exceptions: dict[str, dict] = {}
         self.sealed = False
 
     def _identity(self) -> dict:
@@ -168,132 +93,30 @@ class DatabaseSandbox:
             raise IsolationError("Sample container is not running.")
         return info
 
-    def _references(self) -> dict:
-        info = self._identity()
-        privilege = [] if os.geteuid() == 0 else ["sudo", "-n"]
-        result = json.loads(command(
-            privilege + [sys.executable, "-c", REFERENCE_AUDIT, json.dumps(self.hidden),
-                         str(info["State"]["Pid"]), json.dumps(self.reference_exceptions)]
-        ))
-        if not result["ok"]:
-            raise IsolationError(
-                "Isolation blocked: a live process retains a source file, directory, "
-                "mapping, or an unverifiable mount namespace. The anomaly was not reset. "
-                + json.dumps(result["references"])
-            )
-        return result
-
-    def _discover_runtime_scratch(self) -> None:
-        info = self._identity()
-        privilege = [] if os.geteuid() == 0 else ["sudo", "-n"]
-        rows = json.loads(command(
-            privilege + [sys.executable, "-c", RUNTIME_SCRATCH_AUDIT,
-                         json.dumps(self.hidden), str(info["State"]["Pid"])]
-        ))
-        by_pid: dict[str, dict] = {}
-        for row in rows:
-            path = str(Path(row["path"]))
-            if not any(path.startswith(root + "/") for root in self.hidden):
-                raise IsolationError("Unsafe database runtime scratch path.")
-            self.runtime_scratch.append(path)
-            entry = by_pid.setdefault(row["pid"], {"start": row["start"], "paths": []})
-            entry["paths"].append(path)
-        self.runtime_scratch = sorted(set(self.runtime_scratch))
-        self.reference_exceptions = by_pid
-
-    def _mount(self, *args: str) -> None:
-        info = self._identity()
-        privilege = [] if os.geteuid() == 0 else ["sudo", "-n"]
-        command(privilege + [
-            "nsenter", "-t", str(info["State"]["Pid"]), "-m", "--root", "--wd=/", "--",
-            *args,
-        ])
-
-    def _hide_sources(self) -> None:
-        for root in self.hidden:
-            self._mount("/bin/mount", "-t", "tmpfs", "-o",
-                        "rw,nosuid,nodev,noexec,size=1048576", "codex_hidden", root)
-        for index, target in enumerate(self.runtime_scratch):
-            source = f"/run/codex_runtime/{index}"
-            self._mount("/bin/mkdir", "-p", source, target)
-            self._mount("/bin/chmod", "1777", source, target)
-            self._mount("/bin/mount", "--bind", source, target)
-            self._mount("/bin/mount", "-o", "remount,bind,rw,nosuid,nodev,noexec", source, target)
-        for root in self.hidden:
-            self._mount("/bin/mount", "-o", "remount,ro,nosuid,nodev,noexec", root)
-
     def seal(self) -> dict:
+        from Baselines.container_boundary import seal
         if not self.container.startswith(self.owner_prefix + "_"):
             raise IsolationError("Container does not belong to this Codex run.")
-        info = self._identity()
-        self.identity = info["Id"]
-        hc = info["HostConfig"]
-        if (hc.get("Privileged") or hc.get("PidMode") or hc.get("IpcMode") == "host"
-                or hc.get("CapAdd") or hc.get("Devices") or hc.get("VolumesFrom")
-                or hc.get("NetworkMode") == "host"
-                or any("unconfined" in x for x in hc.get("SecurityOpt") or [])):
-            raise IsolationError("Unexpected container privileges; refusing to expose tools.")
-        # Image ENV may contain DB settings, but never a model/API credential.
-        for value in info["Config"].get("Env") or []:
-            key = value.partition("=")[0].upper()
-            if any(word in key for word in ("API_KEY", "ACCESS_TOKEN", "AUTH_TOKEN", "SECRET")):
-                raise IsolationError("Unexpected secret in database container environment.")
-        binds = [m for m in info["Mounts"] if m["Type"] == "bind"]
-        if not any(Path(m["Source"]).resolve() == self.project_root for m in binds):
-            raise IsolationError("Expected original project mount is missing.")
-        destinations = sorted({m["Destination"].rstrip("/") for m in binds}, key=len)
-        for dst in destinations:
-            if not dst.startswith("/") or dst in {"/", "/usr", "/bin", "/sbin", "/etc", "/proc", "/sys", "/dev", "/var"}:
-                raise IsolationError("Unsafe host bind mount layout.")
-        self.hidden = [d for d in destinations if not any(d.startswith(p + "/") for p in destinations if p != d)]
-        self._discover_runtime_scratch()
-        self._references()
-        # Enter only this container's mount namespace. No host mount is changed.
-        # MySQL's configured tmpdir can live below a source bind. Recreate only
-        # that empty runtime path on the container layer before making the
-        # source-covering tmpfs read-only.
-        self._hide_sources()
-        for network in info["NetworkSettings"]["Networks"]:
+        state = seal(self.container)
+        self.identity = state["container_id"]
+        # Preserve Codex's existing no-external-network boundary. Native SQL
+        # baselines retain their original transport in the shared harness.
+        for network in self._identity()["NetworkSettings"]["Networks"]:
             if network != "none":
                 command(["docker", "network", "disconnect", network, self.container])
-        self._references()
         self.sealed = True
         self.verify()
-        return {"sealed": True, "container_id": self.identity, "hidden_mount_count": len(self.hidden),
-                "external_network": False, "source_references": False,
-                "runtime_scratch": self.runtime_scratch}
+        return {"sealed": True, "container_id": self.identity,
+                "boundary_version": state["version"], "hidden_mount_count": 0,
+                "runtime_scratch": [], "external_network": False, "source_references": False}
 
     def verify(self) -> None:
+        from Baselines.container_boundary import verify
         if not self.sealed:
             raise IsolationError("Database tools require a sealed sample.")
-        info = self._identity()
-        if any(n != "none" for n in info["NetworkSettings"]["Networks"]):
+        if any(n != "none" for n in self._identity()["NetworkSettings"]["Networks"]):
             raise IsolationError("External network was reattached.")
-        check = r"""
-import json,os,sys
-roots=json.loads(sys.argv[1])
-scratch=json.loads(sys.argv[2])
-rows=open("/proc/self/mountinfo").read().splitlines()
-for root in roots:
-    matches=[r for r in rows if r.split()[4]==root]
-    # A tmpfs overmount must be read-only and contain only structural
-    # directories leading to explicitly approved runtime scratch mounts.
-    assert matches and any(" - tmpfs codex_hidden " in r and "ro" in r.split()[5].split(",") for r in matches)
-    for name in os.listdir(root):
-        path=root+"/"+name
-        assert any(s==path or s.startswith(path+"/") for s in scratch)
-for path in scratch:
-    matches=[r for r in rows if r.split()[4]==path]
-    assert matches and any("rw" in r.split()[5].split(",") and "noexec" in r.split()[5].split(",") for r in matches)
-    probe=path+"/.codex_probe"
-    open(probe,"w").write("sealed")
-    os.unlink(probe)
-status=dict(x.split(":",1) for x in open("/proc/self/status") if ":" in x)
-assert not (int(status["CapBnd"].strip(),16)&(1<<21))
-print("sealed")
-"""
-        command(["docker", "exec", "-w", "/", self.container, "python3", "-c", check,
-                 json.dumps(self.hidden), json.dumps(self.runtime_scratch)])
+        verify(self.container)
 
     def _execution_processes(self, token: str, *, terminate: bool) -> list[int]:
         script = r"""
@@ -320,10 +143,9 @@ if sys.argv[2]=="1":
         if not rows:break
 print(json.dumps(rows))
 """
-        return json.loads(command([
-            "docker", "exec", "-w", "/", self.container, "python3", "-c", script,
-            token, "1" if terminate else "0",
-        ]))
+        from Baselines.container_boundary import _namespace_prefix
+        return json.loads(command(_namespace_prefix(self.container) + [
+            "python3", "-c", script, token, "1" if terminate else "0"]))
 
     def _process_snapshot(self) -> dict[str, str]:
         script = r"""
@@ -352,8 +174,9 @@ print(json.dumps(rows))
         """
         if not untracked:
             return []
-        return json.loads(command([
-            "docker", "exec", "-u", "0", "-w", "/", self.container, "python3", "-c",
+        from Baselines.container_boundary import _namespace_prefix
+        return json.loads(command(_namespace_prefix(self.container) + [
+            "python3", "-c",
             ESCAPE_FILTER, json.dumps(list(untracked)), json.dumps(list(before)),
             json.dumps(list(DB_SERVER_BINARIES)),
         ]))
@@ -368,9 +191,9 @@ print(json.dumps(rows))
         before = self._process_snapshot()
         token = uuid.uuid4().hex
         # stdin/stdout are pipes: no output or action directory is mounted back.
-        args = ["docker", "exec", "-i", "-u", "0", "-w", "/", self.container,
-                "env", "PAGER=cat", "PSQL_PAGER=cat", "BASH_ENV=/dev/null",
-                "CODEX_EXECUTION_ID=" + token,
+        from Baselines.container_boundary import agent_prefix
+        args = agent_prefix(self.container) + [
+                "env", "CODEX_EXECUTION_ID=" + token,
                 "timeout", "--signal=TERM", "--kill-after=5s", str(timeout), "bash", "-s"]
         result = bounded_process(args, script, log, timeout + 10)
         remaining = self._execution_processes(token, terminate=True)

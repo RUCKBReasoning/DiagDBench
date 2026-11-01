@@ -2,7 +2,6 @@ import openai
 import json
 import os
 import time
-import shutil
 from tqdm import tqdm
 import argparse
 import random
@@ -12,29 +11,32 @@ from utils import *
 from llm_api import *
 from docker_func import *
 
-# python test_syn_int.py --config ./Configs/syn_int/example_config.json
+# python test_syn_int.py --config ./Configs/syn_int/example.json
 
 random.seed(42) # 42, 4, 2, 21, 36
 
+llm_provider = "azure"
 openai.api_key = os.environ.get("OPENAI_API_KEY", "")
-openai.base_url = os.environ.get("OPENAI_BASE_URL", "https://api.example.com/v1")
-model_name = os.environ.get("LLM_MODEL", "your-chat-model")
+openai.base_url = default_llm_base_url("Configs/syn_int/example.json")
+openai.api_version = "2024-03-01-preview"
+model_name = "o3-2025-04-16"
 temperature = 1
 
 GB_Configurations = ["Memory", "Memory + Swap", "Storage"]
 
 LOG_NAME = os.path.basename(__file__).split('.')[0]
 
-olap_databases = ['tpch_1', 'tpch_10', 'tpcds_1', 'imdb']
-oltp_databases = ['benchbase']
+olap_databases = ['tpch_1', 'tpch_10', 'tpcds_1', 'imdb', 'sqlbrain_ap']
+oltp_databases = ['benchbase', 'sqlbrain_tp']
 
-TIMEOUTS = {'tpch_1' : 1560, 'imdb' : 4560, 'tpcds_1' : 1860, 'tpch_10' : 11800}
-TIMEOUTS = {'tpch_1' : 240, 'imdb' : 480, 'tpcds_1' : 360, 'tpch_10' : 420}  
-TIMEOUTS = {'tpch_1' : 1500, 'imdb' : 4500, 'tpcds_1' : 1800, 'tpch_10' : 11800}
-TIMEOUTS = {'tpch_1' : 3600, 'imdb' : 9000, 'tpcds_1' : 4500, 'tpch_10' : 11800}
+TIMEOUTS = {'tpch_1' : 1560, 'imdb' : 4560, 'tpcds_1' : 1860, 'tpch_10' : 11800, 'sqlbrain_ap' : 36000, 'sqlbrain_tp' : 14400}
+TIMEOUTS = {'tpch_1' : 240, 'imdb' : 480, 'tpcds_1' : 360, 'tpch_10' : 420, 'sqlbrain_ap' : 1800, 'sqlbrain_tp' : 780}  
+TIMEOUTS = {'tpch_1' : 1500, 'imdb' : 4500, 'tpcds_1' : 1800, 'tpch_10' : 11800, 'sqlbrain_ap' : 36000, 'sqlbrain_tp' : 14400}
+TIMEOUTS = {'tpch_1' : 3600, 'imdb' : 9000, 'tpcds_1' : 4500, 'tpch_10' : 11800, 'sqlbrain_ap' : 36000, 'sqlbrain_tp' : 14400}
 RETRY_TIMES = 10
 
 database_schema_mapping = {
+    "sqlbrain_ap" : "bytebrain_data_source",
 }
 
 
@@ -119,7 +121,7 @@ if __name__ == "__main__" :
     base_dir = os.path.dirname(os.path.abspath(__file__))
 
     parser = argparse.ArgumentParser(description="Database Diagnosis for USER INTENTION SYNTHESIS")
-    parser.add_argument("--config", type=str, required=False, default=os.path.join(base_dir, "Configs/syn_int/config.json"), help="Path to the Configuration JSON File")
+    parser.add_argument("--config", type=str, required=False, default=os.path.join(base_dir, "Configs/syn_int/example.json"), help="Path to the Configuration JSON File")
     args = parser.parse_args()
     config_path = resolve_path_from_base(args.config, base_dir)
 
@@ -127,7 +129,7 @@ if __name__ == "__main__" :
         config = json.load(file)
 
     # database names
-    db_names = config.get("database_names", ['tpch_1', 'imdb', 'tpcds_1', 'benchbase'])
+    db_names = config.get("database_names", ['tpch_1', 'imdb', 'tpcds_1', 'benchbase']) # ['sqlbrain_ap', 'sqlbrain_tp']
     database_schema_dir = resolve_path_from_base(config.get('database_schema_directory', "Data/Schema"), base_dir) # _Database_Diagnosis/Data/Schema
 
     # anomaly description: RAG-expanded anomaly definitions produced by test_retri_top_n.py
@@ -139,7 +141,9 @@ if __name__ == "__main__" :
     LLM_OPT = config.get('llm_configuration', None)
     if LLM_OPT is None:
         LLM_OPT = {
+            "provider" : llm_provider,
             "base_url" : openai.base_url,
+            "api_version" : openai.api_version,
             "api_key" : openai.api_key,
             "model_name" : model_name,
             "temperature" : temperature,

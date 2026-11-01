@@ -9,12 +9,12 @@ import time
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
-from Baselines.Codex import driver as react
+from . import react
 from .schemas import ExecuteInput, FinishInput
 from .knowledge import Knowledge
 from .sandbox import DatabaseSandbox, IsolationError, analysis_execute
 from .subagents import READ_TOOLS, Specialists
-from .workspace import Workspace, page_file
+from .workspace import CONTROL_DIRECTORY, Workspace, page_file
 
 
 class Input(BaseModel):
@@ -134,7 +134,7 @@ class Tools:
     def __init__(self, context: dict):
         self.context = context
         self.output = Path(context["output_dir"])
-        self.private = self.output / "pro_control"
+        self.private = self.output / CONTROL_DIRECTORY
         self.private.mkdir(mode=0o700, exist_ok=True)
         self.workspace = Workspace(self.output / "agent_workspace")
         self.knowledge = Knowledge(Path(__file__).with_name("docs"))
@@ -156,7 +156,7 @@ class Tools:
         self.database.hidden = context["hidden_mounts"]
         self.database.runtime_scratch = context["seal"].get("runtime_scratch", [])
         self.database.sealed = True
-        self.specialists = Specialists(self, context["transport_url"], context["transport_token"],
+        self.specialists = Specialists(self, context.get("transport_url", ""), context.get("transport_token", ""),
                                        max_jobs=context.get("max_specialists", 4),
                                        max_turns=context.get("specialist_turns", 6))
 
@@ -280,7 +280,12 @@ class Tools:
                     "auxiliary_actions_limit": self.context.get("max_aux_actions", 100),
                     "observations": sorted(self.logs),
                     "specialists": [self.specialists.status(k) for k in self.specialists.jobs],
-                    "disabled": ["native_host_shell", "native_host_files", "unrestricted_web",
+                    "disabled": ["native_host_shell", "native_host_files",
                                  "raw_sample_access", "specialist_database_mutation", "recursive_delegation"],
-                    "web_scope": "official_versioned_documentation"}
+                    "native_tools": self.context.get("native_tools", []),
+                    "web_scope": (
+                        "native_public_web_and_official_docs"
+                        if "WebSearch" in self.context.get("native_tools", [])
+                        else "official_versioned_documentation"
+                    )}
         raise ValueError("Unknown tool.")

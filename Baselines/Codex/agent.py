@@ -1,4 +1,4 @@
-"""Codex native loop integration; original container setup remains unchanged."""
+"""Codex native loop integration with sample-scoped diagnostic tools."""
 from __future__ import annotations
 
 import json
@@ -7,16 +7,15 @@ from pathlib import Path
 import shutil
 import signal
 import subprocess
-import sys
 
 from .cli_runtime import build_command
-from . import artifacts as native_agent, driver as react
-from Baselines.input_contract import anomaly_verified_workload
+from . import native_agent, react
+from Baselines.input_contract import DIAGNOSIS_REQUIREMENTS, anomaly_verified_workload
 from .knowledge import Knowledge
 from .sandbox import DatabaseSandbox, command
 from .tools import SPECS
 from .transport import restricted_transport
-from .workspace import Workspace
+from .workspace import CONTROL_DIRECTORY, Workspace
 
 PROTOCOL = """
 You are Codex in a controlled database diagnosis evaluation.
@@ -27,8 +26,8 @@ available. Never attempt to recover access to them through SQL, /proc or scripts
 
 Use db_execute for live database inspection, targeted recovery and workload validation.
 Its Bash/SQL powers and administrator account are retained, but host project mounts
-are hidden and external networking is disconnected. Inputs are the same symptoms,
-workload and accounts as Codex. Do not destroy the container or unrelated data.
+are hidden and external networking is disconnected. Inputs are the supplied symptoms,
+workload and accounts. Do not destroy the container or unrelated data.
 
 For local work use workspace_list/read/search/write/patch. inputs/ is read-only;
 work/ holds your notes, scripts and drafts. analysis_execute runs Python/Bash in an
@@ -51,16 +50,14 @@ Only db_finish_diagnosis commits final artifacts; do not write completion marker
 Preserve the original workload's exact statement order and observable semantics.
 If unsure about optimization equivalence, submit an empty verified_workload.
 Stop immediately after a successful finish. Report unresolved issues honestly.
-"""
+""" + DIAGNOSIS_REQUIREMENTS
 
 
 def validate_config(config: dict) -> dict:
-    llm = config["llm_configuration"]
-    if llm.get("api_key") or llm.get("codex_api_key"):
-        raise ValueError("Codex requires api_key_env; remove inline model credentials from its config.")
-    if llm.get("provider") not in {"azure", "openai", "openai_compatible"}:
-        raise ValueError("Codex currently supports the project's azure/openai audited Chat gateway.")
-    options = dict(config.get("codex", {}))
+    options = config.get("codex", {})
+    if not isinstance(options, dict):
+        raise ValueError("codex must be a JSON object.")
+    options = dict(options)
     bounds = {
         "max_aux_actions": (100, 1, 200),
         "max_model_calls": (100, 1, 200),
@@ -87,13 +84,16 @@ def validate_config(config: dict) -> dict:
 
 
 def model_config(config: dict) -> dict:
+    from llm_api import resolve_llm_provider
+
     llm = dict(config["llm_configuration"])
-    key = os.environ.get(llm.get("api_key_env", "CODEX_API_KEY"))
+    key = (llm.get("codex_api_key") or llm.get("api_key")
+           or os.environ.get(llm.get("api_key_env", "CODEX_MODEL_KEY")))
     if not key:
         raise ValueError("Set the environment variable named by llm_configuration.api_key_env.")
     llm["api_key"] = key
     llm["codex_transport"] = "chat_completions"
-    llm.setdefault("codex_tool_mode", "json" if llm["provider"] == "azure" else "function")
+    llm.setdefault("codex_tool_mode", "json" if resolve_llm_provider(llm) == "azure" else "function")
     return llm
 
 
@@ -121,11 +121,11 @@ def preflight(config: dict, *, require_key: bool = True) -> dict:
 
 
 def run_agent(prompt, config, container, output, files, logger):
-    """Called by the unchanged original driver AFTER initialization/injection."""
+    """Run diagnosis after database initialization and anomaly injection."""
     check = preflight(config)
     options = check["options"]
     output = Path(output).resolve()
-    control = output / "pro_control"
+    control = output / CONTROL_DIRECTORY
     if control.exists():
         raise ValueError("Codex control state exists; use a new attempt output directory.")
     control.mkdir(mode=0o700)
@@ -161,13 +161,13 @@ def run_agent(prompt, config, container, output, files, logger):
         context_path = control / "context.json"
         context_path.write_text(json.dumps(context, ensure_ascii=False, indent=2))
         context_path.chmod(0o600)
-        # Original facade uses this non-secret context to validate committed finish.
+        # The artifact validator needs the workload, not gateway credentials.
         (output / "native_context.json").write_text(json.dumps({
             "original_workload": context["original_workload"],
         }, ensure_ascii=False))
         args, original_env = build_command(llm, workspace.root, context_path, **transport)
         args.pop()  # stdin marker
-        args += ["--ignore-rules", "-c", "mcp_servers.diagnosis.args=" + json.dumps(
+        args += ["-c", "mcp_servers.diagnosis.args=" + json.dumps(
             [str(Path(__file__).with_name("diagnosis_mcp.py")), "--context", str(context_path)]),
             "-c", "mcp_servers.diagnosis.enabled_tools=" + json.dumps(sorted(allowed))]
         for name in sorted(allowed):
@@ -182,7 +182,7 @@ def run_agent(prompt, config, container, output, files, logger):
         env["PYTHONDONTWRITEBYTECODE"] = "1"
         with (output / "native_events.jsonl").open("w") as events, (output / "native_stderr.log").open("w") as errors:
             process = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=events, stderr=errors,
-                                       text=True, env=env, start_new_session=True)
+                                       text=True, env=env, cwd=workspace.root, start_new_session=True)
             try:
                 process.communicate(prompt + PROTOCOL, timeout=config.get("agent_timeout", 14400))
             except subprocess.TimeoutExpired:

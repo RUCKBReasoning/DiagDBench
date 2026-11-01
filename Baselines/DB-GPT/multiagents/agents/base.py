@@ -9,6 +9,7 @@ from multiagents.memory import BaseMemory, ChatHistoryMemory
 from multiagents.message import Message
 from multiagents.custom_parser import OutputParser
 from string import Template
+from benchmark_policy import with_diagnosis_requirements
 
 
 class BaseAgent(BaseModel):
@@ -23,6 +24,13 @@ class BaseAgent(BaseModel):
     async_mode: bool = Field(default=True)
     language: str = Field(default="en")
     knowledge_list: list = Field(default=[])
+
+    def __init__(self, **data):
+        super().__init__(**data)
+        # Covers solver/reporter/critic prompts in every language and backend,
+        # including paths that render the template without get_all_prompts().
+        self.role_description = with_diagnosis_requirements(self.role_description)
+        self.prompt_template = with_diagnosis_requirements(self.prompt_template)
 
     @abstractmethod
     def step(self, env_description: str = "") -> Message:

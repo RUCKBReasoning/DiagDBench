@@ -4,7 +4,6 @@ from typing import List
 
 from pydantic import Field, validator
 
-from multiagents.initialization import load_llm
 from multiagents.llms.base import BaseLLM
 from multiagents.message import Message
 
@@ -23,6 +22,8 @@ class SummaryMemory(BaseMemory):
     prompt_template: str = Field(default="")
 
     def __init__(self, *args, **kwargs):
+        # Defer initialization registry imports until agent classes are defined.
+        from multiagents.initialization import load_llm
         llm_config = kwargs.pop("llm")
         llm = load_llm(llm_config)
         super().__init__(llm=llm, *args, **kwargs)

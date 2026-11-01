@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Anomaly evaluation script tailored for Online Diagnosis Incident anomaly reproduction.
+"""Anomaly evaluation script tailored for Online Diagnosis Incident reproduction.
 
 This script is a reproduction-oriented variant of ``anomaly_eval.py``. It keeps
 the original baseline/injected median-timing flow (one warm-up pass plus
@@ -368,7 +368,7 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
             "this fallback."
         ),
     )
-    # NEW: anomaly type hint (OLAP / OLTP / BOTH) carried from the record sample.
+    # NEW: anomaly type hint (OLAP / OLTP / BOTH) carried from the incident record.
     parser.add_argument(
         "--anomaly-type",
         dest="anomaly_type",

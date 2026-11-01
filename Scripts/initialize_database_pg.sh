@@ -197,7 +197,8 @@ if [ "$DB_HOST" = "127.0.0.1" ] || [ "$DB_HOST" = "localhost" ]; then
     chmod 644 "$LOCAL_CONFIG_DIR/postgresql.conf.bak" "$LOCAL_CONFIG_DIR/pg_hba.conf.bak"
     
     echo "✅ Local configuration files restored. Restart PostgreSQL if needed."
-    su - postgres -c "/usr/lib/postgresql/16/bin/pg_ctl -D $DATA_DIR restart"
+    # Bounded initialization-only wait; preserve restart mode and DB settings.
+    su - postgres -c "/usr/lib/postgresql/16/bin/pg_ctl -D $DATA_DIR -t 600 -w restart"
     sleep 3
 else
     echo "REMOTE CONNECTION needs to support initialization via remote superuser"
