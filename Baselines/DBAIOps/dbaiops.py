@@ -6,7 +6,6 @@ import json
 import os
 import subprocess
 import sys
-import time
 from pathlib import Path
 from typing import Any
 
@@ -16,8 +15,8 @@ PROJECT_ROOT = BASELINE_DIR.parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from Baselines import react  # noqa: E402
-from llm_api import resolve_api_key
+from Baselines.ReAct import react  # noqa: E402
+from Baselines.native_runtime import new_run_directory, resolve_conda_home, resolve_knowledge_config
 
 
 def published_port(container_name: str, container_port: int) -> int:
@@ -49,7 +48,11 @@ def run_dbaiops_agent(
     logger,
 ) -> dict[str, str]:
     del prompt
-    sample_config = react.load_json_file(files["config"])
+    output_dir = Path(output_dir).expanduser().resolve()
+    config_file = Path(files["config"]).expanduser().resolve()
+    if not config_file.is_file():
+        raise FileNotFoundError(f"Sample config does not exist: {config_file}")
+    sample_config = react.load_json_file(config_file)
     dbms = sample_config.get("dbms", config.get("dbms", "PostgreSQL"))
     dbms_kind = react.normalize_dbms(dbms)
     internal_port = 3306 if dbms_kind == "mysql" else 5432
@@ -58,26 +61,35 @@ def run_dbaiops_agent(
     user_config = dict(react.DEFAULT_DB_USER)
     user_config.update(config.get("system_user_config") or {})
     user_config.update(sample_config.get("system_user_config") or {})
+    superuser_config = dict(config.get("superuser_config") or {})
+    superuser_config.update(sample_config.get("superuser_config") or {})
     database_name = str(sample_config.get("database_name", user_config.get("DB_NAME", "postgres")))
     native_root = output_dir / "native_dbaiops"
-    native_root.mkdir(parents=True, exist_ok=True)
-    started_at = time.time()
+    run_dir = new_run_directory(native_root)
 
     llm_config = config["llm_configuration"]
-    knowledge_config = config.get("knowledge_service") or {}
+    knowledge_config = resolve_knowledge_config(config, PROJECT_ROOT)
+    if not knowledge_config.get("api_key"):
+        raise RuntimeError("DBAIOps knowledge-service credential is not configured.")
+    if knowledge_config.get("local_knowledge_dir") or os.getenv("DBAIOPS_LOCAL_KNOWLEDGE_DIR"):
+        logger.warning(
+            "Ignoring obsolete local knowledge fallback (not upstream DBAIOps). Remove "
+            "local_knowledge_dir/DBAIOPS_LOCAL_KNOWLEDGE_DIR and configure the remote service."
+        )
     environment = os.environ.copy()
     environment.update(
         {
-            "OPENAI_API_KEY": resolve_api_key(llm_config),
+            "OPENAI_API_KEY": str(llm_config["api_key"]),
             "OPENAI_MODEL": str(llm_config["model_name"]),
             "OPENAI_API_BASE": str(llm_config["base_url"]),
             "OPENAI_PROVIDER": str(llm_config.get("provider", "")),
             "OPENAI_API_VERSION": str(llm_config.get("api_version", "")),
             "DBAIOPS_SNAPSHOT_CONTAINER": container_name,
-            "DBAIOPS_SNAPSHOT_ADMIN_USER": str((config.get("superuser_config") or {}).get("DB_USER", "root")),
-            "DBAIOPS_SNAPSHOT_ADMIN_PASSWORD": str((config.get("superuser_config") or {}).get("DB_PASSWORD", "")),
+            "DBAIOPS_SNAPSHOT_ADMIN_USER": str(superuser_config.get("DB_USER", "root" if dbms_kind == "mysql" else "postgres")),
+            "DBAIOPS_SNAPSHOT_ADMIN_PASSWORD": str(superuser_config.get("DB_PASSWORD", "")),
             "TEMPERATURE": str(llm_config.get("temperature", 1)),
-            "DBAIOPS_RETRY_TIMES": str(llm_config.get("retry_times", 24)),
+            "DBAIOPS_RETRY_TIMES": str(knowledge_config.get("retry_times", 3)),
+            "DBAIOPS_DATASET_ID": str(knowledge_config.get("dataset_id", "")),
             "DBAIOPS_MODEL_REQUEST_ATTEMPTS": str(
                 int(llm_config["request_retry_times"]) + 1
                 if "request_retry_times" in llm_config else int(llm_config.get("retry_times", 3))
@@ -97,12 +109,8 @@ def run_dbaiops_agent(
                 knowledge_config.get("api_key")
                 or os.environ.get("DBAIOPS_KNOWLEDGE_API_KEY", "")
             ),
-            "CONDA_HOME": str(
-                config.get(
-                    "conda_home",
-                    str(Path.home() / "miniforge3"),
-                )
-            ),
+            "CONDA_HOME": str(resolve_conda_home(config, PROJECT_ROOT)),
+            "DIAGDBENCH_NATIVE_RUN_DIR": str(run_dir),
             "CONDA_ENV": str(config.get("conda_env", "dbaiops_baseline")),
         }
     )
@@ -122,7 +130,7 @@ def run_dbaiops_agent(
         "--dbms",
         dbms_kind,
         "--sample-dir",
-        str(files["config"].parent),
+        str(config_file.parent),
         "--output-root",
         str(native_root),
         "--collect-db-snapshot",
@@ -149,14 +157,9 @@ def run_dbaiops_agent(
             f"see `{output_dir / 'dbaiops_stderr.log'}`."
         )
 
-    candidates = [
-        path
-        for path in native_root.glob("*/artifact_action.json")
-        if path.stat().st_mtime >= started_at
-    ]
-    if not candidates:
-        raise RuntimeError("DBAIOps completed without producing artifact_action.json.")
-    action_path = max(candidates, key=lambda path: path.stat().st_mtime)
+    action_path = run_dir / "artifact_action.json"
+    if not action_path.is_file():
+        raise RuntimeError("DBAIOps completed without producing this invocation's artifact_action.json.")
     action = json.loads(action_path.read_text(encoding="utf-8"))
     (output_dir / "native_artifact_action.json").write_text(
         json.dumps(action, ensure_ascii=False, indent=2) + "\n",
@@ -168,7 +171,7 @@ def run_dbaiops_agent(
 if __name__ == "__main__":
     react.run(
         privileged=True,
-        default_config=PROJECT_ROOT / "Configs" / "baselines" / "dbaiops.json",
+        default_config=PROJECT_ROOT / "Configs" / "baselines" / "dbaiops" / "example.json",
         description="DBAIOps open-source knowledge-Q&A baseline.",
         agent_runner=run_dbaiops_agent,
         workflow_type="dbaiops",

@@ -4,7 +4,6 @@ from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
 import json
 import threading
-import time
 import urllib.request
 
 READ_TOOLS = {"workspace_list", "workspace_read", "workspace_search",

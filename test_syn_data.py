@@ -3,7 +3,6 @@ import json
 import os
 import time
 import shutil
-import re
 from tqdm import tqdm
 import argparse
 import logging
@@ -15,28 +14,34 @@ from docker_func import *
 
 # ACTIONS : execute_sql_command [with execute sql file] : psql -U {DB_USER} -d {DB_NAME} -p {DB_PORT} -f {SQL_FILE_PATH}
 
-# python test_syn_data.py --config ./Configs/syn_data/example_config.json
+# python test_syn_data.py --config ./Configs/syn_data/example.json
 
+llm_provider = "azure"
 openai.api_key = os.environ.get("OPENAI_API_KEY", "")
-openai.base_url = os.environ.get("OPENAI_BASE_URL", "https://api.example.com/v1")
-model_name = os.environ.get("LLM_MODEL", "your-chat-model")
+openai.base_url = default_llm_base_url("Configs/syn_data/example.json")
+openai.api_version = "2024-03-01-preview"
+model_name = "gpt-4o-2024-05-13"
+model_name = "o3-2025-04-16"
 temperature = 1
 
 GB_Configurations = ["Memory", "Memory + Swap", "Storage"]
 
 LOG_NAME = os.path.basename(__file__).split('.')[0]
 
-olap_databases = ['tpch_1', 'tpch_10', 'tpcds_1', 'imdb']
-oltp_databases = ['benchbase']
+olap_databases = ['tpch_1', 'tpch_10', 'tpcds_1', 'imdb', 'sqlbrain_ap']
+oltp_databases = ['benchbase', 'sqlbrain_tp']
 
-TIMEOUTS = {'tpch_1' : 240, 'imdb' : 480, 'tpcds_1' : 360, 'tpch_10' : 420} 
-TIMEOUTS = {'tpch_1' : 1500, 'imdb' : 4500, 'tpcds_1' : 1800, 'tpch_10' : 11800}
-TIMEOUTS = {'tpch_1' : 3600, 'imdb' : 9000, 'tpcds_1' : 4500, 'tpch_10' : 11800}
+# TIMEOUTS = {'tpch_1' : 1500, 'imdb' : 4500, 'tpcds_1' : 1800, 'tpch_10' : 11800, 'sqlbrain_ap' : 36000, 'sqlbrain_tp' : 14400}
+TIMEOUTS = {'tpch_1' : 240, 'imdb' : 480, 'tpcds_1' : 360, 'tpch_10' : 420, 'sqlbrain_ap' : 1800, 'sqlbrain_tp' : 780} 
+TIMEOUTS = {'tpch_1' : 1500, 'imdb' : 4500, 'tpcds_1' : 1800, 'tpch_10' : 11800, 'sqlbrain_ap' : 36000, 'sqlbrain_tp' : 14400}
+TIMEOUTS = {'tpch_1' : 3600, 'imdb' : 9000, 'tpcds_1' : 4500, 'tpch_10' : 11800, 'sqlbrain_ap' : 36000, 'sqlbrain_tp' : 14400}
+# [暂未更新sqlbrain关于schema定义的问题]
 RETRY_TIMES = 10
 FAKE_DATABASE_IP = "8888.8888.8888.8888"
 
 database_schema_mapping = {
     "default" : "diagnosis",
+    "sqlbrain_ap" : "bytebrain_data_source",
 }
 
 
@@ -154,7 +159,7 @@ if __name__ == "__main__" :
     base_dir = os.path.dirname(os.path.abspath(__file__))
 
     parser = argparse.ArgumentParser(description='Database Diagnosis for Target Data Synthesis')
-    parser.add_argument('--config', type=str, required=False, default=os.path.join(base_dir, "Configs/syn_data/config.json"), help='Path to the Configuration JSON File')
+    parser.add_argument('--config', type=str, required=False, default=os.path.join(base_dir, "Configs/syn_data/example.json"), help='Path to the Configuration JSON File')
     args = parser.parse_args()
     config_path = resolve_path_from_base(args.config, base_dir)
     with open(config_path, "r") as file:
@@ -170,7 +175,9 @@ if __name__ == "__main__" :
     llm_opt = config.get('llm_configuration', None)
     if llm_opt is None:
         llm_opt = {
+            "provider" : llm_provider,
             "base_url" : openai.base_url,
+            "api_version" : openai.api_version,
             "api_key" : openai.api_key,
             "model_name" : model_name,
             "temperature" : temperature,

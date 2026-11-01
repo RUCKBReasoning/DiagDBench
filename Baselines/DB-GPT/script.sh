@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+CALLER_DIR="$PWD"
+
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
 # Defaults may be edited here or overridden with environment variables/CLI flags.
@@ -18,10 +20,15 @@ METRIC_SUPERUSER="${METRIC_SUPERUSER:-}"
 METRIC_SUPERPASSWORD="${METRIC_SUPERPASSWORD:-}"
 DB="${DB:-postgres}"
 CONTAINER_NAME="${CONTAINER_NAME:-}"
-SAMPLE_DIR="${SAMPLE_DIR:-Output/260811111721_pg_ano/1168}"
+SAMPLE_DIR="${SAMPLE_DIR:-}"
 OUTPUT_ROOT="${OUTPUT_ROOT:-${SCRIPT_DIR}/diagnostic_runs}"
 CONDA_ENV="${CONDA_ENV:-db_gpt_baseline}"
-CONDA_HOME="${CONDA_HOME:-$HOME/miniforge3}"
+CONDA_HOME="${CONDA_HOME:-$(conda info --base 2>/dev/null || printf '%s' "$HOME/miniforge3")}"
+case "$CONDA_HOME" in
+    "~/"*) CONDA_HOME="$HOME/${CONDA_HOME:2}" ;;
+    /*) ;;
+    *) CONDA_HOME="$CALLER_DIR/$CONDA_HOME" ;;
+esac
 MAX_CONTEXT_CHARS="${MAX_CONTEXT_CHARS:-50000}"
 METRIC_SAMPLE_COUNT="${METRIC_SAMPLE_COUNT:-12}"
 METRIC_SAMPLE_INTERVAL="${METRIC_SAMPLE_INTERVAL:-1}"
@@ -67,6 +74,36 @@ die() {
     exit 1
 }
 
+
+if [[ "${1:-}" == "--preflight" ]]; then
+    [[ $# -eq 1 && -f "$CONDA_HOME/etc/profile.d/conda.sh" ]] || die "Invalid preflight environment"
+# shellcheck disable=SC1091
+source "$CONDA_HOME/etc/profile.d/conda.sh"
+conda activate "$CONDA_ENV"
+# CONDA_PREFIX may already be active while a parent prepended another env.
+# Never trust a bare python lookup after conda reactivation.
+PYTHON="$CONDA_PREFIX/bin/python"
+export PATH="$CONDA_PREFIX/bin:$PATH"
+hash -r
+cd "$SCRIPT_DIR"
+    "$PYTHON" -B -c 'import os,sys; assert os.path.realpath(sys.prefix)==os.path.realpath(os.environ["CONDA_PREFIX"]); print("[NATIVE RUNTIME] env="+os.environ["CONDA_DEFAULT_ENV"]+" python="+sys.executable)'
+    export DB_GPT_KB_MODE="${DB_GPT_KB_MODE:-native}"
+    export DB_GPT_METRICS_SOURCE=container
+    "$PYTHON" -B "$SCRIPT_DIR/native_preflight.py"
+    "$PYTHON" -B - <<'IMPORT_PREFLIGHT'
+import json, os, pathlib, runpy, sys, tempfile
+# Construct clients at import without making requests or needing live secrets.
+os.environ.setdefault("OPENAI_API_KEY", "offline-import-preflight-only")
+with tempfile.TemporaryDirectory(prefix="db_gpt_import_preflight_") as temporary:
+    fixture=pathlib.Path(temporary)/"anomaly.json"
+    fixture.write_text(json.dumps({"exceptions":{"runtime_observations":{}},"alerts":[],"workload":"SELECT 1;","slow_queries":[],"workload_statistics":[],"start_time":0,"end_time":1}))
+    sys.argv=["run_diagnose.py","--anomaly_file",str(fixture)]
+    runpy.run_path("run_diagnose.py",run_name="_dbdiag_import_preflight")
+print("Full native diagnosis import preflight passed (not argparse --help).")
+IMPORT_PREFLIGHT
+    exit 0
+fi
+
 while (($#)); do
     case "$1" in
         --api-key) OPENAI_API_KEY="${2:?missing value}"; shift 2 ;;
@@ -91,6 +128,9 @@ while (($#)); do
     esac
 done
 
+[[ "$SAMPLE_DIR" = /* || -z "$SAMPLE_DIR" ]] || SAMPLE_DIR="$CALLER_DIR/$SAMPLE_DIR"
+[[ "$OUTPUT_ROOT" = /* ]] || OUTPUT_ROOT="$CALLER_DIR/$OUTPUT_ROOT"
+
 [[ -n "$OPENAI_API_KEY" ]] || die "OPENAI_API_KEY is required"
 [[ -n "$CONTAINER_NAME" ]] || die "--container is required"
 [[ -d "$SAMPLE_DIR" ]] || die "sample directory does not exist: $SAMPLE_DIR"
@@ -103,12 +143,26 @@ done
 # shellcheck disable=SC1091
 source "$CONDA_HOME/etc/profile.d/conda.sh"
 conda activate "$CONDA_ENV"
-python -c 'import openai, psycopg2' >/dev/null ||
+# CONDA_PREFIX may already be active while a parent prepended another env.
+# Never trust a bare python lookup after conda reactivation.
+PYTHON="$CONDA_PREFIX/bin/python"
+export PATH="$CONDA_PREFIX/bin:$PATH"
+hash -r
+cd "$SCRIPT_DIR"
+"$PYTHON" -c 'import openai, psycopg2' >/dev/null ||
     die "environment $CONDA_ENV lacks openai or psycopg2"
 
-RUN_ID="$(date -u +%Y%m%dT%H%M%SZ)_$(basename "$SAMPLE_DIR")"
-RUN_DIR="$OUTPUT_ROOT/$RUN_ID"
-mkdir -p "$RUN_DIR"
+mkdir -p "$OUTPUT_ROOT"
+if [[ -n "${DIAGDBENCH_NATIVE_RUN_DIR:-}" ]]; then
+    RUN_DIR="$DIAGDBENCH_NATIVE_RUN_DIR"
+    [[ "$RUN_DIR" = /* ]] || RUN_DIR="$CALLER_DIR/$RUN_DIR"
+    mkdir -p -- "$RUN_DIR"
+else
+    RUN_DIR="$(mktemp -d "$OUTPUT_ROOT/$(date -u +%Y%m%dT%H%M%SZ)_$(basename "$SAMPLE_DIR").XXXXXX")"
+fi
+RUN_DIR="$(cd "$RUN_DIR" && pwd)"
+export DB_GPT_RUN_DIR="$RUN_DIR"
+export DB_GPT_RESULT_PATH="$RUN_DIR/native_result.json"
 
 export OPENAI_API_KEY
 export DB_GPT_OPENAI_MODEL="$OPENAI_MODEL"
@@ -121,25 +175,15 @@ export DB_GPT_POSTGRES_PORT="$PORT"
 export DB_GPT_POSTGRES_USER="$USER"
 export DB_GPT_POSTGRES_PASSWORD="$PASSWORD"
 export DB_GPT_POSTGRES_DB="$DB"
-export DB_GPT_KB_MODE="${DB_GPT_KB_MODE:-bundled}"
+export DB_GPT_KB_MODE="${DB_GPT_KB_MODE:-native}"
+export DB_GPT_METRICS_SOURCE=container
 export HOST PORT USER PASSWORD DB SAMPLE_DIR MAX_CONTEXT_CHARS RUN_DIR
 
-python - <<'PY'
-from server.knowledge_base.kb_doc_api import fetch_expert_kb_names, search_docs
-
-names = fetch_expert_kb_names()
-required = {"ConfigurationExpert", "QueryExpert", "WorkloadExpert"}
-missing = sorted(required - set(names))
-if missing:
-    raise SystemExit("DB-GPT knowledge preflight is missing experts: " + ", ".join(missing))
-if not search_docs("transaction lock slow query workload", "QueryExpert", 2, 1.0):
-    raise SystemExit("DB-GPT knowledge preflight returned no QueryExpert documents")
-print(f"DB-GPT knowledge preflight passed with {len(names)} expert knowledge bases.")
-PY
+"$PYTHON" -B "$SCRIPT_DIR/native_preflight.py"
 
 printf 'Collecting real PostgreSQL and container metrics from %s (%s samples)...\n' \
     "$CONTAINER_NAME" "$METRIC_SAMPLE_COUNT"
-python "$SCRIPT_DIR/collect_runtime_metrics.py" \
+"$PYTHON" "$SCRIPT_DIR/collect_runtime_metrics.py" \
     --container "$CONTAINER_NAME" \
     --host "$HOST" \
     --port "$PORT" \
@@ -152,7 +196,7 @@ python "$SCRIPT_DIR/collect_runtime_metrics.py" \
     --interval "$METRIC_SAMPLE_INTERVAL" \
     --output "$RUN_DIR/database_snapshot.json"
 
-python - <<'PY'
+"$PYTHON" - <<'PY'
 import json
 import os
 from pathlib import Path
@@ -219,6 +263,10 @@ PY
 
 cat >"$RUN_DIR/run_metadata.txt.tmp" <<EOF
 method=DB-GPT
+upstream_commit=73cb3297fae0823c4bf8c3451513f7dbd3961f4b
+knowledge_retrieval=native
+metric_source=container_snapshot_adapter
+artifact_generation=additional_llm_call
 model=$OPENAI_MODEL
 api_base=${OPENAI_API_BASE%/}
 database=$HOST:$PORT/$DB
@@ -228,29 +276,23 @@ EOF
 mv "$RUN_DIR/run_metadata.txt.tmp" "$RUN_DIR/run_metadata.txt"
 
 cd "$SCRIPT_DIR"
-MARKER="$RUN_DIR/.diagnosis_started"
-: >"$MARKER"
 printf 'Starting DB-GPT multi-agent diagnosis...\n'
 set +e
-python run_diagnose.py --anomaly_file "$RUN_DIR/db_gpt_anomaly.json" \
+"$PYTHON" run_diagnose.py --anomaly_file "$RUN_DIR/db_gpt_anomaly.json" \
     2>&1 | tee "$RUN_DIR/diagnosis.log"
 status=${PIPESTATUS[0]}
 set -e
 ((status == 0)) || die "DB-GPT exited with status $status; see $RUN_DIR/diagnosis.log"
 
-export MARKER SCRIPT_DIR
-python - <<'PY'
+"$PYTHON" - <<'PY'
 import json
 import os
 from pathlib import Path
 
 run_dir = Path(os.environ["RUN_DIR"])
-marker_mtime = Path(os.environ["MARKER"]).stat().st_mtime
-files = [p for p in (Path(os.environ["SCRIPT_DIR"]) / "alert_results").rglob("*.jsonl")
-         if p.stat().st_mtime >= marker_mtime]
-if not files:
-    raise SystemExit("DB-GPT completed but no result JSONL was found")
-source = max(files, key=lambda p: p.stat().st_mtime)
+source = Path(os.environ["DB_GPT_RESULT_PATH"])
+if not source.is_file():
+    raise SystemExit("DB-GPT completed but this invocation produced no native_result.json")
 payload = json.loads(source.read_text(encoding="utf-8"))
 
 tmp_json = run_dir / "diagnosis_result.json.tmp"
@@ -261,12 +303,12 @@ report = payload.get("report")
 if not isinstance(report, str) or not report.strip():
     raise SystemExit("DB-GPT result does not contain a non-empty Markdown report")
 tmp_md = run_dir / "native_diagnosis_report.md.tmp"
-tmp_md.write_text(report.strip() + "\n", encoding="utf-8")
+tmp_md.write_text(report, encoding="utf-8")
 os.replace(tmp_md, run_dir / "native_diagnosis_report.md")
 PY
 
 printf 'Generating ReAct-compatible recovery artifacts from the native DB-GPT report...\n'
-python artifact_adapter.py \
+"$PYTHON" artifact_adapter.py \
     --diagnosis-result "$RUN_DIR/diagnosis_result.json" \
     --sample-dir "$SAMPLE_DIR" \
     --snapshot "$RUN_DIR/database_snapshot.json" \

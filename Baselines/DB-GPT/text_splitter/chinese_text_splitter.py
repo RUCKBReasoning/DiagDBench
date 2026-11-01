@@ -12,7 +12,7 @@ class ChineseTextSplitter(CharacterTextSplitter):
     def split_text1(self, text: str) -> List[str]:
         if self.pdf:
             text = re.sub(r"\n{3,}", "\n", text)
-            text = re.sub('\s', ' ', text)
+            text = re.sub('\\s', ' ', text)
             text = text.replace("\n\n", "")
         sent_sep_pattern = re.compile('([﹒﹔﹖﹗．。！？]["’”」』]{0,2}|(?=["‘“「『]{1,2}|$))')  # del ：；
         sent_list = []
@@ -26,7 +26,7 @@ class ChineseTextSplitter(CharacterTextSplitter):
     def split_text(self, text: str) -> List[str]:   ##此处需要进一步优化逻辑
         if self.pdf:
             text = re.sub(r"\n{3,}", r"\n", text)
-            text = re.sub('\s', " ", text)
+            text = re.sub('\\s', " ", text)
             text = re.sub("\n\n", "", text)
 
         text = re.sub(r'([;；.!?。！？\?])([^”’])', r"\1\n\2", text)  # 单字符断句符

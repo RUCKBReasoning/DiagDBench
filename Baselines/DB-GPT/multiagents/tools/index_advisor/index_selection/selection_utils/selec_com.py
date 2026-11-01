@@ -22,7 +22,7 @@ def get_parser():
                         default="../data_resource/selection_exp_conf/tpch_1gb_config.json")
     parser.add_argument("--work_type", type=str, default="not_template")
     parser.add_argument("--work_file", type=str,
-                        default="/data/wz/index/attack/tpch_template_21.sql")
+                        default="tpch_template_21.sql")
 
     parser.add_argument("--log_file", type=str,
                         default="./exp_res/{}/exp_runtime.log")

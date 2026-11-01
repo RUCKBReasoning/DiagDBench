@@ -139,9 +139,9 @@ class ReporterAgent(BaseAgent):
 
     def update_solutions(self):
         if self.language == 'zh':
-            prompt = f"""你正在撰写故障诊断报告，现在需要给出最终的解决方案。请参考上述审查建议，并参考下列解决方案：\n{self.report["solutions"]} \n请注意：\n1. 输出必须是markdown格式，但不要说类似"这是markdown格式"等多余的内容。\n2. 只给出解决方案，不要提任何和根因分析有关的内容。\n3. 在诊断证据充分时，给出具体、可验证且可回滚的 SQL 或 shell 命令；证据不足时明确说明所需检查，不要猜测命令或对象。\n"""
+            prompt = f"""你正在撰写故障诊断报告，现在需要给出最终的解决方案。请参考上述审查建议，并参考下列解决方案：\n{self.report["solutions"]} \n请注意：\n1. 输出必须是markdown格式，但不要说类似"这是markdown格式"等多余的内容。\n2. 只给出解决方案，不要提任何和根因分析有关的内容。\n"""
         else:
-            prompt = "You are writing a report. Please optimize the following solutions based on the above review advice. The solutions are:\n" + self.report["solutions"] + "\n ===== \n Note 1. the output should be in markdown format.\n2. do not any additional content like 'Sure' and 'I will refine the solutions based on the above advice'. 3. Do not add anything about root causes!!!\n4. When supported by the diagnosis evidence, include concrete, verifiable, and reversible SQL or shell commands. If evidence is insufficient, state the required checks instead of guessing commands or object names.\n"
+            prompt = "You are writing a report. Please optimize the following solutions based on the above review advice. The solutions are:\n" + self.report["solutions"] + "\n ===== \n Note 1. the output should be in markdown format.\n2. do not any additional content like 'Sure' and 'I will refine the solutions based on the above advice'. 3. Do not add anything about root causes!!!\n"
 
         prompt_message = {"role": "user", "content": prompt, "time": time.strftime("%H:%M:%S", time.localtime())}
 

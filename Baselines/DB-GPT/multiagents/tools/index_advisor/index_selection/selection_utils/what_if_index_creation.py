@@ -31,7 +31,7 @@ class WhatIfIndexCreation:
 
     def all_simulated_indexes(self):
         # todo: `()` or not.
-        # if self.db_connector.config["postgresql"]["host"] in ["127.0.0.1", "127.0.0.1"]:
+        # if self.db_connector.config["postgresql"]["host"] in ["10.24.82.151", "10.24.82.152"]:
         #     statement = "select * from hypopg_list_indexes"
         # else:
         #     statement = "select * from hypopg_list_indexes()"

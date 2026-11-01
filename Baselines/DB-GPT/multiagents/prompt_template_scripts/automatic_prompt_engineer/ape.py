@@ -1,6 +1,6 @@
 import random
-from automatic_prompt_engineer import generate, config, template
-from utils import data,llm
+from . import generate, config, template
+from multiagents.utils import data, llm
 import logging
 
 

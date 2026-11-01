@@ -12,6 +12,7 @@ import logging
 from ...generation import apply_repetition_penalty
 from ...generation import BeamHypotheses
 from ...generation import top_k_top_p_filtering
+from ...generation.generation_utils import NBCE
 
 # from ..training_tasks.llama.pretrain import convert_data_to_id
 from ...utils import pad, allgather_objects

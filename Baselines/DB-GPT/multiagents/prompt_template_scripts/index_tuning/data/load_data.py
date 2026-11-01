@@ -1,27 +1,6 @@
 import json
 
-def load_data(path, task, type):
-
-    with open(path, 'r') as f:
-        data = json.load(f)
-
-    examples = data['examples']
-    num_examples = len(examples)
-
-    inputs, outputs = [], []
-    for i in range(num_examples):
-        data = examples[str(i + 1)]
-        if task == 'query_rewrite':
-            if type == 'train':
-                input_, output_ = data['input'], data['output']
-            else:
-                input_, output_ = data['input'], {'output':data['output'], 'result':data['result'] if 'result' in data else None, 'result_len':data['result_len'], 'input_cost':data['input_cost'], 'output_cost':data['output_cost'], 'dataset':data['dataset'], 'input_latency':data['input_latency'], 'output_latency':data['output_latency']}
-
-        inputs.append(input_)
-        outputs.append(output_)
-    return inputs, outputs
-
-def load_data(path, type, task, use_schema):
+def load_data(path, task, type, use_schema):
 
     with open(path, 'r') as f:
         data = json.load(f)
@@ -49,7 +28,7 @@ def load_data(path, type, task, use_schema):
             if use_schema == 1:
                 input_ = "The data statistics are {} The storage space for created indexes is limited (500MB).\n The queries are ".format(schema)
             else:
-                input_ = "The queries are ".format(schema)
+                input_ = "The queries are "
             max_num_sql = 8
             for i,sql in enumerate(sqls):
                 input_ = input_ + sql + " "

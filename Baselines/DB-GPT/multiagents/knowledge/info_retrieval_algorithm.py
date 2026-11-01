@@ -24,7 +24,6 @@ from nltk.corpus import wordnet
 # wnl = WordNetLemmatizer()
 
 # corpus = []
-# with open("/Users/4paradigm/Desktop/work/2023_05_22/root_causes_dbmind.jsonl", 'r') as f:
 #     data = json.load(f)
 #     corpus = [example["desc"] for example in data]
 #     metrics = [example["metrics"] for example in data]
@@ -237,8 +236,6 @@ def are_synonyms(word1, word2):
     synonyms2 = {lemma.name() for synset in wordnet.synsets(word2) for lemma in synset.lemmas()}
     return not synonyms1.isdisjoint(synonyms2)
 
-def simple_tok(sent:str):
-    return sent.split()
 
 def bm25(k, target:List[str], sample:List[List[str]]):
 

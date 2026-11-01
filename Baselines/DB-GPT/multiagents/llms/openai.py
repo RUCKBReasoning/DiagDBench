@@ -4,6 +4,17 @@ import os
 from typing import List, Optional, Union
 from pydantic import Field
 
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
+from llm_api import ContextBudgetError, prepare_request
+
+
+def bounded_chat(messages, args):
+    request, _ = prepare_request(dict(args, messages=messages), {'model_name': args['model']})
+    return request
+
+
 from configs import ONLINE_LLM_MODEL
 from multiagents.llms.base import LLMResult
 from . import llm_registry
@@ -167,8 +178,7 @@ class OpenAIChat(BaseChatModel):
             
             try:
                 response = self.client.chat.completions.create(
-                    messages=messages,
-                    **self.args.dict()
+                    **bounded_chat(messages, self.args.dict())
                 )   
                 try:
                     output = response.choices[0].message.content
@@ -186,6 +196,8 @@ class OpenAIChat(BaseChatModel):
                     output = remove_charts(output)
 
                 break
+            except ContextBudgetError:
+                raise
             except:
                 print(f"Generate_response Exception. Try again.")
 
@@ -235,9 +247,11 @@ class OpenAIChat(BaseChatModel):
         for i in range(self.TRY_TIME):
             try:
                 response = client.chat.completions.create(
-                    messages=messages, **self.args.dict()
+                    **bounded_chat(messages, self.args.dict())
                 )
-            except :
+            except ContextBudgetError:
+                raise
+            except:
                 print(f"Generate_response Exception. Try again.")
                 time.sleep(.5)
 
@@ -286,8 +300,10 @@ class OpenAIChat(BaseChatModel):
         for _ in range(self.TRY_TIME):
             try:
                 response = await client.chat.completions.create(
-                    messages=messages, **self.args.dict()
+                    **bounded_chat(messages, self.args.dict())
                 )
+            except ContextBudgetError:
+                raise
             except:
                 raise
             return LLMResult(

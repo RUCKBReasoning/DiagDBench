@@ -1,6 +1,6 @@
 # Skill: Reproduction Action Playbook (SQL / Bash / Python)
 
-Use this card after interpreting the record with `incident_category_to_anomaly.md`.
+Use this card after interpreting the record with `online_diagnosis_incident_category_to_anomaly.md`.
 Turn an evidence-supported hypothesis into an executable, measured scenario
 using SQL, Bash or Python actions. Target the supplied DBMS/version and actual
 schema; PostgreSQL and MySQL differ in locks, configuration scope, catalogs and

@@ -14,15 +14,15 @@ from utils import *
 from llm_api import *
 from docker_func import *
 
-# python test_syn_ano_rep.py --config ./Configs/syn_ano_rep/example_mysql.json
+# python test_syn_ano_rep.py --config ./Configs/syn_ano_rep/example.json
 #
 # Online Diagnosis Incident Anomaly REPRODUCTION synthesizer.
 #
 # This entry point mirrors the design of `test_syn_ano.py` (unique-named Docker
 # containers, tmux-based in-container execution, ReAct multi-turn LLM inference,
 # per-sample output directory, defensive container sweeps) but drives the whole
-# pipeline from REAL Online Diagnosis Incident records instead of pre-synthesized anomaly
-# definitions. For every record the LLM runs a single, unified multi-action
+# pipeline from real Online Diagnosis Incident records instead of pre-synthesized
+# anomaly definitions. For every record the LLM runs a unified multi-action
 # ReAct loop (sql / bash / python exploration, then a `finish`) that produces the
 # seven LLM-authored artifacts; the harness then deterministically derives
 # `merged_workload.sql`, `merged_workload_performance.json`, and copies the
@@ -33,9 +33,11 @@ from docker_func import *
 # `utils.py`, and `prompt_template.py` WITHOUT modifying them, and it never
 # touches the existing anomaly-synthesis code paths.
 
+llm_provider = "azure"
 openai.api_key = os.environ.get("OPENAI_API_KEY", "")
-openai.base_url = os.environ.get("OPENAI_BASE_URL", "https://api.example.com/v1")
-model_name = os.environ.get("LLM_MODEL", "your-chat-model")
+openai.base_url = default_llm_base_url("Configs/syn_ano_rep/example.json")
+openai.api_version = "2024-03-01-preview"
+model_name = "gpt-4o-2024-05-13"
 temperature = 1
 
 GB_Configurations = ["Memory", "Memory + Swap", "Storage"]
@@ -44,11 +46,11 @@ LOG_NAME = os.path.basename(__file__).split('.')[0]
 
 # The reproduction pipeline targets a single OLAP instance (tpch_1) by default;
 # these timeouts mirror `test_syn_ano.py` so DB initialization behaves the same.
-TIMEOUTS = {'tpch_1': 1500, 'imdb': 4500, 'tpcds_1': 1800, 'tpch_10': 11800}
+TIMEOUTS = {'tpch_1': 1500, 'imdb': 4500, 'tpcds_1': 1800, 'tpch_10': 11800, 'sqlbrain_ap': 36000, 'sqlbrain_tp': 14400}
 RETRY_TIMES = 10
 FAKE_DATABASE_IP = "8888.8888.8888.8888"
 
-# Encodings tried when reading a single Incident record CSV (the filtered samples
+# Encodings tried when reading a single Online Diagnosis Incident record CSV (the filtered samples
 # are written as utf-8-sig by the preprocessing step, but stay tolerant).
 ENCODINGS_TO_TRY = ["utf-8-sig", "utf-8", "gbk", "gb2312", "latin-1"]
 
@@ -63,7 +65,7 @@ def resolve_fast_reset_enabled(dbms_kind, config):
     )
 
 
-# The subset of Incident CSV columns surfaced to the LLM, with readable labels.
+# The subset of Online Diagnosis Incident CSV columns surfaced to the LLM.
 INCIDENT_FIELD_LABELS = [
     ("name", "Record Title"),
     ("level", "Severity Level"),
@@ -71,18 +73,18 @@ INCIDENT_FIELD_LABELS = [
     ("LLM预测根因分类", "Root Cause Category (根因分类)"),
     ("LLM预测类别分析", "Category Analysis (类别分析)"),
     ("责任方", "Responsible Party (责任方)"),
-    ("summary", "Incident Summary (诊断事件摘要)"),
+    ("summary", "Incident Summary (工单摘要)"),
     ("category_by_customer", "Customer Impact (客户影响分类)"),
     ("fault_locator_msg", "Diagnostic Evidence (定位证据)"),
     ("msg", "Reported Symptom (原始问题片段)"),
 ]
 
 
-def read_incident_sample_csv(path):
-    """Read a single-row Incident record CSV into an ordered dict of column->value.
+def read_incident_record_csv(path):
+    """Read a single-row Online Diagnosis Incident record CSV into an ordered dict.
 
-    The filtered samples produced by ``preprocess_incident_samples.py`` contain a
-    header row plus one data row. Encoding is auto-detected with a small
+    The filtered samples contain a header row plus one data row.
+    Encoding is auto-detected with a small
     fallback list so a stray non-utf8 export does not abort the whole run.
     """
     import csv
@@ -94,15 +96,15 @@ def read_incident_sample_csv(path):
                 reader = csv.DictReader(fh)
                 rows = list(reader)
             if not rows:
-                raise ValueError(f"Incident sample CSV has no data row: {path}")
+                raise ValueError(f"Online Diagnosis Incident record CSV has no data row: {path}")
             return rows[0]
         except (UnicodeDecodeError, UnicodeError) as exc:
             last_error = exc
             continue
-    raise RuntimeError(f"Failed to decode Incident sample CSV {path}: {last_error}")
+    raise RuntimeError(f"Failed to decode Online Diagnosis Incident record CSV {path}: {last_error}")
 
 
-def format_incident_ticket_info(row):
+def format_incident_record_info(row):
     """Render incident evidence, excluding tracking identifiers and raw snapshots."""
     structured_fields = {
         "summary": [
@@ -171,7 +173,7 @@ def format_incident_ticket_info(row):
         else:
             value = decode(row.get(key))
         if mapped_export and key == "LLM预测表象分类":
-            label = "Surface Symptom Category (诊断事件类型规则映射，非独立LLM预测)"
+            label = "Surface Symptom Category (工单类型规则映射，非独立LLM预测)"
         if key in structured_fields and isinstance(value, (dict, list)):
             records = value if isinstance(value, list) else [value]
             children = []
@@ -196,12 +198,12 @@ def format_incident_ticket_info(row):
 
 
 def load_reproduction_skills(skills_dir, logger):
-    """Load exactly the four authoritative Incident reproduction skills."""
+    """Load exactly the four authoritative Online Diagnosis Incident skills."""
     if not skills_dir or not os.path.isdir(skills_dir):
         raise RuntimeError(f"[MAIN][ERROR] Skills directory not found: {skills_dir}")
 
     required = [
-        "incident_category_to_anomaly.md",
+        "online_diagnosis_incident_category_to_anomaly.md",
         "reproduction_action_playbook.md",
         "fast_environment_reset.md",
         "output_contract.md",
@@ -212,7 +214,7 @@ def load_reproduction_skills(skills_dir, logger):
     ]
     if missing:
         raise RuntimeError(
-            "[MAIN][ERROR] Missing required Incident reproduction skill(s): "
+            "[MAIN][ERROR] Missing required Online Diagnosis Incident reproduction skill(s): "
             + ", ".join(missing)
         )
     blocks = []
@@ -221,10 +223,10 @@ def load_reproduction_skills(skills_dir, logger):
             content = fh.read().strip()
         if not content:
             raise RuntimeError(
-                f"[MAIN][ERROR] Required Incident reproduction skill is empty: {filename}"
+                f"[MAIN][ERROR] Required Online Diagnosis Incident reproduction skill is empty: {filename}"
             )
         blocks.append(
-            f"===== INCIDENT SKILL {index}/{len(required)}: {filename} =====\n{content}"
+            f"===== ONLINE DIAGNOSIS INCIDENT SKILL {index}/{len(required)}: {filename} =====\n{content}"
         )
     logger.info(
         f"[MAIN] Loaded {len(required)} required reproduction skill file(s): {required}"
@@ -233,31 +235,33 @@ def load_reproduction_skills(skills_dir, logger):
 
 
 def build_incident_sample_list(config, base_dir, logger):
-    """Build the ordered list of Incident record samples to reproduce.
+    """Build the ordered list of Online Diagnosis Incident records to reproduce.
 
     Precedence:
-      1. ``incident_sample_path`` (single explicit CSV) overrides everything.
-      2. otherwise enumerate ``{id}.csv`` files under ``incident_samples_dir``,
+      1. ``incident_record_path`` (single explicit CSV) overrides everything.
+      2. otherwise enumerate ``{id}.csv`` files under ``incident_records_dir``,
          ordered by numeric id (matching the preprocessing naming).
     Optional filters ``sample_id`` (pick one id) and ``max_samples`` (cap count)
     are applied afterwards. Each entry is ``(sample_id:int, absolute_path)``.
     """
-    single_path = config.get("incident_sample_path", None)
+    single_path = config.get("incident_record_path", config.get("incident_sample_path"))
     if single_path:
         single_path = resolve_path_from_base(single_path, base_dir)
         if not os.path.exists(single_path):
-            raise RuntimeError(f"[MAIN][ERROR] incident_sample_path does not exist: {single_path}")
+            raise RuntimeError(f"[MAIN][ERROR] incident_record_path does not exist: {single_path}")
         stem = os.path.splitext(os.path.basename(single_path))[0]
         sample_id = int(stem) if stem.isdigit() else 0
-        logger.info(f"[MAIN] Using single explicit Incident sample: {single_path} (id={sample_id})")
+        logger.info(f"[MAIN] Using single explicit Online Diagnosis Incident record: {single_path} (id={sample_id})")
         return [(sample_id, single_path)]
 
     samples_dir = resolve_path_from_base(
-        config.get("incident_samples_dir", "external_inputs/incident"),
+        config.get("incident_records_dir", config.get("incident_samples_dir", config.get(
+            "input_directory", os.path.join(base_dir, "Online_Diagnosis_Incident", "records")
+        ))),
         base_dir,
     )
     if not os.path.isdir(samples_dir):
-        raise RuntimeError(f"[MAIN][ERROR] incident_samples_dir does not exist: {samples_dir}")
+        raise RuntimeError(f"[MAIN][ERROR] incident_records_dir does not exist: {samples_dir}")
 
     entries = []
     for filename in os.listdir(samples_dir):
@@ -280,7 +284,7 @@ def build_incident_sample_list(config, base_dir, logger):
     if max_samples is not None:
         entries = entries[: int(max_samples)]
 
-    logger.info(f"[MAIN] Incident sample directory: {samples_dir} | Selected samples: {len(entries)}")
+    logger.info(f"[MAIN] Online Diagnosis Incident record directory: {samples_dir} | Selected records: {len(entries)}")
     return entries
 
 
@@ -549,7 +553,7 @@ def extract_success_criterion(anomaly_description_str):
     ``anomaly_description.json`` string.
 
     This is the manifestation category (performance degradation / blocking
-    timeout / execution error) the LLM chose from the Incident record; it selects
+    timeout / execution error) the LLM chose from the incident record; it selects
     which authoritative success signal ``anomaly_eval_rep.py`` uses. A missing or
     unrecognized value degrades to ``AUTO`` so a noisy classification never aborts
     the evaluation.
@@ -825,7 +829,7 @@ def dispatch_exploration_action(json_response, action_kind, docker_name, config_
 
 
 def llm_infer_reproduce(prompt, config_opt, logger):
-    """Unified multi-action ReAct loop for one Incident record.
+    """Unified multi-action ReAct loop for one Online Diagnosis Incident record.
 
     Each turn the LLM emits exactly one action:
       - ``sql`` / ``bash`` / ``python``: exploratory execution in the container.
@@ -975,7 +979,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='Online Diagnosis Incident Database Anomaly Reproduction Synthesis')
     parser.add_argument('--config', type=str, required=False,
-                        default=os.path.join(base_dir, "Configs/syn_ano_rep/config.json"),
+                        default=os.path.join(base_dir, "Configs/syn_ano_rep/example.json"),
                         help='Path to the configuration JSON file')
     args = parser.parse_args()
     config_path = resolve_path_from_base(args.config, base_dir)
@@ -998,7 +1002,9 @@ if __name__ == "__main__":
     llm_opt = config.get('llm_configuration', None)
     if llm_opt is None:
         llm_opt = {
+            "provider": llm_provider,
             "base_url": openai.base_url,
+            "api_version": openai.api_version,
             "api_key": openai.api_key,
             "model_name": model_name,
             "temperature": temperature,
@@ -1058,7 +1064,7 @@ if __name__ == "__main__":
     skills_dir = resolve_path_from_base(config.get('skills_directory', "Skills"), base_dir)
     SKILLS = load_reproduction_skills(skills_dir, logger)
 
-    # Build the ordered Incident sample list.
+    # Build the ordered incident record list.
     incident_samples = build_incident_sample_list(config, base_dir, logger)
 
     # Reap orphan containers/sessions from a previously crashed run of this worker.
@@ -1072,16 +1078,16 @@ if __name__ == "__main__":
     PROMPT_DB_SCHEMA_NAME = MYSQL_SCHEMA_PROMPT_VALUE if DBMS_KIND == "mysql" else DB_SCHEMA_NAME
 
     inference_times = []
-    for sample_id, sample_path in tqdm(incident_samples, total=len(incident_samples), desc="Incident Anomaly Reproduction"):
+    for sample_id, sample_path in tqdm(incident_samples, total=len(incident_samples), desc="Online Diagnosis Incident Anomaly Reproduction"):
         try:
-            incident_row = read_incident_sample_csv(sample_path)
-            INCIDENT_TICKET_INFO = format_incident_ticket_info(incident_row)
-            logger.info(f"[MAIN] Processing Incident Sample {sample_id} : {str(incident_row.get('name', ''))[:120]}")
+            incident_row = read_incident_record_csv(sample_path)
+            INCIDENT_RECORD_INFO = format_incident_record_info(incident_row)
+            logger.info(f"[MAIN] Processing Online Diagnosis Incident Record {sample_id} : {str(incident_row.get('name', ''))[:120]}")
 
             output_dir = os.path.join(output_base_dir, f"{sample_id}_{DB_NAME}")
             os.makedirs(output_dir, exist_ok=True)
             # Preserve provenance: store the raw record row alongside the sample.
-            with open(os.path.join(output_dir, "incident_source.json"), "w", encoding="utf-8") as fh:
+            with open(os.path.join(output_dir, "online_diagnosis_incident_source.json"), "w", encoding="utf-8") as fh:
                 json.dump({"sample_id": sample_id, "sample_path": sample_path, "record": incident_row}, fh, indent=4, ensure_ascii=False)
 
             # Docker container initialization (fresh unique name per sample).
@@ -1186,7 +1192,7 @@ if __name__ == "__main__":
                 DB_SCHEMA_NAME=PROMPT_DB_SCHEMA_NAME,
                 DB_SCHEMA=DB_SCHEMA,
                 DB_ROWS=DB_ROWS,
-                INCIDENT_TICKET_INFO=INCIDENT_TICKET_INFO,
+                INCIDENT_RECORD_INFO=INCIDENT_RECORD_INFO,
                 SKILLS=SKILLS,
             )
 
@@ -1242,7 +1248,7 @@ if __name__ == "__main__":
             inference_times.append(endtime - start_time)
 
             if not finish_synthesized:
-                logger.error(f"[MAIN][== SYNTHESIS FAILED ==] Incident sample {sample_id} did not yield a validated reproduction.")
+                logger.error(f"[MAIN][== SYNTHESIS FAILED ==] Online Diagnosis Incident record {sample_id} did not yield a validated reproduction.")
 
             # Delete the sample's container and tmux session.
             initialization_times = 0
@@ -1256,8 +1262,8 @@ if __name__ == "__main__":
             kill_tmux_session(DOCKER_NAME)
 
         except Exception as exc:
-            # Never let a single noisy Incident record abort the whole batch.
-            logger.error(f"[MAIN][ERROR][== SYNTHESIS FAILED ==] Incident sample {sample_id} raised an error: {exc}")
+            # Never let a single noisy incident record abort the whole batch.
+            logger.error(f"[MAIN][ERROR][== SYNTHESIS FAILED ==] Online Diagnosis Incident record {sample_id} raised an error: {exc}")
             try:
                 docker_container_del(DOCKER_NAME)
                 kill_tmux_session(DOCKER_NAME)

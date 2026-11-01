@@ -1,7 +1,12 @@
 import os
 
+# DiagDBench keeps mutable native state private to one invocation.
+_RUN_DIR = os.getenv("DB_GPT_RUN_DIR", "")
+
 # 诊断结果文件夹
-DIAGNOSTIC_RESULTS_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "alert_results")
+DIAGNOSTIC_RESULTS_PATH = os.path.join(
+    _RUN_DIR or os.path.dirname(os.path.dirname(__file__)), "alert_results"
+)
 
 # 诊断所用的模型列表
 DIAGNOSE_LLM_MODEL_LIST = ["GPT4-0613", "Llama2-13b", "CodeLlama2-13b", "BaiChuan-13b", "Qwen1.5-14B-Chat"]
@@ -14,15 +19,15 @@ if not os.path.exists(DIAGNOSTIC_FILES_PATH):
 DIAGNOSTIC_CONFIG_FILE = "config.yaml"
 
 # 诊断运行日志文件
-DIAGNOSE_RUN_LOG_PATH = "./diagnose_run_log.txt"
+DIAGNOSE_RUN_LOG_PATH = os.path.join(_RUN_DIR or ".", "diagnose_run_log.txt")
 # 诊断运行pid文件
-DIAGNOSE_RUN_PID_PATH = "./diagnose_run_pid.txt"
+DIAGNOSE_RUN_PID_PATH = os.path.join(_RUN_DIR or ".", "diagnose_run_pid.txt")
 # 诊断用户输入文件
-DIAGNOSE_USER_FEEDBACK_PATH = "./diagnose_user_feedback.txt"
+DIAGNOSE_USER_FEEDBACK_PATH = os.path.join(_RUN_DIR or ".", "diagnose_user_feedback.txt")
 # 诊断输出信息
-DIAGNOSE_RUN_DATA_PATH = "./diagnose_run_data.jsonl"
+DIAGNOSE_RUN_DATA_PATH = os.path.join(_RUN_DIR or ".", "diagnose_run_data.jsonl")
 # 诊断输出原始信息
-DIAGNOSE_RUN_DATA_COPY_PATH = "./diagnose_run_data_copy.jsonl"
+DIAGNOSE_RUN_DATA_COPY_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "diagnose_run_data_copy.jsonl")
 
 # 用户反馈是使用交互文件还是终端
 IS_FEEDBACK_BY_UI = True

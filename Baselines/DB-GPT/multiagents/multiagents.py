@@ -24,7 +24,11 @@ class MultiAgents:
 
     @classmethod
     def from_task(cls, task, args):
-        
+        # Standalone utilities can import the package without diagnostic setup;
+        # constructing an agent still loads the original parser/rule registries.
+        from multiagents import _load_exports
+        _load_exports()
+
         # Prepare the config of the task
         task_config = prepare_task_config(task, args)
         agent_templates = task_config["agents"]

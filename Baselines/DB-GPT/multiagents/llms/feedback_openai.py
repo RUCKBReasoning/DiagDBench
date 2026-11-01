@@ -150,7 +150,13 @@ class FeedbackOpenAIChat(OpenAIChat):
         print(f'Generated assertions: {assertions}', flush=True)
         assertions_str = assertions[0]
 
-        exec(assertions_str, globals())
+        # Generated assertion exports are per request, never shared globals.
+        assertion_namespace = dict(globals())
+        assertion_namespace.pop("ALL_FUNCTIONS", None)
+        exec(assertions_str, assertion_namespace)
+        assertion_functions = assertion_namespace.get("ALL_FUNCTIONS")
+        if not isinstance(assertion_functions, (list, tuple)) or not all(callable(fn) for fn in assertion_functions):
+            raise ValueError("Generated assertions must export a callable ALL_FUNCTIONS sequence")
         assertions_code = parse_assertions(assertions_str)
 
         iter = 0
@@ -158,7 +164,7 @@ class FeedbackOpenAIChat(OpenAIChat):
         while iter < FEEDBACK_ITERATIONS:
             tasks = []
             rows = []
-            for func in ALL_FUNCTIONS:
+            for func in assertion_functions:
                 tasks.append(func(instruction_feedback, reply))
                 rows.append({"function_code": assertions_code[func.__name__], "function_name": func.__name__})
 
@@ -351,7 +357,7 @@ class FeedbackOpenAIChat(OpenAIChat):
 
             # Add experience from the current feedback to the feedback store.
             flag = 0
-            new_doc = Document(page_content=vars, metadata={'rules': '\n'.join(rules), 'task': task, 'source': task + '|' + vars.replace('|', '\|'), 'messages': str(self.conversation_history), 'response': res['content'], 'refined_response': refined_reply, 'feedback': self.feedbacks[-1]['feedback'], 'auto': self.feedbacks[-1]['auto']})
+            new_doc = Document(page_content=vars, metadata={'rules': '\n'.join(rules), 'task': task, 'source': task + '|' + vars.replace('|', '\\|'), 'messages': str(self.conversation_history), 'response': res['content'], 'refined_response': refined_reply, 'feedback': self.feedbacks[-1]['feedback'], 'auto': self.feedbacks[-1]['auto']})
             if len(relevant_docs) > 0:
                 for doc in relevant_docs:
                     flag += self.remove_conflict_identical(new_doc, doc)

@@ -7,6 +7,7 @@ from pathlib import Path, PurePosixPath
 import stat
 import uuid
 
+CONTROL_DIRECTORY = "agent_control"
 MAX_FILE_BYTES = 2 * 1024 * 1024
 MAX_WORKSPACE_BYTES = 32 * 1024 * 1024
 MAX_FILES = 256

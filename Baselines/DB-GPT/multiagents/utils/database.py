@@ -35,15 +35,6 @@ AGGREGATE_CONSTRAINTS = {
     DataType.VALUE.TIME: ['count', 'max', 'min']
 }
 
-def check_index_exist(cursor, index_name):
-        try:
-            cursor.execute(f"SELECT indexname FROM pg_indexes WHERE indexname = '{index_name}';")
-            result = cursor.fetchone()
-            return result is not None
-        except psycopg2.Error as e:
-            print(f"Error checking index: {e}")
-            return False
-
 def transfer_field_type(column_type, server):
     data_type = list()
     if server == 'mysql':
@@ -65,7 +56,7 @@ def transfer_field_type(column_type, server):
 class DBArgs(object):
 
     def __init__(self, dbtype, config, dbname=None,application_name=None):
-        self.dbtype = dbtype
+        self.dbtype = "postgresql" if dbtype in {"pgsql", "pg", "postgres"} else dbtype
         if self.dbtype == 'mysql':
             self.host = config['host']
             self.port = config['port']

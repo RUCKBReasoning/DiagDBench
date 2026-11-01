@@ -5,7 +5,7 @@ import sys
 import os
 import time
 
-sys.path.insert(0, 'Baselines/DB-GPT')
+sys.path.insert(0, '/home/wuy/DB-GPT')
 from configs import POSTGRESQL_CONFIG
 from multiagents.tools.metrics import advisor
 import ast

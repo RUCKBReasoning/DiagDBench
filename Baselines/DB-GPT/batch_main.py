@@ -1,4 +1,4 @@
-from our_argparse import args
+from multiagents.our_argparse import args
 import json
 import multiprocessing as mp
 from math import floor
@@ -9,9 +9,11 @@ import asyncio
 from pathlib import Path
 
 from multiagents.multiagents import MultiAgents
-from multiagents.tools.metrics import database_server_conf, db
-from multiagents.tools.metrics import get_workload_statistics, get_slow_queries, WORKLOAD_FILE_NAME, BATCH_ANOMALY_FILE_NAME
-from utils.server import obtain_slow_queries
+from configs import POSTGRESQL_CONFIG
+from multiagents.utils.database import DBArgs, Database
+
+WORKLOAD_FILE_NAME = "workload_info.json"
+BATCH_ANOMALY_FILE_NAME = args.anomaly_file
 
 
 async def main(process_id):
@@ -43,7 +45,11 @@ async def main(process_id):
                 # slow_queries = obtain_slow_queries(database_server_conf)
                 # slow_queries = content["slow_queries"] # list type
             if new_args.enable_workload_statistics_view == True:
-                workload_statistics = db.obtain_historical_queries_statistics(topn = 50)
+                db = Database(DBArgs("postgresql", config=POSTGRESQL_CONFIG), timeout=-1)
+                try:
+                    workload_statistics = db.obtain_historical_queries_statistics(topn = 50)
+                finally:
+                    db.conn.close()
             # if new_args.enable_workload_sqls == True:
                 # workload_sqls = content["workload"]
 
@@ -65,7 +71,7 @@ async def main(process_id):
             # =======================================================================================
             # =======================================================================================
 
-            multi_agents = MultiAgents.from_task(new_args.agent_conf_name, new_args)
+            multi_agents, _model_type = MultiAgents.from_task(new_args.agent_conf_name, new_args)
             report, records = await multi_agents.run(new_args)
 
             # ================== vanilla model ==================

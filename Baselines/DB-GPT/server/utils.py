@@ -170,17 +170,6 @@ def torch_gc():
         ...
 
 
-def run_async(cor):
-    '''
-    在同步环境中运行异步代码.
-    '''
-    try:
-        loop = asyncio.get_event_loop()
-    except:
-        loop = asyncio.new_event_loop()
-    return loop.run_until_complete(cor)
-
-
 def iter_over_async(ait, loop=None):
     '''
     将异步生成器封装成同步生成器.
@@ -401,18 +390,6 @@ def fschat_model_worker_address(model_name: str = LLM_MODELS[0]) -> str:
         return f"http://{host}:{port}"
     return ""
 
-
-def replace_ip(filepath, new_ip):
-    with open(filepath, 'r') as file:
-        content = file.read()
-
-    # 正则表达式匹配 http:// followed by any number (1 or more) of any character that's not a /
-    old_ip = re.findall(r'http://[^/]+/', content)[0]
-
-    content = content.replace(old_ip, f'http://{new_ip}/')
-
-    with open(filepath, 'w') as file:
-        file.write(content)
 
 def fschat_openai_api_address() -> str:
     from configs.server_config import FSCHAT_OPENAI_API

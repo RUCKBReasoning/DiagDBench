@@ -32,6 +32,31 @@ DB_CONNECT_TIMEOUT = 30
 MYSQL_SCHEMA_PROMPT_VALUE = "[MySQL does not involve this definition]"
 
 
+def split_executable_sql(text, dbms_kind=None):
+    """Skip standalone comments without altering real SQL or MySQL version comments."""
+    if sqlparse is None:
+        raise RuntimeError("The sqlparse package is required to split executable SQL; install project requirements.")
+    T = sqlparse.tokens
+    result = []
+    for statement in sqlparse.split(text):
+        executable = False
+        for token in sqlparse.parse(statement)[0].flatten():
+            if token.is_whitespace or token.ttype in T.Whitespace:
+                continue
+            if token.ttype in T.Comment:
+                # MySQL/MariaDB version comments contain executable SQL.
+                # Do not strip them, nor optimizer hints attached to real SQL.
+                if dbms_kind == "mysql" and re.match(r"/\*(?:!|M!)", token.value):
+                    executable = True
+                continue
+            if token.ttype in T.Punctuation and token.value == ";":
+                continue
+            executable = True
+        if executable:
+            result.append(statement)
+    return result
+
+
 def normalize_dbms(dbms=None):
     dbms_name = str(dbms or "").strip().lower()
     if "mysql" in dbms_name:
@@ -296,183 +321,6 @@ def execute_sql(sql_text, db_config, params=None):
     return pg_execute_sql(sql_text, db_config, params)
 
 
-def check_database_non_empty(db_config, dbms=None):
-    dbms_kind = normalize_dbms(dbms or db_config.get("dbms"))
-    if dbms_kind == "mysql":
-        return mysql_check_database_non_empty(db_config)
-    return pg_check_database_non_empty(db_config)
-
-
-def pg_check_database_non_empty(db_config):
-    if psycopg2 is None:
-        raise ImportError("psycopg2 is required for PostgreSQL database checks.")
-    try:
-        conn = psycopg2.connect(
-            host=db_config['host'],
-            port=db_config['port'],
-            user=db_config['user'],
-            password=db_config['password'],
-            dbname='postgres',
-            connect_timeout=DB_CONNECT_TIMEOUT
-        )
-        conn.autocommit = True
-        cur = conn.cursor()
-
-        cur.execute(
-            "SELECT 1 FROM pg_database WHERE datname = %s;",
-            (db_config['db_name'],)
-        )
-        exists = cur.fetchone() is not None
-
-        close_cursor_safely(cur, conn, logger)
-        conn.close()
-
-        if not exists:
-            return False, False, f"Database '{db_config['db_name']}' does not exist."
-
-    except Exception as e:
-        return False, False, f"Failed to check database existence: {e}"
-
-    try:
-        conn = psycopg2.connect(
-            host=db_config['host'],
-            port=db_config['port'],
-            user=db_config['user'],
-            password=db_config['password'],
-            dbname=db_config['db_name'],
-            connect_timeout=DB_CONNECT_TIMEOUT
-        )
-        conn.autocommit = True
-        cur = conn.cursor()
-
-        schema = db_config['schema']
-        
-        cur.execute(
-            """
-            SELECT table_name
-            FROM information_schema.tables
-            WHERE table_schema = %s
-              AND table_type = 'BASE TABLE';
-            """,
-            (schema,)
-        )
-        tables = cur.fetchall()
-
-        if not tables:
-            close_cursor_safely(cur, conn, logger)
-            conn.close()
-            return True, False, f"Database exists but schema '{schema}' has no tables."
-
-        non_empty = False
-
-        for (table_name,) in tables:
-            query = pg_sql.SQL("SELECT EXISTS (SELECT 1 FROM {}.{} LIMIT 1);").format(
-                pg_sql.Identifier(schema),
-                pg_sql.Identifier(table_name)
-            )
-            cur.execute(query)
-            if cur.fetchone()[0]:
-                non_empty = True
-                break
-
-        close_cursor_safely(cur, conn, logger)
-        conn.close()
-
-        if non_empty:
-            return True, True, "Database exists and is non-empty."
-        else:
-            return True, False, "Database exists but all tables are empty."
-
-    except Exception as e:
-        return True, False, f"Failed to check table data: {e}"
-
-
-def mysql_check_database_non_empty(db_config):
-    if mysql_connector is None:
-        raise ImportError("mysql-connector-python is required for MySQL database checks.")
-
-    try:
-        conn = mysql_connector.connect(
-            host=db_config['host'],
-            port=int(db_config['port']),
-            user=db_config['user'],
-            password=db_config['password'],
-            connection_timeout=DB_CONNECT_TIMEOUT,
-            use_pure=True
-        )
-        cur = conn.cursor()
-
-        cur.execute(
-            "SELECT 1 FROM information_schema.schemata WHERE schema_name = %s;",
-            (db_config['db_name'],)
-        )
-        exists = cur.fetchone() is not None
-
-        close_cursor_safely(cur, conn, logger)
-        conn.close()
-
-        if not exists:
-            return False, False, f"Database '{db_config['db_name']}' does not exist."
-
-    except Exception as e:
-        return False, False, f"Failed to check database existence: {e}"
-
-    try:
-        conn = mysql_connector.connect(
-            host=db_config['host'],
-            port=int(db_config['port']),
-            user=db_config['user'],
-            password=db_config['password'],
-            database=db_config['db_name'],
-            connection_timeout=DB_CONNECT_TIMEOUT,
-            use_pure=True
-        )
-        cur = conn.cursor()
-
-        schema = effective_schema_name(db_config, "mysql")
-        cur.execute(
-            """
-            SELECT table_name
-            FROM information_schema.tables
-            WHERE table_schema = %s
-              AND table_type = 'BASE TABLE';
-            """,
-            (schema,)
-        )
-        tables = cur.fetchall()
-
-        if not tables:
-            close_cursor_safely(cur, conn, logger)
-            conn.close()
-            return True, False, f"Database exists but schema '{schema}' has no tables."
-
-        non_empty = False
-        for (table_name,) in tables:
-            cur.execute(f"SELECT EXISTS (SELECT 1 FROM `{table_name}` LIMIT 1);")
-            if cur.fetchone()[0]:
-                non_empty = True
-                break
-
-        close_cursor_safely(cur, conn, logger)
-        conn.close()
-
-        if non_empty:
-            return True, True, "Database exists and is non-empty."
-        else:
-            return True, False, "Database exists but all tables are empty."
-
-    except Exception as e:
-        return True, False, f"Failed to check table data: {e}"
-
-def get_latest_timestamp_strict(timestamp_list):
-    if not timestamp_list:
-        return None
-
-    def parse(ts):
-        return datetime.strptime(ts, "%Y%m%d_%H%M%S")
-
-    return max(timestamp_list, key=parse)
-
 def format_observation_for_llm(data, indent=0):
     lines = []
     prefix = "  " * indent
@@ -600,7 +448,6 @@ def resolve_path_from_base(path_value, base_dir):
 # anomaly may declare its footprint via `ResetScope` in anomaly_description.json;
 # the harness picks the cheapest scope that still guarantees an identical
 # pre-injection baseline.
-RESET_SCOPES = ("SESSION_ONLY", "SCHEMA", "DATA", "FULL")
 
 
 def derive_golden_db_name(db_name):
@@ -612,20 +459,6 @@ def derive_golden_db_name(db_name):
     database while remaining valid for both PostgreSQL and MySQL identifiers.
     """
     return f"{db_name}__golden_baseline"
-
-
-def parse_reset_scope(value, default="SCHEMA"):
-    """Normalize an anomaly-declared reset scope to one of ``RESET_SCOPES``.
-
-    Unknown / missing values fall back to ``default`` (``SCHEMA``), which fully
-    rebuilds the working database from the golden clone -- always correct, and
-    still far cheaper than a full container rebuild + dump re-import. ``FULL``
-    forces the legacy full re-initialization path.
-    """
-    normalized = str(value or "").strip().upper().replace("-", "_").replace(" ", "_")
-    if normalized in RESET_SCOPES:
-        return normalized
-    return default
 
 
 def build_fast_reset_command(base_dir, dbms, mode, db_name, golden_name,

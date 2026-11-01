@@ -8,14 +8,13 @@ from utils import normalize_dbms, resolve_path_from_base
 # sample_id unique
 # sample directory : base_dir/{case_idx}_{database_name}/
 
-# python test_extract_key_info.py --config Configs/extract_key_info/config.json
 
 
 if __name__ == "__main__" :
     base_dir = os.path.dirname(os.path.abspath(__file__))
 
     parser = argparse.ArgumentParser(description='Database Diagnosis for Anomaly Injection Key Information Extraction.')
-    parser.add_argument('--config', type=str, required=False, default=os.path.join(base_dir, "Configs", "extract_key_info", "config.json"), help='Path to the configuration JSON file')
+    parser.add_argument('--config', type=str, required=False, default=os.path.join(base_dir, "Configs", "extract_key_info", "example.json"), help='Path to the configuration JSON file')
     args = parser.parse_args()
 
     config_path = resolve_path_from_base(args.config, base_dir)

@@ -74,7 +74,7 @@ KB_INFO = {
 # 原始知识文件存储路径
 ORIGINAL_KNOWLEDGE_FILES_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "doc2knowledge/uploaded")
 if not os.path.exists(ORIGINAL_KNOWLEDGE_FILES_PATH):
-    os.mkdir(ORIGINAL_KNOWLEDGE_FILES_PATH)
+    os.makedirs(ORIGINAL_KNOWLEDGE_FILES_PATH, exist_ok=True)
 
 
 # 知识库默认存储路径
@@ -97,7 +97,7 @@ kbs_config = {
         "port": "9200",
         "index_name": "test_index",
         "user": "elastic",
-        "password": ""
+        "password": "xxxxxxxxxxxxxx"
     }
 }
 

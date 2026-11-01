@@ -52,6 +52,13 @@ def restricted_transport(llm: dict, output: Path, allowed: set[str], max_calls: 
                 raise ValueError("Shared Codex model budget exhausted.")
             usage["requests"] += 1
         response = original_completion(client, request, settings, audit=audit)
+        offered = {tool["function"]["name"] for tool in request.get("tools", [])}
+        for choice in response.choices:
+            for call in choice.message.tool_calls or []:
+                if call.function.name not in offered:
+                    # A fabricated tool name must never get forwarded to the
+                    # CLI, even when the upstream gateway ignores its schema.
+                    raise ValueError("Model returned a tool outside the offered MCP capabilities.")
         with lock:
             for key in ("prompt_tokens", "completion_tokens", "total_tokens"):
                 usage[key] += getattr(response.usage, key, 0) or 0

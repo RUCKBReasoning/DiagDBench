@@ -1,3 +1,7 @@
+import collections
+import functools
+import threading
+from utils import split_executable_sql
 import os
 import subprocess
 import shlex
@@ -13,6 +17,83 @@ import statistics
 
 from utils import *
 
+# Optional process-local admission control for foreground database I/O.
+# DB_DIAG_IO_MAX_CONCURRENCY=0 disables it. Queueing precedes each phase
+# timeout; nested calls share the same admission without deadlocking.
+_LOG = logging.getLogger('DB_DIAG.docker_func.io_admission')
+
+
+class IOAdmission:
+    def __init__(self, limit):
+        if isinstance(limit, bool) or not isinstance(limit, int) or limit < 0:
+            raise ValueError('I/O concurrency must be a nonnegative integer')
+        self.limit = limit
+        self._condition = threading.Condition()
+        self._local = threading.local()
+        self._queue = collections.deque()
+        self._active = 0
+        self._sequence = 0
+        self._peak = 0
+
+    def wrap(self, function):
+        @functools.wraps(function)
+        def admitted(*args, **kwargs):
+            if self.limit == 0 or getattr(self._local, 'depth', 0):
+                return function(*args, **kwargs)
+            started = time.monotonic()
+            with self._condition:
+                self._sequence += 1
+                ticket = self._sequence
+                self._queue.append(ticket)
+                if self._active >= self.limit or self._queue[0] != ticket:
+                    _LOG.info('[RESOURCE][IO] waiting ticket=%s phase=%s active=%s limit=%s',
+                              ticket, function.__name__, self._active, self.limit)
+                try:
+                    while self._queue[0] != ticket or self._active >= self.limit:
+                        self._condition.wait()
+                except BaseException:
+                    self._queue.remove(ticket)
+                    self._condition.notify_all()
+                    raise
+                self._queue.popleft()
+                self._active += 1
+                self._peak = max(self._peak, self._active)
+                self._local.depth = 1
+                active = self._active
+                self._condition.notify_all()
+            _LOG.info('[RESOURCE][IO] acquired ticket=%s phase=%s wait_seconds=%.3f active=%s limit=%s',
+                      ticket, function.__name__, time.monotonic() - started, active, self.limit)
+            try:
+                return function(*args, **kwargs)
+            finally:
+                with self._condition:
+                    self._local.depth = 0
+                    self._active -= 1
+                    active = self._active
+                    self._condition.notify_all()
+                _LOG.info('[RESOURCE][IO] released ticket=%s phase=%s active=%s limit=%s',
+                          ticket, function.__name__, active, self.limit)
+        return admitted
+
+
+def configured_limit():
+    raw = os.environ.get('DB_DIAG_IO_MAX_CONCURRENCY', '0')
+    try:
+        result = int(raw)
+    except (TypeError, ValueError) as exc:
+        raise ValueError('DB_DIAG_IO_MAX_CONCURRENCY must be a nonnegative integer') from exc
+    if result < 0:
+        raise ValueError('DB_DIAG_IO_MAX_CONCURRENCY must be a nonnegative integer')
+    return result
+
+
+ADMISSION = IOAdmission(configured_limit())
+io_heavy_phase = ADMISSION.wrap
+
+# Retain the existing local decorator name for database initialization.
+_dbdiag_io_heavy_phase = io_heavy_phase
+
+
 try:
     from psycopg2 import errors
 except ImportError:  # pragma: no cover - optional dependency at orchestration time
@@ -24,12 +105,12 @@ except ImportError:  # pragma: no cover - optional dependency at orchestration t
 
 logger = logging.getLogger(f"DB_DIAG.{__name__}")
 
-# Use the canonical on-disk path, not a symlinked alias. Docker bind-mounts
-# against the canonical host path, and inside the container the mounted
-# destination is that canonical path as well. If later commands are constructed
-# with a symlink alias instead, `docker exec` inside the container cannot find
-# the mounted files and database initialization fails with
-# ``No such file or directory``.
+# Use the canonical on-disk path, not a symlinked alias such as
+# ``/home/... -> /data00/home/...``. Docker bind-mounts against the canonical
+# host path, and inside the container the mounted destination is that canonical
+# path as well. If later commands are constructed with the symlink alias
+# (``/home/...``), `docker exec` inside the container cannot find the mounted
+# files and database initialization fails with ``No such file or directory``.
 BASE_DIR = os.path.dirname(os.path.realpath(__file__))
 # Keep the default project-local temporary directory, while allowing a host
 # with a separate Docker disk to place container-visible staging files there.
@@ -241,13 +322,6 @@ def wait_for_log_file_signal(path, timeout, ready_pattern=None):
                 return "ready"
         time.sleep(0.1)
     return "timeout"
-
-def is_timeout_by_message(log_text):
-    return (
-        "Command terminated by signal" in log_text
-        or "\nTerminated\n" in log_text
-        or log_text.rstrip().endswith("Terminated")
-    )
 
 EXIT_CODE_SUFFIX = ".exit"
 
@@ -651,15 +725,6 @@ def is_container_running(container_name):
     # the historical boolean contract for callers that only gate a start on it.
     return presence is True
 
-def is_container_exists(container_name):
-    presence = _probe_container_presence(container_name, all_containers=True)
-    # Preserve the historical boolean contract: callers that merely decide
-    # whether a pre-clean is needed can keep treating a failed probe as "assume
-    # present" is risky, so we only return True when confirmed present. Removal
-    # confirmation uses ``is_container_confirmed_absent`` below, which treats an
-    # indeterminate probe as "NOT confirmed absent" and therefore keeps waiting.
-    return presence is True
-
 def is_container_confirmed_absent(container_name):
     """Return True only when ``docker ps`` positively confirms the name is gone.
 
@@ -789,7 +854,12 @@ def docker_container_init(container_name, container_config) :
     for command_index, docker_command in enumerate(docker_commands):
         command_stage = "container creation" if command_index == 0 else "DBMS bootstrap"
         cmd_list = shlex.split(docker_command)
+        if command_index == 1:
+            from Baselines.container_boundary import prepare_bootstrap
+            prepare_bootstrap(container_name, cmd_list)
         if _is_docker_run_command(cmd_list):
+            from Baselines.container_boundary import isolated_docker_command
+            cmd_list = isolated_docker_command(cmd_list, container_config)
             # Requirement (1): before ``docker run``, make sure the target name is
             # genuinely free. First force-remove any leftover holding this exact
             # name, then poll until the name is CONFIRMED absent. If it is still in
@@ -936,7 +1006,14 @@ def database_init_log_errors(status_log, dbms):
     ]
 
 
+@_dbdiag_io_heavy_phase
 def docker_container_init_db(container_name, init_db_config, session_name="docker_test"):
+    # Import-only scheduling budget; workload and score deadlines are unchanged.
+    floor = int(os.environ.get("DB_DIAG_DATABASE_INIT_TIMEOUT_SECONDS", "0"))
+    if floor < 0:
+        raise ValueError("DB_DIAG_DATABASE_INIT_TIMEOUT_SECONDS must be nonnegative")
+    if floor:
+        init_db_config = dict(init_db_config, timeout=max(init_db_config['timeout'], floor))
     base_dir = os.path.realpath(init_db_config['base_dir'])
     dbms_kind = normalize_dbms(init_db_config.get("dbms"))
     if dbms_kind == "mysql":
@@ -965,7 +1042,21 @@ def docker_container_init_db(container_name, init_db_config, session_name="docke
     # print(init_db_str)
 
     init_db_cmd = init_db_str.split()
+    if dbms_kind == "mysql":
+        # docker exec does not inherit the host's environment. Forward only the
+        # explicit import-session options; SQL/evaluation sessions keep defaults.
+        import_env = []
+        for key in ("DB_DIAG_MYSQL_IMPORT_DDL_BUFFER_BYTES", "DB_DIAG_MYSQL_IMPORT_READ_THREADS"):
+            value = os.environ.get(key)
+            if value is not None:
+                if not value.isascii() or not value.isdigit() or len(value) > 10:
+                    raise ValueError(f"{key} must be a nonnegative integer")
+                import_env.append(f"{key}={value}")
+        if import_env:
+            init_db_cmd = ["env", *import_env, *init_db_cmd]
     status_log = os.path.join(init_db_config['output_dir'], "init_db_log.txt")
+    from Baselines.container_boundary import prepare_bootstrap
+    prepare_bootstrap(container_name, init_db_cmd)
     docker_status = run_docker_exec_status(container_name, init_db_cmd, status_log, timeout = init_db_config['timeout'] + 120, session_name = session_name)
     init_errors = database_init_log_errors(status_log, dbms_kind)
     if docker_status and init_errors:
@@ -976,6 +1067,9 @@ def docker_container_init_db(container_name, init_db_config, session_name="docke
         )
         docker_status = False
     logger.info(f"[DOCKER FUNC] Database Initialization Status: {'Success' if docker_status else 'Failure'}")
+    if docker_status:
+        from Baselines.container_boundary import prepare_database_socket_access
+        prepare_database_socket_access(container_name)
     
     return docker_status
 
@@ -1108,7 +1202,8 @@ def run_docker_exec_observation(container_name, command, obser_log, timeout=60,
     # in-container command is detected even though `tee`/send-keys return 0. The
     # exit code goes to a separate file, leaving obser_log content intact for the
     # callers that read it back.
-    inner_command_str = f'docker exec -i {container_name} bash -c {shlex.quote(command_str)}'
+    from Baselines.container_boundary import observation_argv
+    inner_command_str = shlex.join(observation_argv(container_name, command))
     docker_cmd, exit_code_path = build_exit_code_capture(inner_command_str, obser_log)
     reset_captured_log(obser_log)
 
@@ -1253,78 +1348,6 @@ def run_docker_exec_status(container_name, command, status_log, timeout=1200, ba
         # Any other unforeseen error must be treated as a failure, never success.
         logger.error(f"[DOCKER FUNC][ERROR] Unexpected error in Script Execution [{str(e)}]")
         return False
-
-def run_docker_exec(container_name, command, exec_log, timeout=60, session_name="docker_test", window_name="execution"):
-    if tmux_window_running(session_name, window_name) or not tmux_has_session(session_name) or not tmux_has_window(session_name, window_name):
-        reset_tmux_window(session_name, window_name)
-
-    # Wrap the in-container command so its real exit code (${PIPESTATUS[0]}) is
-    # captured to a sentinel file, instead of relying on the send-keys status.
-    inner_command_str = " ".join(["docker", "exec", container_name]).strip() + " " + " ".join(command).strip()
-    docker_command, exit_code_path = build_exit_code_capture(inner_command_str, exec_log)
-    reset_captured_log(exec_log)
-    stdout = ""
-    stderr = ""
-
-    def to_text(data):
-        if data is None:
-            return ""
-        if isinstance(data, bytes):
-            return data.decode("utf-8", errors="replace")
-        return data 
-
-    try:
-        # Run the Docker command with a timeout and capture both stdout and stderr
-        # result = subprocess.run(docker_command, capture_output=True, text=True, check=True, timeout=timeout)
-        commands = ["tmux", "send-keys", "-t", f"{session_name}:{window_name}", docker_command, "C-m"]
-        result = subprocess.run(commands, capture_output=True, text=True, check=False, timeout=timeout)
-
-        exec_state = wait_for_log_file_done(exec_log, timeout + 60)
-
-        output = ""
-        if exec_state is False :
-            logger.warning(f"[DOCKER FUNC][ERROR] Observation log file did not complete within the expected time frame of {timeout + 60} seconds.")
-            output += f"[DOCKER FUNC][ERROR] Command timed out after {str(timeout + 60)} seconds\n"
-
-        # Convert the output to text
-        stdout = to_text(result.stdout) + f"\n{output}"
-        stderr = to_text(result.stderr)
-
-        # Determine success from the in-container exit code: it must have
-        # completed and returned 0. A timeout (no __DONE__), a missing exit code
-        # or a non-zero code all indicate failure and must NOT return success.
-        if exec_state is False :
-            return False, stdout, stderr
-        exit_code = read_captured_exit_code(exit_code_path)
-        if exit_code is None :
-            logger.error(f"[DOCKER FUNC][ERROR] Could not determine exit code for command: {exec_log}")
-            return False, stdout, stderr
-        if exit_code != 0 :
-            logger.error(f"[DOCKER FUNC][ERROR] Command failed with exit code {exit_code}: {exec_log}")
-            stderr = stderr + f"\n[DOCKER FUNC][ERROR] Command failed with exit code {exit_code}\n"
-            return False, stdout, stderr
-
-        return True, stdout, stderr
-
-    except subprocess.TimeoutExpired as e:
-        # Handle timeout error
-        logger.error(f"[DOCKER FUNC][ERROR] Command timed out after {timeout} seconds.")
-
-        return False, "", f"[DOCKER FUNC][ERROR] Command timed out after {timeout} seconds."
-    
-    except subprocess.CalledProcessError as e:
-        # Handle errors in running the command (non-zero exit code)
-        stdout = to_text(e.stdout)
-        stderr = to_text(e.stderr)
-        logger.error(f"[DOCKER FUNC][ERROR] Running Docker Command: {e}")
-
-        return False, stdout, stderr
-    
-    except Exception as e:
-        # Handle any other unforeseen errors
-        logger.error(f"[DOCKER FUNC][ERROR] Unexpected Error: {e}")
-
-        return False, "", f"[DOCKER FUNC][ERROR] Unexpected Error: {e}"
 
 def _mysql_table_identifier(table_name):
     return f"`{str(table_name).replace('`', '``')}`"
@@ -1536,27 +1559,6 @@ def obtain_database_schema(db_config, schema_path, docker_container_name):
     
     return db_schema
 
-def clean_up_redundant_table(db_config, original_schema_path):
-    dbms_kind = normalize_dbms(db_config.get("dbms"))
-    query_db_config = db_config.copy()
-    query_db_config['port'] = query_db_config['host_port']
-    query_db_config['dbms'] = dbms_kind
-
-    current_table_names = get_table_names_from_db(query_db_config, dbms_kind)
-    
-    with open(original_schema_path, "r", encoding="utf-8") as f:
-        original_schema = json.load(f)
-    original_table_names = [table_info["table"] for table_info in original_schema["table_info"]]
-
-    redundant_tables = set(current_table_names) - set(original_table_names)
-    for table in redundant_tables:
-        if dbms_kind == "mysql":
-            drop_table_sql = f"DROP TABLE IF EXISTS {_mysql_table_identifier(table)};"
-            mysql_execute_sql(drop_table_sql, query_db_config)
-        else:
-            drop_table_sql = "DROP TABLE IF EXISTS {} CASCADE;".format(table)
-            pg_execute_sql(drop_table_sql, query_db_config)
-
 def _serialize_sql_execution_value(value):
     if value is None or isinstance(value, (str, int, float, bool)):
         return value
@@ -1640,7 +1642,7 @@ def execute_sql_file_with_timing(sql_file_path, db_config, exec_num=1):
     dbms_kind = normalize_dbms(db_config.get("dbms"))
     with open(sql_file_path, 'r') as file:
         sql_content = file.read()
-    sql_statements = sqlparse.split(sql_content)
+    sql_statements = split_executable_sql(sql_content, dbms_kind)
 
     results = []
 
@@ -1702,7 +1704,7 @@ def is_workload_timeout_error(exc):
 
 
 def execute_sql_file_in_session_with_timing(sql_file_path, db_config, exec_num=1,
-                                          *, timeout_seconds=None):
+                                          *, timeout_seconds=None, result_extractor=None):
     """Execute each full SQL-file run in one connection and capture statement latency.
 
     Unlike the legacy `execute_sql_file_with_timing`, this evaluator-oriented
@@ -1722,7 +1724,7 @@ def execute_sql_file_in_session_with_timing(sql_file_path, db_config, exec_num=1
     dbms_kind = normalize_dbms(db_config.get("dbms"))
     with open(sql_file_path, 'r', encoding="utf-8") as file:
         sql_content = file.read()
-    sql_statements = sqlparse.split(sql_content)
+    sql_statements = split_executable_sql(sql_content, dbms_kind)
 
     exec_num = max(1, int(exec_num))
     run_results = []
@@ -1742,10 +1744,15 @@ def execute_sql_file_in_session_with_timing(sql_file_path, db_config, exec_num=1
                 start_time = time.perf_counter()
                 try:
                     cursor.execute(sql)
-                    sql_execution_result = _extract_sql_execution_result(cursor)
+                    sql_execution_result = (
+                        result_extractor(cursor, sql) if result_extractor is not None
+                        else _extract_sql_execution_result(cursor)
+                    )
+                    elapsed = time.perf_counter() - start_time
+                    capture_overhead = sql_execution_result.pop("_capture_overhead_seconds", 0.0)
                     current_run.append({
                         "sql": sql,
-                        "execution_time": time.perf_counter() - start_time,
+                        "execution_time": max(0.0, elapsed - capture_overhead),
                         "success": True,
                         "error": None,
                         "result": sql_execution_result,
@@ -1816,7 +1823,7 @@ def check_workload_timeout(workload_sql, db_config, timeout_seconds=1200):
         cursor = conn.cursor()
         _prepare_workload_session(cursor, db_config, dbms_kind, timeout_seconds)
 
-        sql_list = sqlparse.split(workload_sql)
+        sql_list = split_executable_sql(workload_sql, dbms_kind)
         sql_list = [sql.strip() for sql in sql_list if sql.strip()]
 
         total_start = time.perf_counter()

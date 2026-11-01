@@ -3,7 +3,6 @@ import json
 import os
 import time
 import shutil
-import re
 from tqdm import tqdm
 import argparse
 import logging
@@ -13,11 +12,14 @@ from utils import *
 from llm_api import *
 from docker_func import *
 
-# python test_syn_ano.py --config ./Configs/syn_ano/example_config.json
+# python test_syn_ano.py --config ./Configs/syn_ano/example.json
 
+llm_provider = "azure"
 openai.api_key = os.environ.get("OPENAI_API_KEY", "")
-openai.base_url = os.environ.get("OPENAI_BASE_URL", "https://api.example.com/v1")
-model_name = os.environ.get("LLM_MODEL", "your-chat-model")
+openai.base_url = default_llm_base_url("Configs/syn_ano/example.json")
+openai.api_version = "2024-03-01-preview"
+model_name = "gpt-4o-2024-05-13"
+model_name = "o3-2025-04-16"
 temperature = 1
 
 GB_Configurations = ["Memory", "Memory + Swap", "Storage"]
@@ -33,21 +35,26 @@ def resolve_fast_reset_enabled(dbms_kind, config):
     return requested and bool(
         config.get("mysql_fast_reset_experimental_enabled", False)
     )
-# openai.base_url = "https://api.example.com/v1"
+
+
+# openai.base_url = "https://pro.aiskt.com/v1"
 
 # model_name = "gemini-3-pro-preview"
 # model_name = "gemini-3-pro"
 # temperature = 0.8
 
-olap_databases = ['tpch_1', 'tpch_10', 'tpcds_1', 'imdb']
-oltp_databases = ['benchbase']
+olap_databases = ['tpch_1', 'tpch_10', 'tpcds_1', 'imdb', 'sqlbrain_ap']
+oltp_databases = ['benchbase', 'sqlbrain_tp']
 
-TIMEOUTS = {'tpch_1' : 240, 'imdb' : 480, 'tpcds_1' : 360, 'tpch_10' : 420} 
-TIMEOUTS = {'tpch_1' : 1500, 'imdb' : 4500, 'tpcds_1' : 1800, 'tpch_10' : 11800}
+# TIMEOUTS = {'tpch_1' : 1500, 'imdb' : 4500, 'tpcds_1' : 1800, 'tpch_10' : 11800, 'sqlbrain_ap' : 36000, 'sqlbrain_tp' : 14400}
+TIMEOUTS = {'tpch_1' : 240, 'imdb' : 480, 'tpcds_1' : 360, 'tpch_10' : 420, 'sqlbrain_ap' : 1800, 'sqlbrain_tp' : 780} 
+TIMEOUTS = {'tpch_1' : 1500, 'imdb' : 4500, 'tpcds_1' : 1800, 'tpch_10' : 11800, 'sqlbrain_ap' : 36000, 'sqlbrain_tp' : 14400}
+# [暂未更新sqlbrain关于schema定义的问题]
 RETRY_TIMES = 10
 FAKE_DATABASE_IP = "8888.8888.8888.8888"
 
 database_schema_mapping = {
+    "sqlbrain_ap" : "bytebrain_data_source",
 }
 
 # Curated skill card(s) injected into the anomaly-synthesis prompt via the
@@ -496,14 +503,14 @@ if __name__ == "__main__":
     base_dir = os.path.dirname(os.path.abspath(__file__))
 
     parser = argparse.ArgumentParser(description='Database Diagnosis for Anomaly Injection Synthesis')
-    parser.add_argument('--config', type=str, required=False, default=os.path.join(base_dir, "Configs/syn_ano/config.json"), help='Path to the configuration JSON file')
+    parser.add_argument('--config', type=str, required=False, default=os.path.join(base_dir, "Configs/syn_ano/example.json"), help='Path to the configuration JSON file')
     args = parser.parse_args()
     config_path = resolve_path_from_base(args.config, base_dir)
     with open(config_path, 'r') as file:
         config = json.load(file)
 
     # database names
-    db_names = config.get("database_names", ['tpch_1', 'imdb', 'tpcds_1'])
+    db_names = config.get("database_names", ['tpch_1', 'imdb', 'tpcds_1']) # ['sqlbrain_ap', 'sqlbrain_tp']
     database_schema_dir = resolve_path_from_base(config.get('database_schema_directory', "Data/Schema"), base_dir) # _Database_Diagnosis/Data/Schema
 
     syn_int_base_directory = resolve_path_from_base(config.get('syn_int_directory', None), base_dir)
@@ -533,7 +540,9 @@ if __name__ == "__main__":
     llm_opt = config.get('llm_configuration', None)
     if llm_opt is None:
         llm_opt = {
+            "provider" : llm_provider,
             "base_url" : openai.base_url,
+            "api_version" : openai.api_version,
             "api_key" : openai.api_key,
             "model_name" : model_name,
             "temperature" : temperature,
@@ -585,7 +594,7 @@ if __name__ == "__main__":
         else:
             SYSTEM_USER_CONFIG_JSON = {
                 "DB_USER" : "diagnosis",
-                "DB_PASSWORD" : "",
+                "DB_PASSWORD" : "123456",
                 "DB_HOST" : "localhost",
                 "DB_PORT" : "5432",
                 "DB_NAME" : "",

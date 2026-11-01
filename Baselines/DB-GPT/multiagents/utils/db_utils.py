@@ -7,9 +7,6 @@ def remove_create_table(sql):
 def remove_create_index(sql):
     return re.sub(r'(create|CREATE)\s+(index|INDEX).+?\(.+?\)\s*;','',sql, flags=re.DOTALL)
 
-def remove_table(sql):
-    return re.sub(r'(table|TABLE).+?\(.+?\)\s*;','',sql, flags=re.DOTALL)
-
 def clean_sql(sql):
     tmp = []
     for token in sql.flatten():

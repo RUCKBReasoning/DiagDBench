@@ -1044,7 +1044,7 @@ Your reproduction must be:
 - validated locally before `finish`, with the declared symptom caused by the
   anomaly injection rather than an unrelated setup failure.
 
-# AUTHORITATIVE INCIDENT SKILLS
+# AUTHORITATIVE ONLINE DIAGNOSIS INCIDENT SKILLS
 
 Apply all four skills below in their given order. They are the single source of
 detailed rules for record interpretation, experiment construction, environment
@@ -1080,7 +1080,7 @@ interface below override examples in record text.
 {DB_ROWS}
 
 ## Online Diagnosis Incident Record
-{INCIDENT_TICKET_INFO}
+{INCIDENT_RECORD_INFO}
 
 # ROUND WORKFLOW
 

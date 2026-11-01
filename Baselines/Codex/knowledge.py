@@ -66,7 +66,7 @@ def https_get(url: str, *, search: bool = False) -> tuple[str, str]:
     connection = PublicHTTPS(p.hostname, timeout=15, context=ssl.create_default_context())
     try:
         connection.request("GET", p.path + (("?" + p.query) if p.query else ""),
-                           headers={"User-Agent": "Codex-Pro-Docs/1.0", "Accept": "text/html,text/plain",
+                           headers={"User-Agent": "Codex-Docs/1.0", "Accept": "text/html,text/plain",
                                     "Accept-Encoding": "identity"})
         response = connection.getresponse()
         if response.status != 200:

@@ -1,9 +1,13 @@
 import os
 import json
 import sys
-from pathlib import Path
 import random
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from pathlib import Path
+
+PROJECT_DIR = Path(__file__).resolve().parents[1]
+ANOMALY_DIR = PROJECT_DIR / "Anomaly_Def"
+if str(PROJECT_DIR) not in sys.path:
+    sys.path.insert(0, str(PROJECT_DIR))
 
 from collections import Counter
 from collections.abc import Mapping, Sequence
@@ -16,9 +20,12 @@ random.seed(42)
 
 DictItem = Dict[str, Any]
 
+llm_provider = ""
 openai.api_key = os.environ.get("OPENAI_API_KEY", "")
-openai.base_url = os.environ.get("OPENAI_BASE_URL", "https://api.example.com/v1")
-model_name = os.environ.get("LLM_MODEL", "your-chat-model")
+openai.base_url = default_llm_base_url("Configs/syn_ano/example.json")
+openai.api_version = ""
+model_name = ""
+model_name = ""
 temperature = 1
 retry_times = 10
 
@@ -171,14 +178,14 @@ def generate_unique_dict_combinations(
 
 
 if __name__ == "__main__":
-    single_anomaly_definition_path = "Anomaly_Def/single_anomaly_desp.json"
+    single_anomaly_definition_path = ANOMALY_DIR / "single_anomaly_desp.json"
     with open(single_anomaly_definition_path, "r", encoding="utf-8") as f:
         single_anomaly_definitions = json.load(f)
 
     comp_anomaly_subsets = generate_unique_dict_combinations(single_anomaly_definitions, max_num=3)
     random.shuffle(comp_anomaly_subsets)
 
-    os.makedirs("Anomaly_Def/3_comp_anomaly_synthesis_messages", exist_ok=True)
+    os.makedirs(ANOMALY_DIR / "3_comp_anomaly_synthesis_messages", exist_ok=True)
 
     composite_anomaly_definitions = []
     for comp_anomaly_item in tqdm(comp_anomaly_subsets, desc="Synthesizing composite anomaly definitions", total=len(comp_anomaly_subsets)):
@@ -193,8 +200,10 @@ if __name__ == "__main__":
         messages = [{"role": "user", "content": prompt}]
         while cnt < retry_times:
             response = get_llm_response([prompt], opt={
+                "provider": llm_provider,
                 "api_key": openai.api_key,
                 "base_url": openai.base_url,
+                "api_version": openai.api_version,
                 "model_name": model_name,
             })
 
@@ -218,15 +227,15 @@ if __name__ == "__main__":
         if cnt >= retry_times:
             print(f"[ERROR] Exceeded maximum retry attempts for response: {response}. Skipping this combination.")
     
-        with open("Anomaly_Def/3_comp_anomaly_desp.json", "w", encoding="utf-8") as f:
+        with open(ANOMALY_DIR / "3_comp_anomaly_desp.json", "w", encoding="utf-8") as f:
             json.dump(composite_anomaly_definitions, f, indent=4)
-        with open(f"Anomaly_Def/3_comp_anomaly_synthesis_messages/{comp_anomaly_subsets.index(comp_anomaly_item)}.json", "w", encoding="utf-8") as f:
+        with open(ANOMALY_DIR / "3_comp_anomaly_synthesis_messages" / f"{comp_anomaly_subsets.index(comp_anomaly_item)}.json", "w", encoding="utf-8") as f:
             json.dump(messages, f, indent=4)
         print(f"Synthesized {len(composite_anomaly_definitions)} ({len(comp_anomaly_subsets)}) composite anomaly definitions.")
 
     gap_num = 20
     id = 1
-    output_directory = "Anomaly_Def/anomaly_def_formatted"
+    output_directory = ANOMALY_DIR / "anomaly_def_formatted"
 
     random.shuffle(composite_anomaly_definitions)
 

@@ -24,6 +24,11 @@ except:
 import bmtrain as bmt
 import torch
 
+try:
+    from einops import rearrange
+except ImportError:
+    rearrange = None
+
 from .linear import Linear
 from .position_embedding import apply_chatglm_rotary_pos_emb
 
