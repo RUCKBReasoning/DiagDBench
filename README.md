@@ -84,8 +84,18 @@ docker build -t mysql_diag \
   -f Docker/Ubuntu_MySQL/Dockerfile.mysql Docker/Ubuntu_MySQL
 ```
 
-The image definitions target PostgreSQL 16 and MySQL 8.4. Database seeds, schema
-files and sufficient CPU/memory/disk capacity must be prepared separately.
+The image definitions target PostgreSQL 16 and MySQL 8.4. Dataset ZIPs and
+database seeds are stored with Git LFS. After cloning, download them and restore
+the split PostgreSQL IMDB dump before initializing databases:
+
+```bash
+git lfs pull --include="DiagDBench/*.zip,Database_Instances/**"
+python3 -B Database_Instances/restore_imdb.py
+```
+
+See [database seed preparation](Database_Instances/README.md) for checksum
+verification and disk requirements. Schema files and sufficient CPU, memory,
+and disk capacity must also be prepared.
 
 Core requirements do **not** install every third-party baseline runtime:
 
