@@ -77,18 +77,7 @@ See the [agent documentation](Baselines/README.md),
 Use Linux, a compatible Python environment, Docker, Bash, tmux, and the
 `nsenter`/`unshare`/`setpriv` tools required by the isolation paths. Prepare the
 necessary host permissions; do not disable isolation checks to bypass a failed
-preflight.
-
-We recommend using a dedicated Conda environment named `db_diag` with
-Python 3.12. With Conda installed, create and activate the environment before
-installing the project dependencies:
-
-```bash
-conda create -n db_diag python=3.12 -y
-conda activate db_diag
-```
-
-With `db_diag` active, run the following commands from the repository root:
+preflight. From the repository root:
 
 ```bash
 python -m pip install -r requirements.txt
@@ -118,10 +107,7 @@ hf download zhaoxinxin798/DiagDBench DiagDBench/Train.zip DiagDBench/Eval.zip \
 ```
 
 These commands preserve the paths expected by the database initialization code
-and do not overwrite this repository's README. The PostgreSQL IMDB dump is
-provided as a complete `imdb.dump`; GitHub-specific split files and reassembly
-are no longer required. The public dataset can be downloaded without a token.
-Downloaded data and Hugging Face download metadata are ignored by Git.
+and do not overwrite this repository's README.
 
 See [database instance downloads](Database_Instances/README.md) and
 [dataset downloads](DiagDBench/README.md) for details. Allow approximately
