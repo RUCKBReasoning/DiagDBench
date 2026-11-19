@@ -2,9 +2,13 @@
 
 We introduce DiagDBench, a large-scale benchmark for training and evaluating database agents on interactive diagnosis, anomaly remediation, and optional workload performance optimization across diverse, realistic anomaly scenarios.
 
-To construct these samples at scale, we propose an LLM-based framework with two complementary pipelines: **Manual-Guided Anomaly Synthesis**, which sequentially synthesize user requests, database modifications, and anomaly-injection scripts grounded in DBA manuals and official DBMS documentation; and **Incident-Guided Anomaly Reproduction**, which reconstructs anomaly samples end to end from real-world online diagnosis incident records.
+To construct these samples at scale, we propose an LLM-based framework with two complementary pipelines: **Manual-Guided Anomaly Synthesis**, which sequentially synthesizes user requests, database modifications, and anomaly-injection scripts grounded in DBA manuals and official DBMS documentation; and **Incident-Guided Anomaly Reproduction**, which reconstructs anomaly samples end to end from real-world database incident records.
 
 ![Overview of LLM-based Anomaly Sample Construction Framework](Overview.png)
+
+**📄 Research Paper** · [arXiv:2611.07339](https://arxiv.org/abs/2611.07339)
+
+**🗄️ Benchmark Dataset & Database Instances** · [DiagDBench on Hugging Face](https://huggingface.co/datasets/zhaoxinxin798/DiagDBench)
 
 ## Contents
 
@@ -17,12 +21,12 @@ To construct these samples at scale, we propose an LLM-based framework with two 
 
 ## Repository Layout
 
-The repository covers four main steps: generate anomaly samples, organize them into datasets, run database agents, and evaluate their diagnosis reports and recovery results.
+This repository supports a four-stage workflow: anomaly sample generation, dataset construction, database agent execution, and evaluation of diagnostic reports and remediation scripts.
 
 ```text
 DiagDBench/
 ├── README.md
-├── Overview.png                      
+├── Overview.png
 ├── Anomaly_Def/                      # Anomaly definitions and supporting knowledge
 ├── Baselines/                        # Database diagnosis agents and shared tools
 │   ├── ReAct/                        # Agent that repeats reasoning, actions, and observations
@@ -30,19 +34,19 @@ DiagDBench/
 │   ├── Claude_Code/                  # Claude Agent SDK integration using shared Codex tools
 │   ├── DB-GPT/                       # Multi-expert diagnosis agent adapted for this benchmark
 │   ├── DBAIOps/                      # Knowledge-based diagnosis service and browser extension
-│   ├── input_contract.py             
-│   ├── preparation.py                
-│   ├── container_boundary.py         
-│   ├── native_runtime.py             
-│   ├── recovery_artifacts.py         
+│   ├── input_contract.py
+│   ├── preparation.py
+│   ├── container_boundary.py
+│   ├── native_runtime.py
+│   ├── recovery_artifacts.py
 │   └── script.sh                     # Starts a diagnosis agent from a configuration file
 ├── Evaluation/                       # Runs diagnosis and measures recovery quality
 │   ├── test_baseline_eval.py         # Runs an agent and scores its diagnosis and recovery
 │   ├── test_eval.py                  # Scores existing reports, recovery scripts, and workloads
-│   ├── method_adapters.py            
-│   ├── measurement.py                
-│   ├── namespace.py                  
-│   ├── recovery_reassessment.py      
+│   ├── method_adapters.py
+│   ├── measurement.py
+│   ├── namespace.py
+│   ├── recovery_reassessment.py
 │   └── offline_rescore.py
 ├── Configs/                          # Example configurations to copy and customize before running
 ├── Filter/                           # Filters samples using rules or an LLM agent; includes configurations
@@ -50,9 +54,9 @@ DiagDBench/
 ├── Docker/                           # Builds and starts PostgreSQL and MySQL containers
 ├── Scripts/                          # Initializes/resets databases, checks anomalies, and reports database health
 ├── Skills/                           # Instructions for generating, reproducing, and revising anomalies
-├── DiagDBench/                        # Dataset archives and sample files used in experiments
-├── Data/                             # Directory for database schema files
-├── Database_Instances/                # Seed data and loading files for PostgreSQL and MySQL
+├── DiagDBench/                        # Sample download guide; archives hosted on Hugging Face
+├── Data/                             # Local schema directory (not tracked by Git)
+├── Database_Instances/                # Database download guide; instances hosted on Hugging Face
 ├── test_syn_*.py                      # LLM-based anomaly synthesis scripts
 ├── test_extract_*.py                  # Collects generated samples, sample indexes, and diagnosis outputs
 ├── test_retri*.py                     # Retrieve relevant knowledge for anomaly definitions
@@ -73,7 +77,18 @@ See the [agent documentation](Baselines/README.md),
 Use Linux, a compatible Python environment, Docker, Bash, tmux, and the
 `nsenter`/`unshare`/`setpriv` tools required by the isolation paths. Prepare the
 necessary host permissions; do not disable isolation checks to bypass a failed
-preflight. From the repository root:
+preflight.
+
+We recommend using a dedicated Conda environment named `db_diag` with
+Python 3.12. With Conda installed, create and activate the environment before
+installing the project dependencies:
+
+```bash
+conda create -n db_diag python=3.12 -y
+conda activate db_diag
+```
+
+With `db_diag` active, run the following commands from the repository root:
 
 ```bash
 python -m pip install -r requirements.txt
@@ -84,18 +99,35 @@ docker build -t mysql_diag \
   -f Docker/Ubuntu_MySQL/Dockerfile.mysql Docker/Ubuntu_MySQL
 ```
 
-The image definitions target PostgreSQL 16 and MySQL 8.4. Dataset ZIPs and
-database seeds are stored with Git LFS. After cloning, download them and restore
-the split PostgreSQL IMDB dump before initializing databases:
+The image definitions target PostgreSQL 16 and MySQL 8.4. Database instances
+and training/evaluation archives are hosted on
+[Hugging Face](https://huggingface.co/datasets/zhaoxinxin798/DiagDBench), not in this
+GitHub checkout. The two directories contain download guides and also serve
+as local download destinations. From the repository root:
 
 ```bash
-git lfs pull --include="DiagDBench/*.zip,Database_Instances/**"
-python3 -B Database_Instances/restore_imdb.py
+python -m pip install -U huggingface_hub
+
+# Download complete PostgreSQL dumps and MySQL loading packages.
+hf download zhaoxinxin798/DiagDBench --repo-type dataset \
+  --include "Database_Instances/**" --local-dir .
+
+# Download the training and evaluation archives.
+hf download zhaoxinxin798/DiagDBench DiagDBench/Train.zip DiagDBench/Eval.zip \
+  --repo-type dataset --local-dir .
 ```
 
-See [database seed preparation](Database_Instances/README.md) for checksum
-verification and disk requirements. Schema files and sufficient CPU, memory,
-and disk capacity must also be prepared.
+These commands preserve the paths expected by the database initialization code
+and do not overwrite this repository's README. The PostgreSQL IMDB dump is
+provided as a complete `imdb.dump`; GitHub-specific split files and reassembly
+are no longer required. The public dataset can be downloaded without a token.
+Downloaded data and Hugging Face download metadata are ignored by Git.
+
+See [database instance downloads](Database_Instances/README.md) and
+[dataset downloads](DiagDBench/README.md) for details. Allow approximately
+13.61 GB for the downloaded files, plus additional space for extracted samples
+and initialized databases. Schema files and sufficient CPU and memory must
+also be prepared.
 
 Core requirements do **not** install every third-party baseline runtime:
 
@@ -104,14 +136,14 @@ Core requirements do **not** install every third-party baseline runtime:
 - DB-GPT and DBAIOps need their own configured Conda environments; DB-GPT also
   needs its native knowledge/embedding dependencies and resources.
 
-### Configuration map
+### Configuration Map
 
 | Workflow | Configuration | Entry |
 |---|---|---|
 | Standalone diagnosis | `Configs/baselines/<method>/example.json` | `Baselines/script.sh` or the method's Python entry |
 | Diagnosis + scoring | `Configs/evaluation/<method>/example.json` | `Evaluation/test_baseline_eval.py` |
 | Score existing artifacts | `Configs/evaluation/scoring/example.json` | `Evaluation/test_eval.py` |
-| Uer request / data modification / anomaly synthesis | `Configs/syn_int/`, `Configs/syn_data/`, `Configs/syn_ano/` | Corresponding root `test_syn_*.py` |
+| User request / data modification / anomaly synthesis | `Configs/syn_int/`, `Configs/syn_data/`, `Configs/syn_ano/` | Corresponding root `test_syn_*.py` |
 | Incident reproduction | `Configs/syn_ano_rep/example.json` | `test_syn_ano_rep.py` |
 | Extract synthesized samples | `Configs/extract_key_info/example.json` | `test_extract_key_info.py` |
 | Human-review revision | `Configs/revision/example.json`, `example_mysql.json` | `Revision/test_ref_anomaly.py` |
@@ -119,9 +151,10 @@ Core requirements do **not** install every third-party baseline runtime:
 
 ## Manual-Guided Anomaly Synthesis
 
-This pipeline instantiate abstract anomaly definitions along with error codes and timeouts from official DBMS
-documentation into executable samples through three sequential stages. Each stage
-uses database execution feedback to refine its outputs.
+This pipeline turns abstract anomaly definitions into executable samples
+through three sequential stages, using error-code and timeout information
+from official DBMS documentation. Each stage uses database execution
+feedback to refine its outputs.
 
 | Stage | Entry point | Configuration | Main outputs |
 |---|---|---|---|
@@ -204,8 +237,9 @@ evaluation. The resulting sample contract is described in [DiagDBench](#diagdben
 
 ## Incident-Guided Anomaly Reproduction
 
-This pipeline reconstructs an anomaly directly from a real-world onlien diagnosis incident record,
-using the database schema, system/user configuration, and reproduction guidance.
+This pipeline reconstructs an anomaly directly from a real-world database
+incident record, using the database schema, system and user configuration,
+and reproduction guidance.
 `test_syn_ano_rep.py` runs an interactive construction loop to produce the anomaly
 definition, user issue description, anomaly-verified workloads, database modifications, and anomaly
 injection script.
@@ -247,7 +281,7 @@ cp Configs/syn_ano_rep/example.json syn-ano-rep.local.json
 python -B test_syn_ano_rep.py --config syn-ano-rep.local.json
 ```
 
-Finish validation uses `Scripts/anomaly_eval_rep.py`. The declared
+Final validation uses `Scripts/anomaly_eval_rep.py`. The declared
 `SuccessCriterion` distinguishes performance degradation, blocking/timeouts, and
 execution errors so that validation can match the incident's manifestation.
 
@@ -271,13 +305,22 @@ DiagDBench organizes samples from both construction pipelines into a common
 interface for interactive diagnosis and remediation. Each anomaly sample contains
 the database environment, user issue description, anomaly-verified workloads, database modifications, and anomaly-injection script.
 
-### Local archives versus runnable inputs
+### Downloaded archives versus runnable inputs
 
-The inspected local checkout contains `DiagDBench/Eval.zip` and
-`DiagDBench/Train.zip`.
+The training and evaluation samples are distributed as `DiagDBench/Train.zip`
+and `DiagDBench/Eval.zip` in the
+[Hugging Face dataset](https://huggingface.co/datasets/zhaoxinxin798/DiagDBench).
+Download them using the
+commands in [Environment Preparation](#environment-preparation), which contains 6,940 training samples and 454 evaluation samples.
 
-Specifically, `Eval.zip` has an `Eval/` directory and
-`Eval/key_information.json`, but uses packaged names such as:
+Extract samples to a directory outside this repository when preparing isolated
+diagnosis or evaluation inputs, and configure the sample/index paths accordingly.
+Downloading or extracting the archives does not initialize databases or execute
+anomaly-injection scripts.
+
+`Train.zip` contains `Train/MySQL/` and `Train/PostgreSQL/` sample directories.
+`Eval.zip` contains an `Eval/` directory and `Eval/key_information.json`,
+with per-sample filenames such as:
 
 - `anomaly_definition.json`
 - `anomaly_verified_workload.sql`
@@ -317,7 +360,6 @@ the model revision loop. Successful revisions require anomaly evaluation and a
 valid finish action; unreviewed or failed revisions keep the original sample
 content. Keep revision output separate from the input tree.
 
-
 ## Database Agents for Diagnosis and Remediation
 
 `Baselines/` implements five database agents with a shared input and output
@@ -350,7 +392,6 @@ configuration snapshot and locks its output directory. It runs **diagnosis only*
 Use the corresponding `Configs/baselines/<method>/example.json` for another agent.
 The [Evaluation](#evaluation) section covers scoring the generated artifacts.
 
-
 ### Shared artifacts and constraints
 
 Baseline completion writes:
@@ -365,7 +406,6 @@ The final action's workload field is `verified_workload.sql`; the saver writes
 `optimized_verified_workload.sql`. An empty optional rewrite retains the original
 verification SQL as the effective artifact.
 
-
 To collect existing standalone artifacts without running a model:
 
 ```bash
@@ -376,8 +416,11 @@ python -B test_extract_solution.py \
 
 ## Evaluation
 
-`Evaluation/` adopt two complementary evaluation protocols: Execution-Grounded Remediation Evaluation and LLM-Judged Diagnostic Report Evaluation. It measures recovery in a reconstructed anomaly
-environment and uses an LLM Judge to assess diagnosis and workload equivalence.
+`Evaluation/` implements two complementary evaluation protocols:
+**Execution-Grounded Remediation Evaluation** and **LLM-Judged Diagnostic
+Report Evaluation**. It measures recovery in a reconstructed anomalous
+environment and uses an LLM judge to assess diagnostic reports and workload
+equivalence.
 
 ### Integrated diagnosis and scoring
 
